@@ -23,8 +23,7 @@ char *decode_nbnodename(char *coded_name) {
   for (coded_name_cntr = 0; coded_name_cntr < NETBIOS_CODED_NAME_LEN;
        coded_name_cntr++) {
     nibble_reactor = coded_name[coded_name_cntr] - 'A';
-    nibble_reactor << 4;
-    decoded_name[decoded_name_cntr] = nibble_reactor;
+    decoded_name[decoded_name_cntr] = nibble_reactor << 4;
 
     coded_name_cntr++;
     nibble_reactor = coded_name[coded_name_cntr] - 'A';
