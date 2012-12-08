@@ -51,7 +51,8 @@ unsigned char *encode_nbnodename(unsigned char *decoded_name) {
   unsigned char nibble_reactor;
 
   decoded_name_len = strnlen(decoded_name, NETBIOS_NAME_LEN +1);
-  if (decoded_name_len != NETBIOS_NAME_LEN) {
+  if (decoded_name_len != NETBIOS_NAME_LEN ||
+      decoded_name[0] == '*') {
     /* FIXME: have to make it use ERRNO signaling */
     return 0;
   }
