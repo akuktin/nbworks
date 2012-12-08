@@ -2,11 +2,11 @@
 
 #include "nodename.h"
 
-char *decode_nbnodename(char *coded_name) {
+unsigned char *decode_nbnodename(unsigned char *coded_name) {
   int coded_name_cntr, decoded_name_cntr;
   int coded_name_len;
-  char *decoded_name;
-  char nibble_reactor;
+  unsigned char *decoded_name;
+  unsigned char nibble_reactor;
 
   coded_name_len = strnlen(coded_name, NETBIOS_CODED_NAME_LEN +1);
   if (coded_name_len != NETBIOS_CODED_NAME_LEN) {
@@ -44,11 +44,11 @@ char *decode_nbnodename(char *coded_name) {
   return decoded_name;
 }
 
-char *encode_nbnodename(char *decoded_name) {
+unsigned char *encode_nbnodename(unsigned char *decoded_name) {
   int coded_name_cntr, decoded_name_cntr;
   int decoded_name_len;
-  char *coded_name;
-  char nibble_reactor;
+  unsigned char *coded_name;
+  unsigned char nibble_reactor;
 
   decoded_name_len = strnlen(decoded_name, NETBIOS_NAME_LEN +1);
   if (decoded_name_len != NETBIOS_NAME_LEN) {

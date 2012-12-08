@@ -4,10 +4,10 @@
 
 #include "nodename.h"
 
-int main(int argc, char **argv) {
+int main(int argc, unsigned char **argv) {
   int i, j, len;
-  char *prepared_name;
-  char *coded_name;
+  unsigned char *prepared_name;
+  unsigned char *coded_name;
 
   prepared_name = malloc(NETBIOS_NAME_LEN +1);
   if (! prepared_name) {

@@ -3,9 +3,9 @@
 
 #include "nodename.h"
 
-int main(int argc, char **argv) {
+int main(int argc, unsigned char **argv) {
   int i, name_description;
-  char *decoded_name;
+  unsigned char *decoded_name;
 
   for (i=1; i < argc; i++) {
     decoded_name = decode_nbnodename(argv[i]);
