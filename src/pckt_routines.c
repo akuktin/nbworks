@@ -4,6 +4,7 @@ inline unsigned char *read_16field(unsigned char *content,
 				   uint16_t *field) {
   int i;
 
+  *field = 0;
   for (i = 1; i >= 0; i--) {
     *field = (*field | *content) << (8 * i);
     content++;
@@ -15,6 +16,7 @@ inline unsigned char *read_32field(unsigned char *content,
                                    uint32_t *field) {
   int i;
 
+  *field = 0;
   for (i = 3; i >= 0; i--) {
     *field = (*field | *content) << (8 * i);
     content++;
@@ -27,6 +29,7 @@ inline unsigned char *read_64field(unsigned char *content,
                                    uint64_t *field) {
   int i;
 
+  *field = 0;
   for (i = 7; i >= 0; i--) {
     *field = (*field | *content) << (8 * i);
     content++;
