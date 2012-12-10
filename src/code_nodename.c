@@ -141,7 +141,7 @@ unsigned char *make_nbnodename(const unsigned char *string,
   unsigned char prepared_name[NETBIOS_NAME_LEN +1];
   unsigned char *coded_name;
 
-  if (! (string && type_char)) {
+  if (! string) {
     /* TODO: errno signaling stuff */
     return 0;
   }
