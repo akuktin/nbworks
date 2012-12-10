@@ -10,3 +10,7 @@ struct name_srvc_pckt_header {
   uint16_t numof_authorities;
   uint16_t numof_additional_recs;
 };
+
+struct name_srvc_pckt_header *read_name_srvc_pckt_header(const void *packet);
+void fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
+                                void *packet);
