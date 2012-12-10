@@ -37,9 +37,9 @@ int main(int argc, unsigned char **argv) {
 
     if (! coded_name) {
       fprintf(stderr, "problem with argument #%i\n", i);
+    } else {
+      fprintf(stdout, "%s\n", coded_name);
     }
-
-    fprintf(stdout, "%s\n", coded_name);
 
     free(coded_name);
   }
