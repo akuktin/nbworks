@@ -96,4 +96,3 @@ struct name_srvc_question *read_name_srvc_pckt_question(void **master_packet_wal
 
   return question;
 }
-

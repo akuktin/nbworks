@@ -1,7 +1,7 @@
 #ifndef NBWORKS_NAMESRVCPCKT_H
 # define NBWORKS_NAMESRVCPCKT_H 1
 
-#include <stdint.h>
+# include <stdint.h>
 
 # define MAX_DNS_LABEL_LEN 63
 
