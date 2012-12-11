@@ -1,11 +1,12 @@
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
 
-struct name_srvc_pckt_header *read_name_srvc_pckt_header(const void *packet) {
+struct name_srvc_pckt_header *read_name_srvc_pckt_header(void **master_packet_walker) {
   struct name_srvc_pckt_header *header;
   unsigned char *walker;
 
@@ -15,7 +16,7 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(const void *packet) {
     return 0;
   }
 
-  walker = (unsigned char *)packet;
+  walker = (unsigned char *)*master_packet_walker;
 
   walker = read_16field(walker, &(header->transaction_id));
 
@@ -31,14 +32,16 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(const void *packet) {
   walker = read_16field(walker, &(header->numof_authorities));
   walker = read_16field(walker, &(header->numof_additional_recs));
 
+  *master_packet_walker = (void *)walker;
+
   return header;
 }
 
 void fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
-				void *packet) {
+				void **master_packet_walker) {
   unsigned char *walker;
 
-  walker = (unsigned char *)packet;
+  walker = (unsigned char *)*master_packet_walker;
 
   walker = fill_16field(header->transaction_id, walker);
 
@@ -54,5 +57,43 @@ void fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
   walker = fill_16field(header->numof_authorities, walker);
   walker = fill_16field(header->numof_additional_recs, walker);
 
+  *master_packet_walker = (void *)walker;
+
   return;
 }
+
+struct name_srvc_question *read_name_srvc_pckt_question(void **master_packet_walker,
+							void *start_of_packet) {
+  struct name_srvc_question *question;
+  unsigned char *walker;
+  void *remember_walker;
+
+  question = malloc(sizeof(struct name_srvc_question));
+  if (! question) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  /* Part of the mechanism to respect the 32-bit boundaries.
+     It's done because read_all_DNS_labels() is guaranteed
+     to increment the *master_packet_walker by at least one. */
+  remember_walker = *master_packet_walker +1;
+
+  question->name = read_all_DNS_labels(master_packet_walker, start_of_packet);
+  if (! question->name) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  /* Fields in the packet are aligned to 32-bit boundaries. */
+  walker = (unsigned char *)(*master_packet_walker +
+			     ((*master_packet_walker - remember_walker) % 4));
+
+  walker = read_16field(walker, &(question->qtype));
+  walker = read_16field(walker, &(question->qclass));
+
+  *master_packet_walker = (void *)walker;
+
+  return question;
+}
+

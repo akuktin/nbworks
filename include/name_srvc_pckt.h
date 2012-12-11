@@ -1,6 +1,9 @@
+#ifndef NBWORKS_NAMESRVCPCKT_H
+# define NBWORKS_NAMESRVCPCKT_H 1
+
 #include <stdint.h>
 
-#define MAX_DNS_LABEL_LEN 63
+# define MAX_DNS_LABEL_LEN 63
 
 struct name_srvc_pckt_header {
   uint16_t transaction_id;
@@ -24,6 +27,10 @@ struct name_srvc_question {
   uint16_t qclass;
 };
 
-struct name_srvc_pckt_header *read_name_srvc_pckt_header(void **packet);
+struct name_srvc_pckt_header *read_name_srvc_pckt_header(void **master_packet_walker);
 void fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
-                                void **packet);
+                                void **master_packet_walker);
+struct name_srvc_question *read_name_srvc_pckt_question(void **master_packet_walker,
+							void *start_of_packet);
+
+#endif /* NBWORKS_NAMESRVCPCKT_H */
