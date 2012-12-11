@@ -189,7 +189,7 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
     /* This means we have been only been fed the root label,
        which is NULL, which is imposibble to parse and should
        never happen (I think).
-       Please be a good routine and puke for us. */
+       Please be a good routine and get ready to puke for us. */
     while (first_label) {
       cur_label = first_label->next_name;
       if (first_label->name) {
@@ -199,14 +199,15 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
       first_label = cur_label;
     }
   } else {
-    if (name_offset == ONES) {
-      /* Read the pre-previous comment.
-	 If this test has succeded, then we have not encountered
-	 a single pointer, *start_and_end_of_walk has not been
-	 updated, so we update it now. */
-      *start_and_end_of_walk = walker +1;
-    }
     cur_label->next_name = 0;
+  }
+
+  if (name_offset == ONES) {
+    /* Read the pre-previous comment.
+       If this test has succeded, then we have not encountered
+       a single pointer, *start_and_end_of_walk has not been
+       updated, so we update it now. */
+    *start_and_end_of_walk = walker +1;
   }
 
   return first_label;
