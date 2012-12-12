@@ -3,7 +3,7 @@
 
 # include <stdint.h>
 
-# define MAX_DNS_LABEL_LEN 63
+# define MAX_DNS_LABEL_LEN 0x3f
 
 struct name_srvc_pckt_header {
   uint16_t transaction_id;
