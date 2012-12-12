@@ -18,6 +18,7 @@ struct name_srvc_pckt_header {
 
 struct nbnodename_list {
   unsigned char *name;
+  unsigned char len; /* Not int because the field is 6 bits wide in the packet. */
   struct nbnodename_list *next_name;
 };
 

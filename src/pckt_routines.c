@@ -124,6 +124,7 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
   while (*walker != 0) {
     if (*walker <= MAX_DNS_LABEL_LEN) {
       while (0xf0e4) { /* while 0xf0r_ev4! */
+	cur_label->len = *walker;
 	name_len = *walker;
 	walker++;
 	for (weighted_companion_pointer = 0;
