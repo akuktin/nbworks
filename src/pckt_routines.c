@@ -138,7 +138,7 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
 	   character. So we terminate it. */
 	buf[weighted_companion_pointer] = '\0';
 
-	cur_label->name = malloc(weighted_companion_pointer);
+	cur_label->name = malloc(weighted_companion_pointer +1);
 	if (! cur_label->name) {
 	  /* TODO: errno signaling stuff */
 	  while (first_label) {
@@ -154,7 +154,7 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
 	/* I know what I am doing. */
 	/* Note to self: also copy the terminating NULL. */
 	memcpy((void *)cur_label->name, (void *)buf,
-	       weighted_companion_pointer);
+	       weighted_companion_pointer +1);
 
 	/* see the for loop above if you are wondering about walker */
 	if (*walker <= MAX_DNS_LABEL_LEN &&
