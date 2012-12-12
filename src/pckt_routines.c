@@ -152,7 +152,9 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
 	  return 0;
 	}
 	/* I know what I am doing. */
-	strcpy((char *)cur_label->name, (char *)buf);
+	/* Note to self: also copy the terminating NULL. */
+	memcpy((void *)cur_label->name, (void *)buf,
+	       weighted_companion_pointer);
 
 	/* see the for loop above if you are wondering about walker */
 	if (*walker <= MAX_DNS_LABEL_LEN &&
