@@ -106,7 +106,6 @@ void fill_name_srvc_pckt_question(struct name_srvc_question *question,
 
   walker = (unsigned char *)*master_packet_walker;
 
-  remember_walkers_position = walker;
   walker = fill_all_DNS_labels(question->name, walker);
 
   /* Respect the 32-bit boundary. */
