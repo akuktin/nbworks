@@ -26,5 +26,8 @@ unsigned char *
 struct nbaddress_list *
   read_nbaddress_list(unsigned char **start_and_end_of_walk,
                       uint16_t len_of_addresses);
+unsigned char *
+  fill_nbaddress_list(struct nbaddress_list *content,
+                      unsigned char *walker);
 
 #endif /* NBWORKS_PKCTROUTINES_H */

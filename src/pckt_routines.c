@@ -298,3 +298,16 @@ struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk
 
   return return_result;
 }
+
+unsigned char *fill_nbaddress_list(struct nbaddress_list *content,
+				   unsigned char *walker) {
+  while (content) {
+    walker = fill_16field(content->flags, walker);
+    if (content->there_is_an_address) {
+      walker = fill_32field(content->address, walker);
+    }
+    content = content->next_address;
+  }
+
+  return walker;
+}
