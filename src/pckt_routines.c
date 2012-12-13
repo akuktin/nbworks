@@ -233,6 +233,7 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
   }
 
   field = '\0';
+  field++;
 
   return field;
 }
