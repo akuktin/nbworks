@@ -143,7 +143,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   walker = read_16field(walker, &(resource->rrclass));
   walker = read_32field(walker, &(resource->ttl));
   walker = read_16field(walker, &(resource->rdata_len));
-  resource->rdata_t = unknown_type;
+  resource->rdata_t = virgin;
   resource->rdata = read_name_srvc_resource_data(&walker, resource, start_of_packet);
 
   /* No 32-bit boundary alignment. */
@@ -177,7 +177,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 				   struct name_srvc_resource *resource,
 				   unsigned char *start_of_packet) {
   struct nbnodename_list *nbnodename;
-  unsigned char *weighted_companion_cube;
+  unsigned char *weighted_companion_cube, numof_names;
 
   switch (name_srvc_understand_resource(resource->rrtype, resource->rrclass)) {
   case unknown_important_resource:
@@ -224,14 +224,17 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     return read_ipv4_address_list(start_and_end_of_walk, resource->rdata_len);
     break;
 
+  case nb_statistics:
+    resource->rdata_t = nb_statistics;
+    num_names = *walker;
+    walker++;
+    break;
+
   case bad_type:
+  default:
     resource->rdata_t = bad_type;
     *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
     return 0;
-    break;
-
-  default:
-    /* Never triggered. */
     break;
   }
 

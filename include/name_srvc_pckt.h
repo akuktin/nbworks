@@ -15,13 +15,14 @@
 
 enum name_srvc_rdata_type {
   unknown_type = 0,
+  virgin,
   unknown_important_resource,
   nb_address_list, /* Array of (NB_FLAGS, IPv4addr).
                       Can contain only NB_FLAGS, check rdata_len. */
                    /* Or not, there is a confict in RFC1002, page 25.
                       IETF resources are not enlighning.
                       http://www.rfc-editor.org/errata_search.php?rfc=1002 */
-  nb_type_null, /* Nothing, (rdata_len = 0). */
+  nb_type_null, /* Nothing. */
   nb_nodename, /* NetBIOS name+scope, like in questions. */ /* Aligned! */
   nb_NBT_node_ip_address, /* Array of (IPv4addr). */
   nb_statistics, /* Array of (nbnodename+name_flags), aligned as a whole (or

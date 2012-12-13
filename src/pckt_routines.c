@@ -33,6 +33,19 @@ inline unsigned char *read_32field(unsigned char *content,
   return content;
 }
 
+inline unsigned char *read_48field(unsigned char *content,
+                                   uint64_t *field) {
+  int i;
+
+  *field = 0;
+  for (i = 5; i >= 0; i--) {
+    *field = (*field | *content) << (8 * i);
+    content++;
+  }
+
+  return content;
+}
+
 inline unsigned char *read_64field(unsigned char *content,
                                    uint64_t *field) {
   int i;
@@ -70,6 +83,22 @@ inline unsigned char *fill_32field(uint32_t content,
   flags = 0xff000000;
 
   for (i = 3; i >= 0; i--) {
+    *field = (unsigned char)((content & flags) >> (8 * i));
+    field++;
+    flags = flags >> 8;
+  }
+
+  return field;
+}
+
+inline unsigned char *fill_48field(uint64_t content,
+				   unsigned char *field) {
+  int i;
+  uint64_t flags;
+
+  flags = 0xff0000000000;
+
+  for (i = 5; i >= 0; i--) {
     *field = (unsigned char)((content & flags) >> (8 * i));
     field++;
     flags = flags >> 8;
