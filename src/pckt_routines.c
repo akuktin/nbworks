@@ -225,7 +225,7 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
 
   iterator = content;
 
-  if (iterator) {
+  while (iterator) {
     *field = content->len;
     field++;
     field = mempcpy(field, content->name, content->len);
