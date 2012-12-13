@@ -311,3 +311,60 @@ unsigned char *fill_nbaddress_list(struct nbaddress_list *content,
 
   return walker;
 }
+
+struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_walk,
+					      uint16_t len_of_addresses) {
+  struct nbaddress_list *result, *return_result;
+  unsigned char *walker;
+
+  if (len_of_addresses < 4) {
+    *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
+    return 0;
+  }
+  walker = *start_and_end_of_walk;
+
+  return_result = malloc(sizeof(struct nbaddress_list));
+  if (! return_result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+  return_result->next_address = 0;
+  result = return_result;
+
+  while (0xbeef101) {
+    result->there_is_an_address = TRUE;
+    walker = read_32field(walker, &(result->address));
+    len_of_addresses = len_of_addresses - 4;
+
+    if (len_of_addresses >= 4) {
+      result->next_address = malloc(sizeof(struct nbaddress_list));
+      if (! result->next_address) {
+	/* TODO: errno signaling stuff */
+	while (return_result) {
+	  result = return_result->next_address;
+	  free(return_result);
+	  return_result = result;
+	}
+	return 0;
+      }
+      result = result->next_address;
+    } else {
+      result->next_address = 0;
+      break;
+    }
+  }
+
+  *start_and_end_of_walk = walker + len_of_addresses;
+
+  return return_result;
+}
+
+unsigned char *fill_ipv4_address_list(struct nbaddress_list *content,
+				      unsigned char *walker) {
+  while (content) {
+    walker = fill_32field(content->address, walker);
+    content = content->next_address;
+  }
+
+  return walker;
+}

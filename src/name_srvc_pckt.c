@@ -180,12 +180,6 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   unsigned char *weighted_companion_cube;
 
   switch (name_srvc_understand_resource(resource->rrtype, resource->rrclass)) {
-  case bad_type:
-    resource->rdata_t = bad_type;
-    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
-    return 0;
-    break;
-
   case unknown_important_resource:
     resource->rdata_t = unknown_important_resource;
     weighted_companion_cube = malloc(resource->rdata_len);
@@ -200,7 +194,14 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
   case nb_address_list:
     resource->rdata_t = nb_address_list;
+    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
     return read_nbaddress_list(start_and_end_of_walk, resource->rdata_len);
+    break;
+
+  case nb_type_null:
+    resource->rdata_t = nb_type_null;
+    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
+    return 0;
     break;
 
   case nb_nodename:
@@ -215,6 +216,18 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     *start_and_end_of_walk = (*start_and_end_of_walk +
 			      ((4- ((*start_and_end_of_walk - weighted_companion_cube) %4)) %4));
     return weighted_companion_cube;
+    break;
+
+  case nb_NBT_node_ip_address:
+    resource->rdata_t = nb_NBT_node_ip_address;
+    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
+    return read_ipv4_address_list(start_and_end_of_walk, resource->rdata_len);
+    break;
+
+  case bad_type:
+    resource->rdata_t = bad_type;
+    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
+    return 0;
     break;
 
   default:
