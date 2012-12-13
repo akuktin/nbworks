@@ -40,8 +40,8 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(void **master_packet_wa
   return header;
 }
 
-void fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
-				void **master_packet_walker) {
+unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
+					  void **master_packet_walker) {
   unsigned char *walker;
 
   walker = (unsigned char *)*master_packet_walker;
@@ -60,9 +60,7 @@ void fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
   walker = fill_16field(header->numof_authorities, walker);
   walker = fill_16field(header->numof_additional_recs, walker);
 
-  *master_packet_walker = (void *)walker;
-
-  return;
+  return walker;
 }
 
 struct name_srvc_question *read_name_srvc_pckt_question(void **master_packet_walker,
@@ -100,8 +98,8 @@ struct name_srvc_question *read_name_srvc_pckt_question(void **master_packet_wal
   return question;
 }
 
-void fill_name_srvc_pckt_question(struct name_srvc_question *question,
-				  void **master_packet_walker) {
+unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
+					    void **master_packet_walker) {
   unsigned char *walker;
 
   walker = (unsigned char *)*master_packet_walker;
@@ -116,7 +114,65 @@ void fill_name_srvc_pckt_question(struct name_srvc_question *question,
   walker = fill_16field(question->qtype, walker);
   walker = fill_16field(question->qclass, walker);
 
+  return walker;
+}
+
+struct name_srvc_resource *read_name_srvc_resource(void **master_packet_walker,
+						   void *start_of_packet) {
+  struct name_srvc_resource *resource;
+  unsigned char *walker;
+  void *remember_walker;
+
+  resource = malloc(sizeof(struct name_srvc_resource));
+  if (! resource) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  /* See read_name_srvc_pckt_question() for deails. */
+  remember_walker = *master_packet_walker +1;
+
+  resource->name = read_all_DNS_labels(master_packet_walker, start_of_packet);
+  if (! resource->name) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  /* Fields in the packet are aligned to 32-bit boundaries. */
+  walker = (unsigned char *)(*master_packet_walker +
+			     ((4- ((*master_packet_walker - remember_walker) %4))) %4);
+
+  walker = read_16field(walker, &(resource->rrtype));
+  walker = read_16field(walker, &(resource->rrclass));
+  walker = read_32field(walker, &(resource->ttl));
+  walker = read_16field(walker, &(resource->rdlength));
+  resource->rdata_t = unknown_type;
+  resource->rdata = read_name_srvc_resource_data(&walker, resource, start_of_packet);
+
+  /* No 32-bit boundary alignment. */
   *master_packet_walker = (void *)walker;
 
-  return;
+  return resource;
+}
+
+unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
+				       void **master_packet_walker) {
+  unsigned char *walker;
+
+  walker = (unsigned char *)*master_packet_walker;
+
+  walker = fill_all_DNS_labels(resource->name, walker);
+
+  /* Respect the 32-bit boundary. */
+  walker = (unsigned char *)(walker +
+			     ((4- (((unsigned char *)*master_packet_walker
+				    - walker) % 4)) %4));
+
+  walker = fill_16field(resource->rrtype, walker);
+  walker = fill_16field(resource->rrclass, walker);
+  walker = fill_32field(resource->ttl, walker);
+  walker = fill_16field(resource->rdlength, walker);
+  walker = fill_name_srvc_resource_data(resource->rdata, walker);
+
+  return walker;
 }
