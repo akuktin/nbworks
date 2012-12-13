@@ -1,9 +1,12 @@
+#include "c_lang_extensions.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "constdef.h"
 #include "name_srvc_pckt.h"
+
 
 inline unsigned char *read_16field(unsigned char *content,
 				   uint16_t *field) {
@@ -214,4 +217,22 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
   }
 
   return first_label;
+}
+
+unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
+				   unsigned char *field) {
+  struct nbnodename_list *iterator;
+
+  iterator = content;
+
+  if (iterator) {
+    *field = content->len;
+    field++;
+    field = mempcpy(field, content->name, content->len);
+    iterator = content->next_name;
+  }
+
+  field = '\0';
+
+  return field;
 }

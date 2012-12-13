@@ -1,7 +1,10 @@
+#include "c_lang_extensions.h"
+
 #include <stdlib.h>
 #include <string.h>
 
 #include "nodename.h"
+
 
 unsigned char *decode_nbnodename(const unsigned char *coded_name) {
   int coded_name_cntr, decoded_name_cntr;

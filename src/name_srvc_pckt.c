@@ -1,3 +1,5 @@
+#include "c_lang_extensions.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -5,6 +7,7 @@
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
+
 
 struct name_srvc_pckt_header *read_name_srvc_pckt_header(void **master_packet_walker) {
   struct name_srvc_pckt_header *header;
