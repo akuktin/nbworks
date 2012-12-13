@@ -94,8 +94,8 @@ inline unsigned char *fill_64field(uint64_t content,
   return field;
 }
 
-struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
-					    void *start_of_packet) {
+struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_walk,
+					    unsigned char *start_of_packet) {
   struct nbnodename_list *first_label, *cur_label;
   int name_len, weighted_companion_pointer;
   unsigned int name_offset;
@@ -114,9 +114,10 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
     return 0;
   }
   first_label->name = 0;
+  first_label->next_name = 0;
   cur_label = first_label;
 
-  walker = (unsigned char *)*start_and_end_of_walk;
+  walker = *start_and_end_of_walk;
   name_offset = ONES;
   buf[MAX_DNS_LABEL_LEN] = '\0';
 
@@ -188,7 +189,7 @@ struct nbnodename_list *read_all_DNS_labels(void **start_and_end_of_walk,
       name_offset = name_offset << 8;
       walker++;
       name_offset = name_offset | *walker;
-      walker = (unsigned char *)(start_of_packet + name_offset);
+      walker = (start_of_packet + name_offset);
     }
   }
   if (first_label->name == 0) {
@@ -236,4 +237,64 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
   field++;
 
   return field;
+}
+
+struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk,
+					   uint16_t len_of_addresses) {
+  struct nbaddress_list *result, *return_result;
+  unsigned char *walker;
+
+  if (len_of_addresses < 2) {
+    *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
+    return 0;
+  }
+  walker = *start_and_end_of_walk;
+
+  return_result = malloc(sizeof(struct nbaddress_list));
+  if (! return_result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+  return_result->next_address = 0;
+  result = return_result;
+
+  while (0xdead101) {
+    walker = read_16field(walker, &(result->flags));
+    len_of_addresses = len_of_addresses - 2;
+
+    if (len_of_addresses >= 4) {
+      result->there_is_an_address = TRUE;
+      walker = read_32field(walker, &(result->address));
+      len_of_addresses = len_of_addresses - 4;
+
+    } else {
+      result->there_is_an_address = FALSE;
+      /* Presumably, this is the end of the list. */
+      /* Master packet walker is updated before the return. */
+      result->next_address = 0;
+      break;
+    }
+
+    if (len_of_addresses >= 2) {
+      result->next_address = malloc(sizeof(struct nbaddress_list));
+      if (! result->next_address) {
+	/* TODO: errno signaling stuff */
+	while (return_result) {
+	  result = return_result->next_address;
+	  free(return_result);
+	  return_result = result;
+	}
+	return 0;
+      }
+      result = result->next_address;
+    } else {
+      result->next_address = 0;
+      break;
+    }
+
+  }
+
+  *start_and_end_of_walk = walker + len_of_addresses;
+
+  return return_result;
 }
