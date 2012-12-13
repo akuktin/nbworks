@@ -90,7 +90,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(void **master_packet_wal
 
   /* Fields in the packet are aligned to 32-bit boundaries. */
   walker = (unsigned char *)(*master_packet_walker +
-			     ((*master_packet_walker - remember_walker) % 4));
+			     ((4- ((*master_packet_walker - remember_walker) %4))) %4);
 
   walker = read_16field(walker, &(question->qtype));
   walker = read_16field(walker, &(question->qclass));
@@ -98,4 +98,25 @@ struct name_srvc_question *read_name_srvc_pckt_question(void **master_packet_wal
   *master_packet_walker = (void *)walker;
 
   return question;
+}
+
+void fill_name_srvc_pckt_question(struct name_srvc_question *question,
+				  void **master_packet_walker) {
+  unsigned char *walker;
+
+  walker = (unsigned char *)*master_packet_walker;
+
+  remember_walkers_position = walker;
+  walker = fill_all_DNS_labels(question->name, walker);
+
+  /* Respect the 32-bit boundary. */
+  walker = (unsigned char *)(walker +
+			     ((4- ((*master_packet_walker - walker) % 4)) %4));
+
+  walker = fill_16field(question->qtype, walker);
+  walker = fill_16field(question->qclass, walker);
+
+  *master_packet_walker = (void *)walker;
+
+  return;
 }
