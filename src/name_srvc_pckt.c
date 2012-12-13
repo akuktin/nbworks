@@ -110,7 +110,8 @@ void fill_name_srvc_pckt_question(struct name_srvc_question *question,
 
   /* Respect the 32-bit boundary. */
   walker = (unsigned char *)(walker +
-			     ((4- ((*master_packet_walker - walker) % 4)) %4));
+			     ((4- (((unsigned char *)*master_packet_walker
+				    - walker) % 4)) %4));
 
   walker = fill_16field(question->qtype, walker);
   walker = fill_16field(question->qclass, walker);

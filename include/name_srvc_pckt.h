@@ -33,5 +33,7 @@ void fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
                                 void **master_packet_walker);
 struct name_srvc_question *read_name_srvc_pckt_question(void **master_packet_walker,
 							void *start_of_packet);
+void fill_name_srvc_pckt_question(struct name_srvc_question *question,
+				  void **master_packet_walker);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */
