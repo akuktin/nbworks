@@ -177,7 +177,9 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 				   struct name_srvc_resource *resource,
 				   unsigned char *start_of_packet) {
   struct nbnodename_list *nbnodename;
-  unsigned char *weighted_companion_cube, numof_names;
+  struct nbnodename_list_backbone *listof_names;
+  struct name_srvc_statistics_rfc1002 *nbstat;
+  unsigned char *weighted_companion_cube, *walker, num_names;
 
   switch (name_srvc_understand_resource(resource->rrtype, resource->rrclass)) {
   case unknown_important_resource:
@@ -226,8 +228,87 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
   case nb_statistics:
     resource->rdata_t = nb_statistics;
+    walker = *start_and_end_of_walk;
+    nbstat = malloc(sizeof(struct name_srvc_statistics_rfc1002));
+    if (! nbstat) {
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
     num_names = *walker;
+    nbstat->numof_names = num_names;
     walker++;
+    weighted_companion_cube = walker +1;
+    if (num_names > 0) {
+      listof_names = malloc(sizeof(struct nbnodename_list_backbone));
+      if (! listof_names) {
+	/* TODO: errno signaling stuff */
+	free(nbstat);
+	return 0;
+      }
+      nbstat->listof_names = listof_names;
+      while (0xbeefbeef) {
+	listof_names->nbnodename = read_all_DNS_labels(&walker, start_of_packet);
+	walker = walker + ((4- ((walker - weighted_companion_cube) %4)) %4);
+	walker = read_16field(walker, &(listof_names->name_flags));
+
+	num_names--;
+	if (num_names > 0) {
+	  listof_names->next_nbnodename = malloc(sizeof(struct nbnodename_list_backbone));
+	  if (! listof_names->next_nbnodename) {
+	    /* TODO: errno signaling stuff */
+	    listof_names = nbstat->listof_names;
+	    while (listof_names) {
+	      nbstat->listof_names = listof_names->next_nbnodename;
+	      free(listof_names);
+	      listof_names = nbstat->listof_names;
+	    }
+	    free(nbstat);
+	      
+	    return 0;
+	  }
+	  listof_names = listof_names->next_nbnodename;
+	} else {
+	  listof_names->next_nbnodename = 0;
+	  break;
+	}
+      }
+    } else {
+      nbstat->listof_names = 0;
+      /* I have to increment walker by at least one.
+	 Also read the next comment. */
+      walker++;
+    }
+
+    walker = walker + ((4- ((walker - weighted_companion_cube) %4)) %4);
+
+    /* I am interpreting the RFC 1002 to mean the statistics blob is aligned
+       to 32-bit boundaries. */
+    walker = read_48field(walker, &(nbstat->unique_id));
+    nbstat->jumpers = *walker;
+    walker++;
+    nbstat->test_results = *walker;
+    walker++;
+    walker = read_16field(walker, &(nbstat->version_number));
+    walker = read_16field(walker, &(nbstat->period_of_statistics));
+    walker = read_16field(walker, &(nbstat->numof_crc));
+    walker = read_16field(walker, &(nbstat->numof_alignment_errs));
+    walker = read_16field(walker, &(nbstat->numof_collisions));
+    walker = read_16field(walker, &(nbstat->numof_send_aborts));
+    walker = read_32field(walker, &(nbstat->numof_good_sends));
+    walker = read_32field(walker, &(nbstat->numof_good_receives));
+    walker = read_16field(walker, &(nbstat->numof_retransmits));
+    walker = read_16field(walker, &(nbstat->numof_no_res_conditions));
+    walker = read_16field(walker, &(nbstat->numof_free_commnd_blocks));
+    walker = read_16field(walker, &(nbstat->total_numof_commnd_blocks));
+    walker = read_16field(walker, &(nbstat->max_total_numof_commnd_blocks));
+    walker = read_16field(walker, &(nbstat->numof_pending_sessions));
+    walker = read_16field(walker, &(nbstat->max_numof_pending_sessions));
+    walker = read_16field(walker, &(nbstat->max_total_sessions_possible));
+    walker = read_16field(walker, &(nbstat->session_data_pckt_size));
+
+    *start_and_end_of_walk = walker;
+
+    return nbstat;
     break;
 
   case bad_type:

@@ -55,10 +55,41 @@ struct nbnodename_list {
   struct nbnodename_list *next_name;
 };
 
+struct nbnodename_list_backbone {
+  struct nbnodename_list *nbnodename;
+  uint16_t name_flags;
+  struct nbnodename_list_backbone *next_nbnodename;
+};
+
 struct name_srvc_question {
   struct nbnodename_list *name;
   uint16_t qtype;
   uint16_t qclass;
+};
+
+struct name_srvc_statistics_rfc1002 {
+  unsigned char numof_names;
+  struct nbnodename_list_backbone *listof_names;
+  uint64_t unique_id; /* Actually 48 bits wide in the packet. */
+  unsigned char jumpers;
+  unsigned char test_results;
+  uint16_t version_number;
+  uint16_t period_of_statistics;
+  uint16_t numof_crc;
+  uint16_t numof_alignment_errs;
+  uint16_t numof_collisions;
+  uint16_t numof_send_aborts;
+  uint32_t numof_good_sends;
+  uint32_t numof_good_receives;
+  uint16_t numof_retransmits;
+  uint16_t numof_no_res_conditions;
+  uint16_t numof_free_commnd_blocks;
+  uint16_t total_numof_commnd_blocks;
+  uint16_t max_total_numof_commnd_blocks;
+  uint16_t numof_pending_sessions;
+  uint16_t max_numof_pending_sessions;
+  uint16_t max_total_sessions_possible;
+  uint16_t session_data_pckt_size;
 };
 
 struct name_srvc_resource {

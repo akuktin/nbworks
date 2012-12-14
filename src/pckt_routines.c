@@ -361,7 +361,6 @@ struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_w
   result = return_result;
 
   while (0xbeef101) {
-    result->there_is_an_address = TRUE;
     walker = read_32field(walker, &(result->address));
     len_of_addresses = len_of_addresses - 4;
 
