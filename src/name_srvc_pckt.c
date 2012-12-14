@@ -350,7 +350,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_type_null:
-    return (walker +1);
+    return walker;
     break;
 
   case nb_nodename:
