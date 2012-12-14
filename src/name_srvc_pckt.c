@@ -327,13 +327,14 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 					    unsigned char *field) {
   struct nbaddress_list *address_list;
   struct nbnodename_list_backbone *names;
+  struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *walker;
 
   walker = field;
 
   switch (content->rdata_t) {
   case unknown_important_resource:
-    return mempcpy(walker, content->rdata, rdata->len);
+    return mempcpy(walker, content->rdata, content->rdata_len);
     break;
 
   case nb_address_list:
@@ -353,7 +354,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_nodename:
-    walker = fill_all_DNS_names(content->rdata, walker);
+    walker = fill_all_DNS_labels(content->rdata, walker);
     return (walker + ((4- ((walker - field) %4)) %4));
     break;
 
@@ -367,37 +368,38 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_statistics:
-    *walker = content->numof_names;
-    names = content->listof_names;
+    nbstat = content->rdata;
+    *walker = nbstat->numof_names;
+    names = nbstat->listof_names;
     while (names) {
-      walker = fill_all_DNS_names(names->nbnodename, walker);
+      walker = fill_all_DNS_labels(names->nbnodename, walker);
       walker = walker + ((4- ((walker - field) %4)) %4);
       walker = fill_16field(names->name_flags, walker);
       walker = walker + ((4- ((walker - field) %4)) %4);
       names = names->next_nbnodename;
     }
-    walker = fill_48field(content->unique_id, walker);
-    *walker = content->jumpers;
+    walker = fill_48field(nbstat->unique_id, walker);
+    *walker = nbstat->jumpers;
     walker++;
-    *walker = content->test_results;
+    *walker = nbstat->test_results;
     walker++;
-    walker = fill_16field(content->version_number, walker);
-    walker = fill_16field(content->period_of_statistics, walker);
-    walker = fill_16field(content->numof_crc, walker);
-    walker = fill_16field(content->numof_alignment_errs, walker);
-    walker = fill_16field(content->numof_collisions, walker);
-    walker = fill_16field(content->numof_send_aborts, walker);
-    walker = fill_32field(content->numof_good_sends, walker);
-    walker = fill_32field(content->numof_good_receives, walker);
-    walker = fill_16field(content->numof_retransmits, walker);
-    walker = fill_16field(content->numof_no_res_conditions, walker);
-    walker = fill_16field(content->numof_free_commnd_blocks, walker);
-    walker = fill_16field(content->total_numof_commnd_blocks, walker);
-    walker = fill_16field(content->max_total_numof_commnd_blocks, walker);
-    walker = fill_16field(content->numof_pending_sessions, walker);
-    walker = fill_16field(content->max_numof_pending_sessions, walker);
-    walker = fill_16field(content->max_total_sessions_possible, walker);
-    walker = fill_16field(content->session_data_pckt_size, walker);
+    walker = fill_16field(nbstat->version_number, walker);
+    walker = fill_16field(nbstat->period_of_statistics, walker);
+    walker = fill_16field(nbstat->numof_crc, walker);
+    walker = fill_16field(nbstat->numof_alignment_errs, walker);
+    walker = fill_16field(nbstat->numof_collisions, walker);
+    walker = fill_16field(nbstat->numof_send_aborts, walker);
+    walker = fill_32field(nbstat->numof_good_sends, walker);
+    walker = fill_32field(nbstat->numof_good_receives, walker);
+    walker = fill_16field(nbstat->numof_retransmits, walker);
+    walker = fill_16field(nbstat->numof_no_res_conditions, walker);
+    walker = fill_16field(nbstat->numof_free_commnd_blocks, walker);
+    walker = fill_16field(nbstat->total_numof_commnd_blocks, walker);
+    walker = fill_16field(nbstat->max_total_numof_commnd_blocks, walker);
+    walker = fill_16field(nbstat->numof_pending_sessions, walker);
+    walker = fill_16field(nbstat->max_numof_pending_sessions, walker);
+    walker = fill_16field(nbstat->max_total_sessions_possible, walker);
+    walker = fill_16field(nbstat->session_data_pckt_size, walker);
 
     return walker;
     break;
