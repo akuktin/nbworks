@@ -226,8 +226,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     return read_ipv4_address_list(start_and_end_of_walk, resource->rdata_len);
     break;
 
-  case nb_statistics:
-    resource->rdata_t = nb_statistics;
+  case nb_statistics_rfc1002:
+    resource->rdata_t = nb_statistics_rfc1002;
     walker = *start_and_end_of_walk;
     nbstat = malloc(sizeof(struct name_srvc_statistics_rfc1002));
     if (! nbstat) {
@@ -367,7 +367,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     return walker;
     break;
 
-  case nb_statistics:
+  case nb_statistics_rfc1002:
     nbstat = content->rdata;
     *walker = nbstat->numof_names;
     names = nbstat->listof_names;
@@ -455,7 +455,7 @@ inline enum name_srvc_rdata_type name_srvc_understand_resource(uint16_t rrtype,
   case RRTYPE_NBSTAT:
     switch (rrclass) {
     case RRCLASS_IN:
-      return nb_statistics;
+      return nb_statistics_rfc1002;
     default:
       return bad_type;
     };

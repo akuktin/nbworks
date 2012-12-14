@@ -25,9 +25,10 @@ enum name_srvc_rdata_type {
   nb_type_null, /* Nothing. */
   nb_nodename, /* NetBIOS name+scope, like in questions. */ /* Aligned! */
   nb_NBT_node_ip_address, /* Array of (IPv4addr). */
-  nb_statistics, /* Array of (nbnodename+name_flags), aligned as a whole (or
-                    maybe aligned in every member?), followed by the statistics
-                    block. */
+  nb_statistics_rfc1002, /* Array of (nbnodename+name_flags), aligned in its
+			    every member nodename+scope, and also aligned as
+			    a whole (by my interpretation) followed by the
+			    statistics blob. */
   bad_type
 };
 
