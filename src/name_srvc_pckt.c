@@ -263,7 +263,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	      listof_names = nbstat->listof_names;
 	    }
 	    free(nbstat);
-	      
+
 	    return 0;
 	  }
 	  listof_names = listof_names->next_nbnodename;
@@ -321,6 +321,94 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
   /* Never reached. */
   return 0;
+}
+
+unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
+					    unsigned char *field) {
+  struct nbaddress_list *address_list;
+  struct nbnodename_list_backbone *names;
+  unsigned char *walker;
+
+  walker = field;
+
+  switch (content->rdata_t) {
+  case unknown_important_resource:
+    return mempcpy(walker, content->rdata, rdata->len);
+    break;
+
+  case nb_address_list:
+    address_list = content->rdata;
+    while (address_list) {
+      walker = fill_16field(address_list->flags, walker);
+      if (address_list->there_is_an_address) {
+	walker = fill_32field(address_list->address, walker);
+      }
+      address_list = address_list->next_address;
+    }
+    return walker;
+    break;
+
+  case nb_type_null:
+    return (walker +1);
+    break;
+
+  case nb_nodename:
+    walker = fill_all_DNS_names(content->rdata, walker);
+    return (walker + ((4- ((walker - field) %4)) %4));
+    break;
+
+  case nb_NBT_node_ip_address:
+    address_list = content->rdata;
+    while (address_list) {
+      walker = fill_32field(address_list->address, walker);
+      address_list = address_list->next_address;
+    }
+    return walker;
+    break;
+
+  case nb_statistics:
+    *walker = content->numof_names;
+    names = content->listof_names;
+    while (names) {
+      walker = fill_all_DNS_names(names->nbnodename, walker);
+      walker = walker + ((4- ((walker - field) %4)) %4);
+      walker = fill_16field(names->name_flags, walker);
+      walker = walker + ((4- ((walker - field) %4)) %4);
+      names = names->next_nbnodename;
+    }
+    walker = fill_48field(content->unique_id, walker);
+    *walker = content->jumpers;
+    walker++;
+    *walker = content->test_results;
+    walker++;
+    walker = fill_16field(content->version_number, walker);
+    walker = fill_16field(content->period_of_statistics, walker);
+    walker = fill_16field(content->numof_crc, walker);
+    walker = fill_16field(content->numof_alignment_errs, walker);
+    walker = fill_16field(content->numof_collisions, walker);
+    walker = fill_16field(content->numof_send_aborts, walker);
+    walker = fill_32field(content->numof_good_sends, walker);
+    walker = fill_32field(content->numof_good_receives, walker);
+    walker = fill_16field(content->numof_retransmits, walker);
+    walker = fill_16field(content->numof_no_res_conditions, walker);
+    walker = fill_16field(content->numof_free_commnd_blocks, walker);
+    walker = fill_16field(content->total_numof_commnd_blocks, walker);
+    walker = fill_16field(content->max_total_numof_commnd_blocks, walker);
+    walker = fill_16field(content->numof_pending_sessions, walker);
+    walker = fill_16field(content->max_numof_pending_sessions, walker);
+    walker = fill_16field(content->max_total_sessions_possible, walker);
+    walker = fill_16field(content->session_data_pckt_size, walker);
+
+    return walker;
+    break;
+
+  default:
+    return field;
+    break;
+  }
+
+  /* Never reached. */
+  return field;
 }
 
 inline enum name_srvc_rdata_type name_srvc_understand_resource(uint16_t rrtype,
