@@ -5,6 +5,11 @@
 
 # define MAX_DNS_LABEL_LEN 0x3f
 
+# define QTYPE_NB      0x0020
+# define QTYPE_NBSTAT  0x0021
+
+# define QCLASS_IN     0x0001
+
 # define RRTYPE_A      0x0001
 # define RRTYPE_NS     0x0002
 # define RRTYPE_NULL   0x000a
