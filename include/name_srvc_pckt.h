@@ -109,20 +109,23 @@ unsigned char *
                              unsigned char **master_packet_walker);
 struct name_srvc_question *
   read_name_srvc_pckt_question(unsigned char **master_packet_walker,
-                               unsigned char *start_of_packet);
+                               unsigned char *start_of_packet,
+                               unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_pckt_question(struct name_srvc_question *question,
                                unsigned char **master_packet_walker);
 struct name_srvc_resource *
   read_name_srvc_resource(unsigned char **master_packet_walker,
-                          unsigned char *start_of_packet);
+                          unsigned char *start_of_packet,
+                          unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_resource(struct name_srvc_resource *resource,
                           unsigned char **master_packet_walker);
 void *
   read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
                                struct name_srvc_resource *resource,
-                               unsigned char *start_of_packet);
+                               unsigned char *start_of_packet,
+                               unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_resource_data(struct name_srvc_resource *content,
                                unsigned char *field);

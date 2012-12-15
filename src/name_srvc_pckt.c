@@ -64,7 +64,8 @@ unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *he
 }
 
 struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_packet_walker,
-							unsigned char *start_of_packet) {
+							unsigned char *start_of_packet,
+							unsigned char *end_of_packet) {
   struct name_srvc_question *question;
   unsigned char *walker, *remember_walker;
 
@@ -79,7 +80,8 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
      to increment the *master_packet_walker by at least one. */
   remember_walker = *master_packet_walker +1;
 
-  question->name = read_all_DNS_labels(master_packet_walker, start_of_packet);
+  question->name = read_all_DNS_labels(master_packet_walker,
+				       start_of_packet, end_of_packet);
   if (! question->name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -116,7 +118,8 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 }
 
 struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet_walker,
-						   unsigned char *start_of_packet) {
+						   unsigned char *start_of_packet,
+						   unsinged char *end_of_packet) {
   struct name_srvc_resource *resource;
   unsigned char *walker, *remember_walker;
 
@@ -129,7 +132,8 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   /* See read_name_srvc_pckt_question() for deails. */
   remember_walker = *master_packet_walker +1;
 
-  resource->name = read_all_DNS_labels(master_packet_walker, start_of_packet);
+  resource->name = read_all_DNS_labels(master_packet_walker,
+				       start_of_packet, end_of_packet);
   if (! resource->name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -174,7 +178,8 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 
 void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 				   struct name_srvc_resource *resource,
-				   unsigned char *start_of_packet) {
+				   unsigned char *start_of_packet,
+				   unsigned char *end_of_packet) {
   struct nbnodename_list *nbnodename;
   struct nbnodename_list_backbone *listof_names;
   struct name_srvc_statistics_rfc1002 *nbstat;
@@ -196,7 +201,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   case nb_address_list:
     resource->rdata_t = nb_address_list;
     *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
-    return read_nbaddress_list(start_and_end_of_walk, resource->rdata_len);
+    return read_nbaddress_list(start_and_end_of_walk, resource->rdata_len,
+			       end_of_packet);
     break;
 
   case nb_type_null:
@@ -209,7 +215,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     resource->rdata_t = nb_nodename;
     weighted_companion_cube = *start_and_end_of_walk +1;
 
-    nbnodename = read_all_DNS_labels(start_and_end_of_walk, start_of_packet);
+    nbnodename = read_all_DNS_labels(start_and_end_of_walk,
+				     start_of_packet, end_of_packet);
     if (! nbnodename) {
       /* TODO: errno signaling stuff */
       return 0;
@@ -222,7 +229,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   case nb_NBT_node_ip_address:
     resource->rdata_t = nb_NBT_node_ip_address;
     *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
-    return read_ipv4_address_list(start_and_end_of_walk, resource->rdata_len);
+    return read_ipv4_address_list(start_and_end_of_walk, resource->rdata_len,
+				  end_of_packet);
     break;
 
   case nb_statistics_rfc1002:
@@ -246,7 +254,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       }
       nbstat->listof_names = listof_names;
       while (0xbeefbeef) {
-	listof_names->nbnodename = read_all_DNS_labels(&walker, start_of_packet);
+	listof_names->nbnodename = read_all_DNS_labels(&walker, start_of_packet,
+						       end_of_packet);
 	walker = walker + ((4- ((walker - weighted_companion_cube) %4)) %4);
 	walker = read_16field(walker, &(listof_names->name_flags));
 
