@@ -143,7 +143,6 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   walker = read_16field(walker, &(resource->rrclass));
   walker = read_32field(walker, &(resource->ttl));
   walker = read_16field(walker, &(resource->rdata_len));
-  resource->rdata_t = virgin;
   resource->rdata = read_name_srvc_resource_data(&walker, resource, start_of_packet);
 
   /* No 32-bit boundary alignment. */

@@ -23,7 +23,8 @@ inline unsigned char *fill_64field(uint64_t content,
                                    unsigned char *field);
 struct nbnodename_list *
   read_all_DNS_labels(unsigned char **start_and_end_of_walk,
-                      unsigned char *start_of_packet);
+                      unsigned char *start_of_packet
+                      unsigned char *end_of_packet);
 unsigned char *
   fill_all_DNS_labels(struct nbnodename_list *content,
                       unsigned char *field);

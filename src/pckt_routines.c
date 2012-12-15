@@ -124,7 +124,8 @@ inline unsigned char *fill_64field(uint64_t content,
 }
 
 struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_walk,
-					    unsigned char *start_of_packet) {
+					    unsigned char *start_of_packet,
+					    unsigned char *end_of_packet) {
   struct nbnodename_list *first_label, *cur_label;
   int name_len, weighted_companion_pointer;
   unsigned int name_offset;
@@ -132,7 +133,8 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   unsigned char buf[MAX_DNS_LABEL_LEN +1]; /* saves us calls to
 					      malloc() and free() */
 
-  if (start_of_packet >= *start_and_end_of_walk) {
+  if (*start_and_end_of_walk < start_of_packet ||
+      *start_and_end_of_walk >= end_of_packet) {
     /* TODO: errno signaling stuff */
     return 0;
   }
@@ -157,9 +159,23 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   while (*walker != 0) {
     if (*walker <= MAX_DNS_LABEL_LEN) {
       while (0xf0e4) { /* while 0xf0r_ev4! */
-	cur_label->len = *walker;
 	name_len = *walker;
+	cur_label->len = name_len;
 	walker++;
+	if ((walker + name_len) >= end_of_packet) {
+	  /* OUT_OF_BOUNDS */
+	  /* TODO: errno signaling stuff */
+	  while (first_label) {
+	    cur_label = first_label->next_name;
+	    if (first_label->name) {
+	      free(first_label->name);
+	    }
+	    free(first_label);
+	    first_label = cur_label;
+	  }
+	  *start_and_end_of_walk = end_of_packet;
+	  return 0;
+	}
 	for (weighted_companion_pointer = 0;
 	     weighted_companion_pointer < name_len;
 	     weighted_companion_pointer++) {
@@ -194,7 +210,6 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 	    *walker != 0) {
 	  cur_label->next_name = malloc(sizeof(struct nbnodename_list));
 	  cur_label = cur_label->next_name;
-	  continue;
 	} else
 	  break;
 	/* So far in my life, this is the only case in which
@@ -205,6 +220,20 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 	   crap in perl! Juck (and borderline impossible). */
       }
     } else { /* that is, *walker > MAX_DNS_LABEL_LEN */
+      if ((walker +1) >= end_of_packet) {
+	/* OUT_OF_BOUNDS */
+	/* TODO: errno signaling stuff */
+	while (first_label) {
+	  cur_label = first_label->next_name;
+	  if (first_label->name) {
+	    free(first_label->name);
+	  }
+	  free(first_label);
+	  first_label = cur_label;
+	}
+	*start_and_end_of_walk = end_of_packet;
+	return 0;
+      };
       if (name_offset == ONES) {
 	/* Because of the way name_offset is filled (look below),
 	   the two top bits are guaranteed to be empty if we have
@@ -219,6 +248,20 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
       walker++;
       name_offset = name_offset | *walker;
       walker = (start_of_packet + name_offset);
+      if (walker >= end_of_packet) {
+	/* OUT_OF_BOUNDS */
+	/* TODO: errno signaling stuff */
+	while (first_label) {
+	  cur_label = first_label->next_name;
+	  if (first_label->name) {
+	    free(first_label->name);
+	  }
+	  free(first_label);
+	  first_label = cur_label;
+	}
+	*start_and_end_of_walk = end_of_packet;
+	return 0;
+      }
     }
   }
   if (first_label->name == 0) {
@@ -239,7 +282,7 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   }
 
   if (name_offset == ONES) {
-    /* Read the pre-previous comment.
+    /* Read the third comment up.
        If this test has succeded, then we have not encountered
        a single pointer, *start_and_end_of_walk has not been
        updated, so we update it now. */

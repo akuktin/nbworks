@@ -15,7 +15,6 @@
 
 enum name_srvc_rdata_type {
   unknown_type = 0,
-  virgin,
   unknown_important_resource,
   nb_address_list, /* Array of (NB_FLAGS, IPv4addr).
                       Can contain only NB_FLAGS, check rdata_len. */
