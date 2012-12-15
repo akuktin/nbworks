@@ -319,6 +319,7 @@ struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk
 
   if ((*start_and_end_of_walk + len_of_addresses) > end_of_packet) {
     /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
     *start_and_end_of_walk = end_of_packet;
     return 0;
   }
@@ -399,6 +400,7 @@ struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_w
 
   if ((*start_and_end_of_walk + len_of_addresses) > end_of_packet) {
     /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
     *start_and_end_of_walk = end_of_packet;
     return 0;
   }

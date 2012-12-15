@@ -9,9 +9,16 @@
 #include "name_srvc_pckt.h"
 
 
-struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_packet_walker) {
+struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_packet_walker,
+							 unsigned char *end_of_packet) {
   struct name_srvc_pckt_header *header;
   unsigned char *walker;
+
+  if ((*master_packet_walker + 6 * sizeof(uint16_t)) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
 
   header = malloc(sizeof(struct name_srvc_pckt_header));
   if (! header) {
@@ -69,6 +76,12 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   struct name_srvc_question *question;
   unsigned char *walker, *remember_walker;
 
+  if (*master_packet_walker >= end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
   question = malloc(sizeof(struct name_srvc_question));
   if (! question) {
     /* TODO: errno signaling stuff */
@@ -90,6 +103,12 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   /* Fields in the packet are aligned to 32-bit boundaries. */
   walker = (*master_packet_walker +
 	    ((4- ((*master_packet_walker - remember_walker) %4)) %4));
+
+  if ((walker + 2 * sizeof(uint16_t)) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
 
   walker = read_16field(walker, &(question->qtype));
   walker = read_16field(walker, &(question->qclass));
@@ -119,9 +138,15 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 
 struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet_walker,
 						   unsigned char *start_of_packet,
-						   unsinged char *end_of_packet) {
+						   unsigned char *end_of_packet) {
   struct name_srvc_resource *resource;
   unsigned char *walker, *remember_walker;
+
+  if (*master_packet_walker >= end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
 
   resource = malloc(sizeof(struct name_srvc_resource));
   if (! resource) {
@@ -143,11 +168,18 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   walker = (*master_packet_walker +
 	    ((4- ((*master_packet_walker - remember_walker) %4)) %4));
 
+  if ((walker + 5 * sizeof(uint16_t)) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
   walker = read_16field(walker, &(resource->rrtype));
   walker = read_16field(walker, &(resource->rrclass));
   walker = read_32field(walker, &(resource->ttl));
   walker = read_16field(walker, &(resource->rdata_len));
-  resource->rdata = read_name_srvc_resource_data(&walker, resource, start_of_packet);
+  resource->rdata = read_name_srvc_resource_data(&walker, resource,
+						 start_of_packet, end_of_packet);
 
   /* No 32-bit boundary alignment. */
   *master_packet_walker = walker;
@@ -185,6 +217,12 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *weighted_companion_cube, *walker, num_names;
 
+  if ((*start_and_end_of_walk + resource->rdata_len) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
   switch (name_srvc_understand_resource(resource->rrtype, resource->rrclass)) {
   case unknown_important_resource:
     resource->rdata_t = unknown_important_resource;
@@ -200,7 +238,6 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
   case nb_address_list:
     resource->rdata_t = nb_address_list;
-    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
     return read_nbaddress_list(start_and_end_of_walk, resource->rdata_len,
 			       end_of_packet);
     break;
@@ -213,6 +250,11 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
   case nb_nodename:
     resource->rdata_t = nb_nodename;
+    if (! resource->rdata_len) {
+      /* BULLSHIT_IN_PACKET */
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
     weighted_companion_cube = *start_and_end_of_walk +1;
 
     nbnodename = read_all_DNS_labels(start_and_end_of_walk,
@@ -223,18 +265,28 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     }
     *start_and_end_of_walk = (*start_and_end_of_walk +
 			      ((4- ((*start_and_end_of_walk - weighted_companion_cube) %4)) %4));
-    return weighted_companion_cube;
+    if (*start_and_end_of_walk > end_of_packet) {
+      /* OUT_OF_BOUNDS */
+      /* TODO: errno signaling stuff */
+      /* question: should you, and how exactly should you, signal this? */
+      *start_and_end_of_walk = end_of_packet;
+    }
+    return nbnodename;
     break;
 
   case nb_NBT_node_ip_address:
     resource->rdata_t = nb_NBT_node_ip_address;
-    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
     return read_ipv4_address_list(start_and_end_of_walk, resource->rdata_len,
 				  end_of_packet);
     break;
 
   case nb_statistics_rfc1002:
     resource->rdata_t = nb_statistics_rfc1002;
+    if (! resource->rdata_len) {
+      /* BULLSHIT_IN_PACKET */
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
     walker = *start_and_end_of_walk;
     nbstat = malloc(sizeof(struct name_srvc_statistics_rfc1002));
     if (! nbstat) {
@@ -254,9 +306,35 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       }
       nbstat->listof_names = listof_names;
       while (0xbeefbeef) {
+	if (walker >= end_of_packet) {
+	  /* OUT_OF_BOUNDS */
+	  /* TODO: errno signaling stuff */
+	  listof_names = nbstat->listof_names;
+	  while (listof_names) {
+	    nbstat->listof_names = listof_names->next_nbnodename;
+	    free(listof_names);
+	    listof_names = nbstat->listof_names;
+	  }
+	  free(nbstat);
+
+	  return 0;
+	}
 	listof_names->nbnodename = read_all_DNS_labels(&walker, start_of_packet,
 						       end_of_packet);
 	walker = walker + ((4- ((walker - weighted_companion_cube) %4)) %4);
+	if ((walker + 1 * sizeof(uint16_t)) > end_of_packet) {
+	  /* OUT_OF_BOUNDS */
+	  /* TODO: errno signaling stuff */
+	  listof_names = nbstat->listof_names;
+	  while (listof_names) {
+	    nbstat->listof_names = listof_names->next_nbnodename;
+	    free(listof_names);
+	    listof_names = nbstat->listof_names;
+	  }
+	  free(nbstat);
+
+	  return 0;
+	}
 	walker = read_16field(walker, &(listof_names->name_flags));
 
 	num_names--;
@@ -283,11 +361,25 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     } else {
       nbstat->listof_names = 0;
       /* I have to increment walker by at least one.
-	 Also read the next comment. */
+	 Also read the comment after the next one. */
       walker++;
     }
 
     walker = walker + ((4- ((walker - weighted_companion_cube) %4)) %4);
+
+    if ((walker + 23 * sizeof(uint16_t)) > end_of_packet) {
+      /* OUT_OF_BOUNDS */
+      /* TODO: errno signaling stuff */
+      listof_names = nbstat->listof_names;
+      while (listof_names) {
+	nbstat->listof_names = listof_names->next_nbnodename;
+	free(listof_names);
+	listof_names = nbstat->listof_names;
+      }
+      free(nbstat);
+
+      return 0;
+    }
 
     /* I am interpreting the RFC 1002 to mean the statistics blob is aligned
        to 32-bit boundaries. */

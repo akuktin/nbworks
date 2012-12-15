@@ -103,7 +103,8 @@ struct name_srvc_resource {
 };
 
 struct name_srvc_pckt_header *
-  read_name_srvc_pckt_header(unsigned char **master_packet_walker);
+  read_name_srvc_pckt_header(unsigned char **master_packet_walker,
+                             unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
                              unsigned char **master_packet_walker);
