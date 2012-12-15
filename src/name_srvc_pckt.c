@@ -107,6 +107,15 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   if ((walker + 2 * sizeof(uint16_t)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
+    struct nbnodename_list *names_list;
+    while (question->name) {
+      names_list = question->name->next_name;
+      free(question->name->name);
+      free(question->name);
+      question->name = names_list;
+    }
+    free(question);
+    *master_packet_walker = end_of_packet;
     return 0;
   }
 
@@ -161,6 +170,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
 				       start_of_packet, end_of_packet);
   if (! resource->name) {
     /* TODO: errno signaling stuff */
+    free(resource);
     return 0;
   }
 
@@ -171,6 +181,15 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   if ((walker + 5 * sizeof(uint16_t)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
+    struct nbnodename_list *names_list;
+    while (resource->name) {
+      names_list = resource->name->next_name;
+      free(resource->name->name);
+      free(resource->name);
+      resource->name = names_list;
+    }
+    free(resource);
+    *master_packet_walker = end_of_packet;
     return 0;
   }
 
@@ -312,6 +331,12 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	  listof_names = nbstat->listof_names;
 	  while (listof_names) {
 	    nbstat->listof_names = listof_names->next_nbnodename;
+	    while (listof_names->nbnodename) {
+	      free(listof_names->nbnodename->name);
+	      nbnodename = listof_names->nbnodename->next_name;
+	      free(listof_names->nbnodename);
+	      listof_names->nbnodename = nbnodename;
+	    }
 	    free(listof_names);
 	    listof_names = nbstat->listof_names;
 	  }
@@ -328,6 +353,12 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	  listof_names = nbstat->listof_names;
 	  while (listof_names) {
 	    nbstat->listof_names = listof_names->next_nbnodename;
+	    while (listof_names->nbnodename) {
+	      free(listof_names->nbnodename->name);
+	      nbnodename = listof_names->nbnodename->next_name;
+	      free(listof_names->nbnodename);
+	      listof_names->nbnodename = nbnodename;
+	    }
 	    free(listof_names);
 	    listof_names = nbstat->listof_names;
 	  }
@@ -345,6 +376,12 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	    listof_names = nbstat->listof_names;
 	    while (listof_names) {
 	      nbstat->listof_names = listof_names->next_nbnodename;
+	      while (listof_names->nbnodename) {
+		free(listof_names->nbnodename->name);
+		nbnodename = listof_names->nbnodename->next_name;
+		free(listof_names->nbnodename);
+		listof_names->nbnodename = nbnodename;
+	      }
 	      free(listof_names);
 	      listof_names = nbstat->listof_names;
 	    }
@@ -373,6 +410,12 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       listof_names = nbstat->listof_names;
       while (listof_names) {
 	nbstat->listof_names = listof_names->next_nbnodename;
+	while (listof_names->nbnodename) {
+	  free(listof_names->nbnodename->name);
+	  nbnodename = listof_names->nbnodename->next_name;
+	  free(listof_names->nbnodename);
+	  listof_names->nbnodename = nbnodename;
+	}
 	free(listof_names);
 	listof_names = nbstat->listof_names;
       }
