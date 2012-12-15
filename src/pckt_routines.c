@@ -312,9 +312,16 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
 }
 
 struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk,
-					   uint16_t len_of_addresses) {
+					   uint16_t len_of_addresses,
+					   unsigned char *end_of_packet) {
   struct nbaddress_list *result, *return_result;
   unsigned char *walker;
+
+  if ((*start_and_end_of_walk + len_of_addresses) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    *start_and_end_of_walk = end_of_packet;
+    return 0;
+  }
 
   if (len_of_addresses < 2) {
     *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
@@ -385,9 +392,16 @@ unsigned char *fill_nbaddress_list(struct nbaddress_list *content,
 }
 
 struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_walk,
-					      uint16_t len_of_addresses) {
+					      uint16_t len_of_addresses,
+					      unsigned char *end_of_packet) {
   struct nbaddress_list *result, *return_result;
   unsigned char *walker;
+
+  if ((*start_and_end_of_walk + len_of_addresses) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    *start_and_end_of_walk = end_of_packet;
+    return 0;
+  }
 
   if (len_of_addresses < 4) {
     *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;

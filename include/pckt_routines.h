@@ -30,13 +30,15 @@ unsigned char *
                       unsigned char *field);
 struct nbaddress_list *
   read_nbaddress_list(unsigned char **start_and_end_of_walk,
-                      uint16_t len_of_addresses);
+                      uint16_t len_of_addresses,
+                      unsigned char *end_of_packet);
 unsigned char *
   fill_nbaddress_list(struct nbaddress_list *content,
                       unsigned char *walker);
 struct nbaddress_list *
   read_ipv4_address_list(unsigned char **start_and_end_of_walk,
-                         uint16_t len_of_addresses);
+                         uint16_t len_of_addresses,
+                         unsigned char *end_of_packet);
 unsigned char *
   fill_ipv4_address_list(struct nbaddress_list *content,
                          unsigned char *walker);
