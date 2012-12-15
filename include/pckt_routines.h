@@ -5,6 +5,11 @@
 
 # include "name_srvc_pckt.h"
 
+struct DNS_label_pointer_list {
+  uint16_t pointer;
+  struct DNS_label_pointer_list *next_pointer;
+};
+
 inline unsigned char *read_16field(unsigned char *content,
                                    uint16_t *field);
 inline unsigned char *read_32field(unsigned char *content,
