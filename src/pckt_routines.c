@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "constdef.h"
+#include "nodename.h"
 #include "name_srvc_pckt.h"
 #include "pckt_routines.h"
 
@@ -127,6 +128,11 @@ inline unsigned char *fill_64field(uint64_t content,
 struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_walk,
 					    unsigned char *start_of_packet,
 					    unsigned char *end_of_packet) {
+  struct DNS_label_pointer_list {
+    uint16_t pointer;
+    struct DNS_label_pointer_list *next_pointer;
+  };
+
   struct nbnodename_list *first_label, *cur_label;
   struct DNS_label_pointer_list *pointers_visited,
     *pointers_visited_root, *pointers_visited_last;

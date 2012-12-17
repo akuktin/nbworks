@@ -3,6 +3,8 @@
 
 # include <stdint.h>
 
+# include "nodename.h"
+
 # define MAX_DNS_LABEL_LEN 0x3f
 
 # define QTYPE_NB      0x0020
@@ -52,18 +54,6 @@ struct nbaddress_list {
   unsigned char there_is_an_address;
   uint32_t address;
   struct nbaddress_list *next_address;
-};
-
-struct nbnodename_list {
-  unsigned char *name;
-  unsigned char len; /* Not int because the field is 6 bits wide in the packet. */
-  struct nbnodename_list *next_name;
-};
-
-struct nbnodename_list_backbone {
-  struct nbnodename_list *nbnodename;
-  uint16_t name_flags;
-  struct nbnodename_list_backbone *next_nbnodename;
 };
 
 struct name_srvc_question {
