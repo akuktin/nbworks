@@ -243,7 +243,7 @@ inline enum dtg_packet_payload_t understand_dtg_pckt_type(unsigned char type_oct
     return error_code;
     break;
 
-  case DTG_QRY_REQST:
+  case DTG_QRY_RQST:
   case DTG_POS_QRY_RSPNS:
   case DTG_NEG_QRY_RSPNS:
     return nbnodename;

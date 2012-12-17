@@ -7,7 +7,7 @@
 # define DIR_GRP_DTG       0x11
 # define BRDCST_DTG        0x12
 # define DTG_ERROR         0x13
-# define DTG_QRY_REQST     0x14
+# define DTG_QRY_RQST      0x14
 # define DTG_POS_QRY_RSPNS 0x15
 # define DTG_NEG_QRY_RSPNS 0x16
 
