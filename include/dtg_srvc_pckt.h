@@ -56,7 +56,7 @@ inline enum dtg_packet_payload_t
   understand_dtg_pckt_type(unsigned char type_octet);
 
 
-inline struct dtg_srvc_packet *
+struct dtg_srvc_packet *
   master_dtg_srvc_pckt_reader(void *packet,
                               int len);
 
