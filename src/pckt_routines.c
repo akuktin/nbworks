@@ -493,6 +493,7 @@ unsigned char *fill_nbaddress_list(struct nbaddress_list *content,
       }
       walker = fill_16field(content->flags, walker);
     }
+    content = content->next_address;
   }
 
   return walker;

@@ -519,6 +519,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     walker = fill_all_DNS_labels(content->rdata, walker, end_of_packet);
     walker = walker + ((4- ((walker - field) %4)) %4);
     if (walker > end_of_packet) {
+      /* TODO: maybe do errno signaling stuff */
       return end_of_packet;
     } else {
       return walker;
@@ -549,6 +550,11 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       walker = fill_16field(names->name_flags, walker);
       walker = walker + ((4- ((walker - field) %4)) %4);
       names = names->next_nbnodename;
+    }
+    if ((walker +6+2+19*2) > end_of_packet) {
+      /* OUT_OF_BOUNDS */
+      /* TODO: errno signaling stuff */
+      return walker;
     }
     walker = fill_48field(nbstat->unique_id, walker);
     *walker = nbstat->jumpers;
