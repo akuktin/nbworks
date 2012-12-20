@@ -43,7 +43,8 @@ struct dtg_srvc_packet *
                          unsigned char *end_of_packet);
 unsigned char *
   fill_dtg_packet_header(struct dtg_srvc_packet *content,
-                         unsigned char *field);
+                         unsigned char *field,
+                         unsigned char *endof_pckt);
 void *
   read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
                                   unsigned char **master_packet_walker,
@@ -51,13 +52,16 @@ void *
                                   unsigned char *end_of_packet);
 unsigned char *
   fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
-                                  unsigned char *field);
+                                  unsigned char *field,
+                                  unsigned char *endof_pckt);
 inline enum dtg_packet_payload_t
   understand_dtg_pckt_type(unsigned char type_octet);
-
 
 struct dtg_srvc_packet *
   master_dtg_srvc_pckt_reader(void *packet,
                               int len);
+void *
+  master_dtg_srvc_pckt_writer(struct dtg_srvc_packet *packet,
+                              unsigned int *pckt_len);
 
 #endif /* NBWORKS_DTGSRVCPCKT_H */
