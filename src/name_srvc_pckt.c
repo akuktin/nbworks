@@ -48,10 +48,17 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_
 }
 
 unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
-					  unsigned char **master_packet_walker) {
+					  unsigned char *field,
+					  unsigned char *end_of_packet) {
   unsigned char *walker;
 
-  walker = *master_packet_walker;
+  walker = field;
+
+  if ((walker + 6*2) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return walker;
+  }
 
   walker = fill_16field(header->transaction_id, walker);
 
@@ -128,16 +135,23 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
 }
 
 unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
-					    unsigned char **master_packet_walker) {
+					    unsigned char *field,
+					    unsigned char *end_of_packet) {
   unsigned char *walker;
 
-  walker = *master_packet_walker;
+  walker = field;
 
-  walker = fill_all_DNS_labels(question->name, walker);
+  walker = fill_all_DNS_labels(question->name, walker, end_of_packet);
 
   /* Respect the 32-bit boundary. */
   walker = (walker +
-	    ((4- ((*master_packet_walker - walker) % 4)) %4));
+	    ((4- ((field - walker) % 4)) %4));
+
+  if ((walker +4) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return walker;
+  }
 
   walker = fill_16field(question->qtype, walker);
   walker = fill_16field(question->qclass, walker);
@@ -207,22 +221,30 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
 }
 
 unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
-				       unsigned char **master_packet_walker) {
+				       unsigned char *field,
+				       unsigned char *end_of_packet) {
   unsigned char *walker;
 
-  walker = *master_packet_walker;
+  walker = field;
 
-  walker = fill_all_DNS_labels(resource->name, walker);
+  walker = fill_all_DNS_labels(resource->name, walker, end_of_packet);
 
   /* Respect the 32-bit boundary. */
   walker = (walker +
-	    ((4- ((*master_packet_walker - walker) % 4)) %4));
+	    ((4- ((field - walker) % 4)) %4));
+
+  if ((walker +3*2+4) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return walker;
+  }
 
   walker = fill_16field(resource->rrtype, walker);
   walker = fill_16field(resource->rrclass, walker);
   walker = fill_32field(resource->ttl, walker);
   walker = fill_16field(resource->rdata_len, walker);
-  walker = fill_name_srvc_resource_data(resource->rdata, walker);
+  walker = fill_name_srvc_resource_data(resource->rdata, walker,
+					end_of_packet);
 
   return walker;
 }
@@ -467,8 +489,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 }
 
 unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
-					    unsigned char *field) {
-  struct nbaddress_list *address_list;
+					    unsigned char *field,
+					    unsigned char *end_of_packet) {
   struct nbnodename_list_backbone *names;
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *walker;
@@ -477,19 +499,16 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 
   switch (content->rdata_t) {
   case unknown_important_resource:
+    if ((walker + content->rdata_len) > end_of_packet) {
+      /* OUT_OF_BOUNDS */
+      /* TODO: errno signaling stuff */
+      return walker;
+    }
     return mempcpy(walker, content->rdata, content->rdata_len);
     break;
 
   case nb_address_list:
-    address_list = content->rdata;
-    while (address_list) {
-      walker = fill_16field(address_list->flags, walker);
-      if (address_list->there_is_an_address) {
-	walker = fill_32field(address_list->address, walker);
-      }
-      address_list = address_list->next_address;
-    }
-    return walker;
+    return fill_nbaddress_list(content->rdata, walker, end_of_packet);
     break;
 
   case nb_type_null:
@@ -497,26 +516,36 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_nodename:
-    walker = fill_all_DNS_labels(content->rdata, walker);
-    return (walker + ((4- ((walker - field) %4)) %4));
+    walker = fill_all_DNS_labels(content->rdata, walker, end_of_packet);
+    walker = walker + ((4- ((walker - field) %4)) %4);
+    if (walker > end_of_packet) {
+      return end_of_packet;
+    } else {
+      return walker;
+    }
     break;
 
   case nb_NBT_node_ip_address:
-    address_list = content->rdata;
-    while (address_list) {
-      walker = fill_32field(address_list->address, walker);
-      address_list = address_list->next_address;
-    }
-    return walker;
+    return fill_ipv4_address_list(content->rdata, walker, end_of_packet);
     break;
 
   case nb_statistics_rfc1002:
     nbstat = content->rdata;
+    if ((walker +1+3+6+2+19*2) > end_of_packet) {
+      /* OUT_OF_BOUNDS */
+      /* TODO: errno signaling stuff */
+      return walker;
+    }
     *walker = nbstat->numof_names;
     names = nbstat->listof_names;
     while (names) {
-      walker = fill_all_DNS_labels(names->nbnodename, walker);
+      walker = fill_all_DNS_labels(names->nbnodename, walker, end_of_packet);
       walker = walker + ((4- ((walker - field) %4)) %4);
+      if ((walker +2+6+2+19*2) > end_of_packet) {
+	/* OUT_OF_BOUNDS */
+	/* TODO: errno signaling stuff */
+	return walker;
+      }
       walker = fill_16field(names->name_flags, walker);
       walker = walker + ((4- ((walker - field) %4)) %4);
       names = names->next_nbnodename;
@@ -876,4 +905,79 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
   }
 
   return result;
+}
+
+void *master_name_srvc_pckt_writer(struct name_srvc_packet *packet,
+				   unsigned int *pckt_len) {
+  struct name_srvc_question_lst *cur_qstn;
+  struct name_srvc_resource_lst *cur_res;
+  unsigned char *result, *walker, *endof_pckt;
+
+  if (! (packet && pckt_len)) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result = calloc(1, MAX_UDP_PACKET_LEN);
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  walker = result;
+  endof_pckt = result + MAX_UDP_PACKET_LEN;
+
+  walker = fill_name_srvc_pckt_header(packet->header, walker,
+				      endof_pckt);
+
+  cur_qstn = packet->questions;
+  while (cur_qstn) {
+    walker = fill_name_srvc_pckt_question(cur_qstn->qstn, walker,
+					  endof_pckt);
+    if (walker >= endof_pckt) {
+      /* TODO: errno signaling stuff */
+      *pckt_len = walker - result;
+      return result;
+    }
+    cur_qstn = cur_qstn->next;
+  }
+
+  cur_res = packet->answers;
+  while (cur_res) {
+    walker = fill_name_srvc_resource(cur_res->res, walker,
+				     endof_pckt);
+    if (walker >= endof_pckt) {
+      /* TODO: errno signaling stuff */
+      *pckt_len = walker - result;
+      return result;
+    }
+    cur_res = cur_res->next;
+  }
+
+  cur_res = packet->authorities;
+  while (cur_res) {
+    walker = fill_name_srvc_resource(cur_res->res, walker,
+				     endof_pckt);
+    if (walker >= endof_pckt) {
+      /* TODO: errno signaling stuff */
+      *pckt_len = walker - result;
+      return result;
+    }
+    cur_res = cur_res->next;
+  }
+
+  cur_res = packet->aditionals;
+  while (cur_res) {
+    walker = fill_name_srvc_resource(cur_res->res, walker,
+				     endof_pckt);
+    if (walker >= endof_pckt) {
+      /* TODO: errno signaling stuff */
+      *pckt_len = walker - result;
+      return result;
+    }
+    cur_res = cur_res->next;
+  }
+
+  *pckt_len = walker - result;
+  return (void *)result;
 }

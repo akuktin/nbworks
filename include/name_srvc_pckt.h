@@ -120,21 +120,24 @@ struct name_srvc_pckt_header *
                              unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
-                             unsigned char **master_packet_walker);
+                             unsigned char *field,
+                             unsigned char *end_of_packet);
 struct name_srvc_question *
   read_name_srvc_pckt_question(unsigned char **master_packet_walker,
                                unsigned char *start_of_packet,
                                unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_pckt_question(struct name_srvc_question *question,
-                               unsigned char **master_packet_walker);
+                               unsigned char *field,
+                               unsigned char *end_of_packet);
 struct name_srvc_resource *
   read_name_srvc_resource(unsigned char **master_packet_walker,
                           unsigned char *start_of_packet,
                           unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_resource(struct name_srvc_resource *resource,
-                          unsigned char **master_packet_walker);
+                          unsigned char *field,
+                          unsigned char *end_of_packet);
 void *
   read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
                                struct name_srvc_resource *resource,
@@ -142,7 +145,8 @@ void *
                                unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_resource_data(struct name_srvc_resource *content,
-                               unsigned char *field);
+                               unsigned char *field,
+                               unsigned char *end_of_packet);
 inline enum name_srvc_rdata_type
   name_srvc_understand_resource(uint16_t rrtype,
                                 uint16_t rrclass);
@@ -150,5 +154,8 @@ inline enum name_srvc_rdata_type
 struct name_srvc_packet *
   master_name_srvc_pckt_reader(void *packet,
                                int len);
+void *
+  master_name_srvc_pckt_writer(struct name_srvc_packet *packet,
+                               unsigned int *pckt_len);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */

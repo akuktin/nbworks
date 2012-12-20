@@ -371,12 +371,28 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 }
 
 unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
-				   unsigned char *field) {
+				   unsigned char *field,
+				   unsigned char *endof_pckt) {
   struct nbnodename_list *iterator;
+
+  /* I have to check if I can fit the terminating 0 into
+     the packet here because content may be NULL. */
+  if ((field +1) > endof_pckt) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return field;
+  }
 
   iterator = content;
 
   while (iterator) {
+    /* field + 1 octet for the len + 1 octet for the
+       terminating 0 + the len of the label */
+    if ((field + 2 + content->len) > endof_pckt) {
+      /* OUT_OF_BOUNDS */
+      /* TODO: errno signaling stuff */
+      return field;
+    }
     *field = content->len;
     field++;
     field = mempcpy(field, content->name, content->len);
@@ -458,13 +474,25 @@ struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk
 }
 
 unsigned char *fill_nbaddress_list(struct nbaddress_list *content,
-				   unsigned char *walker) {
+				   unsigned char *walker,
+				   unsigned char *endof_pckt) {
   while (content) {
-    walker = fill_16field(content->flags, walker);
-    if (content->there_is_an_address) {
+    if (content->there_is_an_address == TRUE) {
+      if ((walker +6) > endof_pckt) {
+	/* OUT_OF_BOUNDS */
+	/* TODO: errno signaling stuff */
+	return walker;
+      }
+      walker = fill_16field(content->flags, walker);
       walker = fill_32field(content->address, walker);
+    } else {
+      if ((walker +2) > endof_pckt) {
+	/* OUT_OF_BOUNDS */
+	/* TODO: errno signaling stuff */
+	return walker;
+      }
+      walker = fill_16field(content->flags, walker);
     }
-    content = content->next_address;
   }
 
   return walker;
@@ -525,8 +553,14 @@ struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_w
 }
 
 unsigned char *fill_ipv4_address_list(struct nbaddress_list *content,
-				      unsigned char *walker) {
+				      unsigned char *walker,
+				      unsigned char *endof_pckt) {
   while (content) {
+    if ((walker +4) > endof_pckt) {
+      /* OUT_OF_BOUNDS */
+      /* TODO: errno signaling stuff */
+      return walker;
+    }
     walker = fill_32field(content->address, walker);
     content = content->next_address;
   }

@@ -5,6 +5,10 @@
 
 # include "name_srvc_pckt.h"
 
+# ifndef MAX_UDP_PACKET_LEN
+#  define MAX_UDP_PACKET_LEN 0xffff
+# endif
+
 inline unsigned char *read_16field(unsigned char *content,
                                    uint16_t *field);
 inline unsigned char *read_32field(unsigned char *content,
@@ -27,20 +31,23 @@ struct nbnodename_list *
                       unsigned char *end_of_packet);
 unsigned char *
   fill_all_DNS_labels(struct nbnodename_list *content,
-                      unsigned char *field);
+                      unsigned char *field,
+                      unsigned char *endof_pckt);
 struct nbaddress_list *
   read_nbaddress_list(unsigned char **start_and_end_of_walk,
                       uint16_t len_of_addresses,
                       unsigned char *end_of_packet);
 unsigned char *
   fill_nbaddress_list(struct nbaddress_list *content,
-                      unsigned char *walker);
+                      unsigned char *walker,
+                      unsigned char *endof_pckt);
 struct nbaddress_list *
   read_ipv4_address_list(unsigned char **start_and_end_of_walk,
                          uint16_t len_of_addresses,
                          unsigned char *end_of_packet);
 unsigned char *
   fill_ipv4_address_list(struct nbaddress_list *content,
-                         unsigned char *walker);
+                         unsigned char *walker,
+                         unsigned char *endof_pckt);
 
 #endif /* NBWORKS_PKCTROUTINES_H */
