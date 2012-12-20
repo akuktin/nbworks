@@ -45,7 +45,8 @@ struct ses_srvc_packet *
                             unsigned char *end_of_packet);
 unsigned char *
   fill_ses_packet_header(struct ses_srvc_packet *content,
-                         unsigned char *field);
+                         unsigned char *field,
+                         unsigned char *endof_pckt);
 void *
   read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
                                   unsigned char **master_packet_walker,
@@ -53,12 +54,16 @@ void *
                                   unsigned char *end_of_packet);
 unsigned char *
   fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
-                                  unsigned char *field);
+                                  unsigned char *field,
+                                  unsigned char *endof_pckt);
 inline enum ses_packet_payload_t
   understand_ses_pckt_type(unsigned char type_octet);
 
 struct ses_srvc_packet *
-  master_ses_srvc_pckt_reader(voit *packet,
+  master_ses_srvc_pckt_reader(void *packet,
 			      int len);
+void *
+  master_ses_srvc_pckt_writer(struct ses_srvc_packet *packet,
+                              unsigned int *pckt_len);
 
 #endif /* NBWORKS_SESSRVCPCKT_H */
