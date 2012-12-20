@@ -97,6 +97,24 @@ struct name_srvc_resource {
   void *rdata;
 };
 
+struct name_srvc_question_lst {
+  struct name_srvc_question *qstn;
+  struct name_srvc_question_lst *next;
+};
+
+struct name_srvc_resource_lst {
+  struct name_srvc_resource *res;
+  struct name_srvc_resource_lst *next;
+};
+
+struct name_srvc_packet {
+  struct name_srvc_pckt_header *header;
+  struct name_srvc_question_lst *questions;
+  struct name_srvc_resource_lst *answers;
+  struct name_srvc_resource_lst *authorities;
+  struct name_srvc_resource_lst *aditionals;
+};
+
 struct name_srvc_pckt_header *
   read_name_srvc_pckt_header(unsigned char **master_packet_walker,
                              unsigned char *end_of_packet);
@@ -128,5 +146,9 @@ unsigned char *
 inline enum name_srvc_rdata_type
   name_srvc_understand_resource(uint16_t rrtype,
                                 uint16_t rrclass);
+
+struct name_srvc_packet *
+  master_name_srvc_pckt_reader(void *packet,
+                               int len);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */

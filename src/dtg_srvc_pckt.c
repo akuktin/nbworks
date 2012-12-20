@@ -257,3 +257,30 @@ inline enum dtg_packet_payload_t understand_dtg_pckt_type(unsigned char type_oct
   /* Never reached. */
   return bad_type_dtg;
 }
+
+
+inline struct dtg_srvc_packet *master_dtg_srvc_pckt_reader(void *packet,
+							   int len) {
+  struct dtg_srvc_packet *result;
+  unsigned char *startof_pckt, *endof_pckt, *walker;
+
+  if (len <= 0) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  startof_pckt = (unsigned char *)packet;
+  walker = startof_pckt;
+  endof_pckt = startof_pckt + len;
+
+  result = read_dtg_packet_header(&walker, endof_pckt);
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result->payload = read_dtg_srvc_pckt_payload_data(result, &walker,
+						    startof_pckt, endof_pckt);
+
+  return result;
+}

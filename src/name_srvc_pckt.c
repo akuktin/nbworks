@@ -611,3 +611,269 @@ inline enum name_srvc_rdata_type name_srvc_understand_resource(uint16_t rrtype,
   /* Never reached */
   return bad_type;
 }
+
+
+struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
+						      int len) {
+  struct name_srvc_packet *result;
+  struct name_srvc_question_lst *cur_qstn;
+  struct name_srvc_resource_lst *cur_res;
+  int i;
+  unsigned char *startof_pckt, *endof_pckt, *walker;
+
+  if (len <= 0) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  startof_pckt = (unsigned char *)packet;
+  walker = startof_pckt;
+  endof_pckt = startof_pckt + len;
+
+  result = malloc(sizeof(struct name_srvc_packet));
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result->header = read_name_srvc_pckt_header(&walker, endof_pckt);
+  if (! result->header) {
+    /* TODO: errno signaling stuff */
+    free(result);
+    return 0;
+  }
+
+  i = result->header->numof_questions;
+  if (i) {
+    cur_qstn = malloc(sizeof(struct name_srvc_question_lst));
+    if (! cur_qstn) {
+      /* TODO: errno signaling stuff */
+      free(result->header);
+      free(result);
+      return 0;
+    }
+    result->questions = cur_qstn;
+
+    i--;
+    while (1) {
+      cur_qstn->qstn = read_name_srvc_pckt_question(&walker, startof_pckt,
+						    endof_pckt);
+      if (i) {
+	cur_qstn->next = malloc(sizeof(struct name_srvc_question_lst));
+	if (! cur_qstn->next) {
+	  /* TODO: errno signaling stuff */
+	  free(result->header);
+	  while (result->questions) {
+	    cur_qstn = result->questions->next;
+	    free(result->questions->qstn);
+	    free(result->questions);
+	    result->questions = cur_qstn;
+	  }
+	  free(result);
+	  return 0;
+	}
+	cur_qstn = cur_qstn->next;
+	i--;
+      } else {
+	cur_qstn->next = 0;
+	break;
+      }
+    }
+  } else {
+    result->questions = 0;
+  }
+
+  i = result->header->numof_answers;
+  if (i) {
+    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
+    if (! cur_res) {
+      /* TODO: errno signaling stuff */
+      free(result->header);
+      while (result->questions) {
+	cur_qstn = result->questions->next;
+	free(result->questions->qstn);
+	free(result->questions);
+	result->questions = cur_qstn;
+      }
+      free(result);
+      return 0;
+    }
+    result->answers = cur_res;
+
+    i--;
+    while (1) {
+      cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
+					     endof_pckt);
+      if (i) {
+	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
+	if (! cur_res->next) {
+	  /* TODO: errno signaling stuff */
+	  free(result->header);
+	  while (result->questions) {
+	    cur_qstn = result->questions->next;
+	    free(result->questions->qstn);
+	    free(result->questions);
+	    result->questions = cur_qstn;
+	  }
+	  while (result->answers) {
+	    cur_res = result->answers->next;
+	    free(result->answers->res);
+	    free(result->answers);
+	    result->answers = cur_res;
+	  }
+	  free(result);
+	  return 0;
+	}
+	cur_res = cur_res->next;
+	i--;
+	} else {
+	cur_res->next = 0;
+	break;
+      }
+    }
+  } else {
+    result->answers = 0;
+  }
+
+  i = result->header->numof_authorities;
+  if (i) {
+    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
+    if (! cur_res) {
+      /* TODO: errno signaling stuff */
+      free(result->header);
+      while (result->questions) {
+	cur_qstn = result->questions->next;
+	free(result->questions->qstn);
+	free(result->questions);
+	result->questions = cur_qstn;
+      }
+      while (result->answers) {
+	cur_res = result->answers->next;
+	free(result->answers->res);
+	free(result->answers);
+	result->answers = cur_res;
+      }
+      free(result);
+      return 0;
+    }
+    result->authorities = cur_res;
+
+    i--;
+    while (1) {
+      cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
+					     endof_pckt);
+      if (i) {
+	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
+	if (! cur_res->next) {
+	  /* TODO: errno signaling stuff */
+	  free(result->header);
+	  while (result->questions) {
+	    cur_qstn = result->questions->next;
+	    free(result->questions->qstn);
+	    free(result->questions);
+	    result->questions = cur_qstn;
+	  }
+	  while (result->answers) {
+	    cur_res = result->answers->next;
+	    free(result->answers->res);
+	    free(result->answers);
+	    result->answers = cur_res;
+	  }
+	  while (result->authorities) {
+	    cur_res = result->authorities->next;
+	    free(result->authorities->res);
+	    free(result->authorities);
+	    result->authorities = cur_res;
+	  }
+	  free(result);
+	  return 0;
+	}
+	cur_res = cur_res->next;
+	i--;
+	} else {
+	cur_res->next = 0;
+	break;
+      }
+    }
+  } else {
+    result->authorities = 0;
+  }
+
+  i = result->header->numof_additional_recs;
+  if (i) {
+    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
+    if (! cur_res->next) {
+      /* TODO: errno signaling stuff */
+      free(result->header);
+      while (result->questions) {
+	cur_qstn = result->questions->next;
+	free(result->questions->qstn);
+	free(result->questions);
+	result->questions = cur_qstn;
+      }
+      while (result->answers) {
+	cur_res = result->answers->next;
+	free(result->answers->res);
+	free(result->answers);
+	result->answers = cur_res;
+      }
+      while (result->authorities) {
+	cur_res = result->authorities->next;
+	free(result->authorities->res);
+	free(result->authorities);
+	result->authorities = cur_res;
+      }
+      free(result);
+      return 0;
+    }
+    result->aditionals = cur_res;
+
+    i--;
+    while (1) {
+      cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
+					     endof_pckt);
+      if (i) {
+	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
+	if (! cur_res->next) {
+	  /* TODO: errno signaling stuff */
+	  free(result->header);
+	  while (result->questions) {
+	    cur_qstn = result->questions->next;
+	    free(result->questions->qstn);
+	    free(result->questions);
+	    result->questions = cur_qstn;
+	  }
+	  while (result->answers) {
+	    cur_res = result->answers->next;
+	    free(result->answers->res);
+	    free(result->answers);
+	    result->answers = cur_res;
+	  }
+	  while (result->authorities) {
+	    cur_res = result->authorities->next;
+	    free(result->authorities->res);
+	    free(result->authorities);
+	    result->authorities = cur_res;
+	  }
+	  while (result->aditionals) {
+	    cur_res = result->aditionals->next;
+	    free(result->aditionals->res);
+	    free(result->aditionals);
+	    result->aditionals = cur_res;
+	  }
+	  free(result);
+	  return 0;
+	}
+	cur_res = cur_res->next;
+	i--;
+	} else {
+	cur_res->next = 0;
+	break;
+      }
+    }
+  } else {
+    result->aditionals = 0;
+  }
+
+  return result;
+}

@@ -57,4 +57,8 @@ unsigned char *
 inline enum ses_packet_payload_t
   understand_ses_pckt_type(unsigned char type_octet);
 
+struct ses_srvc_packet *
+  master_ses_srvc_pckt_reader(voit *packet,
+			      int len);
+
 #endif /* NBWORKS_SESSRVCPCKT_H */

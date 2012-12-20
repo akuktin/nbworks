@@ -270,3 +270,30 @@ inline enum ses_packet_payload_t understand_ses_pckt_type(unsigned char type_oct
   /* Never reached. */
   return unknown;
 }
+
+
+struct ses_srvc_packet *master_ses_srvc_pckt_reader(voit *packet,
+						    int len) {
+  struct ses_srvc_packet *result;
+  unsigned char *startof_pckt, *endof_pckt, *walker;
+
+  if (len <= 0) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  startof_pckt = (unsigned char *)packet;
+  walker = startof_pckt;
+  endof_pckt = startof_pckt + len;
+
+  result = read_ses_srvc_pckt_header(&walker, endof_pckt);
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result->payload = read_ses_srvc_pckt_payload_data(result, &walker,
+						    startof_pckt, endof_pckt);
+
+  return result;
+}
