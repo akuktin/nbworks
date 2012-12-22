@@ -10,17 +10,14 @@
 #include "name_srvc_func.h"
 
 
-/* Returns a half-baked packet which must be finished:
-     1. transaction_id
-     2. nm_flags must be set, regarding (a) broadcast and (b) name server
-*/
-struct name_srvc_packet *name_srvc_make_name_reg_req(unsigned char *name,
-						     unsigned char name_type,
-						     struct nbnodename_list *scope,
-						     uint32_t ttl,
-						     uint32_t in_address,
-						     int isgroup,
-						     unsigned char node_type) {
+/* Returns a half-baked packet which must have its header filled. */
+struct name_srvc_packet *name_srvc_make_name_registration(unsigned char *name,
+							  unsigned char name_type,
+							  struct nbnodename_list *scope,
+							  uint32_t ttl,
+							  uint32_t in_address,
+							  int isgroup,
+							  unsigned char node_type) {
   struct name_srvc_packet *result;
   struct nbnodename_list *complete_name;
   struct nbaddress_list *addr;
@@ -115,9 +112,6 @@ struct name_srvc_packet *name_srvc_make_name_reg_req(unsigned char *name,
   result->aditionals->res->rdata_len = 6;
   result->aditionals->res->rdata_t = nb_address_list;
   result->aditionals->res->rdata = addr;
-
-  result->header->opcode = 0x5;
-  result->header->rcode = 0;
 
   return result;
 }
