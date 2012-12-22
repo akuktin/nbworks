@@ -14,11 +14,9 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
   struct pollfd fds[2];
   nfds_t numof_fds;
   ssize_t trans_len, sent_len;
-  unsigned int docontinue;
   int ret_val, i;
   unsigned char buf[DEFAULT_TUNNEL_LEN][2];
 
-  docontinue = 1;
   numof_fds = 2;
   trans_len = sent_len = 0;
 
@@ -27,7 +25,7 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
   fds[1].fd = sckt_rmt;
   fds[1].events = (POLLIN | POLLPRI);
 
-  while (docontinue) {
+  while (1) {
     ret_val = poll(fds, numof_fds, 1 /* milisecond */);
     if (ret_val == 0) {
       continue;
@@ -110,20 +108,20 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
       }
 
       if (fds[i].revents | POLLHUP) {
-	docontinue = 0;
+	close(sckt_lcl);
+	close(sckt_rmt);
+	return 0;
       }
 
       if (fds[i].revents | POLLERR | POLLNVAL) {
 	/* TODO: errno handling */
 	close(sckt_lcl);
 	close(sckt_rmt);
+	return -1;
       }
 
     }
   }
-
-  close(sckt_lcl);
-  close(sckt_rmt);
 
   return 0;
 }
