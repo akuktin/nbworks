@@ -1063,3 +1063,127 @@ struct name_srvc_packet *alloc_name_srvc_pckt(uint16_t qstn,
 
   return result;
 }
+
+void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
+			    unsigned int complete,
+			    unsigned int really_complete) {
+  struct name_srvc_question_lst *qstn;
+  struct name_srvc_resource_lst *res, *cur_res, **all_res;
+  struct nbnodename_list_backbone *nbnodename_bckbone,
+    *next_nbnodename_bckbone;
+  struct nbnodename_list *nbnodename, *next_nbnodename;
+  struct nbaddress_list *addr_list, *next_addr_list;
+  struct name_srvc_statistics_rfc1002 *stats;
+  int i;
+
+  all_res = malloc(sizeof(struct name_srvc_resource_lst *) *3);
+
+  free(packet->header);
+
+  while (packet->questions) {
+    qstn = packet->questions->next;
+    if (packet->questions->qstn) {
+      if (complete) {
+	while (packet->questions->qstn->name) {
+	  nbnodename = packet->questions->qstn->name->next_name;
+	  free(packet->questions->qstn->name->name);
+	  free(packet->questions->qstn->name);
+	  packet->questions->qstn->name = nbnodename;
+	}
+      } else {
+	free(packet->questions->qstn->name->name);
+	free(packet->questions->qstn->name);
+      }
+      free(packet->questions->qstn);
+    }
+    free(packet->questions);
+    packet->questions = qstn;
+  }
+
+  all_res[0] = packet->answers;
+  all_res[1] = packet->authorities;
+  all_res[2] = packet->aditionals;
+
+  for (i=0; i<3; i++) {
+    cur_res = all_res[i];
+    while (cur_res) {
+      res = cur_res->next;
+      if (cur_res->res) {
+	if (complete) {
+	  while (cur_res->res->name) {
+	    nbnodename = cur_res->res->name->next_name;
+	    free(cur_res->res->name->name);
+	    free(cur_res->res->name);
+	    cur_res->res->name = nbnodename;
+	  }
+	} else {
+	  free(cur_res->res->name->name);
+	  free(cur_res->res->name);
+	}
+	switch (cur_res->res->rdata_t) {
+	case nb_statistics_rfc1002:
+	  stats = cur_res->res->rdata;
+	  nbnodename_bckbone = stats->listof_names;
+	  while (nbnodename_bckbone) {
+	    next_nbnodename_bckbone = nbnodename_bckbone->next_nbnodename;
+	    nbnodename = nbnodename_bckbone->nbnodename;
+	    if (really_complete) {
+	      while (nbnodename) {
+		next_nbnodename = nbnodename->next_name;
+		free(nbnodename->name);
+		free(nbnodename);
+		nbnodename = next_nbnodename;
+	      }
+	    } else {
+	      free(nbnodename->name);
+	      free(nbnodename);
+	    }
+	    free(nbnodename_bckbone);
+	    nbnodename_bckbone = next_nbnodename_bckbone;
+	  }
+	  free(stats);
+	  break;
+
+	case nb_nodename:
+	  nbnodename = cur_res->res->rdata;
+	  if (really_complete) {
+	    while (nbnodename) {
+	      next_nbnodename = nbnodename->next_name;
+	      free(nbnodename->name);
+	      free(nbnodename);
+	      nbnodename = next_nbnodename;
+	    }
+	  } else {
+	    free(nbnodename->name);
+	    free(nbnodename);
+	  }
+	  break;
+
+	case nb_address_list:
+	case nb_NBT_node_ip_address:
+	  addr_list = cur_res->res->rdata;
+	  while (addr_list) {
+	    next_addr_list = addr_list->next_address;
+	    free(addr_list);
+	    addr_list = next_addr_list;
+	  }
+	  break;
+
+	case unknown_important_resource:
+	default:
+	  free(cur_res->res->rdata);
+	  break;
+	}
+	free(cur_res->res);
+      }
+      free(cur_res);
+      cur_res = res;
+    }
+  }
+
+  free(packet);
+
+  /* I now understand why garbage collectors were invented. */
+
+  return;
+}
