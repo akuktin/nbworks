@@ -906,7 +906,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
     return 0;
   }
 
-  result->header = malloc(sizeof(struct name_srvc_pckt_header));
+  result->header = calloc(1, sizeof(struct name_srvc_pckt_header));
   if (! result->header) {
     /* TODO: errno signaling stuff */
     free(result);
@@ -914,7 +914,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   }
 
   if (qstn) {
-    cur_qstn = malloc(sizeof(struct name_srvc_question_lst));
+    cur_qstn = calloc(1, sizeof(struct name_srvc_question_lst));
     if (! cur_qstn) {
       /* TODO: errno signaling stuff */
       free(result->header);
@@ -922,8 +922,6 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
       return 0;
     }
     result->questions = cur_qstn;
-    result->questions->qstn = 0;
-    result->questions->next = 0;
 
     qstn--;
     while (qstn) {
@@ -939,15 +937,13 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   }
 
   if (answ) {
-    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
+    cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! result->answers) {
       /* TODO: errno signaling stuff */
       destroy_name_srvc_pckt(result);
       return 0;
     }
     result->answers = cur_res;
-    result->answers->res = 0;
-    result->answers->next = 0;
 
     answ--;
     while (answ) {
@@ -963,15 +959,13 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   }
 
   if (auth) {
-    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
+    cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! result->authorities) {
       /* TODO: errno signaling stuff */
       destroy_name_srvc_pckt(result);
       return 0;
     }
     result->authorities = cur_res;
-    result->authorities->res = 0;
-    result->authorities->next = 0;
 
     auth--;
     while (auth) {
@@ -987,15 +981,13 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   }
 
   if (adit) {
-    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
+    cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! result->aditionals) {
       /* TODO: errno signaling stuff */
       destroy_name_srvc_pckt(result);
       return 0;
     }
     result->aditionals = cur_res;
-    result->aditionals->res = 0;
-    result->aditionals->next = 0;
 
     adit--;
     while (adit) {
