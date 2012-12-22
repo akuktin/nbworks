@@ -7,6 +7,7 @@
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
+#include "name_srvc_func.h"
 
 
 /* Returns a half-baked packet which must be finished:
@@ -88,7 +89,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_req(unsigned char *name,
     free(addr);
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result);
+    destroy_name_srvc_pckt(result, 0, 1);
     return 0;
   }
 
@@ -99,13 +100,13 @@ struct name_srvc_packet *name_srvc_make_name_reg_req(unsigned char *name,
     free(addr);
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result);
+    destroy_name_srvc_pckt(result, 0, 1);
     return 0;
   }
 
-  result->question->qstn->name = complete_name;
-  result->question->qstn->qtype = QTYPE_NB;
-  result->question->qstn->qclass = QCLASS_IN;
+  result->questions->qstn->name = complete_name;
+  result->questions->qstn->qtype = QTYPE_NB;
+  result->questions->qstn->qclass = QCLASS_IN;
 
   result->aditionals->res->name = complete_name;
   result->aditionals->res->rrtype = RRTYPE_NB;
