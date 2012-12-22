@@ -157,5 +157,10 @@ struct name_srvc_packet *
 void *
   master_name_srvc_pckt_writer(struct name_srvc_packet *packet,
                                unsigned int *pckt_len);
+struct name_srvc_packet *
+  alloc_name_srvc_pckt(uint16_t qstn,
+                       uint16_t answ,
+                       uint16_t auth,
+                       uint16_t adit);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */
