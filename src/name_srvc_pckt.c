@@ -670,6 +670,10 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
     /* TODO: errno signaling stuff */
     return 0;
   }
+  result->questions = 0;
+  result->answers = 0;
+  result->authorities = 0;
+  result->aditionals = 0;
 
   result->header = read_name_srvc_pckt_header(&walker, endof_pckt);
   if (! result->header) {
@@ -683,11 +687,11 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
     cur_qstn = malloc(sizeof(struct name_srvc_question_lst));
     if (! cur_qstn) {
       /* TODO: errno signaling stuff */
-      free(result->header);
-      free(result);
+      destroy_name_srvc_pckt(result, 1, 1);
       return 0;
     }
     result->questions = cur_qstn;
+    cur_qstn->next = 0;
 
     i--;
     while (1) {
@@ -697,20 +701,13 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
 	cur_qstn->next = malloc(sizeof(struct name_srvc_question_lst));
 	if (! cur_qstn->next) {
 	  /* TODO: errno signaling stuff */
-	  free(result->header);
-	  while (result->questions) {
-	    cur_qstn = result->questions->next;
-	    free(result->questions->qstn);
-	    free(result->questions);
-	    result->questions = cur_qstn;
-	  }
-	  free(result);
+	  destroy_name_srvc_pckt(result, 1, 1);
 	  return 0;
 	}
 	cur_qstn = cur_qstn->next;
+	cur_qstn->next = 0;
 	i--;
       } else {
-	cur_qstn->next = 0;
 	break;
       }
     }
@@ -723,17 +720,11 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
       /* TODO: errno signaling stuff */
-      free(result->header);
-      while (result->questions) {
-	cur_qstn = result->questions->next;
-	free(result->questions->qstn);
-	free(result->questions);
-	result->questions = cur_qstn;
-      }
-      free(result);
+      destroy_name_srvc_pckt(result, 1, 1);
       return 0;
     }
     result->answers = cur_res;
+    cur_res->next = 0;
 
     i--;
     while (1) {
@@ -743,26 +734,13 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
 	  /* TODO: errno signaling stuff */
-	  free(result->header);
-	  while (result->questions) {
-	    cur_qstn = result->questions->next;
-	    free(result->questions->qstn);
-	    free(result->questions);
-	    result->questions = cur_qstn;
-	  }
-	  while (result->answers) {
-	    cur_res = result->answers->next;
-	    free(result->answers->res);
-	    free(result->answers);
-	    result->answers = cur_res;
-	  }
-	  free(result);
+	  destroy_name_srvc_pckt(result, 1, 1);
 	  return 0;
 	}
 	cur_res = cur_res->next;
+	cur_res->next = 0;
 	i--;
 	} else {
-	cur_res->next = 0;
 	break;
       }
     }
@@ -775,23 +753,11 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
       /* TODO: errno signaling stuff */
-      free(result->header);
-      while (result->questions) {
-	cur_qstn = result->questions->next;
-	free(result->questions->qstn);
-	free(result->questions);
-	result->questions = cur_qstn;
-      }
-      while (result->answers) {
-	cur_res = result->answers->next;
-	free(result->answers->res);
-	free(result->answers);
-	result->answers = cur_res;
-      }
-      free(result);
+      destroy_name_srvc_pckt(result, 1, 1);
       return 0;
     }
     result->authorities = cur_res;
+    cur_res->next = 0;
 
     i--;
     while (1) {
@@ -801,32 +767,13 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
 	  /* TODO: errno signaling stuff */
-	  free(result->header);
-	  while (result->questions) {
-	    cur_qstn = result->questions->next;
-	    free(result->questions->qstn);
-	    free(result->questions);
-	    result->questions = cur_qstn;
-	  }
-	  while (result->answers) {
-	    cur_res = result->answers->next;
-	    free(result->answers->res);
-	    free(result->answers);
-	    result->answers = cur_res;
-	  }
-	  while (result->authorities) {
-	    cur_res = result->authorities->next;
-	    free(result->authorities->res);
-	    free(result->authorities);
-	    result->authorities = cur_res;
-	  }
-	  free(result);
+	  destroy_name_srvc_pckt(result, 1, 1);
 	  return 0;
 	}
 	cur_res = cur_res->next;
+	cur_res->next = 0;
 	i--;
 	} else {
-	cur_res->next = 0;
 	break;
       }
     }
@@ -839,29 +786,11 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res->next) {
       /* TODO: errno signaling stuff */
-      free(result->header);
-      while (result->questions) {
-	cur_qstn = result->questions->next;
-	free(result->questions->qstn);
-	free(result->questions);
-	result->questions = cur_qstn;
-      }
-      while (result->answers) {
-	cur_res = result->answers->next;
-	free(result->answers->res);
-	free(result->answers);
-	result->answers = cur_res;
-      }
-      while (result->authorities) {
-	cur_res = result->authorities->next;
-	free(result->authorities->res);
-	free(result->authorities);
-	result->authorities = cur_res;
-      }
-      free(result);
+      destroy_name_srvc_pckt(result, 1, 1);
       return 0;
     }
     result->aditionals = cur_res;
+    cur_res->next = 0;
 
     i--;
     while (1) {
@@ -871,38 +800,13 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
 	  /* TODO: errno signaling stuff */
-	  free(result->header);
-	  while (result->questions) {
-	    cur_qstn = result->questions->next;
-	    free(result->questions->qstn);
-	    free(result->questions);
-	    result->questions = cur_qstn;
-	  }
-	  while (result->answers) {
-	    cur_res = result->answers->next;
-	    free(result->answers->res);
-	    free(result->answers);
-	    result->answers = cur_res;
-	  }
-	  while (result->authorities) {
-	    cur_res = result->authorities->next;
-	    free(result->authorities->res);
-	    free(result->authorities);
-	    result->authorities = cur_res;
-	  }
-	  while (result->aditionals) {
-	    cur_res = result->aditionals->next;
-	    free(result->aditionals->res);
-	    free(result->aditionals);
-	    result->aditionals = cur_res;
-	  }
-	  free(result);
+	  destroy_name_srvc_pckt(result, 1, 1);
 	  return 0;
 	}
 	cur_res = cur_res->next;
+	cur_res->next = 0;
 	i--;
 	} else {
-	cur_res->next = 0;
 	break;
       }
     }
