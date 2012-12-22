@@ -912,6 +912,10 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
     free(result);
     return 0;
   }
+  result->header->numof_questions = qstn;
+  result->header->numof_answers = answ;
+  result->header->numof_authorities = auth;
+  result->header->numof_aditional_recs = adit;
 
   if (qstn) {
     cur_qstn = calloc(1, sizeof(struct name_srvc_question_lst));
