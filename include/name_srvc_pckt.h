@@ -162,5 +162,9 @@ struct name_srvc_packet *
                        uint16_t answ,
                        uint16_t auth,
                        uint16_t adit);
+void
+  destroy_name_srvc_pckt(struct name_srvc_packet *packet,
+                         unsigned int complete,
+                         unsigned int really_complete);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */
