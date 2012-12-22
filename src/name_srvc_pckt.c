@@ -919,6 +919,8 @@ struct name_srvc_packet *alloc_name_srvc_pckt(uint16_t qstn,
       free(result);
       return 0;
     }
+    result->questions->qstn = 0;
+    result->questions->next = 0;
   } else {
     result->questions = 0;
   }
@@ -932,6 +934,8 @@ struct name_srvc_packet *alloc_name_srvc_pckt(uint16_t qstn,
       free(result);
       return 0;
     }
+    result->answers->res = 0;
+    result->answers->next = 0;
   } else {
     result->answers = 0;
   }
@@ -946,6 +950,8 @@ struct name_srvc_packet *alloc_name_srvc_pckt(uint16_t qstn,
       free(result);
       return 0;
     }
+    result->authorities->res = 0;
+    result->authorities->next = 0;
   } else {
     result->authorities = 0;
   }
@@ -961,6 +967,8 @@ struct name_srvc_packet *alloc_name_srvc_pckt(uint16_t qstn,
       free(result);
       return 0;
     }
+    result->aditionals->res = 0;
+    result->aditionals->next = 0;
   } else {
     result->aditionals = 0;
   }
