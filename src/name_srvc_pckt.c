@@ -892,13 +892,15 @@ void *master_name_srvc_pckt_writer(struct name_srvc_packet *packet,
   return (void *)result;
 }
 
-struct name_srvc_packet *alloc_name_srvc_pckt(uint16_t qstn,
-					      uint16_t answ,
-					      uint16_t auth,
-					      uint16_t adit) {
+struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
+					      unsigned int answ,
+					      unsigned int auth,
+					      unsigned int adit) {
   struct name_srvc_packet *result;
+  struct name_srvc_question_lst *cur_qstn;
+  struct name_srvc_resource_lst *cur_res;
 
-  result = malloc(sizeof(struct name_srvc_packet));
+  result = calloc(1, sizeof(struct name_srvc_packet));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -912,65 +914,100 @@ struct name_srvc_packet *alloc_name_srvc_pckt(uint16_t qstn,
   }
 
   if (qstn) {
-    result->questions = malloc(sizeof(struct name_srvc_question_lst));
-    if (! result->questions) {
+    cur_qstn = malloc(sizeof(struct name_srvc_question_lst));
+    if (! cur_qstn) {
       /* TODO: errno signaling stuff */
       free(result->header);
       free(result);
       return 0;
     }
+    result->questions = cur_qstn;
     result->questions->qstn = 0;
     result->questions->next = 0;
-  } else {
-    result->questions = 0;
+
+    qstn--;
+    while (qstn) {
+      cur_qstn->next = calloc(1, sizeof(struct name_srvc_question_lst));
+      if (! cur_qstn->next) {
+	/* TODO: errno signaling stuff */
+	destroy_name_srvc_pckt(result);
+	return 0;
+      }
+      cur_qstn = cur_qstn->next;
+      qstn--;
+    }
   }
 
   if (answ) {
-    result->answers = malloc(sizeof(struct name_srvc_resource_lst));
+    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! result->answers) {
       /* TODO: errno signaling stuff */
-      free(result->questions);
-      free(result->header);
-      free(result);
+      destroy_name_srvc_pckt(result);
       return 0;
     }
+    result->answers = cur_res;
     result->answers->res = 0;
     result->answers->next = 0;
-  } else {
-    result->answers = 0;
+
+    answ--;
+    while (answ) {
+      cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
+      if (! result->answers) {
+	/* TODO: errno signaling stuff */
+	destroy_name_srvc_pckt(result);
+	return 0;
+      }
+      cur_res = cur_res->next;
+      answ--;
+    }
   }
 
   if (auth) {
-    result->authorities = malloc(sizeof(struct name_srvc_resource_lst));
+    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! result->authorities) {
       /* TODO: errno signaling stuff */
-      free(result->answers);
-      free(result->questions);
-      free(result->header);
-      free(result);
+      destroy_name_srvc_pckt(result);
       return 0;
     }
+    result->authorities = cur_res;
     result->authorities->res = 0;
     result->authorities->next = 0;
-  } else {
-    result->authorities = 0;
+
+    auth--;
+    while (auth) {
+      cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
+      if (! result->authorities) {
+	/* TODO: errno signaling stuff */
+	destroy_name_srvc_pckt(result);
+	return 0;
+      }
+      cur_res = cur_res->next;
+      auth--;
+    }
   }
 
   if (adit) {
-    result->aditionals = malloc(sizeof(struct name_srvc_resource_lst));
+    cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! result->aditionals) {
       /* TODO: errno signaling stuff */
-      free(result->authorities);
-      free(result->answers);
-      free(result->questions);
-      free(result->header);
-      free(result);
+      destroy_name_srvc_pckt(result);
       return 0;
     }
+    result->aditionals = cur_res;
     result->aditionals->res = 0;
     result->aditionals->next = 0;
-  } else {
-    result->aditionals = 0;
+
+    adit--;
+    while (adit) {
+      cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
+      if (! result->aditionals) {
+	/* TODO: errno signaling stuff */
+	destroy_name_srvc_pckt(result);
+	return 0;
+      }
+      cur_res = cur_res->next;
+      adit--;
+    }
   }
 
   return result;
