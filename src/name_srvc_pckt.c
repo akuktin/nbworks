@@ -987,3 +987,79 @@ void *master_name_srvc_pckt_writer(struct name_srvc_packet *packet,
   *pckt_len = walker - result;
   return (void *)result;
 }
+
+struct name_srvc_packet *alloc_name_srvc_pckt(uint16_t qstn,
+					      uint16_t answ,
+					      uint16_t auth,
+					      uint16_t adit) {
+  struct name_srvc_packet *result;
+
+  result = malloc(sizeof(struct name_srvc_packet));
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result->header = malloc(sizeof(struct name_srvc_pckt_header));
+  if (! result->header) {
+    /* TODO: errno signaling stuff */
+    free(result);
+    return 0;
+  }
+
+  if (qstn) {
+    result->questions = malloc(sizeof(struct name_srvc_question_lst));
+    if (! result->questions) {
+      /* TODO: errno signaling stuff */
+      free(result->header);
+      free(result);
+      return 0;
+    }
+  } else {
+    result->questions = 0;
+  }
+
+  if (answ) {
+    result->answers = malloc(sizeof(struct name_srvc_resource_lst));
+    if (! result->answers) {
+      /* TODO: errno signaling stuff */
+      free(result->questions);
+      free(result->header);
+      free(result);
+      return 0;
+    }
+  } else {
+    result->answers = 0;
+  }
+
+  if (auth) {
+    result->authorities = malloc(sizeof(struct name_srvc_resource_lst));
+    if (! result->authorities) {
+      /* TODO: errno signaling stuff */
+      free(result->answers);
+      free(result->questions);
+      free(result->header);
+      free(result);
+      return 0;
+    }
+  } else {
+    result->authorities = 0;
+  }
+
+  if (adit) {
+    result->aditionals = malloc(sizeof(struct name_srvc_resource_lst));
+    if (! result->aditionals) {
+      /* TODO: errno signaling stuff */
+      free(result->authorities);
+      free(result->answers);
+      free(result->questions);
+      free(result->header);
+      free(result);
+      return 0;
+    }
+  } else {
+    result->aditionals = 0;
+  }
+
+  return result;
+}

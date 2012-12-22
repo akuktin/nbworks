@@ -26,7 +26,7 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
   fds[1].events = (POLLIN | POLLPRI);
 
   while (1) {
-    ret_val = poll(fds, numof_fds, 1 /* milisecond */);
+    ret_val = poll(fds, numof_fds, 100 /* milisecond */);
     if (ret_val == 0) {
       continue;
     } else {
