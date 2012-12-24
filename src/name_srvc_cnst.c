@@ -264,6 +264,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
   complete_name = malloc(sizeof(struct nbnodename_list));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
+    free(addr);
     return 0;
   }
   complete_name->name = make_nbnodename(name, name_type);
@@ -570,7 +571,7 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
   }
   complete_name->name = make_nbnodename(name, name_type);
   if (! complete_name->name) {
-    /* TODO: errno signaling stuff */ 
+    /* TODO: errno signaling stuff */
     free(rdata);
     free(complete_name);
     return 0;
