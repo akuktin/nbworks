@@ -381,7 +381,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
     return 0;
   }
 
-  result->authority->res = malloc(sizeof(struct name_srvc_resource));
+  result->authorities->res = malloc(sizeof(struct name_srvc_resource));
   if (! result->answers->res) {
     /* TODO: errno signaling stuff */
     free(complete_name->name);
@@ -398,13 +398,13 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
     return 0;
   }
 
-  result->authority->res->name = complete_name;
-  result->authority->res->rrtype = RRTYPE_NS;
-  result->authority->res->rrclass = RRCLASS_IN;
-  result->authority->res->ttl = ttl;
-  result->authority->res->rdata_len = nbnodenamelen(namesrvr_name);
-  result->authority->res->rdata_t = nb_nodename;
-  result->authority->res->rdata = namesrvr_name;
+  result->authorities->res->name = complete_name;
+  result->authorities->res->rrtype = RRTYPE_NS;
+  result->authorities->res->rrclass = RRCLASS_IN;
+  result->authorities->res->ttl = ttl;
+  result->authorities->res->rdata_len = nbnodenamelen(namesrvr_name);
+  result->authorities->res->rdata_t = nb_nodename;
+  result->authorities->res->rdata = namesrvr_name;
 
   result->aditionals->res->name = namesrvr_name;
   result->aditionals->res->rrtype = RRTYPE_A;
@@ -506,7 +506,7 @@ struct name_srvc_packet *name_srvc_make_name_stat_rfc1002_rsp(unsigned char *nam
     return 0;
   }
 
-  stats = malloc(sizeof(struct name_srvc_statistics_rfc1002));
+  stats = calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
   if (! stats) {
     /* TODO: errno signaling stuff */
     free(complete_name->name);
