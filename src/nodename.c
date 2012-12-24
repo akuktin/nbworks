@@ -228,7 +228,7 @@ struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
 }
 
 uint16_t nbnodenamelen(struct nbnodename_list *nbnodename) {
-  struct nbnodename *cur_name;
+  struct nbnodename_list *cur_name;
   uint16_t result;
 
   cur_name = nbnodename;
