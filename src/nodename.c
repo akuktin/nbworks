@@ -226,3 +226,20 @@ struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
   } else
     return 0;
 }
+
+uint16_t nbnodenamelen(struct nbnodename_list *nbnodename) {
+  struct nbnodename *cur_name;
+  uint16_t result;
+
+  cur_name = nbnodename;
+  result = 1; /* To account for the terminating NULL. */
+
+  /* No overflow checks. */
+
+  while (cur_name) {
+    result = result + cur_name->len +1;
+    cur_name = cur_name->next_name;
+  }
+
+  return result;
+}

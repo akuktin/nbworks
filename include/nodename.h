@@ -25,7 +25,11 @@ unsigned char *make_nbnodename_sloppy(const unsigned char *string);
 unsigned char *make_nbnodename(const unsigned char *string,
                                const unsigned char type_char);
 
-void destroy_nbnodename(struct nbnodename_list *nbnodename);
-struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename);
+void
+  destroy_nbnodename(struct nbnodename_list *nbnodename);
+struct nbnodename_list *
+  clone_nbnodename(struct nbnodename_list *nbnodename);
+uint16_t
+  nbnodenamelen(struct nbnodename_list *nbnodename);
 
 #endif /* NBWORKS_NODENAME_H */
