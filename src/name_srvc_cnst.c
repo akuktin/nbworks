@@ -554,6 +554,10 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
   struct nbaddress_list *rdata;
 
   rdata = malloc(sizeof(struct nbaddress_list));
+  if (! rdata) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
   rdata->there_is_an_address = 0;
   rdata->next_address = 0;
   rdata->flags = nm_flags;
@@ -561,11 +565,13 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
   complete_name = malloc(sizeof(struct nbnodename_list));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
+    free(rdata);
     return 0;
   }
   complete_name->name = make_nbnodename(name, name_type);
   if (! complete_name->name) {
-    /* TODO: errno signaling stuff */
+    /* TODO: errno signaling stuff */ 
+    free(rdata);
     free(complete_name);
     return 0;
   }
@@ -575,6 +581,7 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
     /* TODO: errno signaling stuff */
+    free(rdata);
     free(complete_name->name);
     free(complete_name);
     return 0;
