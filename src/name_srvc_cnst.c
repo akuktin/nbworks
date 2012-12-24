@@ -421,9 +421,9 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
   return result;
 }
 
-struct name_srvc_packet *name_srvc_make_name_stat_rfc1002_qry(unsigned char *name,
-							      unsigned char name_type,
-							      struct nbnodename_list *scope) {
+struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
+							 unsigned char name_type,
+							 struct nbnodename_list *scope) {
   struct name_srvc_packet *result;
   struct nbnodename_list *complete_name;
 
@@ -465,10 +465,10 @@ struct name_srvc_packet *name_srvc_make_name_stat_rfc1002_qry(unsigned char *nam
   return result;
 }
 
-struct name_srvc_packet *name_srvc_make_name_stat_rfc1002_rsp(unsigned char *name,
-							      unsigned char name_type,
-							      struct nbnodename_list *scope,
-							      struct nbnodename_list_backbone *my_names_this_scope) {
+struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
+							 unsigned char name_type,
+							 struct nbnodename_list *scope,
+							 struct nbnodename_list_backbone *my_names_this_scope) {
   struct name_srvc_packet *result;
   struct nbnodename_list *complete_name;
   struct nbnodename_list_backbone *cur_names;
@@ -541,6 +541,52 @@ struct name_srvc_packet *name_srvc_make_name_stat_rfc1002_rsp(unsigned char *nam
   result->answers->res->rdata_len = lenof_names + 23*2;
   result->answers->res->rdata_t = nb_statistics_rfc1002;
   result->answers->res->rdata = stats;
+
+  return result;
+}
+
+struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
+					     unsigned char name_type,
+					     struct nbnodename_list *scope,
+					     uint32_t ttl,
+					     uint16_t nm_flags) {
+  struct name_srvc_packet *result;
+  struct nbaddress_list *rdata;
+
+  rdata = malloc(sizeof(struct nbaddress_list));
+  rdata->there_is_an_address = 0;
+  rdata->next_address = 0;
+  rdata->flags = nm_flags;
+
+  complete_name = malloc(sizeof(struct nbnodename_list));
+  if (! complete_name) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+  complete_name->name = make_nbnodename(name, name_type);
+  if (! complete_name->name) {
+    /* TODO: errno signaling stuff */
+    free(complete_name);
+    return 0;
+  }
+  complete_name->len = NETBIOS_CODED_NAME_LEN;
+  complete_name->next_name = scope;
+
+  result = alloc_name_srvc_pckt(0, 1, 0, 0);
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    free(complete_name->name);
+    free(complete_name);
+    return 0;
+  }
+
+  result->answers->res->name = complete_name;
+  result->answers->res->rrtype = RRTYPE_NB;
+  result->answers->res->rrclass = RRCLASS_IN;
+  result->answers->res->ttl = ttl;
+  result->answers->res->rdata_len = 2
+  result->answers->res->rdata_t = nb_address_list;
+  result->answers->res->rdata = rdata;
 
   return result;
 }
