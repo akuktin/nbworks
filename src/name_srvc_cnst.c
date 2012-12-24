@@ -550,6 +550,7 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
 					     struct nbnodename_list *scope,
 					     uint32_t ttl,
 					     uint16_t nm_flags) {
+  struct nbnodename_list *complete_name;
   struct name_srvc_packet *result;
   struct nbaddress_list *rdata;
 
@@ -591,7 +592,7 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
   result->answers->res->rrtype = RRTYPE_NB;
   result->answers->res->rrclass = RRCLASS_IN;
   result->answers->res->ttl = ttl;
-  result->answers->res->rdata_len = 2
+  result->answers->res->rdata_len = 2;
   result->answers->res->rdata_t = nb_address_list;
   result->answers->res->rdata = rdata;
 
