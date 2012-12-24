@@ -1,5 +1,5 @@
-#ifndef NBWORKS_NAMESRVCFUNC_H
-# define NBWORKS_NAMESRVCFUNC_H 1
+#ifndef NBWORKS_NAMESRVCCNST_H
+# define NBWORKS_NAMESRVCCNST_H 1
 
 struct name_srvc_packet *
   name_srvc_make_name_reg_big(unsigned char *name,
@@ -49,4 +49,4 @@ struct name_srvc_packet *
                                        struct nbnodename_list *scope,
                                        struct nbnodename_list_backbone *my_names_this_scope);
 
-#endif /* NBWORKS_NAMESRVCFUNC_H */
+#endif /* NBWORKS_NAMESRVCCNST_H */

@@ -7,7 +7,7 @@
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
-#include "name_srvc_func.h"
+#include "name_srvc_cnst.h"
 
 
 /* All of these functions return half-baked packets
