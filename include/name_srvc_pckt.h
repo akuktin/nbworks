@@ -7,6 +7,7 @@
 
 # define MAX_DNS_LABEL_LEN 0x3f
 
+
 # define QTYPE_NB      0x0020
 # define QTYPE_NBSTAT  0x0021
 
@@ -19,6 +20,38 @@
 # define RRTYPE_NBSTAT 0x0021
 
 # define RRCLASS_IN    0x0001
+
+
+# define OPCODE_REQUEST      0x00
+# define OPCODE_RESPONSE     0x10
+
+# define OPCODE_MASK         0x0f
+
+# define OPCODE_QUERY        0x00
+# define OPCODE_REGISTRATION 0x05
+# define OPCODE_RELEASE      0x06
+# define OPCODE_WACK         0x07
+# define OPCODE_REFRESH      0x08
+# define OPCODE_REFRESH2     0x09
+
+
+/* nm_flag */
+# define FLG_B  0x01 /* Packet is broadcast. */
+# define FLG_RA 0x08 /* Recursion available. */
+# define FLG_RD 0x10 /* Recursion desirable. */
+# define FLG_TC 0x20 /* Truncated. */
+# define FLG_AA 0x40 /* Authoritative answer. */
+
+
+/* rcode */
+/* rcodes for OPCODE_REGISTRATION */
+# define RCODE_REGISTR_FMT_ERR 0x1 /* Request was incorrectly formated. */
+# define RCODE_REGISTR_SRV_ERR 0x2 /* NBNS server failed. */
+# define RCODE_REGISTR_IMP_ERR 0x4 /* Not implemented or implementation error. */
+# define RCODE_REGISTR_RFS_ERR 0x5 /* Refused. Against the policy. */
+# define RCODE_REGISTR_ACT_ERR 0x6 /* Name in active use by someone else. */
+# define RCODE_REGISTR_CFT_ERR 0x7 /* Name in conflict. */
+
 
 enum name_srvc_rdata_type {
   unknown_type = 0,
