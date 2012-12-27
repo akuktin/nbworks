@@ -147,10 +147,22 @@ inline struct name_srvc_packet *ss_recv_name_pckt(struct ss_queue *trans) {
   result = trans->incoming->packet;
   trans->incoming->packet = 0;
 
-  if (trans->incoming->next) {
-    holdme = trans->incoming;
-    trans->incoming = trans->incoming->next;
-    free(holdme);
+  if (result) {
+    if (trans->incoming->next) {
+      holdme = trans->incoming;
+      trans->incoming = trans->incoming->next;
+      free(holdme);
+    }
+  } else {
+    if (trans->incoming->next) {
+      holdme = trans->incoming;
+      trans->incoming = trans->incoming->next;
+      free(holdme);
+
+      result = ss_recv_name_pckt(trans);
+    } else {
+      result = 0;
+    }
   }
 
   return result;
