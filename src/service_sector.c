@@ -90,6 +90,7 @@ struct ss_queue *ss_register_name_tid(uint16_t tid) {
       break;
   }
 
+  result->tid = tid;
   result->incoming = my_trans->incoming;
   result->outgoing = my_trans->outgoing;
   result->keep_me_alive = 1;
@@ -118,4 +119,28 @@ void ss_deregister_name_tid(uint16_t tid) {
   }
 
   return;
+}
+
+
+inline void ss_name_send_pckt(struct ss_name_pckt_list *pckt,
+			      struct ss_queue *trans) {
+  pckt->next = 0;
+  trans->outgoing->next = pckt;
+  trans->outgoing = pckt;
+}
+
+inline struct name_srvc_packet *ss_recv_name_pckt(struct ss_queue *trans) {
+  struct name_srvc_packet *result;
+  struct ss_name_pckt_list *holdme;
+
+  result = trans->incoming->packet;
+  trans->incoming->packet = 0;
+
+  if (trans->incoming->next) {
+    holdme = trans->incoming;
+    trans->incoming = trans->incoming->next;
+    free(holdme);
+  }
+
+  return result;
 }

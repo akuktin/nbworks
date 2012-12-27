@@ -16,6 +16,7 @@ struct ss_name_trans {
 
 /* This one is for the name sector. */
 struct ss_queue {
+  uint16_t tid;
   struct ss_name_pckt_list *incoming;
   struct ss_name_pckt_list *outgoing;
   int keep_me_alive;
@@ -23,5 +24,9 @@ struct ss_queue {
 
 struct ss_queue *ss_register_name_tid(uint16_t tid);
 void ss_deregister_name_tid(uint16_t tid);
+
+inline void ss_name_send_pckt(struct ss_name_pckt_list *pckt,
+			      struct ss_queue *trans);
+inline struct name_srvc_packet *ss_recv_name_pckt(struct ss_queue *trans);
 
 #endif /* NBWORKS_SERVICESECTOR_H */
