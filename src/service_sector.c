@@ -122,11 +122,22 @@ void ss_deregister_name_tid(uint16_t tid) {
 }
 
 
-inline void ss_name_send_pckt(struct ss_name_pckt_list *pckt,
-			      struct ss_queue *trans) {
-  pckt->next = 0;
-  trans->outgoing->next = pckt;
-  trans->outgoing = pckt;
+inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
+			     struct ss_queue *trans) {
+  struct ss_name_pckt_list *trans_pckt;
+
+  trans_pckt = malloc(sizeof(struct name_srvc_packet));
+  if (! trans_pckt) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  trans_pckt->packet = pckt;
+  trans_pckt->next = 0;
+  trans->outgoing->next = trans_pckt;
+  trans->outgoing = trans_pckt;
+
+  return 1;
 }
 
 inline struct name_srvc_packet *ss_recv_name_pckt(struct ss_queue *trans) {

@@ -25,8 +25,8 @@ struct ss_queue {
 struct ss_queue *ss_register_name_tid(uint16_t tid);
 void ss_deregister_name_tid(uint16_t tid);
 
-inline void ss_name_send_pckt(struct ss_name_pckt_list *pckt,
-			      struct ss_queue *trans);
+inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
+                             struct ss_queue *trans);
 inline struct name_srvc_packet *ss_recv_name_pckt(struct ss_queue *trans);
 
 #endif /* NBWORKS_SERVICESECTOR_H */
