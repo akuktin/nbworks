@@ -9,18 +9,24 @@
 #include "name_srvc_pckt.h"
 #include "dtg_srvc_pckt.h"
 #include "randomness.h"
+#include "service_sector.h"
 
 
 struct ss_name_trans *all_transactions;
 
+struct {
+  int all_stop;
+} all_port_cntl;
+
 
 void init_service_sector() {
   all_transactions = 0;
+  all_port_cntl.all_stop = 0;
 }
 
 struct ss_queue *ss_register_name_tid(uint16_t tid) {
   struct ss_queue *result;
-  struct ss_name_trans *cur_trans, *last_trans, *my_trans;
+  struct ss_name_trans *cur_trans, *my_trans;
   int break_me_out;
 
   break_me_out = 0;
@@ -90,10 +96,8 @@ struct ss_queue *ss_register_name_tid(uint16_t tid) {
       break;
   }
 
-  result->tid = tid;
   result->incoming = my_trans->incoming;
   result->outgoing = my_trans->outgoing;
-  result->keep_me_alive = 1;
 
   return result;
 }
@@ -102,19 +106,19 @@ void ss_deregister_name_tid(uint16_t tid) {
   struct ss_name_trans *cur_trans, **last_trans;
 
   cur_trans = all_transactions;
-  *last_trans = &all_transactions;
+  last_trans = &all_transactions;
 
   if (! all_transactions)
     return;
 
   while (cur_trans) {
     if (cur_trans->tid == tid) {
-      *last_trans = cur_trans->next;
+      last_trans = &(cur_trans->next);
       /* There is a (trivial?) chance of use-after-free. */
       free(cur_trans);
       return;
     }
-    *last_trans = &(cur_trans->next);
+    last_trans = &(cur_trans->next);
     cur_trans = cur_trans->next;
   }
 
@@ -122,6 +126,7 @@ void ss_deregister_name_tid(uint16_t tid) {
 }
 
 
+/* returns: 1=success, 0=failure */
 inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
 			     struct ss_queue *trans) {
   struct ss_name_pckt_list *trans_pckt;
@@ -166,4 +171,11 @@ inline struct name_srvc_packet *ss_recv_name_pckt(struct ss_queue *trans) {
   }
 
   return result;
+}
+
+
+void ss_rcv_port137() {
+  int udp_sckt, tcp_sckt;
+
+  
 }

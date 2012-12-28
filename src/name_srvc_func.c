@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#define _POSIX_C_SOURCE 199309
+#ifndef _POSIX_C_SOURCE
+# define _POSIX_C_SOURCE 199309
+#endif
 #include <time.h>
 
 #include "nodename.h"
@@ -23,7 +25,6 @@ int name_srvc_B_add_name(unsigned char *name,
 			 int isgroup) {
   struct timespec sleeptime;
   struct ss_queue *trans;
-  struct ss_name_pckt_list *trans_pckt;
   struct name_srvc_packet *pckt, *outside_pckt;
   int result;
   uint16_t tid;
@@ -49,9 +50,9 @@ int name_srvc_B_add_name(unsigned char *name,
     return -1;
   }
 
-  pckt->transaction_id = tid;
-  pckt->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
-  pckt->nm_flags = FLG_B;
+  pckt->header->transaction_id = tid;
+  pckt->header->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
+  pckt->header->nm_flags = FLG_B;
   /* Do not ask for recursion, because
      there are no NBNS in our scope. */
 
@@ -67,18 +68,18 @@ int name_srvc_B_add_name(unsigned char *name,
       break;
     }
 
-    if (outside_pckt->transaction_id != tid) {
+    if (outside_pckt->header->transaction_id != tid) {
       destroy_name_srvc_pckt(outside_pckt, 1, 1);
       continue;
     }
 
-    if ((outside_pckt->opcode == OPCODE_RESPONSE |
-	                         OPCODE_REGISTRATION) &&
-	(outside_pckt->nm_flags & FLG_AA) &&
-	(outside_pckt->rcode != 0)) {
+    if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
+					  OPCODE_REGISTRATION)) &&
+	(outside_pckt->header->nm_flags & FLG_AA) &&
+	(outside_pckt->header->rcode != 0)) {
       /* This is a NEGATIVE NAME REGISTRATION RESPONSE. */
       /* Failed. */
-      result = outside_pckt->rcode;
+      result = outside_pckt->header->rcode;
       break;
     }
 
@@ -87,7 +88,7 @@ int name_srvc_B_add_name(unsigned char *name,
 
   if (! result) {
     /* Succeded. */
-    pckt->opcode = OPCODE_REQUEST | OPCODE_REFRESH;
+    pckt->header->opcode = OPCODE_REQUEST | OPCODE_REFRESH;
     ss_name_send_pckt(pckt, trans);
     result = 1;
   } else {
