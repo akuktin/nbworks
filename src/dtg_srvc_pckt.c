@@ -315,14 +315,17 @@ struct dtg_srvc_packet *master_dtg_srvc_pckt_reader(void *packet,
   return result;
 }
 
-void *master_dtg_srvc_pckt_writer(struct dtg_srvc_packet *packet,
+void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 				  unsigned int *pckt_len) {
+  struct dtg_srvc_packet *packet;
   unsigned char *result, *walker, *endof_pckt;
 
-  if (! (packet && pckt_len)) {
+  if (! (packet_ptr && pckt_len)) {
     /* TODO: errno signaling stuff */
     return 0;
   }
+
+  packet = packet_ptr;
 
   result = calloc(1, MAX_UDP_PACKET_LEN);
   if (! result) {

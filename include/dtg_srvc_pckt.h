@@ -61,7 +61,7 @@ struct dtg_srvc_packet *
   master_dtg_srvc_pckt_reader(void *packet,
                               int len);
 void *
-  master_dtg_srvc_pckt_writer(struct dtg_srvc_packet *packet,
+  master_dtg_srvc_pckt_writer(void *packet_ptr,
                               unsigned int *pckt_len);
 
 #endif /* NBWORKS_DTGSRVCPCKT_H */
