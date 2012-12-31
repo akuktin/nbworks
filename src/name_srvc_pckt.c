@@ -817,16 +817,19 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
   return result;
 }
 
-void *master_name_srvc_pckt_writer(struct name_srvc_packet *packet,
+void *master_name_srvc_pckt_writer(void *packet_ptr,
 				   unsigned int *pckt_len) {
+  struct name_srvc_packet *packet;
   struct name_srvc_question_lst *cur_qstn;
   struct name_srvc_resource_lst *cur_res;
   unsigned char *result, *walker, *endof_pckt;
 
-  if (! (packet && pckt_len)) {
+  if (! (packet_ptr && pckt_len)) {
     /* TODO: errno signaling stuff */
     return 0;
   }
+
+  packet = packet_ptr;
 
   result = calloc(1, MAX_UDP_PACKET_LEN);
   if (! result) {
@@ -915,7 +918,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   result->header->numof_questions = qstn;
   result->header->numof_answers = answ;
   result->header->numof_authorities = auth;
-  result->header->numof_aditional_recs = adit;
+  result->header->numof_additional_recs = adit;
 
   if (qstn) {
     cur_qstn = calloc(1, sizeof(struct name_srvc_question_lst));
@@ -932,7 +935,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
       cur_qstn->next = calloc(1, sizeof(struct name_srvc_question_lst));
       if (! cur_qstn->next) {
 	/* TODO: errno signaling stuff */
-	destroy_name_srvc_pckt(result);
+	destroy_name_srvc_pckt(result, 1, 1);
 	return 0;
       }
       cur_qstn = cur_qstn->next;
@@ -944,7 +947,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
     cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! result->answers) {
       /* TODO: errno signaling stuff */
-      destroy_name_srvc_pckt(result);
+      destroy_name_srvc_pckt(result, 1, 1);
       return 0;
     }
     result->answers = cur_res;
@@ -954,7 +957,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
       cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
       if (! result->answers) {
 	/* TODO: errno signaling stuff */
-	destroy_name_srvc_pckt(result);
+	destroy_name_srvc_pckt(result, 1, 1);
 	return 0;
       }
       cur_res = cur_res->next;
@@ -966,7 +969,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
     cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! result->authorities) {
       /* TODO: errno signaling stuff */
-      destroy_name_srvc_pckt(result);
+      destroy_name_srvc_pckt(result, 1, 1);
       return 0;
     }
     result->authorities = cur_res;
@@ -976,7 +979,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
       cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
       if (! result->authorities) {
 	/* TODO: errno signaling stuff */
-	destroy_name_srvc_pckt(result);
+	destroy_name_srvc_pckt(result, 1, 1);
 	return 0;
       }
       cur_res = cur_res->next;
@@ -988,7 +991,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
     cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! result->aditionals) {
       /* TODO: errno signaling stuff */
-      destroy_name_srvc_pckt(result);
+      destroy_name_srvc_pckt(result, 1, 1);
       return 0;
     }
     result->aditionals = cur_res;
@@ -998,7 +1001,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
       cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
       if (! result->aditionals) {
 	/* TODO: errno signaling stuff */
-	destroy_name_srvc_pckt(result);
+	destroy_name_srvc_pckt(result, 1, 1);
 	return 0;
       }
       cur_res = cur_res->next;

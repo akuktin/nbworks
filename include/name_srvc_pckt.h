@@ -188,7 +188,7 @@ struct name_srvc_packet *
   master_name_srvc_pckt_reader(void *packet,
                                int len);
 void *
-  master_name_srvc_pckt_writer(struct name_srvc_packet *packet,
+  master_name_srvc_pckt_writer(void *packet_ptr,
                                unsigned int *pckt_len);
 struct name_srvc_packet *
   alloc_name_srvc_pckt(unsigned int qstn,
