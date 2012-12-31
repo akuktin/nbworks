@@ -184,7 +184,7 @@ inline enum name_srvc_rdata_type
   name_srvc_understand_resource(uint16_t rrtype,
                                 uint16_t rrclass);
 
-struct name_srvc_packet *
+void *
   master_name_srvc_pckt_reader(void *packet,
                                int len);
 void *

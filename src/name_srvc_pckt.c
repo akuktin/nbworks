@@ -648,8 +648,8 @@ inline enum name_srvc_rdata_type name_srvc_understand_resource(uint16_t rrtype,
 }
 
 
-struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
-						      int len) {
+void *master_name_srvc_pckt_reader(void *packet,
+				   int len) {
   struct name_srvc_packet *result;
   struct name_srvc_question_lst *cur_qstn;
   struct name_srvc_resource_lst *cur_res;
@@ -814,7 +814,7 @@ struct name_srvc_packet *master_name_srvc_pckt_reader(void *packet,
     result->aditionals = 0;
   }
 
-  return result;
+  return (void *)result;
 }
 
 void *master_name_srvc_pckt_writer(void *packet_ptr,
