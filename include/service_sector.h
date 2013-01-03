@@ -12,7 +12,6 @@ struct ss_name_pckt_list {
 enum nametrans_status {
   nmtrst_normal = 0,
   nmtrst_deregister,
-  nmtrst_deregister2,
   nmtrst_delete
 };
 
