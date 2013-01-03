@@ -8,6 +8,11 @@
 #endif
 #include <time.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
@@ -100,6 +105,7 @@ int name_srvc_B_add_name(unsigned char *name,
     outside_pckt = ss_name_recv_pckt(trans);
   }
 
+  free(trans);
   destroy_name_srvc_pckt(pckt, 0, 1);
 
   return result;

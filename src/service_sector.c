@@ -379,7 +379,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
   struct timespec waittime;
   struct ss_sckts *sckts;
   struct ss_name_pckt_list *for_del;
-  struct ss_name_trans *cur_trans, **last_trans, *for_del;
+  struct ss_name_trans *cur_trans, **last_trans, *for_del2;
   unsigned int len;
   void *udp_pckt, *ptr;
 
@@ -427,10 +427,10 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	}
 
 	*last_trans = cur_trans->next;
-	for_del = cur_trans;
+	for_del2 = cur_trans;
 	cur_trans = cur_trans->next;
 	/* BUG: There is a (trivial?) chance of use-after-free. */
-	free(for_del);
+	free(for_del2);
       } else {
 	if (cur_trans->outgoing->packet) {
 	  ptr = cur_trans->outgoing->packet;
