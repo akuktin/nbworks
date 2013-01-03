@@ -44,7 +44,7 @@ int name_srvc_B_add_name(unsigned char *name,
   addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
-  addr.sin_addr.s_addr = 0xffffffff;
+  addr.sin_addr.s_addr = INADDR_BROADCAST;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
 				     my_ip_address, isgroup, 'B');
