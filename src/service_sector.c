@@ -407,47 +407,53 @@ void *ss_name_udp_sender(void *sckts_ptr) {
     cur_trans = sckts->all_trans;
     last_trans = &(sckts->all_trans);
     while (cur_trans) {
-      while (cur_trans->outgoing->next) {
-	if (cur_trans->outgoing->packet) {
-	  ptr = cur_trans->outgoing->packet;
-	  len = MAX_UDP_PACKET_LEN;
-	  udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
-
-	  sendto(sckts->udp_sckt, udp_pckt, len, 0,
-		 &(cur_trans->outgoing->addr),
-		 sizeof(cur_trans->outgoing->addr));
-
-	  free(udp_pckt);
-	  destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
-	}
-
-	for_del = cur_trans->outgoing;
-	cur_trans->outgoing = cur_trans->outgoing->next;
-	free(for_del);
-      }
-
-      /* Here's hoping GCC does not mess this up royally. */
+      /* Special treatment of deregistered transactions. */
       if (cur_trans->status == nmtrst_deregister) {
-	if (cur_trans->outgoing->packet) {
-	  ptr = cur_trans->outgoing->packet;
-	  len = MAX_UDP_PACKET_LEN;
-	  udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
+	*last_trans = cur_trans->next;
 
-	  sendto(sckts->udp_sckt, udp_pckt, len, 0,
-		 &(cur_trans->outgoing->addr),
-		 sizeof(cur_trans->outgoing->addr));
+	while (cur_trans->outgoing) {
+	  if (cur_trans->outgoing->packet) {
+	    ptr = cur_trans->outgoing->packet;
+	    len = MAX_UDP_PACKET_LEN;
+	    udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
 
-	  free(udp_pckt);
-	  destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
-	  cur_trans->outgoing->packet = 0;
+	    sendto(sckts->udp_sckt, udp_pckt, len, 0,
+		   &(cur_trans->outgoing->addr),
+		   sizeof(cur_trans->outgoing->addr));
+
+	    free(udp_pckt);
+	    destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
+	  }
+
+	  for_del = cur_trans->outgoing;
+	  cur_trans->outgoing = cur_trans->outgoing->next;
+	  free(for_del);
 	}
 
-	*last_trans = cur_trans->next;
 	for_del2 = cur_trans;
 	cur_trans = cur_trans->next;
 	/* BUG: There is a (trivial?) chance of use-after-free. */
 	free(for_del2);
       } else {
+	while (cur_trans->outgoing->next) {
+	  if (cur_trans->outgoing->packet) {
+	    ptr = cur_trans->outgoing->packet;
+	    len = MAX_UDP_PACKET_LEN;
+	    udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
+
+	    sendto(sckts->udp_sckt, udp_pckt, len, 0,
+		   &(cur_trans->outgoing->addr),
+		   sizeof(cur_trans->outgoing->addr));
+
+	    free(udp_pckt);
+	    destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
+	  }
+
+	  for_del = cur_trans->outgoing;
+	  cur_trans->outgoing = cur_trans->outgoing->next;
+	  free(for_del);
+	}
+
 	if (cur_trans->outgoing->packet) {
 	  ptr = cur_trans->outgoing->packet;
 	  len = MAX_UDP_PACKET_LEN;
