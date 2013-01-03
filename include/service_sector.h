@@ -47,7 +47,9 @@ inline int
                     struct ss_queue *trans);
 inline struct name_srvc_packet *
   ss_name_recv_pckt(struct ss_queue *trans);
-void
+inline struct ss_name_pckt_list *
+  ss_name_recv_entry(struct ss_queue *trans);
+inline void
   ss_name_dstry_recv_queue(struct ss_queue *trans);
 
 int ss__port137();

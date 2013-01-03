@@ -195,7 +195,18 @@ inline struct name_srvc_packet *ss_name_recv_pckt(struct ss_queue *trans) {
   return result;
 }
 
-void ss_name_dstry_recv_queue(struct ss_queue *trans) {
+inline struct ss_name_pckt_list *ss_name_recv_entry(struct ss_queue *trans) {
+  struct ss_name_pckt_list *result;
+
+  result = trans->incoming;
+
+  if (trans->incoming->next)
+    trans->incoming = trans->incoming->next;
+
+  return result;
+}
+
+inline void ss_name_dstry_recv_queue(struct ss_queue *trans) {
   struct ss_name_pckt_list *for_del;
 
   while (trans->incoming) {
