@@ -195,6 +195,19 @@ inline struct name_srvc_packet *ss_name_recv_pckt(struct ss_queue *trans) {
   return result;
 }
 
+void ss_name_dstry_recv_queue(struct ss_queue *trans) {
+  struct ss_name_pckt_list *for_del;
+
+  while (trans->incoming) {
+    if (trans->incoming->packet)
+      destroy_name_srvc_pckt(trans->incoming->packet, 1, 1);
+    for_del = trans->incoming;
+    trans->incoming = trans->incoming->next;
+    /* NOTETOSELF: This is safe. */
+    free(for_del);
+  }
+}
+
 
 int ss__port137() {
   struct ss_sckts sckts;

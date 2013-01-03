@@ -1024,6 +1024,9 @@ void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
   struct name_srvc_statistics_rfc1002 *stats;
   int i;
 
+  if (! packet)
+    return;
+
   all_res = malloc(sizeof(struct name_srvc_resource_lst *) *3);
 
   free(packet->header);
