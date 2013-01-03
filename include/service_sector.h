@@ -44,6 +44,7 @@ void
 
 inline int
   ss_name_send_pckt(struct name_srvc_packet *pckt,
+                    struct sockaddr_in *addr,
                     struct ss_queue *trans);
 inline struct name_srvc_packet *
   ss_name_recv_pckt(struct ss_queue *trans);

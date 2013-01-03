@@ -146,6 +146,7 @@ void ss_deregister_name_tid(uint16_t tid) {
 
 /* returns: 1=success, 0=failure, -1=error */
 inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
+			     struct sockaddr_in *addr,
 			     struct ss_queue *trans) {
   struct ss_name_pckt_list *trans_pckt;
 
@@ -156,6 +157,7 @@ inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
   }
 
   trans_pckt->packet = pckt;
+  memcpy(&(trans_pckt->addr), addr, sizeof(struct sockaddr_in));
   trans_pckt->next = 0;
   /* Add packet to queue. */
   trans->outgoing->next = trans_pckt;
