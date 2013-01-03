@@ -21,4 +21,12 @@
 # endif
 # define FALSE 0
 
+# define T_1MS    (1000000)       /*   1 ms */
+# define T_10MS   (10 * 1000000)  /*  10 ms */
+# define T_250MS  (250 * 1000000) /* 250 ms */
+
+# define TP_1MS   (1)   /*   1 ms, for poll() */
+# define TP_10MS  (10)  /*  10 ms, for poll() */
+# define TP_250MS (250) /* 250 ms, for poll() */
+
 #endif /* NBWORKS_CONSTDEF_H */

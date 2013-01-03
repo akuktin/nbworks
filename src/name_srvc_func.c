@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
+#include "constdef.h"
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
@@ -37,7 +38,7 @@ int name_srvc_B_add_name(unsigned char *name,
   result = 0;
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = 250 * 1000000; /* 250 ms */
+  sleeptime.tv_nsec = 2 * T_250MS;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
 				     my_ip_address, isgroup, 'B');
@@ -72,11 +73,6 @@ int name_srvc_B_add_name(unsigned char *name,
       break;
     }
 
-    if (outside_pckt->header->transaction_id != tid) {
-      destroy_name_srvc_pckt(outside_pckt, 1, 1);
-      continue;
-    }
-
     if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
 					  OPCODE_REGISTRATION)) &&
 	(outside_pckt->header->nm_flags & FLG_AA) &&
@@ -84,14 +80,12 @@ int name_srvc_B_add_name(unsigned char *name,
       /* This is a NEGATIVE NAME REGISTRATION RESPONSE. */
       /* Failed. */
       result = outside_pckt->header->rcode;
+      destroy_name_srvc_pckt(outside_pckt, 1, 1);
       break;
     }
 
     destroy_name_srvc_pckt(outside_pckt, 1, 1);
   }
-
-  if (outside_pckt)
-    destroy_name_srvc_pckt(outside_pckt, 1, 1);
 
   if (! result) {
     /* Succeded. */

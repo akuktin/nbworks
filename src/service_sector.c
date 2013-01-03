@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
+#include "constdef.h"
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
@@ -341,7 +342,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
   polldata.events = (POLLIN | POLLPRI);
 
   while (! nbworks_all_port_cntl.all_stop) {
-    ret_val = poll(&polldata, 1, 10);
+    ret_val = poll(&polldata, 1, TP_10MS);
     if (ret_val == 0)
       continue;
     if (ret_val < 0) {
@@ -416,7 +417,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 
   sckts = sckts_ptr;
   waittime.tv_sec = 0;
-  waittime.tv_nsec = 10000000; /* 10 ms */
+  waittime.tv_nsec = T_10MS;
 
   while (! nbworks_all_port_cntl.all_stop) {
     cur_trans = sckts->all_trans;
