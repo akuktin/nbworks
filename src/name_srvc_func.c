@@ -22,7 +22,7 @@
 #include "service_sector.h"
 
 
-/* return: 1=success, 0=fail, -1=error */
+/* return: 0=success, >0=fail, -1=error */
 int name_srvc_B_add_name(unsigned char *name,
 			 unsigned char name_type,
 			 struct nbnodename_list *scope,
@@ -90,22 +90,19 @@ int name_srvc_B_add_name(unsigned char *name,
     destroy_name_srvc_pckt(outside_pckt, 1, 1);
   }
 
+  if (outside_pckt)
+    destroy_name_srvc_pckt(outside_pckt, 1, 1);
+
   if (! result) {
     /* Succeded. */
     pckt->header->opcode = OPCODE_REQUEST | OPCODE_REFRESH;
     ss_name_send_pckt(pckt, trans);
-    result = 1;
-  } else {
-    result = 0;
   }
+
   ss_deregister_name_tid(tid);
-
-  while (outside_pckt) {
-    destroy_name_srvc_pckt(outside_pckt, 1, 1);
-    outside_pckt = ss_name_recv_pckt(trans);
-  }
-
+  ss_name_dstry_recv_queue(trans);
   free(trans);
+
   destroy_name_srvc_pckt(pckt, 0, 1);
 
   return result;
