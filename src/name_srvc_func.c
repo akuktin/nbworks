@@ -63,7 +63,7 @@ int name_srvc_B_add_name(unsigned char *name,
   /* TODO: put a recv stoper. */
 
   while (1) {
-    outside_pckt = ss_recv_name_pckt(trans);
+    outside_pckt = ss_name_recv_pckt(trans);
     if (! outside_pckt) {
       break;
     }
@@ -98,7 +98,7 @@ int name_srvc_B_add_name(unsigned char *name,
 
   while (outside_pckt) {
     destroy_name_srvc_pckt(outside_pckt, 1, 1);
-    outside_pckt = ss_recv_name_pckt(trans);
+    outside_pckt = ss_name_recv_pckt(trans);
   }
 
   destroy_name_srvc_pckt(pckt, 0, 1);
