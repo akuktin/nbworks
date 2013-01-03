@@ -32,6 +32,7 @@ int name_srvc_B_add_name(unsigned char *name,
   struct timespec sleeptime;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
+  struct sockaddr_in addr;
   int result;
   uint16_t tid;
 
@@ -39,6 +40,11 @@ int name_srvc_B_add_name(unsigned char *name,
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
   sleeptime.tv_nsec = 2 * T_250MS;
+
+  addr.sin_family = AF_INET;
+  /* VAXism below. */
+  fill_16field(137, (unsigned char *)&(addr.sin_port));
+  addr.sin_addr.s_addr = 0xffffffff;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
 				     my_ip_address, isgroup, 'B');
@@ -61,7 +67,7 @@ int name_srvc_B_add_name(unsigned char *name,
   /* Do not ask for recursion, because
      there are no NBNS in our scope. */
 
-  ss_name_send_pckt(pckt, trans);
+  ss_name_send_pckt(pckt, &addr, trans);
 
   nanosleep(&sleeptime, 0);
 
@@ -90,7 +96,7 @@ int name_srvc_B_add_name(unsigned char *name,
   if (! result) {
     /* Succeded. */
     pckt->header->opcode = OPCODE_REQUEST | OPCODE_REFRESH;
-    ss_name_send_pckt(pckt, trans);
+    ss_name_send_pckt(pckt, &addr, trans);
   }
 
   ss_deregister_name_tid(tid);

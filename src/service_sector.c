@@ -228,16 +228,13 @@ inline void ss_name_dstry_recv_queue(struct ss_queue *trans) {
 int ss__port137() {
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
-  struct in_addr my_inaddr;
   pthread_t thread[3];
   int ret_val, i;
-
-  my_inaddr.s_addr = get_inaddr();
 
   my_addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(my_addr.sin_port));
-  my_addr.sin_addr = my_inaddr;
+  my_addr.sin_addr.s_addr = get_inaddr();
 
   sckts.all_trans = nbworks_all_name_transactions;
   sckts.tcp_sckt = socket(PF_INET, SOCK_STREAM, 0);
