@@ -219,6 +219,8 @@ inline void ss_name_dstry_recv_queue(struct ss_queue *trans) {
     /* NOTETOSELF: This is safe. */
     free(for_del);
   }
+
+  return;
 }
 
 
