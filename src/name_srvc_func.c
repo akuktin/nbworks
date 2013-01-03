@@ -39,7 +39,7 @@ int name_srvc_B_add_name(unsigned char *name,
   result = 0;
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = 2 * T_250MS;
+  sleeptime.tv_nsec = T_500MS;
 
   addr.sin_family = AF_INET;
   /* VAXism below. */
