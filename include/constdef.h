@@ -31,4 +31,11 @@
 # define TP_250MS (250) /* 250 ms, for poll() */
 # define TP_500MS (500) /* 500 ms, for poll() */
 
+/* general */
+# define BCAST_REQ_RETRY_TIMEOUT T_250MS
+# define BCAST_REQ_RETRY_COUNT   3
+# define UCAST_REQ_RETRY_TIMEOUT 5 /* seconds */
+# define UCAST_REQ_RETRY_COUNT   3
+# define MAX_DATAGRAM_LENGTH     576 /* bytes, that is, octets */
+
 #endif /* NBWORKS_CONSTDEF_H */

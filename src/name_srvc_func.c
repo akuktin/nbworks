@@ -33,13 +33,13 @@ int name_srvc_B_add_name(unsigned char *name,
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
   struct sockaddr_in addr;
-  int result;
+  int result, retransmit_count;
   uint16_t tid;
 
   result = 0;
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_500MS;
+  sleeptime.tv_nsec = T_250MS;
 
   addr.sin_family = AF_INET;
   /* VAXism below. */
@@ -67,9 +67,11 @@ int name_srvc_B_add_name(unsigned char *name,
   /* Do not ask for recursion, because
      there are no NBNS in our scope. */
 
-  ss_name_send_pckt(pckt, &addr, trans);
+  for (i=0; i < BCAST_REQ_RETRY_COUNT; i++) {
+    ss_name_send_pckt(pckt, &addr, trans);
 
-  nanosleep(&sleeptime, 0);
+    nanosleep(&sleeptime, 0);
+  }
 
   ss_set_inputdrop_name_tid(tid);
 
