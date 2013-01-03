@@ -102,7 +102,8 @@ struct ss_queue *ss_register_name_tid(uint16_t tid) {
 
     while (cur_trans) {
       if (cur_trans->tid == tid &&
-	  cur_trans->status == nmtrst_normal) {
+	  (cur_trans->status == nmtrst_normal ||
+	   cur_trans->status == nmtrst_indrop)) {
 	/* Success! */
 	break_me_out = 1;
 	break;
@@ -134,8 +135,49 @@ void ss_deregister_name_tid(uint16_t tid) {
 
   while (cur_trans) {
     if (cur_trans->tid == tid &&
-	cur_trans->status == nmtrst_normal) {
+	(cur_trans->status == nmtrst_normal ||
+	 cur_trans->status == nmtrst_indrop)) {
       cur_trans->status = nmtrst_deregister;
+      return;
+    }
+    cur_trans = cur_trans->next;
+  }
+
+  return;
+}
+
+void ss_set_inputdrop_name_tid(uint16_t tid) {
+  struct ss_name_trans *cur_trans;
+
+  if (! nbworks_all_name_transactions)
+    return;
+
+  cur_trans = nbworks_all_name_transactions;
+
+  while (cur_trans) {
+    if (cur_trans->tid == tid &&
+	cur_trans->status == nmtrst_normal) {
+      cur_trans->status = nmtrst_indrop;
+      return;
+    }
+    cur_trans = cur_trans->next;
+  }
+
+  return;
+}
+
+void ss_set_normalstate_name_tid(uint16_t tid) {
+  struct ss_name_trans *cur_trans;
+
+  if (! nbworks_all_name_transactions)
+    return;
+
+  cur_trans = nbworks_all_name_transactions;
+
+  while (cur_trans) {
+    if (cur_trans->tid == tid &&
+	cur_trans->status != nmtrst_deregister) {
+      cur_trans->status = nmtrst_normal;
       return;
     }
     cur_trans = cur_trans->next;
@@ -376,12 +418,18 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       while (new_pckt) {
 	cur_trans = sckts->all_trans;
 	while (cur_trans) {
-	  if (cur_trans->tid == new_pckt->packet->header->transaction_id &&
-	      cur_trans->status == nmtrst_normal) {
-	    cur_trans->incoming->next = new_pckt;
-	    cur_trans->incoming = new_pckt;
-	    new_pckt = 0;
-	    break;
+	  if (cur_trans->tid == new_pckt->packet->header->transaction_id) {
+	    if (cur_trans->status == nmtrst_indrop) {
+	      destroy_name_srvc_pckt(new_pckt, 1, 1);
+	      new_pckt = 0;
+	      break;
+	    }
+	    if (cur_trans->status == nmtrst_normal) {
+	      cur_trans->incoming->next = new_pckt;
+	      cur_trans->incoming = new_pckt;
+	      new_pckt = 0;
+	      break;
+	    }
 	  } else {
 	    cur_trans = cur_trans->next;
 	  }

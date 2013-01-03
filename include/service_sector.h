@@ -11,8 +11,8 @@ struct ss_name_pckt_list {
 
 enum nametrans_status {
   nmtrst_normal = 0,
-  nmtrst_deregister,
-  nmtrst_delete
+  nmtrst_indrop,
+  nmtrst_deregister
 };
 
 /* This one is private to the service sector. */
@@ -41,6 +41,10 @@ struct ss_queue *
   ss_register_name_tid(uint16_t tid);
 void
   ss_deregister_name_tid(uint16_t tid);
+void
+  ss_set_inputdrop_name_tid(uint16_t tid);
+void
+  ss_set_normalstate_name_tid(uint16_t tid);
 
 inline int
   ss_name_send_pckt(struct name_srvc_packet *pckt,

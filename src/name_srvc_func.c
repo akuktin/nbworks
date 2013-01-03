@@ -71,7 +71,7 @@ int name_srvc_B_add_name(unsigned char *name,
 
   nanosleep(&sleeptime, 0);
 
-  /* TODO: put a recv stoper. */
+  ss_set_inputdrop_name_tid(tid);
 
   while (1) {
     outside_pckt = ss_name_recv_pckt(trans);
