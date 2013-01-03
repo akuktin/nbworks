@@ -366,6 +366,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	  if (cur_trans->tid == new_pckt->packet->header->transaction_id &&
 	      cur_trans->status == nmtrst_normal) {
 	    cur_trans->incoming->next = new_pckt;
+	    cur_trans->incoming = new_pckt;
 	    new_pckt = 0;
 	    break;
 	  } else {
@@ -373,10 +374,12 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	  }
 	}
 
-	/* This means there were no previously registered transactions
-	   with this tid. Register a new one and signal its existance. */
-	newtid_queue =
-	  ss_register_name_tid(new_pckt->packet->header->transaction_id);
+	if (new_pckt) {
+	  /* This means there were no previously registered transactions
+	     with this tid. Register a new one and signal its existance. */
+	  newtid_queue =
+	    ss_register_name_tid(new_pckt->packet->header->transaction_id);
+	}
       }
       if (newtid_queue) {
 	/* Signaling the new queue. */
