@@ -1,8 +1,11 @@
 #ifndef NBWORKS_SERVICESECTOR_H
 # define NBWORKS_SERVICESECTOR_H 1
 
+# define MAX_NAME_TCP_QUEUE 16
+
 struct ss_name_pckt_list {
   struct name_srvc_packet *packet;
+  struct sockaddr_in addr;
   struct ss_name_pckt_list *next;
 };
 
@@ -20,14 +23,27 @@ struct ss_queue {
   struct ss_name_pckt_list *outgoing;
 };
 
+struct ss_sckts {
+  int udp_sckt;
+  int tcp_sckt;
+  struct ss_name_trans *all_trans;
+};
+
 void init_service_sector();
-struct ss_queue *ss_register_name_tid(uint16_t tid);
-void ss_deregister_name_tid(uint16_t tid);
+struct ss_queue *
+  ss_register_name_tid(uint16_t tid);
+void
+  ss_deregister_name_tid(uint16_t tid);
 
-inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
-                             struct ss_queue *trans);
-inline struct name_srvc_packet *ss_recv_name_pckt(struct ss_queue *trans);
+inline int
+  ss_name_send_pckt(struct name_srvc_packet *pckt,
+                    struct ss_queue *trans);
+inline struct name_srvc_packet *
+  ss_name_recv_pckt(struct ss_queue *trans);
 
-void ss_rcv_port137();
+int ss__port137();
+void *ss_name_udp_recver(void *sckts_ptr);
+void *ss_name_udp_sender(void *sckts_ptr);
+unsigned int get_inaddr();
 
 #endif /* NBWORKS_SERVICESECTOR_H */
