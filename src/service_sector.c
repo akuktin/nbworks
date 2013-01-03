@@ -86,6 +86,7 @@ struct ss_queue *ss_register_name_tid(uint16_t tid) {
     free(my_trans);
     return 0;
   }
+  my_trans->status = nmtrst_normal;
   my_trans->next = 0;
 
   result->incoming = my_trans->incoming;
@@ -99,7 +100,8 @@ struct ss_queue *ss_register_name_tid(uint16_t tid) {
     cur_trans = nbworks_all_name_transactions;
 
     while (cur_trans) {
-      if (cur_trans->tid == tid) {
+      if (cur_trans->tid == tid &&
+	  cur_trans->status == nmtrst_normal) {
 	/* Success! */
 	break_me_out = 1;
 	break;
@@ -122,22 +124,19 @@ struct ss_queue *ss_register_name_tid(uint16_t tid) {
 }
 
 void ss_deregister_name_tid(uint16_t tid) {
-  struct ss_name_trans *cur_trans, **last_trans;
-
-  cur_trans = nbworks_all_name_transactions;
-  last_trans = &nbworks_all_name_transactions;
+  struct ss_name_trans *cur_trans;
 
   if (! nbworks_all_name_transactions)
     return;
 
+  cur_trans = nbworks_all_name_transactions;
+
   while (cur_trans) {
-    if (cur_trans->tid == tid) {
-      last_trans = &(cur_trans->next);
-      /* BUG: There is a (trivial?) chance of use-after-free. */
-      free(cur_trans);
+    if (cur_trans->tid == tid &&
+	cur_trans->status == nmtrst_normal) {
+      cur_trans->status = nmtrst_deregister;
       return;
     }
-    last_trans = &(cur_trans->next);
     cur_trans = cur_trans->next;
   }
 
@@ -351,7 +350,8 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       while (new_pckt) {
 	cur_trans = sckts->all_trans;
 	while (cur_trans) {
-	  if (cur_trans->tid == new_pckt->packet->header->transaction_id) {
+	  if (cur_trans->tid == new_pckt->packet->header->transaction_id &&
+	      cur_trans->status == nmtrst_normal) {
 	    cur_trans->incoming->next = new_pckt;
 	    new_pckt = 0;
 	    break;
@@ -379,7 +379,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
   struct timespec waittime;
   struct ss_sckts *sckts;
   struct ss_name_pckt_list *for_del;
-  struct ss_name_trans *cur_trans;
+  struct ss_name_trans *cur_trans, **last_trans, *for_del;
   unsigned int len;
   void *udp_pckt, *ptr;
 
@@ -389,6 +389,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 
   while (! nbworks_all_port_cntl.all_stop) {
     cur_trans = sckts->all_trans;
+    last_trans = &(sckts->all_trans);
     while (cur_trans) {
       while (cur_trans->outgoing->next) {
 	if (cur_trans->outgoing->packet) {
@@ -409,21 +410,45 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	free(for_del);
       }
 
-      if (cur_trans->outgoing->packet) {
-	ptr = cur_trans->outgoing->packet;
-	len = MAX_UDP_PACKET_LEN;
-	udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
+      /* Here's hoping GCC does not mess this up royally. */
+      if (cur_trans->status == nmtrst_deregister) {
+	if (cur_trans->outgoing->packet) {
+	  ptr = cur_trans->outgoing->packet;
+	  len = MAX_UDP_PACKET_LEN;
+	  udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
 
-	sendto(sckts->udp_sckt, udp_pckt, len, 0,
-	       &(cur_trans->outgoing->addr),
-	       sizeof(cur_trans->outgoing->addr));
+	  sendto(sckts->udp_sckt, udp_pckt, len, 0,
+		 &(cur_trans->outgoing->addr),
+		 sizeof(cur_trans->outgoing->addr));
 
-	free(udp_pckt);
-	destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
-	cur_trans->outgoing->packet = 0;
+	  free(udp_pckt);
+	  destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
+	  cur_trans->outgoing->packet = 0;
+	}
+
+	*last_trans = cur_trans->next;
+	for_del = cur_trans;
+	cur_trans = cur_trans->next;
+	/* BUG: There is a (trivial?) chance of use-after-free. */
+	free(for_del);
+      } else {
+	if (cur_trans->outgoing->packet) {
+	  ptr = cur_trans->outgoing->packet;
+	  len = MAX_UDP_PACKET_LEN;
+	  udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
+
+	  sendto(sckts->udp_sckt, udp_pckt, len, 0,
+		 &(cur_trans->outgoing->addr),
+		 sizeof(cur_trans->outgoing->addr));
+
+	  free(udp_pckt);
+	  destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
+	  cur_trans->outgoing->packet = 0;
+	};
+
+	last_trans = &(cur_trans->next);
+	cur_trans = cur_trans->next;
       }
-
-      cur_trans = cur_trans->next;
     }
 
     nanosleep(&waittime, 0);

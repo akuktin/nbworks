@@ -34,6 +34,13 @@ int name_srvc_B_add_name(unsigned char *name,
   sleeptime.tv_sec = 0;
   sleeptime.tv_nsec = 250 * 1000000; /* 250 ms */
 
+  pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
+				     my_ip_address, isgroup, 'B');
+  if (! pckt) {
+    /* TODO: errno signaling stuff */
+    return -1;
+  }
+
   tid = make_weakrandom();
 
   trans = ss_register_name_tid(tid);
@@ -42,14 +49,6 @@ int name_srvc_B_add_name(unsigned char *name,
     return -1;
   }
     
-  pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
-				     my_ip_address, isgroup, 'B');
-  if (! pckt) {
-    /* TODO: errno signaling stuff */
-    ss_deregister_name_tid(tid);
-    return -1;
-  }
-
   pckt->header->transaction_id = tid;
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
   pckt->header->nm_flags = FLG_B;

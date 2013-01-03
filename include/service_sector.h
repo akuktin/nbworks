@@ -9,9 +9,17 @@ struct ss_name_pckt_list {
   struct ss_name_pckt_list *next;
 };
 
+enum nametrans_status {
+  nmtrst_normal = 0,
+  nmtrst_deregister,
+  nmtrst_deregister2,
+  nmtrst_delete
+};
+
 /* This one is private to the service sector. */
 struct ss_name_trans {
   uint16_t tid;
+  enum nametrans_status status;
   struct ss_name_pckt_list *incoming;
   struct ss_name_pckt_list *outgoing;
   struct ss_name_trans *next;
