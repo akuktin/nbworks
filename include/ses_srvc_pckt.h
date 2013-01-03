@@ -63,7 +63,8 @@ struct ses_srvc_packet *
   master_ses_srvc_pckt_reader(void *packet,
 			      int len);
 void *
-  master_ses_srvc_pckt_writer(struct ses_srvc_packet *packet,
-                              unsigned int *pckt_len);
+  master_ses_srvc_pckt_writer(void *packet_ptr,
+                              unsigned int *pckt_len,
+                              void *packet_field);
 
 #endif /* NBWORKS_SESSRVCPCKT_H */

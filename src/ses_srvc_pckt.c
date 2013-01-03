@@ -332,27 +332,36 @@ struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
   return result;
 }
 
-void *master_ses_srvc_pckt_writer(struct ses_srvc_packet *packet,
-				  unsigned int *pckt_len) {
+void *master_ses_srvc_pckt_writer(void *packet_ptr,
+				  unsigned int *pckt_len,
+				  void *packet_field) {
+  struct ses_srvc_packet *packet;
   unsigned char *result, *walker, *endof_pckt;
 
-  if (! (packet && pckt_len)) {
+  if (! (packet_ptr && pckt_len)) {
     /* TODO: errno signaling stuff */
     return 0;
   }
 
-  result = calloc(1, MAX_UDP_PACKET_LEN);
-  if (! result) {
-    /* TODO: errno signaling stuff */
-    return 0;
+  packet = packet_ptr;
+
+  if (packet_field) {
+    result = packet_field;
+  } else {
+    result = calloc(1, *pckt_len);
+    if (! result) {
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
   }
 
   walker = result;
-  endof_pckt = result + MAX_UDP_PACKET_LEN;
+  endof_pckt = result + *pckt_len;
 
   walker = fill_ses_packet_header(packet, walker, endof_pckt);
   walker = fill_ses_srvc_pckt_payload_data(packet, walker,
 					   endof_pckt);
 
-  return walker;
+  *pckt_len = walker - result;
+  return result;
 }

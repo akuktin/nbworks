@@ -818,7 +818,8 @@ void *master_name_srvc_pckt_reader(void *packet,
 }
 
 void *master_name_srvc_pckt_writer(void *packet_ptr,
-				   unsigned int *pckt_len) {
+				   unsigned int *pckt_len,
+				   void *packet_field) {
   struct name_srvc_packet *packet;
   struct name_srvc_question_lst *cur_qstn;
   struct name_srvc_resource_lst *cur_res;
@@ -831,14 +832,18 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
 
   packet = packet_ptr;
 
-  result = calloc(1, MAX_UDP_PACKET_LEN);
-  if (! result) {
-    /* TODO: errno signaling stuff */
-    return 0;
+  if (packet_field) {
+    result = packet_field;
+  } else {
+    result = calloc(1, *pckt_len);
+    if (! result) {
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
   }
 
   walker = result;
-  endof_pckt = result + MAX_UDP_PACKET_LEN;
+  endof_pckt = result + *pckt_len;
 
   walker = fill_name_srvc_pckt_header(packet->header, walker,
 				      endof_pckt);

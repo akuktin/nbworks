@@ -316,7 +316,8 @@ void *master_dtg_srvc_pckt_reader(void *packet,
 }
 
 void *master_dtg_srvc_pckt_writer(void *packet_ptr,
-				  unsigned int *pckt_len) {
+				  unsigned int *pckt_len,
+				  void *packet_field) {
   struct dtg_srvc_packet *packet;
   unsigned char *result, *walker, *endof_pckt;
 
@@ -327,14 +328,18 @@ void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 
   packet = packet_ptr;
 
-  result = calloc(1, MAX_UDP_PACKET_LEN);
-  if (! result) {
-    /* TODO: errno signaling stuff */
-    return 0;
+  if (packet_field) {
+    result = packet_field;
+  } else {
+    result = calloc(1, *pckt_len);
+    if (! result) {
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
   }
 
   walker = result;
-  endof_pckt = result + MAX_UDP_PACKET_LEN;
+  endof_pckt = result + *pckt_len;
 
   walker = fill_dtg_packet_header(packet, walker, endof_pckt);
   walker = fill_dtg_srvc_pckt_payload_data(packet, walker, endof_pckt);

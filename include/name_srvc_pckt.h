@@ -189,7 +189,8 @@ void *
                                int len);
 void *
   master_name_srvc_pckt_writer(void *packet_ptr,
-                               unsigned int *pckt_len);
+                               unsigned int *pckt_len,
+                               void *packet_field);
 struct name_srvc_packet *
   alloc_name_srvc_pckt(unsigned int qstn,
                        unsigned int answ,

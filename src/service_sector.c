@@ -420,7 +420,8 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	while (cur_trans) {
 	  if (cur_trans->tid == new_pckt->packet->header->transaction_id) {
 	    if (cur_trans->status == nmtrst_indrop) {
-	      destroy_name_srvc_pckt(new_pckt, 1, 1);
+	      destroy_name_srvc_pckt(new_pckt->packet, 1, 1);
+	      free(new_pckt);
 	      new_pckt = 0;
 	      break;
 	    }
@@ -444,7 +445,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       }
       if (newtid_queue) {
 	/* Signaling the new queue. */
-	...
+	//	...
       }
     }
   }
@@ -457,12 +458,18 @@ void *ss_name_udp_sender(void *sckts_ptr) {
   struct ss_sckts *sckts;
   struct ss_name_pckt_list *for_del;
   struct ss_name_trans *cur_trans, **last_trans, *for_del2;
-  unsigned int len;
-  void *udp_pckt, *ptr;
+  unsigned int len, i;
+  unsigned char *deleter, udp_pckt[MAX_UDP_PACKET_LEN];
+  void *ptr;
 
   sckts = sckts_ptr;
   waittime.tv_sec = 0;
   waittime.tv_nsec = T_10MS;
+
+  deleter = udp_pckt;
+  for (i=0; i < MAX_UDP_PACKET_LEN; i++) {
+    *deleter = '\0';
+  }
 
   while (! nbworks_all_port_cntl.all_stop) {
     cur_trans = sckts->all_trans;
@@ -476,13 +483,16 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	  if (cur_trans->outgoing->packet) {
 	    ptr = cur_trans->outgoing->packet;
 	    len = MAX_UDP_PACKET_LEN;
-	    udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
+	    master_name_srvc_pckt_writer(ptr, &len, udp_pckt);
 
 	    sendto(sckts->udp_sckt, udp_pckt, len, 0,
 		   &(cur_trans->outgoing->addr),
 		   sizeof(cur_trans->outgoing->addr));
 
-	    free(udp_pckt);
+	    deleter = udp_pckt;
+	    for (i=0; i<len; i++) {
+	      *deleter = '\0';
+	    }
 	    destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
 	  }
 
@@ -500,13 +510,16 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	  if (cur_trans->outgoing->packet) {
 	    ptr = cur_trans->outgoing->packet;
 	    len = MAX_UDP_PACKET_LEN;
-	    udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
+	    master_name_srvc_pckt_writer(ptr, &len, udp_pckt);
 
 	    sendto(sckts->udp_sckt, udp_pckt, len, 0,
 		   &(cur_trans->outgoing->addr),
 		   sizeof(cur_trans->outgoing->addr));
 
-	    free(udp_pckt);
+	    deleter = udp_pckt;
+	    for (i=0; i<len; i++) {
+	      *deleter = '\0';
+	    }
 	    destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
 	  }
 
@@ -518,13 +531,16 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	if (cur_trans->outgoing->packet) {
 	  ptr = cur_trans->outgoing->packet;
 	  len = MAX_UDP_PACKET_LEN;
-	  udp_pckt = master_name_srvc_pckt_writer(ptr, &len);
+	  master_name_srvc_pckt_writer(ptr, &len, udp_pckt);
 
 	  sendto(sckts->udp_sckt, udp_pckt, len, 0,
 		 &(cur_trans->outgoing->addr),
 		 sizeof(cur_trans->outgoing->addr));
 
-	  free(udp_pckt);
+	  deleter = udp_pckt;
+	  for (i=0; i<len; i++) {
+	    *deleter = '\0';
+	  }
 	  destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
 	  cur_trans->outgoing->packet = 0;
 	};

@@ -33,7 +33,7 @@ int name_srvc_B_add_name(unsigned char *name,
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
   struct sockaddr_in addr;
-  int result, retransmit_count;
+  int result, i;
   uint16_t tid;
 
   result = 0;

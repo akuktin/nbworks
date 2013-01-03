@@ -62,6 +62,7 @@ void *
                               int len);
 void *
   master_dtg_srvc_pckt_writer(void *packet_ptr,
-                              unsigned int *pckt_len);
+                              unsigned int *pckt_len,
+                              void *packet_field);
 
 #endif /* NBWORKS_DTGSRVCPCKT_H */

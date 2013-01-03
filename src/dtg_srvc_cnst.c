@@ -20,18 +20,36 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
 						       uint16_t offset) {
   struct dtg_pckt_pyld_normal *result;
   struct nbnodename_list *complete_src, *complete_dst;
+  unsigned char *label_src, *label_dst;
   int lenof_names;
 
-  complete_src = make_nbnodename(src, src_type);
-  if (! complete_src) {
+  label_src = make_nbnodename(src, src_type);
+  if (! label_src) {
     /* TODO: errno signaling stuff */
     return 0;
   }
 
-  complete_dst = make_nbnodename(dst, dst_type);
+  label_dst = make_nbnodename(dst, dst_type);
+  if (! label_dst) {
+    /* TODO: errno signaling stuff */
+    free(label_src);
+    return 0;
+  }
+
+  complete_src = malloc(sizeof(struct nbnodename_list));
+  if (! complete_src) {
+    /* TODO: errno signaling stuff */
+    free(label_dst);
+    free(label_src);
+    return 0;
+  }
+
+  complete_dst = malloc(sizeof(struct nbnodename_list));
   if (! complete_dst) {
     /* TODO: errno signaling stuff */
     free(complete_src);
+    free(label_dst);
+    free(label_src);
     return 0;
   }
 
@@ -40,8 +58,18 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
     /* TODO: errno signaling stuff */
     free(complete_src);
     free(complete_dst);
+    free(label_dst);
+    free(label_src);
     return 0;
   };
+
+  complete_src->name = label_src;
+  complete_src->len = NETBIOS_CODED_NAME_LEN;
+  complete_src->next_name = scope;
+
+  complete_dst->name = label_dst;
+  complete_dst->len = NETBIOS_CODED_NAME_LEN;
+  complete_dst->next_name = scope;
 
   lenof_names = ((4- (nbnodenamelen(complete_src) %4)) %4) *2;
 
