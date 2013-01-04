@@ -25,6 +25,7 @@ struct dtg_srvc_packet *read_dtg_packet_header(unsigned char **master_packet_wal
     /* TODO: errno signaling stuff */
     return 0;
   }
+  packet->for_del = 0;
   walker = *master_packet_walker;
 
   packet->type = *walker;

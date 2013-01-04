@@ -31,6 +31,7 @@ struct ses_srvc_retarget_blob_rfc1002 {
 };
 
 struct ses_srvc_packet {
+  unsigned char for_del;
   unsigned char type;
   unsigned int flags : 7;
   uint32_t len;

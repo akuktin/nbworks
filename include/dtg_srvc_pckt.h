@@ -28,6 +28,7 @@ struct dtg_pckt_pyld_normal {
 };
 
 struct dtg_srvc_packet {
+  unsigned char for_del;
   unsigned char type;
   unsigned char flags;
   uint16_t id;

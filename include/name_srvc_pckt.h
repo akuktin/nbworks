@@ -141,6 +141,7 @@ struct name_srvc_resource_lst {
 };
 
 struct name_srvc_packet {
+  unsigned char for_del;
   struct name_srvc_pckt_header *header;
   struct name_srvc_question_lst *questions;
   struct name_srvc_resource_lst *answers;

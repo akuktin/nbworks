@@ -692,6 +692,7 @@ void *master_name_srvc_pckt_reader(void *packet,
     /* TODO: errno signaling stuff */
     return 0;
   }
+  result->for_del = 0;
   result->questions = 0;
   result->answers = 0;
   result->authorities = 0;
