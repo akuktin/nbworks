@@ -227,6 +227,29 @@ struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
     return 0;
 }
 
+/* return: 0=equal, 1=not equal, -1=error */
+int cmp_nbnodename(struct nbnodename_list *name_one,
+		   struct nbnodename_list *name_two) {
+  while (name_one) {
+    if (name_two) {
+      if (name_one->len == name_two->len) {
+	if (0 == memcmp(name_one->name, name_two->name,
+			name_one->len)) {
+	  name_one = name_one->next_name;
+	  name_two = name_two->next_name;
+	} else
+	  return 1;
+      } else
+	return 1;
+    } else
+      return 1;
+  }
+  if (name_two)
+    return 1;
+  else
+    return 0;
+}
+
 uint16_t nbnodenamelen(struct nbnodename_list *nbnodename) {
   struct nbnodename_list *cur_name;
   uint16_t result;

@@ -29,6 +29,9 @@ void
   destroy_nbnodename(struct nbnodename_list *nbnodename);
 struct nbnodename_list *
   clone_nbnodename(struct nbnodename_list *nbnodename);
+int
+  cmp_nbnodename(struct nbnodename_list *name_one,
+                 struct nbnodename_list *name_two);
 uint16_t
   nbnodenamelen(struct nbnodename_list *nbnodename);
 
