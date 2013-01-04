@@ -46,6 +46,9 @@ unsigned char *fill_ses_packet_header(struct ses_srvc_packet *content,
 				      unsigned char *endof_pckt) {
   unsigned char *walker;
 
+  if (! content)
+    return field;
+
   walker = field;
 
   if ((walker +4) > endof_pckt) {
@@ -199,10 +202,15 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
   unsigned char *walker, *remember_walker;
 
+  if (! content)
+    return field;
+
   walker = field;
 
   switch (content->payload_t) {
   case two_names:
+    if (! content->payload)
+      return walker;
     two_names_payload = content->payload;
     if ((walker +2) > endof_pckt) {
       /* OUT_OF_BOUNDS */
@@ -239,6 +247,8 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
     break;
 
   case retarget_blob_rfc1002:
+    if (! content->payload)
+      return walker;
     if ((walker +3*2) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -251,6 +261,8 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
     break;
 
   case payloadpayload:
+    if (! content->payload)
+      return walker;
     if ((walker + content->len) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */

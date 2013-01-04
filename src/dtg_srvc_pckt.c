@@ -45,6 +45,9 @@ unsigned char *fill_dtg_packet_header(struct dtg_srvc_packet *content,
 				      unsigned char *endof_pckt) {
   unsigned char *walker;
 
+  if (! content)
+    return field;
+
   walker = field;
 
   if ((walker + 5*2) > endof_pckt) {
@@ -194,10 +197,15 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
   struct dtg_pckt_pyld_normal *normal_pckt;
   unsigned char *walker, *remember_walker;
 
+  if (! content)
+    return field;
+
   walker = field;
 
   switch (content->payload_t) {
   case normal:
+    if (! content->payload)
+      return walker;
     normal_pckt = content->payload;
     if ((walker + normal_pckt->len +2+2*2) > endof_pckt) {
       /* OUT_OF_BOUNDS */
@@ -247,6 +255,8 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     break;
 
   case nbnodename:
+    if (! content->payload)
+      return walker;
     return fill_all_DNS_labels(content->payload, walker,
 			       endof_pckt);
     break;

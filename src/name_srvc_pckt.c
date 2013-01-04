@@ -504,13 +504,15 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *walker;
 
-  if (! content->rdata)
+  if (! content)
     return field;
 
   walker = field;
 
   switch (content->rdata_t) {
   case unknown_important_resource:
+    if (! content->rdata)
+      return field;
     if ((walker + content->rdata_len) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -520,6 +522,8 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_address_list:
+    if (! content->rdata)
+      return field;
     return fill_nbaddress_list(content->rdata, walker, end_of_packet);
     break;
 
@@ -528,6 +532,8 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_nodename:
+    if (! content->rdata)
+      return field;
     walker = fill_all_DNS_labels(content->rdata, walker, end_of_packet);
     walker = walker + ((4- ((walker - field) %4)) %4);
     if (walker > end_of_packet) {
@@ -539,10 +545,14 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_NBT_node_ip_address:
+    if (! content->rdata)
+      return field;
     return fill_ipv4_address_list(content->rdata, walker, end_of_packet);
     break;
 
   case nb_statistics_rfc1002:
+    if (! content->rdata)
+      return field;
     nbstat = content->rdata;
     if ((walker +1+3+6+2+19*2) > end_of_packet) {
       /* OUT_OF_BOUNDS */
@@ -595,7 +605,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   default:
-    return field;
+    return walker;
     break;
   }
 
