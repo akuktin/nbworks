@@ -260,7 +260,6 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
 
 	    result = res->res;
 	    res->res = 0;
-	    res = 0;
 	    break;
 
 	  }
