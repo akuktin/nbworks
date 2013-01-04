@@ -62,7 +62,7 @@ int name_srvc_B_add_name(unsigned char *name,
     destroy_name_srvc_pckt(pckt, 0, 1);
     return -1;
   }
-    
+
   pckt->header->transaction_id = tid;
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
   pckt->header->nm_flags = FLG_B;
