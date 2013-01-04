@@ -1047,7 +1047,8 @@ void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
 	  packet->questions->qstn->name = nbnodename;
 	}
       } else {
-	free(packet->questions->qstn->name->name);
+	if (packet->questions->qstn->name)
+	  free(packet->questions->qstn->name->name);
 	free(packet->questions->qstn->name);
       }
       free(packet->questions->qstn);
@@ -1073,7 +1074,8 @@ void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
 	    cur_res->res->name = nbnodename;
 	  }
 	} else {
-	  free(cur_res->res->name->name);
+	  if (cur_res->res->name)
+	    free(cur_res->res->name->name);
 	  free(cur_res->res->name);
 	}
 	switch (cur_res->res->rdata_t) {
@@ -1091,7 +1093,8 @@ void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
 		nbnodename = next_nbnodename;
 	      }
 	    } else {
-	      free(nbnodename->name);
+	      if (nbnodename)
+		free(nbnodename->name);
 	      free(nbnodename);
 	    }
 	    free(nbnodename_bckbone);
@@ -1110,7 +1113,8 @@ void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
 	      nbnodename = next_nbnodename;
 	    }
 	  } else {
-	    free(nbnodename->name);
+	    if (nbnodename)
+	      free(nbnodename->name);
 	    free(nbnodename);
 	  }
 	  break;
