@@ -149,7 +149,7 @@ unsigned char *make_nbnodename(const unsigned char *string,
   }
 
   len = strnlen((char *)string, ((NETBIOS_NAME_LEN +1) -1));
-  if (len > NETBIOS_NAME_LEN) {
+  if (len >= NETBIOS_NAME_LEN) {
     /* TODO: errno signaling stuff */
     return 0;
   }

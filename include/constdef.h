@@ -11,6 +11,16 @@
 # endif
 # define ONES (~0)
 
+# ifdef ONESZERO
+#  undef ONESZERO
+# endif
+# define ONESZERO (~1)
+
+# ifdef ZEROONES
+#  undef ZEROONES
+# endif
+# define ZEROONES (~(1 >> 1))
+
 # ifdef TRUE
 #  undef TRUE
 # endif
