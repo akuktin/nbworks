@@ -30,7 +30,8 @@ int name_srvc_B_add_name(unsigned char *name,
 			 unsigned char name_type,
 			 struct nbnodename_list *scope,
 			 uint32_t my_ip_address,
-			 int isgroup) {
+			 int isgroup,
+			 uint32_t ttl) {
   struct timespec sleeptime;
   struct sockaddr_in addr;
   struct ss_queue *trans;
@@ -49,7 +50,7 @@ int name_srvc_B_add_name(unsigned char *name,
   fill_16field(137, (unsigned char *)&(addr.sin_port));
   addr.sin_addr.s_addr = INADDR_BROADCAST;
 
-  pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
+  pckt = name_srvc_make_name_reg_big(name, name_type, scope, ttl,
 				     my_ip_address, isgroup, 'B');
   if (! pckt) {
     /* TODO: errno signaling stuff */
