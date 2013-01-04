@@ -8,6 +8,8 @@
 #endif
 #include <time.h>
 
+#include <pthread.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -285,4 +287,18 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
   destroy_name_srvc_pckt(pckt, 0, 1);
 
   return result;
+}
+
+void *name_srvc_B_handle_newtid(void *input) {
+  struct timespec sleeptime;
+  struct sockaddr_in addr;
+  struct newtid_params params;
+  struct name_srvc_packet *pckt, *outside_pckt;
+  void *result;
+
+  memcpy(&params, input, sizeof(struct newtid_params));
+
+  ...
+
+  return 0;
 }

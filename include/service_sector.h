@@ -3,6 +3,9 @@
 
 # define MAX_NAME_TCP_QUEUE 16
 
+# include <pthread.h>
+# include "name_srvc_pckt.h"
+
 struct ss_name_pckt_list {
   struct name_srvc_packet *packet;
   struct sockaddr_in addr;
@@ -34,6 +37,12 @@ struct ss_sckts {
   int udp_sckt;
   int tcp_sckt;
   struct ss_name_trans *all_trans;
+};
+
+struct newtid_params {
+  pthread_t thread_id;
+  uint16_t tid;
+  struct ss_queue *trans;
 };
 
 void init_service_sector();
