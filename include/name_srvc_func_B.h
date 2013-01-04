@@ -1,5 +1,5 @@
-#ifndef NBWORKS_NAMESRVCFUNC_H
-# define NBWORKS_NAMESRVCFUNC_H 1
+#ifndef NBWORKS_NAMESRVCFUNCB_H
+# define NBWORKS_NAMESRVCFUNCB_H 1
 
 int
   name_srvc_B_add_name(unsigned char *name,
@@ -21,4 +21,4 @@ struct name_srvc_resource *
 void *
   name_srvc_B_handle_newtid(void *input);
 
-#endif /* NBWORKS_NAMESRVCFUNC_H */
+#endif /* NBWORKS_NAMESRVCFUNCB_H */
