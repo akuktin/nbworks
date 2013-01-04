@@ -1081,10 +1081,33 @@ void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
 	switch (cur_res->res->rdata_t) {
 	case nb_statistics_rfc1002:
 	  stats = cur_res->res->rdata;
-	  nbnodename_bckbone = stats->listof_names;
-	  while (nbnodename_bckbone) {
-	    next_nbnodename_bckbone = nbnodename_bckbone->next_nbnodename;
-	    nbnodename = nbnodename_bckbone->nbnodename;
+	  if (stats) {
+	    nbnodename_bckbone = stats->listof_names;
+	    while (nbnodename_bckbone) {
+	      next_nbnodename_bckbone = nbnodename_bckbone->next_nbnodename;
+	      nbnodename = nbnodename_bckbone->nbnodename;
+	      if (really_complete) {
+		while (nbnodename) {
+		  next_nbnodename = nbnodename->next_name;
+		  free(nbnodename->name);
+		  free(nbnodename);
+		  nbnodename = next_nbnodename;
+		}
+	      } else {
+		if (nbnodename)
+		  free(nbnodename->name);
+		free(nbnodename);
+	      }
+	      free(nbnodename_bckbone);
+	      nbnodename_bckbone = next_nbnodename_bckbone;
+	    }
+	    free(stats);
+	  }
+	  break;
+
+	case nb_nodename:
+	  nbnodename = cur_res->res->rdata;
+	  if (nbnodename) {
 	    if (really_complete) {
 	      while (nbnodename) {
 		next_nbnodename = nbnodename->next_name;
@@ -1097,35 +1120,18 @@ void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
 		free(nbnodename->name);
 	      free(nbnodename);
 	    }
-	    free(nbnodename_bckbone);
-	    nbnodename_bckbone = next_nbnodename_bckbone;
-	  }
-	  free(stats);
-	  break;
-
-	case nb_nodename:
-	  nbnodename = cur_res->res->rdata;
-	  if (really_complete) {
-	    while (nbnodename) {
-	      next_nbnodename = nbnodename->next_name;
-	      free(nbnodename->name);
-	      free(nbnodename);
-	      nbnodename = next_nbnodename;
-	    }
-	  } else {
-	    if (nbnodename)
-	      free(nbnodename->name);
-	    free(nbnodename);
 	  }
 	  break;
 
 	case nb_address_list:
 	case nb_NBT_node_ip_address:
 	  addr_list = cur_res->res->rdata;
-	  while (addr_list) {
-	    next_addr_list = addr_list->next_address;
-	    free(addr_list);
-	    addr_list = next_addr_list;
+	  if (addr_list) {
+	    while (addr_list) {
+	      next_addr_list = addr_list->next_address;
+	      free(addr_list);
+	      addr_list = next_addr_list;
+	    }
 	  }
 	  break;
 
