@@ -193,19 +193,22 @@ inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
 			     struct ss_queue *trans) {
   struct ss_name_pckt_list *trans_pckt;
 
-  trans_pckt = malloc(sizeof(struct name_srvc_packet));
-  if (! trans_pckt) {
-    /* TODO: errno signaling stuff */
-    return -1;
-  }
+  if (trans)
+    if (trans->outgoing && pckt && addr) {
+      trans_pckt = malloc(sizeof(struct name_srvc_packet));
+      if (! trans_pckt) {
+	/* TODO: errno signaling stuff */
+	return -1;
+      }
 
-  trans_pckt->packet = pckt;
-  memcpy(&(trans_pckt->addr), addr, sizeof(struct sockaddr_in));
-  trans_pckt->next = 0;
-  /* Add packet to queue. */
-  trans->outgoing->next = trans_pckt;
-  /* Move the queue pointer. */
-  trans->outgoing = trans_pckt;
+      trans_pckt->packet = pckt;
+      memcpy(&(trans_pckt->addr), addr, sizeof(struct sockaddr_in));
+      trans_pckt->next = 0;
+      /* Add packet to queue. */
+      trans->outgoing->next = trans_pckt;
+      /* Move the queue pointer. */
+      trans->outgoing = trans_pckt;
+    };
 
   return 1;
 }
@@ -213,6 +216,11 @@ inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
 inline struct name_srvc_packet *ss_name_recv_pckt(struct ss_queue *trans) {
   struct name_srvc_packet *result;
   struct ss_name_pckt_list *holdme;
+
+  if (! trans)
+    return 0;
+  if (! trans->incoming)
+    return 0;
 
   result = trans->incoming->packet;
   trans->incoming->packet = 0;
@@ -243,6 +251,9 @@ inline struct name_srvc_packet *ss_name_recv_pckt(struct ss_queue *trans) {
 inline struct ss_name_pckt_list *ss_name_recv_entry(struct ss_queue *trans) {
   struct ss_name_pckt_list *result;
 
+  if (! trans)
+    return 0;
+
   result = trans->incoming;
 
   if (trans->incoming->next)
@@ -253,6 +264,9 @@ inline struct ss_name_pckt_list *ss_name_recv_entry(struct ss_queue *trans) {
 
 inline void ss_name_dstry_recv_queue(struct ss_queue *trans) {
   struct ss_name_pckt_list *for_del;
+
+  if (! trans)
+    return;
 
   while (trans->incoming) {
     if (trans->incoming->packet)
@@ -376,6 +390,9 @@ void *ss_name_udp_recver(void *sckts_ptr) {
   unsigned int len;
   unsigned char udp_pckt[MAX_UDP_PACKET_LEN], *deleter;
 
+  if (! sckts_ptr)
+    return 0;
+
   sckts = sckts_ptr;
   polldata.fd = sckts->udp_sckt;
   polldata.events = (POLLIN | POLLPRI);
@@ -461,6 +478,9 @@ void *ss_name_udp_sender(void *sckts_ptr) {
   unsigned int len, i;
   unsigned char *deleter, udp_pckt[MAX_UDP_PACKET_LEN];
   void *ptr;
+
+  if (! sckts_ptr)
+    return 0;
 
   sckts = sckts_ptr;
   waittime.tv_sec = 0;
