@@ -52,6 +52,9 @@ unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *he
 					  unsigned char *end_of_packet) {
   unsigned char *walker;
 
+  if (! header)
+    return field;
+
   walker = field;
 
   if ((walker + 6*2) > end_of_packet) {
@@ -139,6 +142,9 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 					    unsigned char *end_of_packet) {
   unsigned char *walker;
 
+  if (! question)
+    return field;
+
   walker = field;
 
   walker = fill_all_DNS_labels(question->name, walker, end_of_packet);
@@ -224,6 +230,9 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 				       unsigned char *field,
 				       unsigned char *end_of_packet) {
   unsigned char *walker;
+
+  if (! resource)
+    return field;
 
   walker = field;
 
@@ -494,6 +503,9 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
   struct nbnodename_list_backbone *names;
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *walker;
+
+  if (! content->rdata)
+    return field;
 
   walker = field;
 
