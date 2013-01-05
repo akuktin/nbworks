@@ -53,6 +53,19 @@
 # define RCODE_REGISTR_CFT_ERR 0x7 /* Name in conflict. */
 
 
+/* nbaddress_list */
+# define NBADDRLST_GROUP_MASK 0x8000
+# define NBADDRLST_NODET_MASK 0x6000
+
+# define NBADDRLST_GROUP_YES  0x8000
+# define NBADDRLST_GROUP_NO   0x0000
+
+# define NBADDRLST_NODET_B    0x0000
+# define NBADDRLST_NODET_P    0x2000
+# define NBADDRLST_NODET_M    0x4000
+# define NBADDRLST_NODET_H    0x6000
+
+
 enum name_srvc_rdata_type {
   unknown_type = 0,
   unknown_important_resource,

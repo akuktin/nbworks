@@ -49,21 +49,21 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   addr->there_is_an_address = 1;
   addr->address = in_address;
   if (isgroup) {
-    addr->flags = 0x80;
+    addr->flags = NBADDRLST_GROUP_YES;
   } else {
-    addr->flags = 0;
+    addr->flags = NBADDRLST_GROUP_NO;
   }
   switch (node_type) {
   case 'H':
-    addr->flags = addr->flags | 0x60;
+    addr->flags = addr->flags | NBADDRLST_NODET_H;
     break;
 
   case 'M':
-    addr->flags = addr->flags | 0x40;
+    addr->flags = addr->flags | NBADDRLST_NODET_M;
     break;
 
   case 'P':
-    addr->flags = addr->flags | 0x20;
+    addr->flags = addr->flags | NBADDRLST_NODET_P;
     break;
 
   case 'B':
@@ -154,21 +154,21 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
   addr->there_is_an_address = 1;
   addr->address = in_address;
   if (isgroup) {
-    addr->flags = 0x80;
+    addr->flags = NBADDRLST_GROUP_YES;
   } else {
-    addr->flags = 0;
+    addr->flags = NBADDRLST_GROUP_NO;
   }
   switch (node_type) {
   case 'H':
-    addr->flags = addr->flags | 0x60;
+    addr->flags = addr->flags | NBADDRLST_NODET_H;
     break;
 
   case 'M':
-    addr->flags = addr->flags | 0x40;
+    addr->flags = addr->flags | NBADDRLST_NODET_M;
     break;
 
   case 'P':
-    addr->flags = addr->flags | 0x20;
+    addr->flags = addr->flags | NBADDRLST_NODET_P;
     break;
 
   case 'B':
