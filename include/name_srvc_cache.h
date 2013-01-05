@@ -5,6 +5,9 @@
 
 # include "nodename.h"
 
+# define ANY_GROUP ONES
+# define ANY_NODETYPE ONES
+
 struct ipv4_addr_list {
   uint32_t ip_addr;
   struct ipv4_addr_list *next;
