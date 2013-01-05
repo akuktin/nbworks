@@ -352,8 +352,6 @@ struct cache_namenode *find_nblabel(void *label,
   if (! label)
     return 0;
 
-
-
   my_scope = find_scope(scope);
 
   if (! my_scope)
