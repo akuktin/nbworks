@@ -194,6 +194,8 @@ struct cache_namenode *add_nblabel(void *label,
 				   unsigned char labellen,
 				   unsigned char node_type,
 				   int isgroup,
+				   uint16_t dns_type,
+				   uint16_t dns_class,
 				   uint32_t ip_addr,
 				   struct nbnodename_list *scope) {
   struct cache_namenode *result;
@@ -230,8 +232,8 @@ struct cache_namenode *add_nblabel(void *label,
   result->namelen = labellen;
   result->node_type = node_type;
   result->isgroup = isgroup;
-  result->dns_type = RRTYPE_NB;
-  result->dns_class = RRCLASS_IN;
+  result->dns_type = dns_type;
+  result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
   result->endof_conflict_chance = 0;
   result->next = 0;
@@ -328,6 +330,46 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
 	(cur_name->node_type == namecard->node_type) &&
 	(cur_name->dns_type == namecard->dns_type) &&
 	(cur_name->dns_class == namecard->dns_class)) {
+      return cur_name;
+    } else {
+      cur_name = cur_name->next;
+    }
+  }
+
+  return 0;
+}
+
+struct cache_namenode *find_nblabel(void *label,
+				    unsigned char labellen,
+				    unsigned char node_type,
+				    int isgroup,
+				    uint16_t dns_type,
+				    uint16_t dns_class,
+				    struct nbnodename_list *scope) {
+  struct cache_scopenode *my_scope;
+  struct cache_namenode *cur_name, *my_name;
+
+  if (! label)
+    return 0;
+
+
+
+  my_scope = find_scope(scope);
+
+  if (! my_scope)
+    /* TODO: errno signaling stuff */
+    return 0;
+
+  cur_name = my_scope->names;
+
+  while (cur_name) {
+    if ((cur_name->namelen == labellen) &&
+	(0 == memcmp(cur_name->name, label,
+		     labellen)) &&
+	(cur_name->isgroup == isgroup) &&
+	(cur_name->node_type == node_type) &&
+	(cur_name->dns_type == dns_type) &&
+	(cur_name->dns_class == dns_class)) {
       return cur_name;
     } else {
       cur_name = cur_name->next;

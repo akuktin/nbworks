@@ -48,6 +48,8 @@ struct cache_namenode *
               unsigned char labellen,
               unsigned char node_type,
               int isgroup,
+              uint16_t dns_type,
+              uint16_t dns_class,
               uint32_t ip_addr,
               struct nbnodename_list *scope);
 struct cache_namenode *
@@ -57,6 +59,14 @@ struct cache_namenode *
 struct cache_namenode *
   find_name(struct cache_namenode *namecard,
             struct nbnodename_list *scope);
+struct cache_namenode *
+  find_nblabel(void *label,
+               unsigned char labellen,
+               unsigned char node_type,
+               int isgroup,
+               uint16_t dns_type,
+               uint16_t dns_class,
+               struct nbnodename_list *scope);
 
 #endif /* NBWORKS_NAMESRVCCACHE_H*/
 
