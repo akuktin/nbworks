@@ -46,7 +46,8 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name) {
        above the terminating NULL character in the string. */
     if (decoded_name_cntr > (NETBIOS_NAME_LEN +1) ||
 	coded_name_cntr > NETBIOS_CODED_NAME_LEN) {
-      abort();
+      free(decoded_name);
+      return 0;
     }
   }
 
@@ -66,11 +67,18 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name) {
     return 0;
   }
 
-  decoded_name_len = strnlen((char *)decoded_name, NETBIOS_NAME_LEN +1);
-  if (decoded_name_len != NETBIOS_NAME_LEN) {
-    /* TODO: have to make it use ERRNO signaling */
-    return 0;
-  }
+  /*
+   * Instead of checking the len of the string, I will put my
+   * faith in the caller. The caller MUST call with a string
+   * (that is, an array of uchars with any content) whose length
+   * is at least NETBIOS_NAME_LEN.
+   * If the length were checked, two problems would arise.
+   * Number one: labels with embeded NULLs would not be encoded
+   * as they were supposed to. And number two: labels which end
+   * with the type char 0x00 (that is, ALL of the labels) would
+   * crash the function.
+   */
+
   coded_name = malloc(NETBIOS_CODED_NAME_LEN +1);
   if (! coded_name) {
     return 0;
@@ -93,13 +101,42 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name) {
        dangling above the terminating NULL character in the string. */
     if (decoded_name_cntr > NETBIOS_NAME_LEN ||
 	coded_name_cntr > (NETBIOS_CODED_NAME_LEN +1)) {
-      abort();
+      free(coded_name);
+      return 0;
     }
   }
 
   coded_name[NETBIOS_CODED_NAME_LEN] = '\0';
 
   return coded_name;
+}
+
+
+unsigned char unmake_nbnodename(unsigned char **coded_name) {
+  int i;
+  unsigned char result, *decoded_name, *label;
+
+  decoded_name = decode_nbnodename(*coded_name);
+
+  result = decoded_name[NETBIOS_NAME_LEN -1];
+
+  for (i=(NETBIOS_NAME_LEN-2); i >= 0; i--) {
+    if (decoded_name[i] != ' ') /* a space character */
+      break;
+  }
+
+  if (i >= 0) {
+    label = malloc(i+2);
+    memcpy(label, decoded_name, i+1);
+    label[i+2] = '\0';
+
+    *coded_name = label;
+  } else {
+    *coded_name = 0;
+  }
+
+  free(decoded_name);
+  return result;
 }
 
 unsigned char *make_nbnodename_sloppy(const unsigned char *string) {

@@ -19,11 +19,18 @@ struct nbnodename_list_backbone {
   struct nbnodename_list_backbone *next_nbnodename;
 };
 
-unsigned char *decode_nbnodename(const unsigned char *coded_name);
-unsigned char *encode_nbnodename(const unsigned char *decoded_name);
-unsigned char *make_nbnodename_sloppy(const unsigned char *string);
-unsigned char *make_nbnodename(const unsigned char *string,
-                               const unsigned char type_char);
+unsigned char *
+  decode_nbnodename(const unsigned char *coded_name);
+unsigned char *
+  encode_nbnodename(const unsigned char *decoded_name);
+
+unsigned char
+  unmake_nbnodename(unsigned char **coded_name);
+unsigned char *
+  make_nbnodename_sloppy(const unsigned char *string);
+unsigned char *
+  make_nbnodename(const unsigned char *string,
+                  const unsigned char type_char);
 
 void
   destroy_nbnodename(struct nbnodename_list *nbnodename);
