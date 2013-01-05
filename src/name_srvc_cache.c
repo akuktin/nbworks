@@ -142,7 +142,7 @@ void *prune_scopes(void *placeholder) {
     nanosleep(&waittime, 0);
   }
 
-  return 0;
+  return nbworks_rootscope;
 }
 
 

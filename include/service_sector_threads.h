@@ -9,6 +9,8 @@ struct thread_node {
   struct thread_node *next;
 };
 
+void init_service_sector_threads();
+
 struct thread_node *add_thread(pthread_t tid);
 void *thread_joiner(void *placeholder);
 
