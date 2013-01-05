@@ -453,7 +453,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 
     destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-    free(outside_pckt);
+    outside_pckt->packet = 0;
+    last_outpckt = outside_pckt;
   }
 
   return 0;
