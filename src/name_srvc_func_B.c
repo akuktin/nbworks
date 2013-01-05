@@ -20,6 +20,7 @@
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
 #include "name_srvc_cnst.h"
+#include "name_srvc_cache.h"
 #include "name_srvc_func_B.h"
 #include "randomness.h"
 #include "service_sector.h"
@@ -305,7 +306,9 @@ void *name_srvc_B_handle_newtid(void *input) {
   struct nbaddress_list *nbaddr_list;
   uint32_t in_addr;
   unsigned char octet, label[NETBIOS_NAME_LEN+1], label_type;
+  unsigned char to_toplevel, waited;
 
+  time_t cur_time;
   void *result;
 
 
@@ -318,119 +321,140 @@ void *name_srvc_B_handle_newtid(void *input) {
 
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_250MS;
+  sleeptime.tv_nsec = T_500MS;
 
+  to_toplevel = 0;
   label[NETBIOS_NAME_LEN] = '\0';
 
   ss_set_inputdrop_name_tid(params.tid);
-
   last_outpckt = 0;
-  do {
-    outside_pckt = ss_name_recv_entry(params.trans);
+  waited = 0;
 
-    if (outside_pckt == last_outpckt) {
-      /* Error. If the function was called, then
-	 there was supposed to be at least one
-	 packet waiting for it. */
-      free(outside_pckt);
-      ss_deregister_name_tid(params.tid);
-      ss_name_dstry_recv_queue(params.trans);
-      if (last_will)
-	last_will->dead = 9001; /* It's OVER *9000*!!! */
-      return 0;
-    } else {
-      if (last_outpckt)
-	free(last_outpckt);
-      last_outpckt = outside_pckt;
-    }
+  while (0xceca) /* Also known as sesa. */ {
 
-  } while (! outside_pckt->packet);
+    do {
+      outside_pckt = ss_name_recv_entry(params.trans);
 
-  if ((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
-						OPCODE_REGISTRATION)) &&
-      (! outside_pckt->packet->header->rcode)) {
-    /* NAME REGISTRATION REQUEST */
+      if (outside_pckt == last_outpckt) {
+	/* No packet. */
+	if (waited) {
+	  /* Wait time passed. */
+	  ss_deregister_name_tid(params.tid);
+	  ss_name_dstry_recv_queue(params.trans);
+	  if (last_will)
+	    last_will->dead = 9001; /* It's OVER *9000*!!! */
+	  return 0;
+	} else {
+	  waited = 1;
+	  ss_set_normalstate_name_tid(params.tid);
+	  nanosleep(&sleeptime, 0);
+	  ss_set_inputdrop_name_tid(params.tid);
+	}
+      } else {
+	if (last_outpckt)
+	  free(last_outpckt);
+	last_outpckt = outside_pckt;
+      }
 
-    for (res = outside_pckt->packet->aditionals;
-	 res != 0;
-	 res = res->next) {
-      if (res->res) {
+    } while (! outside_pckt->packet);
 
-	if ((res->res->name) &&
-	    (res->res->rdata_t == nb_address_list)) {
+    cur_time = time(0);
 
-	  nbaddr_list = res->res->rdata;
-	  while (nbaddr_list) {
-	    if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
-	      octet = 1;
-	    else
-	      octet = 0;
 
-	    cache_namecard = find_nblabel(res->res->name->name,
-					  res->res->name->len,
-					  ANY_NODETYPE, octet,
-					  res->res->rrtype,
-					  res->res->rrclass,
-					  res->res->name->next_name);
+    // NAME REGISTRATION REQUEST (UNIQUE)
+    // NAME REGISTRATION REQUEST (GROUP)
 
-	    if (cache_namecard)
-	      if (cache_namecard->ismine &&
-		  (0 == cache_namecard->isgroup)) {
-		/* Someone is trying to take my name. */
+    if ((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+						  OPCODE_REGISTRATION)) &&
+	(! outside_pckt->packet->header->rcode)) {
+      /* NAME REGISTRATION REQUEST */
 
-		memcpy(&label, cache_namecard->label, NETBIOS_NAME_LEN);
-		label_type = label[NETBIOS_NAME_LEN-1];
-		label[NETBIOS_NAME_LEN-1] = '\0';
-		if (cache_namecard->addrlist)
-		  in_addr = cache_namecard->addrlist->ip_addr;
-		else
-		  in_addr = 0;
+      for (res = outside_pckt->packet->aditionals;
+	   res != 0;
+	   res = res->next) {
+	if (res->res) {
 
-		pckt = name_srvc_make_name_reg_small(label, label_type,
-						     res->res->name->next_name,
-						     cache_namecard->ttl,
-						     in_addr, 0,
-						     cache_namecard->node_type);
-		pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
-		pckt->header->nmflags = FLG_AA;
-		pckt->header->rcode = RCODE_REGISTR_ACT_ERR;
-		ss_name_send_pckt(pckt, outside_pckt->addr, params.trans);
+	  if ((res->res->name) &&
+	      (res->res->rdata_t == nb_address_list)) {
 
-		destroy_name_srvc_pckt(pckt, 0, 1);
-		destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-		free(outside_pckt);
-		ss_deregister_name_tid(params.tid);
-		ss_name_dstry_recv_queue(params.trans);
-		if (last_will)
-		  last_will->dead = 9000; /* Not quite as furious, but still. */
+	    nbaddr_list = res->res->rdata;
+	    while (nbaddr_list) {
+	      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
+		octet = 1;
+	      else
+		octet = 0;
 
-		/* Now, the subject of a return from here is interesting.
-		   What if there are other packets with the same tid?
-		   What if there is something _important_ in those packets?
-		   Well, I chose to ignore them, so tough luck. */
-		/* Recomended excuse or explanation: "UDP is unreliable." */
-		return 0;
+	      cache_namecard = find_nblabel(res->res->name->name,
+					    res->res->name->len,
+					    ANY_NODETYPE, octet,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
 
-	      }
+	      if (cache_namecard)
+		if (cache_namecard->ismine &&
+		    (0 == cache_namecard->isgroup)) {
+		  /* Someone is trying to take my name. */
 
-	    nbaddr_list = nbaddr_list->next_address;
+		  memcpy(&label, cache_namecard->name, NETBIOS_NAME_LEN);
+		  label_type = label[NETBIOS_NAME_LEN-1];
+		  label[NETBIOS_NAME_LEN-1] = '\0';
+		  if (cache_namecard->addrlist)
+		    in_addr = cache_namecard->addrlist->ip_addr;
+		  else
+		    in_addr = 0;
+
+		  pckt = name_srvc_make_name_reg_small(label, label_type,
+						       res->res->name->next_name,
+						       (cache_namecard->timeof_death
+							  - cur_time),
+						       in_addr, 0,
+						       cache_namecard->node_type);
+		  pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
+		  pckt->header->nm_flags = FLG_AA;
+		  pckt->header->rcode = RCODE_REGISTR_ACT_ERR;
+		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+
+		  destroy_name_srvc_pckt(pckt, 0, 1);
+		  destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+		  /* Hack to make the complex loops and tests
+		     of this function work as they should. */
+		  outside_pckt->packet = 0;
+		  last_outpckt = outside_pckt;
+
+		  to_toplevel = 1;
+		  break;
+		}
+
+	      nbaddr_list = nbaddr_list->next_address;
+	    }
 	  }
 	}
+
+	if (to_toplevel) {
+	  to_toplevel = 0;
+	  break;
+	}
       }
+      continue;
     }
+
+    // NAME QUERY REQUEST
+
+    // POSITIVE NAME QUERY RESPONSE
+
+    // NAME CONFLICT DEMAND
+
+    // NAME RELEASE REQUEST
+
+    // NAME UPDATE REQUEST
+
+    // NODE STATUS REQUEST
+
+
+    destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+    free(outside_pckt);
   }
-
-  // NAME QUERY REQUEST
-
-  // POSITIVE NAME QUERY RESPONSE
-
-  // NAME CONFLICT DEMAND
-
-  // NAME RELEASE REQUEST
-
-  // NAME UPDATE REQUEST
-
-  // NODE STATUS REQUEST
 
   return 0;
 }
