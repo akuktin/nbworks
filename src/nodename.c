@@ -58,7 +58,6 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name) {
 
 unsigned char *encode_nbnodename(const unsigned char *decoded_name) {
   int coded_name_cntr, decoded_name_cntr;
-  int decoded_name_len;
   unsigned char *coded_name;
   unsigned char nibble_reactor;
 

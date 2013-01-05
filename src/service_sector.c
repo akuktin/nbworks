@@ -256,8 +256,9 @@ inline struct ss_name_pckt_list *ss_name_recv_entry(struct ss_queue *trans) {
 
   result = trans->incoming;
 
-  if (trans->incoming->next)
-    trans->incoming = trans->incoming->next;
+  if (trans->incoming)
+    if (trans->incoming->next)
+      trans->incoming = trans->incoming->next;
 
   return result;
 }
