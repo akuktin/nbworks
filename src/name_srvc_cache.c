@@ -19,7 +19,7 @@
 #include "name_srvc_cache.h"
 
 
-struct cache_scopenode nbworks_rootscope;
+struct cache_scopenode *nbworks_rootscope;
 
 struct {
   unsigned int all_stop;
@@ -40,29 +40,28 @@ struct cache_scopenode *add_scope(struct nbnodename_list *scope,
   struct cache_scopenode *result, *new_scope,
     *cur_scope, **last_scope;
 
-  if (! scope)
-    return &nbworks_rootscope; /* NULL scope already exists. */
-
   result = malloc(sizeof(struct cache_scopenode));
   if (! result) {
     /* TODO: errno signaling */
     return 0;
   }
 
-  result->scope = scope;
+  result->scope = clone_nbnodename(scope);
   result->names = first_node;
   result->next = 0;
   new_scope = result;
 
   while (10) {
-    last_scope = &(nbworks_rootscope.next);
-    cur_scope = nbworks_rootscope.next;
+    last_scope = &(nbworks_rootscope);
+    cur_scope = nbworks_rootscope;
 
     while (cur_scope) {
       if (0 == cmp_nbnodename(scope, cur_scope->scope)) {
 	result = cur_scope;
-	if (result != new_scope)
+	if (result != new_scope) {
+	  destroy_nbnodename(new_scope->scope);
 	  free(new_scope);
+	}
 	return result;
       }
 
@@ -77,10 +76,7 @@ struct cache_scopenode *add_scope(struct nbnodename_list *scope,
 struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
   struct cache_scopenode *result;
 
-  if (! scope)
-    return &nbworks_rootscope;
-
-  result = nbworks_rootscope.next;
+  result = nbworks_rootscope;
 
   while (result) {
     if (0 == cmp_nbnodename(scope, result->scope))
@@ -109,28 +105,8 @@ void *prune_scopes(void *placeholder) {
 
     curtime = time();
 
-    cur_scope = nbworks_rootscope.next;
-    last_scope = &(nbworks_rootscope.next);
-
-    cur_name = nbworks_rootscope.names;
-    last_name = &(nbworks_rootscope.names);
-
-    while (cur_name) {
-      if (cur_name->timeof_death < curtime) {
-	*last_name = cur_name->next;
-	for_del = cur_name;
-	cur_name = cur_name->next;
-	cur_addr = for_del->addrlist;
-	while (cur_addr) {
-	  addr_fordel = cur_addr->next;
-	  free(cur_addr);
-	  cur_addr = addr_fordel;
-	}
-	free(for_del->name);
-	free(for_del);
-      } else
-	cur_name = cur_name->next;
-    }
+    cur_scope = nbworks_rootscope;
+    last_scope = &(nbworks_rootscope);
 
     while (cur_scope) {
       cur_name = cur_scope->names;
@@ -179,10 +155,7 @@ struct cache_namenode *add_name(struct cache_namenode *name,
   if (! name)
     return 0;
 
-  if (! scope)
-    my_scope = &nbworks_rootscope;
-  else
-    my_scope = find_scope(scope);
+  my_scope = find_scope(scope);
 
   if (! my_scope)
     /* TODO: errno signaling stuff */
@@ -281,19 +254,65 @@ struct cache_namenode *add_nblabel(void *label,
   }
 }
 
+struct cache_namenode *update_name(struct cache_namenode *name,
+				   struct nbnodename_list *scope) {
+  struct cache_scopenode *my_scope;
+  struct cache_namenode *cur_name, **last_name;
+  struct ipv4_addr_list *addrlist, *nextaddrlist;
+
+  if (! name)
+    return 0;
+
+  my_scope = find_scope(scope);
+
+  if (! my_scope)
+    /* TODO: errno signaling stuff */
+    return 0;
+
+  cur_name = my_scope->names;
+  last_name = &(my_scope->names);
+
+  while (cur_name) {
+    if ((cur_name->namelen == name->namelen) &&
+	(0 == memcmp(cur_name->name, name->name,
+		     name->namelen)) &&
+	(cur_name->isgroup == name->isgroup) &&
+	(cur_name->node_type == name->node_type) &&
+	(cur_name->dns_type == name->dns_type) &&
+	(cur_name->dns_class == name->dns_class)) {
+
+      name->next = cur_name->next;
+      *last_name = name;
+
+      addrlist = cur_name->addrlist;
+      while (addrlist) {
+	nextaddrlist = addrlist->next;
+	free(addrlist);
+	addrlist = nextaddrlist;
+      }
+      free(cur_name->name);
+      free(cur_name);
+      break;
+
+    } else {
+      last_name = &(cur_name->next);
+      cur_name = cur_name->next;
+    }
+  }
+
+  return cur_name;
+}
+
 
 struct cache_namenode *find_name(struct cache_namenode *namecard,
 				 struct nbnodename_list *scope) {
   struct cache_scopenode *my_scope;
   struct cache_namenode *cur_name;
 
-  if (! name)
+  if (! namecard)
     return 0;
 
-  if (! scope)
-    my_scope = &nbworks_rootscope;
-  else
-    my_scope = find_scope(scope);
+  my_scope = find_scope(scope);
 
   if (! my_scope)
     /* TODO: errno signaling stuff */
