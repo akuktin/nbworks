@@ -25,6 +25,7 @@ struct cache_namenode {
   unsigned char namelen;
   unsigned char node_type;
   unsigned char isinconflict;
+  unsigned char ismine;
   int isgroup;
   uint16_t dns_type;
   uint16_t dns_class;
@@ -52,6 +53,7 @@ struct cache_namenode *
   add_nblabel(void *label,
               unsigned char labellen,
               unsigned char node_type,
+              unsigned char ismine,
               int isgroup,
               uint16_t dns_type,
               uint16_t dns_class,
@@ -77,6 +79,7 @@ struct cache_namenode *
   alloc_namecard(void *label,
                  unsigned char labellen,
                  unsigned char node_type,
+                 unsigned char ismine,
                  int isgroup,
                  uint16_t dns_type,
                  uint16_t dns_class);
