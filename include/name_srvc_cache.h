@@ -54,8 +54,8 @@ struct cache_namenode *
               uint32_t ip_addr,
               struct nbnodename_list *scope);
 struct cache_namenode *
-  update_name(struct cache_namenode *name,
-              struct nbnodename_list *scope);
+  exchange_namecards(struct cache_namenode *name,
+                     struct nbnodename_list *scope);
 
 struct cache_namenode *
   find_name(struct cache_namenode *namecard,
