@@ -80,4 +80,3 @@ void
   destroy_namecard(struct cache_namenode *namecard);
 
 #endif /* NBWORKS_NAMESRVCCACHE_H*/
-

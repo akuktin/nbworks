@@ -265,7 +265,8 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
 	    res->res = 0;
 	    break;
 
-	  }
+	  } else
+	    res = res->next;
 	}
       }
 
