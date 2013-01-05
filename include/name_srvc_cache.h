@@ -4,6 +4,7 @@
 # include <time.h>
 
 # include "nodename.h"
+# include "constdef.h"
 
 # define ANY_GROUP ONES
 # define ANY_NODETYPE ONES
