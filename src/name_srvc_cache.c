@@ -231,6 +231,7 @@ struct cache_namenode *add_nblabel(void *label,
 
   result->namelen = labellen;
   result->node_type = node_type;
+  result->isinconflict = 0; /* is not in conflict */
   result->isgroup = isgroup;
   result->dns_type = dns_type;
   result->dns_class = dns_class;
@@ -375,4 +376,62 @@ struct cache_namenode *find_nblabel(void *label,
   }
 
   return 0;
+}
+
+
+struct cache_namenode *alloc_namecard(void *label,
+				      unsigned char labellen,
+				      unsigned char node_type,
+				      int isgroup,
+				      uint16_t dns_type,
+				      uint16_t dns_class) {
+  struct cache_namenode *result;
+
+  if (! label)
+    return 0;
+
+  result = malloc(sizeof(struct cache_namenode));
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result->name = calloc(1, labellen +1);
+  if (! result->name) {
+    /* TODO: errno signaling stuff */
+    free(result);
+    return 0;
+  }
+
+  memcpy(result->name, label, labellen);
+  result->namelen = labellen;
+  result->node_type = node_type;
+  result->isinconflict = 0; /* is not in conflict */
+  result->isgroup = isgroup;
+  result->dns_type = dns_type;
+  result->dns_class = dns_class;
+  result->timeof_death = ZEROONES; /* AKA infinity. */
+  result->endof_conflict_chance = 0;
+  result->addrlist = 0;
+  result->next = 0;
+
+  return result;
+}
+
+void destroy_namecard(struct cache_namenode *namecard) {
+  struct ipv4_addr_list *addrlist, *nextaddrlist;
+
+  if (! namecard)
+    return;
+
+  free(namecard->name);
+  addrlist = namecard->addrlist;
+  while (addrlist) {
+    nextaddrlist = addrlist->next;
+    free(addrlist);
+    addrlist = nextaddrlist;
+  }
+  free(namecard);
+
+  return;
 }

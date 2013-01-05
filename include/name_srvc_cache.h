@@ -20,6 +20,7 @@ struct cache_namenode {
   void *name;
   unsigned char namelen;
   unsigned char node_type;
+  unsigned char isinconflict;
   int isgroup;
   uint16_t dns_type;
   uint16_t dns_class;
@@ -67,6 +68,16 @@ struct cache_namenode *
                uint16_t dns_type,
                uint16_t dns_class,
                struct nbnodename_list *scope);
+
+struct cache_namenode *
+  alloc_namecard(void *label,
+                 unsigned char labellen,
+                 unsigned char node_type,
+                 int isgroup,
+                 uint16_t dns_type,
+                 uint16_t dns_class);
+void
+  destroy_namecard(struct cache_namenode *namecard);
 
 #endif /* NBWORKS_NAMESRVCCACHE_H*/
 
