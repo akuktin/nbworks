@@ -20,7 +20,7 @@
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
 #include "name_srvc_cnst.h"
-#include "name_srvc_func.h"
+#include "name_srvc_func_B.h"
 #include "randomness.h"
 #include "service_sector.h"
 
@@ -299,7 +299,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
   memcpy(&params, input, sizeof(struct newtid_params));
 
-  ...
+  //  ...
 
   return 0;
 }

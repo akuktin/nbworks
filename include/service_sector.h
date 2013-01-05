@@ -4,6 +4,7 @@
 # define MAX_NAME_TCP_QUEUE 16
 
 # include <pthread.h>
+# include <netinet/in.h>
 
 struct ss_name_pckt_list {
   struct name_srvc_packet *packet;

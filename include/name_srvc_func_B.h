@@ -6,7 +6,8 @@ int
                        unsigned char name_type,
                        struct nbnodename_list *scope,
                        uint32_t my_ip_address,
-                       int isgroup);
+                       int isgroup,
+                       uint32_t ttl);
 /* return: 0=success, >0=fail, -1=error */
 int
   name_srvc_B_release_name(unsigned char *name,

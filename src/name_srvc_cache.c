@@ -27,9 +27,9 @@ struct {
 
 
 void init_name_srvc_cache() {
-  nbworks_rootscope.scope = 0;
-  nbworks_rootscope.names = 0;
-  nbworks_rootscope.next = 0;
+  nbworks_rootscope->scope = 0;
+  nbworks_rootscope->names = 0;
+  nbworks_rootscope->next = 0;
 
   nbworks_cache_control.all_stop = 0;
 }
@@ -91,19 +91,19 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 
 void *prune_scopes(void *placeholder) {
   struct timespec waittime;
-  struct cache_scopenode *cur_scope, **last_scope, for_del2;
+  struct cache_scopenode *cur_scope, **last_scope, *for_del2;
   struct cache_namenode *cur_name, **last_name, *for_del;
   struct ipv4_addr_list *cur_addr, *addr_fordel;
   time_t curtime;
 
-  waittime.waittime.tv_sec = 1;
+  waittime.tv_sec = 1;
   waittime.tv_nsec = 0;
 
   while (0xbeefcafe) {
     if (nbworks_cache_control.all_stop)
       break;
 
-    curtime = time();
+    curtime = time(0);
 
     cur_scope = nbworks_rootscope;
     last_scope = &(nbworks_rootscope);
@@ -132,7 +132,7 @@ void *prune_scopes(void *placeholder) {
       if (! cur_scope->names) {
 	*last_scope = cur_scope->next;
 	destroy_nbnodename(cur_scope->scope);
-	for_del2 = cur_scope
+	for_del2 = cur_scope;
 	cur_scope = cur_scope->next;
 	free(for_del2);
       } else
@@ -347,7 +347,7 @@ struct cache_namenode *find_nblabel(void *label,
 				    uint16_t dns_class,
 				    struct nbnodename_list *scope) {
   struct cache_scopenode *my_scope;
-  struct cache_namenode *cur_name, *my_name;
+  struct cache_namenode *cur_name;
 
   if (! label)
     return 0;
