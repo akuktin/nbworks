@@ -302,6 +302,7 @@ void *name_srvc_B_handle_newtid(void *input) {
   struct ss_name_pckt_list *outside_pckt, *last_outpckt;
 
   struct name_srvc_resource_lst *res;
+  struct name_srvc_question_lst *qstn;
   struct cache_namenode *cache_namecard;
   struct nbaddress_list *nbaddr_list;
   uint32_t in_addr;
@@ -384,8 +385,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      else
 		octet = 0;
 
-	      cache_namecard = find_nblabel(res->res->name->name,
-					    res->res->name->len,
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name),
+					    NETBIOS_NAME_LEN,
 					    ANY_NODETYPE, octet,
 					    res->res->rrtype,
 					    res->res->rrclass,
@@ -440,6 +441,20 @@ void *name_srvc_B_handle_newtid(void *input) {
     }
 
     // NAME QUERY REQUEST
+
+    if (outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+						 OPCODE_QUERY)) {
+
+      qstn = outside_pckt->packet->questions;
+      while (qstn) {
+
+	...
+
+	qstn = qstn->next;
+      }
+
+      continue;
+    }
 
     // POSITIVE NAME QUERY RESPONSE
 
