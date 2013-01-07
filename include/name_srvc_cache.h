@@ -23,6 +23,7 @@ struct cache_scopenode {
 struct cache_namenode {
   void *name;
   unsigned char namelen;
+  //  unsigned char magic_char;
   unsigned char node_type;
   unsigned char isinconflict;
   unsigned char ismine;

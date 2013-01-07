@@ -7,7 +7,8 @@
 #include "nodename.h"
 
 
-unsigned char *decode_nbnodename(const unsigned char *coded_name) {
+unsigned char *decode_nbnodename(const unsigned char *coded_name,
+				 unsigned char **result_buf) {
   int coded_name_cntr, decoded_name_cntr;
   int coded_name_len;
   unsigned char *decoded_name;
@@ -23,9 +24,13 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name) {
     /* TODO: have to make it use ERRNO signaling */
     return 0;
   }
-  decoded_name = malloc(NETBIOS_NAME_LEN +1);
-  if (! decoded_name) {
-    return 0;
+  if (result_buf) {
+    decoded_name = *result_buf;
+  } else {
+    decoded_name = malloc(NETBIOS_NAME_LEN +1);
+    if (! decoded_name) {
+      return 0;
+    }
   }
 
   decoded_name_cntr = 0;
@@ -56,7 +61,8 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name) {
   return decoded_name;
 }
 
-unsigned char *encode_nbnodename(const unsigned char *decoded_name) {
+unsigned char *encode_nbnodename(const unsigned char *decoded_name,
+				 unsigned char **result_buf) {
   int coded_name_cntr, decoded_name_cntr;
   unsigned char *coded_name;
   unsigned char nibble_reactor;
@@ -78,9 +84,13 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name) {
    * crash the function.
    */
 
-  coded_name = malloc(NETBIOS_CODED_NAME_LEN +1);
-  if (! coded_name) {
-    return 0;
+  if (result_buf) {
+    coded_name = *result_buf;
+  } else {
+    coded_name = malloc(NETBIOS_CODED_NAME_LEN +1);
+    if (! coded_name) {
+      return 0;
+    }
   }
 
   coded_name_cntr = 0;
@@ -115,7 +125,7 @@ unsigned char unmake_nbnodename(unsigned char **coded_name) {
   int i;
   unsigned char result, *decoded_name, *label;
 
-  decoded_name = decode_nbnodename(*coded_name);
+  decoded_name = decode_nbnodename(*coded_name, 0);
 
   result = decoded_name[NETBIOS_NAME_LEN -1];
 
@@ -168,7 +178,7 @@ unsigned char *make_nbnodename_sloppy(const unsigned char *string) {
 
   prepared_name[NETBIOS_NAME_LEN] = '\0';
 
-  return(encode_nbnodename(prepared_name));
+  return(encode_nbnodename(prepared_name, 0));
 }
 
 unsigned char *make_nbnodename(const unsigned char *string,
@@ -203,7 +213,7 @@ unsigned char *make_nbnodename(const unsigned char *string,
   prepared_name[NETBIOS_NAME_LEN -1] = type_char;
   prepared_name[NETBIOS_NAME_LEN] = '\0';
 
-  return(encode_nbnodename(prepared_name));
+  return(encode_nbnodename(prepared_name, 0));
 }
 
 

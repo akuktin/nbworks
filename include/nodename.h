@@ -20,9 +20,11 @@ struct nbnodename_list_backbone {
 };
 
 unsigned char *
-  decode_nbnodename(const unsigned char *coded_name);
+  decode_nbnodename(const unsigned char *coded_name,
+                    unsigned char **result_buf);
 unsigned char *
-  encode_nbnodename(const unsigned char *decoded_name);
+  encode_nbnodename(const unsigned char *decoded_name,
+                    unsigned char **result_buf);
 
 unsigned char
   unmake_nbnodename(unsigned char **coded_name);
