@@ -369,7 +369,8 @@ void *name_srvc_B_handle_newtid(void *input) {
     cache_namecard = 0;
     answer_lst = 0;
     to_toplevel = 0;
-    res = qstn = 0;
+    res = 0;
+    qstn = 0;
     ipv4_addr_list = 0;
     numof_answers = 0;
 
@@ -506,7 +507,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		default:
 		  flags = flags | NBADDRLST_NODET_B;
 		}
-		  
+
 		ipv4_addr_list = cache_namecard->addrlist;
 		i=0;
 		if (ipv4_addr_list) {
