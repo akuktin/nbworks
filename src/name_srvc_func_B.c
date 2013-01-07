@@ -314,7 +314,7 @@ void *name_srvc_B_handle_newtid(void *input) {
   uint16_t flags, numof_answers;
   int i;
   unsigned char label[NETBIOS_NAME_LEN+1], label_type;
-  unsigned char to_toplevel, waited;
+  unsigned char waited;
 
   time_t cur_time;
 
@@ -368,7 +368,6 @@ void *name_srvc_B_handle_newtid(void *input) {
     cur_time = time(0);
     cache_namecard = 0;
     answer_lst = 0;
-    to_toplevel = 0;
     res = 0;
     qstn = 0;
     ipv4_addr_list = 0;
@@ -444,7 +443,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	         we jump over group names, that means we are only looking for unique
 	         names. Furthermore, we are only looking for our names. If we fail to
 		 find a record for the asked unique name, that means we have no problem.
-		 Also, if we find a record, but the name is not ours, we anaing have
+		 Also, if we find a record, but the name is not ours, we again have
 		 no problem.
 	      */
 
@@ -467,8 +466,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 
     // NAME QUERY REQUEST
 
-    if (outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
-						 OPCODE_QUERY)) {
+    if ((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+						  OPCODE_QUERY)) &&
+	(! outside_pckt->packet->header->rcode)) {
 
       qstn = outside_pckt->packet->questions;
       while (qstn) {
@@ -591,7 +591,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
       res = outside_pckt->packet->answers;
       while (res) {
-	if (res->res)
+	if (res->res) {
 	  if ((res->res->name) &&
 	      (res->res->rdata_t == nb_address_list)) {
 	    nbaddr_list_frst = nbaddr_list = res->res->rdata;
@@ -652,6 +652,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      nbaddr_list = nbaddr_list->next_address;
 	    }
 	  }
+	}
 
 	res = res->next;
       }
