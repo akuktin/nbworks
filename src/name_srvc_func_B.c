@@ -307,16 +307,16 @@ void *name_srvc_B_handle_newtid(void *input) {
   struct name_srvc_resource_lst *res, *answer_lst;
   struct name_srvc_question_lst *qstn;
   struct cache_namenode *cache_namecard;
-  struct nbaddress_list *nbaddr_list, *nbaddr_list_frst;
+  struct nbaddress_list *nbaddr_list, *nbaddr_list_frst,
+    *nbaddr_list_hldme, **nbaddr_list_last;
   struct ipv4_addr_list *ipv4_addr_list;
   uint32_t in_addr;
   uint16_t flags, numof_answers;
   int i;
-  unsigned char octet, label[NETBIOS_NAME_LEN+1], label_type;
+  unsigned char label[NETBIOS_NAME_LEN+1], label_type;
   unsigned char to_toplevel, waited;
 
   time_t cur_time;
-  void *result;
 
 
   memcpy(&params, input, sizeof(struct newtid_params));
@@ -373,6 +373,9 @@ void *name_srvc_B_handle_newtid(void *input) {
     qstn = 0;
     ipv4_addr_list = 0;
     numof_answers = 0;
+    nbaddr_list = nbaddr_list_frst =
+      nbaddr_list_hldme = 0;
+    nbaddr_list_last = 0;
 
 
     // NAME REGISTRATION REQUEST (UNIQUE)
@@ -384,30 +387,32 @@ void *name_srvc_B_handle_newtid(void *input) {
       /* NAME REGISTRATION REQUEST */
 
       for (res = outside_pckt->packet->aditionals;
-	   res != 0;
+	   res != 0;      /* Maybe test in questions too. */
 	   res = res->next) {
 	if (res->res) {
 
 	  if ((res->res->name) &&
 	      (res->res->rdata_t == nb_address_list)) {
-
 	    nbaddr_list = res->res->rdata;
+
 	    while (nbaddr_list) {
-	      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
-		octet = 1;
-	      else
-		octet = 0;
+	      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		/* Jump over group addresses. */
+		nbaddr_list = nbaddr_list->next_address;
+		continue;
+	      }
 
 	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
 					    NETBIOS_NAME_LEN,
-					    ANY_NODETYPE, octet,
+					    ANY_NODETYPE, 0,
 					    res->res->rrtype,
 					    res->res->rrclass,
 					    res->res->name->next_name);
 
-	      if (cache_namecard)
-		if (cache_namecard->ismine &&
-		    (0 == cache_namecard->isgroup)) {
+	      if (cache_namecard) {
+		if ((cache_namecard->ismine) &&
+		    ((cache_namecard->timeof_death > 0) &&
+		     (cache_namecard->timeof_death < cur_time))) {
 		  /* Someone is trying to take my name. */
 
 		  memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
@@ -430,26 +435,33 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  pckt->for_del = 1;
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
 
-		  destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-		  /* Hack to make the complex loops and tests
-		     of this function work as they should. */
-		  outside_pckt->packet = 0;
-		  last_outpckt = outside_pckt;
-
-		  to_toplevel = 1;
 		  break;
-		}
+		} else
+		  break;
+	      } else
+		break;
+	      /* RATIONALE: Names can be either group names or unique names. Since
+	         we jump over group names, that means we are only looking for unique
+	         names. Furthermore, we are only looking for our names. If we fail to
+		 find a record for the asked unique name, that means we have no problem.
+		 Also, if we find a record, but the name is not ours, we anaing have
+		 no problem.
+	      */
 
-	      nbaddr_list = nbaddr_list->next_address;
+	      nbaddr_list = nbaddr_list->next_address; /* Technically, this line
+							  is not needed. */
 	    }
 	  }
 	}
 
-	if (to_toplevel) {
-	  to_toplevel = 0;
-	  break;
-	}
       }
+
+      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+      /* Hack to make the complex loops and tests
+	 of this function work as they should. */
+      outside_pckt->packet = 0;
+      last_outpckt = outside_pckt;
+
       continue;
     }
 
@@ -472,7 +484,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	    if (cache_namecard)
 	      if ((cache_namecard->ismine) &&
-		  (cache_namecard->timeof_death > 0)) {
+		  ((cache_namecard->timeof_death > 0) &&
+		   (cache_namecard->timeof_death < cur_time))) {
 		numof_answers++;
 		if (res) {
 		  res->next = malloc(sizeof(struct name_srvc_resource_lst));
@@ -504,7 +517,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		case 'P':
 		  flags = flags | NBADDRLST_NODET_P;
 		  break;
-		default:
+		default: /* B */
 		  flags = flags | NBADDRLST_NODET_B;
 		}
 
@@ -570,6 +583,81 @@ void *name_srvc_B_handle_newtid(void *input) {
     }
 
     // POSITIVE NAME QUERY RESPONSE
+
+    if ((outside_pckt->packet->header->opcode == (OPCODE_RESPONSE |
+						 OPCODE_QUERY)) &&
+	(outside_pckt->packet->header->rcode == 0) &&
+	(outside_pckt->packet->header->nm_flags & FLG_AA)) {
+
+      res = outside_pckt->packet->answers;
+      while (res) {
+	if (res->res)
+	  if ((res->res->name) &&
+	      (res->res->rdata_t == nb_address_list)) {
+	    nbaddr_list_frst = nbaddr_list = res->res->rdata;
+	    nbaddr_list_last = &nbaddr_list_frst;
+
+	    /* Rearange the address list so that group names come first,
+	       unique names second and naked flags fields get deleted. */
+	    while (nbaddr_list) {
+	      if (! nbaddr_list->there_is_an_address) {
+		nbaddr_list_hldme = nbaddr_list;
+		nbaddr_list = nbaddr_list->next_address;
+		*nbaddr_list_last = nbaddr_list;
+		free(nbaddr_list_hldme);
+	      } else {
+		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		  nbaddr_list_hldme = nbaddr_list;
+		  nbaddr_list = nbaddr_list->next_address;
+		  nbaddr_list_hldme->next_address = nbaddr_list_frst;
+		  nbaddr_list_frst = nbaddr_list_hldme;
+		} else {
+		  nbaddr_list_last = &(nbaddr_list->next_address);
+		  nbaddr_list = nbaddr_list->next_address;
+		}
+	      }
+	    }
+
+	    nbaddr_list = nbaddr_list_frst;
+	    /* Group addresses first. */
+	    while (nbaddr_list) {
+	      if (! (nbaddr_list->flags & NBADDRLST_GROUP_MASK))
+		break;
+
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    ANY_NODETYPE, 1,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+
+	      if (cache_namecard)
+		;
+
+	      nbaddr_list = nbaddr_list->next_address;
+	    }
+
+	    /* Unique addresses second. */
+	    while (nbaddr_list) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    ANY_NODETYPE, 0,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+
+	      if (cache_namecard)
+		;
+
+	      nbaddr_list = nbaddr_list->next_address;
+	    }
+	  }
+
+	res = res->next;
+      }
+
+      continue;
+    }
 
     // NAME CONFLICT DEMAND
 
