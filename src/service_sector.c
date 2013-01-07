@@ -271,8 +271,7 @@ inline void ss_name_dstry_recv_queue(struct ss_queue *trans) {
 
   while (trans->incoming) {
     if (trans->incoming->packet)
-      if (trans->incoming->packet->for_del)
-	destroy_name_srvc_pckt(trans->incoming->packet, 1, 1);
+      destroy_name_srvc_pckt(trans->incoming->packet, 1, 1);
     for_del = trans->incoming;
     trans->incoming = trans->incoming->next;
     /* NOTETOSELF: This is safe. */
@@ -516,7 +515,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	      *deleter = '\0';
 	    }
 	    if (cur_trans->outgoing->packet->for_del)
-	      destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
+	      destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
 	  }
 
 	  for_del = cur_trans->outgoing;
@@ -544,7 +543,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	      *deleter = '\0';
 	    }
 	    if (cur_trans->outgoing->packet->for_del)
-	      destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
+	      destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
 	  }
 
 	  for_del = cur_trans->outgoing;
@@ -566,7 +565,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	    *deleter = '\0';
 	  }
 	  if (cur_trans->outgoing->packet->for_del)
-	    destroy_name_srvc_pckt(cur_trans->outgoing->packet, 0, 1);
+	    destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
 	  cur_trans->outgoing->packet = 0;
 	};
 

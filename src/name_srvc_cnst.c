@@ -36,7 +36,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   addr = malloc(sizeof(struct nbaddress_list));
   if (! addr) {
@@ -88,7 +88,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
     free(addr);
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
@@ -99,7 +99,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
     free(addr);
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
@@ -141,7 +141,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   addr = malloc(sizeof(struct nbaddress_list));
   if (! addr) {
@@ -192,7 +192,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
     free(addr);
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
@@ -225,7 +225,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(1, 0, 0, 0);
   if (! result) {
@@ -241,7 +241,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
     /* TODO: errno signaling stuff */
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
@@ -273,7 +273,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
@@ -288,7 +288,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
     /* TODO: errno signaling stuff */
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
 
   }
@@ -321,7 +321,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
@@ -336,7 +336,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
     /* TODO: errno signaling stuff */
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
   result->answers->res->name = complete_name;
@@ -371,7 +371,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 0, 1, 1);
   if (! result) {
@@ -386,7 +386,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
     /* TODO: errno signaling stuff */
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
   result->aditionals->res = malloc(sizeof(struct name_srvc_resource));
@@ -394,7 +394,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
     /* TODO: errno signaling stuff */
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
@@ -439,7 +439,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(1, 0, 0, 0);
   if (! result) {
@@ -454,7 +454,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
     /* TODO: errno signaling stuff */
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
@@ -487,7 +487,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
@@ -502,7 +502,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
     /* TODO: errno signaling stuff */
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
@@ -512,7 +512,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
     free(complete_name->name);
     free(complete_name);
     free(result->answers->res);
-    destroy_name_srvc_pckt(result, 0, 1);
+    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
@@ -577,7 +577,7 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = scope;
+  complete_name->next_name = clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {

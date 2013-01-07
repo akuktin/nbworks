@@ -65,11 +65,11 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
 
   complete_src->name = label_src;
   complete_src->len = NETBIOS_CODED_NAME_LEN;
-  complete_src->next_name = scope;
+  complete_src->next_name = clone_nbnodename(scope);
 
   complete_dst->name = label_dst;
   complete_dst->len = NETBIOS_CODED_NAME_LEN;
-  complete_dst->next_name = scope;
+  complete_dst->next_name = clone_nbnodename(scope);
 
   lenof_names = ((4- (nbnodenamelen(complete_src) %4)) %4) *2;
 
