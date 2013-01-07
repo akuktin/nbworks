@@ -64,7 +64,7 @@ int name_srvc_B_add_name(unsigned char *name,
   trans = ss_register_name_tid(tid);
   if (! trans) {
     /* TODO: errno signaling stuff */
-    destroy_name_srvc_pckt(pckt, 0, 1);
+    destroy_name_srvc_pckt(pckt, 1, 1);
     return -1;
   }
 
@@ -119,14 +119,15 @@ int name_srvc_B_add_name(unsigned char *name,
   if (! result) {
     /* Succeded. */
     pckt->header->opcode = OPCODE_REQUEST | OPCODE_REFRESH;
+    pckt->for_del = 1;
     ss_name_send_pckt(pckt, &addr, trans);
+  } else {
+    destroy_name_srvc_pckt(pckt, 1, 1);
   }
 
   ss_deregister_name_tid(tid);
   ss_name_dstry_recv_queue(trans);
   free(trans);
-
-  destroy_name_srvc_pckt(pckt, 0, 1);
 
   return result;
 }
@@ -165,7 +166,7 @@ int name_srvc_B_release_name(unsigned char *name,
   trans = ss_register_name_tid(tid);
   if (! trans) {
     /* TODO: errno signaling stuff */
-    destroy_name_srvc_pckt(pckt, 0, 1);
+    destroy_name_srvc_pckt(pckt, 1, 1);
     return -1;
   }
 
@@ -179,15 +180,17 @@ int name_srvc_B_release_name(unsigned char *name,
 
   ss_name_send_pckt(pckt, &addr, trans);
 
-  for (i=0; i < (BCAST_REQ_RETRY_COUNT -1); i++) {
+  for (i=0; i < (BCAST_REQ_RETRY_COUNT -2); i++) {
     nanosleep(&sleeptime, 0);
     ss_name_send_pckt(pckt, &addr, trans);
   }
 
+  nanosleep(&sleeptime, 0);
+  pckt->for_del = 1;
+  ss_name_send_pckt(pckt, &addr, trans);
+
   ss_deregister_name_tid(tid);
   free(trans);
-
-  destroy_name_srvc_pckt(pckt, 0, 1);
 
   return 0;
 }
@@ -225,7 +228,7 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
   trans = ss_register_name_tid(tid);
   if (! trans) {
     /* TODO: errno signaling stuff */
-    destroy_name_srvc_pckt(pckt, 0, 1);
+    destroy_name_srvc_pckt(pckt, 1, 1);
     return 0;
   }
 
@@ -288,7 +291,7 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
   ss_name_dstry_recv_queue(trans);
   free(trans);
 
-  destroy_name_srvc_pckt(pckt, 0, 1);
+  destroy_name_srvc_pckt(pckt, 1, 1);
 
   return result;
 }
@@ -301,11 +304,14 @@ void *name_srvc_B_handle_newtid(void *input) {
   struct name_srvc_packet *pckt;
   struct ss_name_pckt_list *outside_pckt, *last_outpckt;
 
-  struct name_srvc_resource_lst *res;
+  struct name_srvc_resource_lst *res, *answer_lst;
   struct name_srvc_question_lst *qstn;
   struct cache_namenode *cache_namecard;
-  struct nbaddress_list *nbaddr_list;
+  struct nbaddress_list *nbaddr_list, *nbaddr_list_frst;
+  struct ipv4_addr_list *ipv4_addr_list;
   uint32_t in_addr;
+  uint16_t flags, numof_answers;
+  int i;
   unsigned char octet, label[NETBIOS_NAME_LEN+1], label_type;
   unsigned char to_toplevel, waited;
 
@@ -324,7 +330,6 @@ void *name_srvc_B_handle_newtid(void *input) {
   sleeptime.tv_sec = 0;
   sleeptime.tv_nsec = T_500MS;
 
-  to_toplevel = 0;
   label[NETBIOS_NAME_LEN] = '\0';
 
   ss_set_inputdrop_name_tid(params.tid);
@@ -342,6 +347,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	  /* Wait time passed. */
 	  ss_deregister_name_tid(params.tid);
 	  ss_name_dstry_recv_queue(params.trans);
+	  free(params.trans);
 	  if (last_will)
 	    last_will->dead = 9001; /* It's OVER *9000*!!! */
 	  return 0;
@@ -360,6 +366,12 @@ void *name_srvc_B_handle_newtid(void *input) {
     } while (! outside_pckt->packet);
 
     cur_time = time(0);
+    cache_namecard = 0;
+    answer_lst = 0;
+    to_toplevel = 0;
+    res = qstn = 0;
+    ipv4_addr_list = 0;
+    numof_answers = 0;
 
 
     // NAME REGISTRATION REQUEST (UNIQUE)
@@ -385,7 +397,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      else
 		octet = 0;
 
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name),
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
 					    NETBIOS_NAME_LEN,
 					    ANY_NODETYPE, octet,
 					    res->res->rrtype,
@@ -397,7 +409,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    (0 == cache_namecard->isgroup)) {
 		  /* Someone is trying to take my name. */
 
-		  memcpy(&label, cache_namecard->name, NETBIOS_NAME_LEN);
+		  memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
 		  label_type = label[NETBIOS_NAME_LEN-1];
 		  label[NETBIOS_NAME_LEN-1] = '\0';
 		  if (cache_namecard->addrlist)
@@ -414,9 +426,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
 		  pckt->header->rcode = RCODE_REGISTR_ACT_ERR;
+		  pckt->for_del = 1;
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
 
-		  destroy_name_srvc_pckt(pckt, 0, 1);
 		  destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
 		  /* Hack to make the complex loops and tests
 		     of this function work as they should. */
@@ -448,10 +460,110 @@ void *name_srvc_B_handle_newtid(void *input) {
       qstn = outside_pckt->packet->questions;
       while (qstn) {
 
-	...
+	if (qstn->qstn)
+	  if (qstn->qstn->name) {
+	    cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name, 0),
+					  NETBIOS_NAME_LEN,
+					  ANY_NODETYPE, ANY_GROUP,
+					  qstn->qstn->qtype,
+					  qstn->qstn->qclass,
+					  qstn->qstn->name->next_name);
+
+	    if (cache_namecard)
+	      if ((cache_namecard->ismine) &&
+		  (cache_namecard->timeof_death > 0)) {
+		numof_answers++;
+		if (res) {
+		  res->next = malloc(sizeof(struct name_srvc_resource_lst));
+		  /* no check */
+		  res = res->next;
+		} else {
+		  res = malloc(sizeof(struct name_srvc_resource_lst));
+		  /* no check */
+		  answer_lst = res;
+		}
+		res->res = malloc(sizeof(struct name_srvc_resource));
+		/* no check */
+		res->res->name = clone_nbnodename(qstn->qstn->name);
+		res->res->rrtype = cache_namecard->dns_type;
+		res->res->rrclass = cache_namecard->dns_class;
+		res->res->ttl = (cache_namecard->timeof_death - cur_time);
+
+		if (cache_namecard->isgroup)
+		  flags = NBADDRLST_GROUP_YES;
+		else
+		  flags = NBADDRLST_GROUP_NO;
+		switch (cache_namecard->node_type) {
+		case 'H':
+		  flags = flags | NBADDRLST_NODET_H;
+		  break;
+		case 'M':
+		  flags = flags | NBADDRLST_NODET_M;
+		  break;
+		case 'P':
+		  flags = flags | NBADDRLST_NODET_P;
+		  break;
+		default:
+		  flags = flags | NBADDRLST_NODET_B;
+		}
+		  
+		ipv4_addr_list = cache_namecard->addrlist;
+		i=0;
+		if (ipv4_addr_list) {
+		  nbaddr_list_frst = nbaddr_list = malloc(sizeof(struct nbaddress_list));
+		  //		  if (! nbaddr_list) {
+		  //		    /* Now what?? */
+		  //		  }
+
+		  while (137) {
+		    i++;
+		    nbaddr_list->flags = flags;
+		    nbaddr_list->there_is_an_address = 1;
+		    nbaddr_list->address = ipv4_addr_list->ip_addr;
+
+		    ipv4_addr_list = ipv4_addr_list->next;
+		    if (ipv4_addr_list) {
+		      nbaddr_list->next_address = malloc(sizeof(struct nbaddress_list));
+		      /* No test. */
+		      nbaddr_list = nbaddr_list->next_address;
+		    } else {
+		      nbaddr_list->next_address = 0;
+		      break;
+		    }
+		  }
+		} else
+		  nbaddr_list_frst = 0;
+
+		res->res->rdata_len = i * 6;
+		res->res->rdata_t = nb_address_list;
+		res->res->rdata = nbaddr_list_frst;
+
+	      }
+	  }
 
 	qstn = qstn->next;
       }
+
+      if (answer_lst) {
+	res->next = 0; /* terminate the list */
+	pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+	/* no check */
+	pckt->answers = answer_lst;
+
+	pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+	pckt->header->nm_flags = FLG_AA;
+	pckt->header->rcode = 0;
+	pckt->header->numof_answers = numof_answers;
+	pckt->for_del = 1;
+
+	ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+      }
+
+      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+      /* Hack to make the complex loops and tests
+	 of this function work as they should. */
+      outside_pckt->packet = 0;
+      last_outpckt = outside_pckt;
 
       continue;
     }
