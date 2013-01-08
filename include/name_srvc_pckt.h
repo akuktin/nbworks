@@ -6,6 +6,8 @@
 # include "nodename.h"
 
 # define MAX_DNS_LABEL_LEN 0x3f
+# define ISGROUP_YES   1
+# define ISGROUP_NO    0
 
 
 # define QTYPE_NB      0x0020

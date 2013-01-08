@@ -296,10 +296,11 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
   return result;
 }
 
-#define STATUS_DID_NONE  0
-#define STATUS_DID_GROUP 1
-#define STATUS_DID_UNIQ  2
-#define STATUS_DID_ALL   ONES
+#define STATUS_DID_NONE   0
+#define STATUS_DID_GROUP  1
+#define STATUS_DID_UNIQ   2
+#define STATUS_CNFLCT_GRP 4
+#define STATUS_CNFLCT_UNQ 8
 void *name_srvc_B_handle_newtid(void *input) {
   struct timespec sleeptime;
   struct newtid_params params;
@@ -310,8 +311,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 
   struct name_srvc_resource_lst *res, *answer_lst;
   struct name_srvc_question_lst *qstn;
-  struct cache_namenode *cache_namecard;
-  struct nbaddress_list *nbaddr_list;
+  struct cache_namenode *cache_namecard, *cache_namecard_b;
+  struct nbaddress_list *nbaddr_list, *nbaddr_list_frst,
+    *nbaddr_list_hldme, **nbaddr_list_last;;
   struct ipv4_addr_list *ipv4_addr_list;
   uint32_t in_addr;
   uint16_t flags, numof_answers;
@@ -370,12 +372,15 @@ void *name_srvc_B_handle_newtid(void *input) {
 
     cur_time = time(0);
     cache_namecard = 0;
+    cache_namecard_b = 0;
     answer_lst = 0;
     res = 0;
     qstn = 0;
     ipv4_addr_list = 0;
     numof_answers = 0;
-    nbaddr_list = 0;
+    nbaddr_list = nbaddr_list_frst =
+      nbaddr_list_hldme = 0;
+    nbaddr_list_last = 0;
     status = STATUS_DID_NONE;
 
 
@@ -594,104 +599,119 @@ void *name_srvc_B_handle_newtid(void *input) {
 	if (res->res) {
 	  if ((res->res->name) &&
 	      (res->res->rdata_t == nb_address_list)) {
-	    nbaddr_list = res->res->rdata;
+	    nbaddr_list_frst = nbaddr_list = res->res->rdata;
+	    nbaddr_list_last = &nbaddr_list_frst;
 
-	    while (nbaddr_list) {
-	      if (! nbaddr_list->there_is_an_address) {
-		nbaddr_list = nbaddr_list->next_address;
-		continue;
-	      }
+	    /* Rearange the address list so that group names come first,
+	       unique names second and naked flags fields get deleted. */
+            while (nbaddr_list) {
+              if (! nbaddr_list->there_is_an_address) {
+		nbaddr_list_hldme = nbaddr_list;
+                nbaddr_list = nbaddr_list->next_address;
+		*nbaddr_list_last = nbaddr_list;
+		free(nbaddr_list_hldme);
+              } else {
+		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		  nbaddr_list_hldme = nbaddr_list;
+                  *nbaddr_list_last = nbaddr_list = nbaddr_list->next_address;
+		  nbaddr_list_hldme->next_address = nbaddr_list_frst;
+		  nbaddr_list_frst = nbaddr_list_hldme;
+                } else {
+		  nbaddr_list_last = &(nbaddr_list->next_address);
+                  nbaddr_list = nbaddr_list->next_address;
+                }
+              }
+	    }
+	    nbaddr_list = res->res->rdata = nbaddr_list_frst;
 
-	      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-		if (status & STATUS_DID_GROUP) {
-		  nbaddr_list = nbaddr_list->next_address;
-		} else {
+	    /* Okay. So first, find the cards. Then list through their
+	       addresses, looking for a conflict. */
+	    /* Actually, don't do that -- RFC1002 does not require it. */
+	    if (nbaddr_list) {
+	      while (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		if (! status & STATUS_DID_GROUP) {
 		  status = status | STATUS_DID_GROUP;
-		  cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-						NETBIOS_NAME_LEN,
-						ANY_NODETYPE, 1,
-						res->res->rrtype,
-						res->res->rrclass,
-						res->res->name->next_name);
+		  cache_namecard_b = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+						  NETBIOS_NAME_LEN,
+						  ANY_NODETYPE, 1,
+						  res->res->rrtype,
+						  res->res->rrclass,
+						  res->res->name->next_name);
 
-		  if (cache_namecard) {
-		    if (cache_namecard->endof_conflict_chance > cur_time) {
-
-		      /* DOS_BUG: It is interesting.
-			 RFC 1002 requires me to delete the entry from the
-			 cache if I receive a POSITIVE NAME QUERY RESPONSE.
-			 That would imply it is possible for an attacker to
-			 just send me a response, forcing the cache expulsion
-			 and effectivelly preventing me from ever obtaining
-			 any handles to other nodes.
-		      */
-		      cache_namecard->isinconflict = 1;
-		      if (! cache_namecard->ismine)
-			cache_namecard->timeof_death = 0;
-
-		      memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
-		      label_type = label[NETBIOS_NAME_LEN-1];
-		      label[NETBIOS_NAME_LEN-1] = '\0';
-
-		      pckt = name_srvc_make_name_reg_small(label, label_type,
-							   res->res->name->next_name,
-							   0, 0, 0,
-							   cache_namecard->node_type);
-		      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-		      pckt->header->nm_flags = FLG_AA;
-		      pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
-		      pckt->for_del = 1;
-
-		      ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
-
-		    }
-		  }
-
-		  nbaddr_list = nbaddr_list->next_address;
+		  if (cache_namecard_b)
+		    if (cache_namecard_b->endof_conflict_chance < cur_time)
+		      cache_namecard_b = 0;
 		}
-	      } else {
-		if (status & STATUS_DID_UNIQ) {
-		  nbaddr_list = nbaddr_list->next_address;
-		} else {
-		  status = status | STATUS_DID_UNIQ;
-		  cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-						NETBIOS_NAME_LEN,
-						ANY_NODETYPE, 0,
-						res->res->rrtype,
-						res->res->rrclass,
-						res->res->name->next_name);
 
-		  if (cache_namecard) {
-		    if (cache_namecard->endof_conflict_chance > cur_time) {
-
-		      /* See previous comment. */
-		      cache_namecard->isinconflict = 1;
-		      if (! cache_namecard->ismine)
-			cache_namecard->timeof_death = 0;
-
-		      memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
-		      label_type = label[NETBIOS_NAME_LEN-1];
-		      label[NETBIOS_NAME_LEN-1] = '\0';
-
-		      pckt = name_srvc_make_name_reg_small(label, label_type,
-							   res->res->name->next_name,
-							   0, 0, 0,
-							   cache_namecard->node_type);
-		      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-		      pckt->header->nm_flags = FLG_AA;
-		      pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
-		      pckt->for_del = 1;
-
-		      ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
-
-		  }
-
-		  nbaddr_list = nbaddr_list->next_address;
-		}
+		nbaddr_list = nbaddr_list->next_address;
+		if (! nbaddr_list)
+		  break;
 	      }
 
-	      if (status & (STATUS_DID_UNIQ | STATUS_DID_GROUP))
-		break;
+	      if (nbaddr_list) {
+		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					      NETBIOS_NAME_LEN,
+					      ANY_NODETYPE, 0,
+					      res->res->rrtype,
+					      res->res->rrclass,
+					      res->res->name->next_name);
+
+		if (cache_namecard)
+		  if (cache_namecard->endof_conflict_chance < cur_time)
+		    cache_namecard = 0;
+
+	      }
+
+
+	      /* DOS_BUG: It is interesting.
+		 RFC 1002 requires me to delete the entry from the
+		 cache if I receive a POSITIVE NAME QUERY RESPONSE.
+		 That would imply it is possible for an attacker to
+		 just send me a response, forcing the cache expulsion
+		 and effectivelly preventing me from ever obtaining
+		 any handles to other nodes.
+	      */
+	      memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
+	      label_type = label[NETBIOS_NAME_LEN-1];
+	      label[NETBIOS_NAME_LEN-1] = '\0';
+
+	      if (cache_namecard) {
+		pckt = name_srvc_make_name_reg_small(label, label_type,
+						     res->res->name->next_name,
+						     0, 0, ISGROUP_NO,
+						     cache_namecard->node_type);
+		pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+		pckt->header->nm_flags = FLG_AA;
+		pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		pckt->for_del = 1;
+
+		ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+
+		if (! cache_namecard->ismine)
+		  cache_namecard->timeof_death = 0;
+		else
+		  cache_namecard->isinconflict = 1;
+	      }
+	      if (cache_namecard_b) {
+		pckt = name_srvc_make_name_reg_small(label, label_type,
+						     res->res->name->next_name,
+						     0, 0, ISGROUP_YES,
+						     cache_namecard->node_type);
+		pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+		pckt->header->nm_flags = FLG_AA;
+		pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		pckt->for_del = 1;
+
+		ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+
+		if (! cache_namecard->ismine)
+		  cache_namecard->timeof_death = 0;
+		else
+		  cache_namecard->isinconflict = 1;
+	      }
+
+	      /* TODO: THIS ISN'T OVER YET, DOS_BUG!!! */
+
 	    }
 	  }
 	}
@@ -721,4 +741,5 @@ void *name_srvc_B_handle_newtid(void *input) {
 #undef STATUS_DID_NONE
 #undef STATUS_DID_GROUP
 #undef STATUS_DID_UNIQ
-#undef STATUS_DID_ALL
+#undef STATUS_CNFLCT_GRP
+#undef STATUS_CNFLCT_UNQ
