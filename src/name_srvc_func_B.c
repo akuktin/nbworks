@@ -412,8 +412,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	      if (cache_namecard) {
 		if ((cache_namecard->ismine) &&
-		    ((cache_namecard->timeof_death > 0) &&
-		     (cache_namecard->timeof_death < cur_time))) {
+		    (cache_namecard->timeof_death > cur_time)) {
 		  /* Someone is trying to take my name. */
 
 		  memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
@@ -486,8 +485,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	    if (cache_namecard)
 	      if ((cache_namecard->ismine) &&
-		  ((cache_namecard->timeof_death > 0) &&
-		   (cache_namecard->timeof_death < cur_time))) {
+		  (cache_namecard->timeof_death > cur_time)) {
 		numof_answers++;
 		if (res) {
 		  res->next = malloc(sizeof(struct name_srvc_resource_lst));
@@ -587,7 +585,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     // POSITIVE NAME QUERY RESPONSE
 
     if ((outside_pckt->packet->header->opcode == (OPCODE_RESPONSE |
-						 OPCODE_QUERY)) &&
+						  OPCODE_QUERY)) &&
 	(outside_pckt->packet->header->rcode == 0) &&
 	(outside_pckt->packet->header->nm_flags & FLG_AA)) {
 
@@ -616,8 +614,38 @@ void *name_srvc_B_handle_newtid(void *input) {
 						res->res->rrclass,
 						res->res->name->next_name);
 
-		  if (cache_namecard)
-		    ;
+		  if (cache_namecard) {
+		    if (cache_namecard->endof_conflict_chance > cur_time) {
+
+		      /* DOS_BUG: It is interesting.
+			 RFC 1002 requires me to delete the entry from the
+			 cache if I receive a POSITIVE NAME QUERY RESPONSE.
+			 That would imply it is possible for an attacker to
+			 just send me a response, forcing the cache expulsion
+			 and effectivelly preventing me from ever obtaining
+			 any handles to other nodes.
+		      */
+		      cache_namecard->isinconflict = 1;
+		      if (! cache_namecard->ismine)
+			cache_namecard->timeof_death = 0;
+
+		      memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
+		      label_type = label[NETBIOS_NAME_LEN-1];
+		      label[NETBIOS_NAME_LEN-1] = '\0';
+
+		      pckt = name_srvc_make_name_reg_small(label, label_type,
+							   res->res->name->next_name,
+							   0, 0, 0,
+							   cache_namecard->node_type);
+		      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+		      pckt->header->nm_flags = FLG_AA;
+		      pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		      pckt->for_del = 1;
+
+		      ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+
+		    }
+		  }
 
 		  nbaddr_list = nbaddr_list->next_address;
 		}
@@ -633,8 +661,30 @@ void *name_srvc_B_handle_newtid(void *input) {
 						res->res->rrclass,
 						res->res->name->next_name);
 
-		  if (cache_namecard)
-		    ;
+		  if (cache_namecard) {
+		    if (cache_namecard->endof_conflict_chance > cur_time) {
+
+		      /* See previous comment. */
+		      cache_namecard->isinconflict = 1;
+		      if (! cache_namecard->ismine)
+			cache_namecard->timeof_death = 0;
+
+		      memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
+		      label_type = label[NETBIOS_NAME_LEN-1];
+		      label[NETBIOS_NAME_LEN-1] = '\0';
+
+		      pckt = name_srvc_make_name_reg_small(label, label_type,
+							   res->res->name->next_name,
+							   0, 0, 0,
+							   cache_namecard->node_type);
+		      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+		      pckt->header->nm_flags = FLG_AA;
+		      pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		      pckt->for_del = 1;
+
+		      ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+
+		  }
 
 		  nbaddr_list = nbaddr_list->next_address;
 		}
