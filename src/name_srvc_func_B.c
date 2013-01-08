@@ -296,6 +296,10 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
   return result;
 }
 
+#define STATUS_DID_NONE  0
+#define STATUS_DID_GROUP 1
+#define STATUS_DID_UNIQ  2
+#define STATUS_DID_ALL   ONES
 void *name_srvc_B_handle_newtid(void *input) {
   struct timespec sleeptime;
   struct newtid_params params;
@@ -307,14 +311,13 @@ void *name_srvc_B_handle_newtid(void *input) {
   struct name_srvc_resource_lst *res, *answer_lst;
   struct name_srvc_question_lst *qstn;
   struct cache_namenode *cache_namecard;
-  struct nbaddress_list *nbaddr_list, *nbaddr_list_frst,
-    *nbaddr_list_hldme, **nbaddr_list_last;
+  struct nbaddress_list *nbaddr_list;
   struct ipv4_addr_list *ipv4_addr_list;
   uint32_t in_addr;
   uint16_t flags, numof_answers;
   int i;
   unsigned char label[NETBIOS_NAME_LEN+1], label_type;
-  unsigned char waited;
+  unsigned char waited, status;
 
   time_t cur_time;
 
@@ -372,9 +375,8 @@ void *name_srvc_B_handle_newtid(void *input) {
     qstn = 0;
     ipv4_addr_list = 0;
     numof_answers = 0;
-    nbaddr_list = nbaddr_list_frst =
-      nbaddr_list_hldme = 0;
-    nbaddr_list_last = 0;
+    nbaddr_list = 0;
+    status = STATUS_DID_NONE;
 
 
     // NAME REGISTRATION REQUEST (UNIQUE)
@@ -594,62 +596,52 @@ void *name_srvc_B_handle_newtid(void *input) {
 	if (res->res) {
 	  if ((res->res->name) &&
 	      (res->res->rdata_t == nb_address_list)) {
-	    nbaddr_list_frst = nbaddr_list = res->res->rdata;
-	    nbaddr_list_last = &nbaddr_list_frst;
+	    nbaddr_list = res->res->rdata;
 
-	    /* Rearange the address list so that group names come first,
-	       unique names second and naked flags fields get deleted. */
 	    while (nbaddr_list) {
 	      if (! nbaddr_list->there_is_an_address) {
-		nbaddr_list_hldme = nbaddr_list;
 		nbaddr_list = nbaddr_list->next_address;
-		*nbaddr_list_last = nbaddr_list;
-		free(nbaddr_list_hldme);
-	      } else {
-		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-		  nbaddr_list_hldme = nbaddr_list;
+		continue;
+	      }
+
+	      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		if (status & STATUS_DID_GROUP) {
 		  nbaddr_list = nbaddr_list->next_address;
-		  nbaddr_list_hldme->next_address = nbaddr_list_frst;
-		  nbaddr_list_frst = nbaddr_list_hldme;
 		} else {
-		  nbaddr_list_last = &(nbaddr_list->next_address);
+		  status = status | STATUS_DID_GROUP;
+		  cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+						NETBIOS_NAME_LEN,
+						ANY_NODETYPE, 1,
+						res->res->rrtype,
+						res->res->rrclass,
+						res->res->name->next_name);
+
+		  if (cache_namecard)
+		    ;
+
+		  nbaddr_list = nbaddr_list->next_address;
+		}
+	      } else {
+		if (status & STATUS_DID_UNIQ) {
+		  nbaddr_list = nbaddr_list->next_address;
+		} else {
+		  status = status | STATUS_DID_UNIQ;
+		  cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+						NETBIOS_NAME_LEN,
+						ANY_NODETYPE, 0,
+						res->res->rrtype,
+						res->res->rrclass,
+						res->res->name->next_name);
+
+		  if (cache_namecard)
+		    ;
+
 		  nbaddr_list = nbaddr_list->next_address;
 		}
 	      }
-	    }
 
-	    nbaddr_list = nbaddr_list_frst;
-	    /* Group addresses first. */
-	    while (nbaddr_list) {
-	      if (! (nbaddr_list->flags & NBADDRLST_GROUP_MASK))
+	      if (status & (STATUS_DID_UNIQ | STATUS_DID_GROUP))
 		break;
-
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    ANY_NODETYPE, 1,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-
-	      if (cache_namecard)
-		;
-
-	      nbaddr_list = nbaddr_list->next_address;
-	    }
-
-	    /* Unique addresses second. */
-	    while (nbaddr_list) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    ANY_NODETYPE, 0,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-
-	      if (cache_namecard)
-		;
-
-	      nbaddr_list = nbaddr_list->next_address;
 	    }
 	  }
 	}
@@ -676,3 +668,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
   return 0;
 }
+#undef STATUS_DID_NONE
+#undef STATUS_DID_GROUP
+#undef STATUS_DID_UNIQ
+#undef STATUS_DID_ALL
