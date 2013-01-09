@@ -377,6 +377,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     res = 0;
     qstn = 0;
     ipv4_addr_list = 0;
+    in_addr = 0;
     numof_answers = 0;
     nbaddr_list = nbaddr_list_frst =
       nbaddr_list_hldme = 0;
@@ -410,7 +411,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
 					    NETBIOS_NAME_LEN,
-					    ANY_NODETYPE, 0,
+					    ANY_NODETYPE, ISGROUP_NO,
 					    res->res->rrtype,
 					    res->res->rrclass,
 					    res->res->name->next_name);
@@ -432,7 +433,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 						       res->res->name->next_name,
 						       (cache_namecard->timeof_death
 							  - cur_time),
-						       in_addr, 0,
+						       in_addr, ISGROUP_NO,
 						       cache_namecard->node_type);
 		  pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
@@ -596,6 +597,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
       res = outside_pckt->packet->answers;
       while (res) {
+	status = STATUS_DID_NONE;
 	if (res->res) {
 	  if ((res->res->name) &&
 	      (res->res->rdata_t == nb_address_list)) {
@@ -633,7 +635,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  status = status | STATUS_DID_GROUP;
 		  cache_namecard_b = find_nblabel(decode_nbnodename(res->res->name->name, 0),
 						  NETBIOS_NAME_LEN,
-						  ANY_NODETYPE, 1,
+						  ANY_NODETYPE, ISGROUP_YES,
 						  res->res->rrtype,
 						  res->res->rrclass,
 						  res->res->name->next_name);
@@ -651,7 +653,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      if (nbaddr_list) {
 		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
 					      NETBIOS_NAME_LEN,
-					      ANY_NODETYPE, 0,
+					      ANY_NODETYPE, ISGROUP_NO,
 					      res->res->rrtype,
 					      res->res->rrclass,
 					      res->res->name->next_name);
@@ -719,12 +721,141 @@ void *name_srvc_B_handle_newtid(void *input) {
 	res = res->next;
       }
 
+      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+      /* Hack to make the complex loops and tests
+	 of this function work as they should. */
+      outside_pckt->packet = 0;
+      last_outpckt = outside_pckt;
+
       continue;
     }
 
     // NAME CONFLICT DEMAND
 
+    if ((outside_pckt->packet->header->opcode == (OPCODE_RESPONSE |
+						  OPCODE_REGISTRATION)) &&
+	(outside_pckt->packet->header->rcode == RCODE_REGISTR_CFT_ERR) &&
+	(outside_pckt->packet->header->nm_flags & FLG_AA)) {
+
+      res = outside_pckt->packet->answers;
+      while (res) {
+	status = STATUS_DID_NONE;
+
+	if ((res->res) &&
+	    (res->res->rdata_t == nb_address_list)) {
+
+	  nbaddr_list = res->res->rdata_t;
+	  while (nbaddr_list) {
+	    if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
+	      status = status | STATUS_DID_GROUP;
+	    else
+	      status = status | STATUS_DID_UNIQ;
+
+	    if (status & (STATUS_DID_UNIQ | STATUS_DID_GROUP))
+	      break;
+	    else
+	      nbaddr_list = nbaddr_list->next_address;
+	  }
+
+	  if (status & STATUS_DID_GROUP) {
+	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					  NETBIOS_NAME_LEN,
+					  ANY_NODETYPE, ISGROUP_YES,
+					  res->res->rrtype,
+					  res->res->rrclass,
+					  res->res->name->next_name);
+	    if (cache_namecard)
+	      if (cache_namecard->ismine)
+		cache_namecard->isinconflict = TRUE;
+	  }
+	  if (status & STATUS_DID_UNIQ) {
+	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					  NETBIOS_NAME_LEN,
+					  ANY_NODETYPE, ISGROUP_NO,
+					  res->res->rrtype,
+					  res->res->rrclass,
+					  res->res->name->next_name);
+	    if (cache_namecard)
+	      if (cache_namecard->ismine)
+		cache_namecard->isinconflict = TRUE;
+	  }
+	}	    
+
+	res = res->next;
+      }
+
+      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+      /* Hack to make the complex loops and tests
+	 of this function work as they should. */
+      outside_pckt->packet = 0;
+      last_outpckt = outside_pckt;
+
+      continue;
+    }
+
     // NAME RELEASE REQUEST
+
+    if ((outside_pckt->packet->header->opcode == (OPCODE_RESPONSE |
+						  OPCODE_RELEASE)) &&
+	(outside_pckt->packet->header->rcode == 0)) {
+
+      /* Make sure noone spoofs the release request. */
+      read_32field(outside_pckt->addr.sinaddr, &in_addr);
+
+      res = outside_pckt->packet->aditionals;
+      while (res) {
+	status = STATUS_DID_NONE;
+
+	if (res->res) {
+	  if (res->res->rdata_t == nb_address_list) {
+	    nbaddr_list = res->res->rdata;
+	    while (nbaddr_list) {
+	      if (! nbaddr_list->there_is_an_address)
+		nbaddr_list = nbaddr_list->next_address;
+	      else
+		if (nbaddr_list->address != in_addr)
+		  nbaddr_list = nbaddr_list->next_address;
+		else
+		  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
+		    status = status | STATUS_DID_GROUP;
+		  else
+		    status = status | STATUS_DID_UNIQ;
+	    }
+
+	    if (status & STATUS_DID_GROUP) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    ANY_NODETYPE, ISGROUP_YES,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+	      if (cache_namecard)
+		cache_namecard->timeof_death = 0;
+	    }
+	    if (status & STATUS_DID_UNIQ) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    ANY_NODETYPE, ISGROUP_NO,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+	      if (cache_namecard)
+		cache_namecard->timeof_death = 0;
+	    }
+	  }
+	}
+
+	res = res->next;
+      }
+
+      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+      /* Hack to make the complex loops and tests
+	 of this function work as they should. */
+      outside_pckt->packet = 0;
+      last_outpckt = outside_pckt;
+
+      continue;
+    }
 
     // NAME UPDATE REQUEST
 
