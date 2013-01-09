@@ -296,11 +296,15 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
   return result;
 }
 
-#define STATUS_DID_NONE   0
-#define STATUS_DID_GROUP  1
-#define STATUS_DID_UNIQ   2
-#define STATUS_CNFLCT_GRP 4
-#define STATUS_CNFLCT_UNQ 8
+#define STATUS_DID_NONE   0x00
+#define STATUS_DID_GROUP  0x01
+#define STATUS_DID_UNIQ   0x02
+#define STATUS_CNFLCT_GRP 0x04
+#define STATUS_CNFLCT_UNQ 0x08
+#define STATUS_DID_B      0x10
+#define STATUS_DID_P      0x20
+#define STATUS_DID_M      0x40
+#define STATUS_DID_H      0x80
 void *name_srvc_B_handle_newtid(void *input) {
   struct timespec sleeptime;
   struct newtid_params params;
@@ -313,8 +317,23 @@ void *name_srvc_B_handle_newtid(void *input) {
   struct name_srvc_question_lst *qstn;
   struct cache_namenode *cache_namecard, *cache_namecard_b;
   struct nbaddress_list *nbaddr_list, *nbaddr_list_frst,
-    *nbaddr_list_hldme, **nbaddr_list_last;;
+    *nbaddr_list_hldme, **nbaddr_list_last;
+
   struct ipv4_addr_list *ipv4_addr_list;
+  /* "Has the nature of Ctulhu." */
+  struct ipv4_addr_list *ipv4_addr_list_grpB_frst,
+    *ipv4_addr_list_grpP_frst, *ipv4_addr_list_grpM_frst,
+    *ipv4_addr_list_grpH_frst;
+  struct ipv4_addr_list *ipv4_addr_listB_frst,
+    *ipv4_addr_listP_frst, *ipv4_addr_listM_frst,
+    *ipv4_addr_listH_frst;
+  struct ipv4_addr_list *ipv4_addr_list_grpB,
+    *ipv4_addr_list_grpP, *ipv4_addr_list_grpM,
+    *ipv4_addr_list_grpH;
+  struct ipv4_addr_list *ipv4_addr_listB,
+    *ipv4_addr_listP, *ipv4_addr_listM,
+    *ipv4_addr_listH;
+    
   uint32_t in_addr;
   uint16_t flags, numof_answers;
   int i;
@@ -383,6 +402,16 @@ void *name_srvc_B_handle_newtid(void *input) {
       nbaddr_list_hldme = 0;
     nbaddr_list_last = 0;
     status = STATUS_DID_NONE;
+
+    /* This batch of variables is the UGLIEST thing I have yet seen. */
+    ipv4_addr_list_grpB_frst = ipv4_addr_list_grpP_frst =
+      ipv4_addr_list_grpM_frst = ipv4_addr_list_grpH_frst = 0;
+    ipv4_addr_listB_frst = ipv4_addr_listP_frst  =
+      ipv4_addr_listM_frst = ipv4_addr_listH_frst = 0;
+    ipv4_addr_list_grpB = ipv4_addr_list_grpP =
+      ipv4_addr_list_grpM = ipv4_addr_list_grpH = 0;
+    ipv4_addr_listB = ipv4_addr_listP =
+      ipv4_addr_listM = ipv4_addr_listH = 0;
 
 
     // NAME REGISTRATION REQUEST (UNIQUE)
@@ -538,7 +567,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  while (137) {
 		    i++;
 		    nbaddr_list->flags = flags;
-		    nbaddr_list->there_is_an_address = 1;
+		    nbaddr_list->there_is_an_address = TRUE;
 		    nbaddr_list->address = ipv4_addr_list->ip_addr;
 
 		    ipv4_addr_list = ipv4_addr_list->next;
@@ -713,6 +742,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      }
 
 	      /* TODO: THIS ISN'T OVER YET, DOS_BUG!!! */
+	      /* TODO: make the function cross-reference the addr lists,
+		       looking for inconsistencies, like the 
+		       NAME RELEASE REQUEST section does. */
 
 	    }
 	  }
@@ -744,7 +776,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	if ((res->res) &&
 	    (res->res->rdata_t == nb_address_list)) {
 
-	  nbaddr_list = res->res->rdata_t;
+	  nbaddr_list = res->res->rdata;
 	  while (nbaddr_list) {
 	    if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
 	      status = status | STATUS_DID_GROUP;
@@ -779,7 +811,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      if (cache_namecard->ismine)
 		cache_namecard->isinconflict = TRUE;
 	  }
-	}	    
+	}
 
 	res = res->next;
       }
@@ -800,7 +832,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	(outside_pckt->packet->header->rcode == 0)) {
 
       /* Make sure noone spoofs the release request. */
-      read_32field(outside_pckt->addr.sinaddr, &in_addr);
+      /* VAXism below. */
+      read_32field((unsigned char *)&(outside_pckt->addr.sin_addr), &in_addr);
 
       res = outside_pckt->packet->aditionals;
       while (res) {
@@ -859,6 +892,250 @@ void *name_srvc_B_handle_newtid(void *input) {
 
     // NAME UPDATE REQUEST
 
+    if (((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+						   OPCODE_REFRESH)) ||
+	 (outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+						   OPCODE_REFRESH2))) &&
+	(outside_pckt->packet->header->rcode == 0)) {
+
+      //      /* Make sure noone spoofs the update request. */
+      //      read_32field(outside_pckt->addr.sinaddr, &in_addr);
+
+      res = outside_pckt->packet->aditionals;
+      while (res) {
+	status = STATUS_DID_NONE;
+	if (res->res) {
+	  if (res->res->rdata_t == nb_address_list) {
+	    nbaddr_list = res->res->rdata;
+
+	    while (nbaddr_list) {
+	      if (! nbaddr_list->there_is_an_address) {
+		nbaddr_list = nbaddr_list->next_address;
+		continue;
+	      }
+
+	      switch (nbaddr_list->flags & NBADDRLST_NODET_MASK) {
+	      case NBADDRLST_NODET_B:
+		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		  if (ipv4_addr_list_grpB) {
+		    ipv4_addr_list_grpB->next = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_list_grpB = ipv4_addr_list_grpB->next;
+		  } else {
+		    ipv4_addr_list_grpB = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_list_grpB_frst = ipv4_addr_list_grpB;
+		  }
+		  ipv4_addr_list_grpB->ip_addr = nbaddr_list->address;
+		  ipv4_addr_list_grpB->next = 0;
+		} else {
+		  if (ipv4_addr_listB) {
+		    ipv4_addr_listB->next = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_listB = ipv4_addr_listB->next;
+		  } else {
+		    ipv4_addr_listB = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_listB_frst = ipv4_addr_listB;
+		  }
+		  ipv4_addr_listB->ip_addr = nbaddr_list->address;
+		  ipv4_addr_listB->next = 0;
+		}
+		break;
+
+	      case NBADDRLST_NODET_P:
+		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		  if (ipv4_addr_list_grpP) {
+		    ipv4_addr_list_grpP->next = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_list_grpP = ipv4_addr_list_grpP->next;
+		  } else {
+		    ipv4_addr_list_grpP = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_list_grpP_frst = ipv4_addr_list_grpP;
+		  }
+		  ipv4_addr_list_grpP->ip_addr = nbaddr_list->address;
+		  ipv4_addr_list_grpP->next = 0;
+		} else {
+		  if (ipv4_addr_listP) {
+		    ipv4_addr_listP->next = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_listP = ipv4_addr_listP->next;
+		  } else {
+		    ipv4_addr_listP = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_listP_frst = ipv4_addr_listP;
+		  }
+		  ipv4_addr_listP->ip_addr = nbaddr_list->address;
+		  ipv4_addr_listP->next = 0;
+		}
+		break;
+
+	      case NBADDRLST_NODET_M:
+		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		  if (ipv4_addr_list_grpM) {
+		    ipv4_addr_list_grpM->next = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_list_grpM = ipv4_addr_list_grpM->next;
+		  } else {
+		    ipv4_addr_list_grpM = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_list_grpM_frst = ipv4_addr_list_grpM;
+		  }
+		  ipv4_addr_list_grpM->ip_addr = nbaddr_list->address;
+		  ipv4_addr_list_grpM->next = 0;
+		} else {
+		  if (ipv4_addr_listM) {
+		    ipv4_addr_listM->next = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_listM = ipv4_addr_listM->next;
+		  } else {
+		    ipv4_addr_listM = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_listM_frst = ipv4_addr_listM;
+		  }
+		  ipv4_addr_listM->ip_addr = nbaddr_list->address;
+		  ipv4_addr_listM->next = 0;
+		}
+		break;
+
+	      case NBADDRLST_NODET_H:
+	      default:
+		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+		  if (ipv4_addr_list_grpH) {
+		    ipv4_addr_list_grpH->next = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_list_grpH = ipv4_addr_list_grpH->next;
+		  } else {
+		    ipv4_addr_list_grpH = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_list_grpH_frst = ipv4_addr_list_grpH;
+		  }
+		  ipv4_addr_list_grpH->ip_addr = nbaddr_list->address;
+		  ipv4_addr_list_grpH->next = 0;
+		} else {
+		  if (ipv4_addr_listH) {
+		    ipv4_addr_listH->next = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_listH = ipv4_addr_listH->next;
+		  } else {
+		    ipv4_addr_listH = malloc(sizeof(struct ipv4_addr_list));
+		    /* no test */
+		    ipv4_addr_listH_frst = ipv4_addr_listH;
+		  }
+		  ipv4_addr_listH->ip_addr = nbaddr_list->address;
+		  ipv4_addr_listH->next = 0;
+		}
+		break;
+	      }
+
+	      nbaddr_list = nbaddr_list->next_address;
+	    }
+
+	    if (ipv4_addr_list_grpB_frst) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    'B', ISGROUP_YES,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+
+	      if (cache_namecard) {
+		
+	      }
+	    }
+	    if (ipv4_addr_list_grpP_frst) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    'P', ISGROUP_YES,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+
+	      if (cache_namecard) {
+		
+	      }
+	    }
+	    if (ipv4_addr_list_grpM_frst) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    'M', ISGROUP_YES,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+
+	      if (cache_namecard) {
+		
+	      }
+	    }
+	    if (ipv4_addr_list_grpH_frst) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    'H', ISGROUP_YES,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+
+	      if (cache_namecard) {
+		
+	      }
+	    }
+
+	    if (ipv4_addr_listB_frst) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    'B', ISGROUP_NO,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+	      if (cache_namecard) {
+	      }
+	    }
+	    if (ipv4_addr_listP_frst) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    'P', ISGROUP_NO,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+	      if (cache_namecard) {
+	      }
+	    }
+	    if (ipv4_addr_listM_frst) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    'M', ISGROUP_NO,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+	      if (cache_namecard) {
+	      }
+	    }
+	    if (ipv4_addr_listH_frst) {
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    'H', ISGROUP_NO,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+	      if (cache_namecard) {
+	      }
+	    }
+	  }
+	}
+	res = res->next;
+      }
+
+      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+      /* Hack to make the complex loops and tests
+	 of this function work as they should. */
+      outside_pckt->packet = 0;
+      last_outpckt = outside_pckt;
+
+      continue;
+    }
+
+
     // NODE STATUS REQUEST
 
 
@@ -874,3 +1151,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 #undef STATUS_DID_UNIQ
 #undef STATUS_CNFLCT_GRP
 #undef STATUS_CNFLCT_UNQ
+#undef STATUS_DID_B
+#undef STATUS_DID_P
+#undef STATUS_DID_M
+#undef STATUS_DID_H
