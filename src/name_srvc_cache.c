@@ -261,8 +261,8 @@ struct cache_namenode *add_nblabel(void *label,
   }
 }
 
-struct cache_namenode *exchange_namecards(struct cache_namenode *name,
-					  struct nbnodename_list *scope) {
+struct cache_namenode *replace_namecard(struct cache_namenode *name,
+					struct nbnodename_list *scope) {
   struct cache_scopenode *my_scope;
   struct cache_namenode *cur_name, **last_name;
   struct ipv4_addr_list *addrlist, *nextaddrlist;
