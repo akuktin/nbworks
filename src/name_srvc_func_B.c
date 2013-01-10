@@ -915,9 +915,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 					       res->res->name->next_name);
 		  if (cache_namecard) { /* Race conditions, race conditions... */
 		    if (res->res->ttl)
-		      cache_namecard->ttl = cur_time + res->res->ttl;
+		      cache_namecard->timeof_death = cur_time + res->res->ttl;
 		    else
-		      cache_namecard->ttl = ZEROONES; /* infinity */
+		      cache_namecard->timeof_death = ZEROONES; /* infinity */
 		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 		    for (i=0; i<4; i++) {
@@ -926,9 +926,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  }
 		} else {
 		  if (res->res->ttl)
-		    cache_namecard->ttl = cur_time + res->res->ttl;
+		    cache_namecard->timeof_death = cur_time + res->res->ttl;
 		  else
-		    cache_namecard->ttl = ZEROONES; /* infinity */
+		    cache_namecard->timeof_death = ZEROONES; /* infinity */
 		  cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 		  for (i=0; i<4; i++) {
@@ -980,9 +980,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 		  if (cache_namecard) { /* Race conditions, race conditions... */
 		    if (res->res->ttl)
-		      cache_namecard->ttl = cur_time + res->res->ttl;
+		      cache_namecard->timeof_death = cur_time + res->res->ttl;
 		    else
-		      cache_namecard->ttl = ZEROONES; /* infinity */
+		      cache_namecard->timeof_death = ZEROONES; /* infinity */
 		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 		    for (i=0; i<4; i++) {
@@ -991,9 +991,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  }
 		} else {
 		  if (res->res->ttl)
-		    cache_namecard->ttl = cur_time + res->res->ttl;
+		    cache_namecard->timeof_death = cur_time + res->res->ttl;
 		  else
-		    cache_namecard->ttl = ZEROONES; /* infinity */
+		    cache_namecard->timeof_death = ZEROONES; /* infinity */
 		  cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 		  for (i=0; i<4; i++) {
