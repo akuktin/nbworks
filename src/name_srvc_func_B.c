@@ -423,7 +423,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	      if (cache_namecard) {
 		if ((cache_namecard->ismine) &&
-		    (cache_namecard->timeof_death > cur_time)) {
+		    (cache_namecard->timeof_death > cur_time) &&
+		    (! cache_namecard->isinconflict)) {
 		  /* Someone is trying to take my name. */
 
 		  memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
@@ -479,6 +480,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     }
 
     // NAME QUERY REQUEST
+    // NODE STATUS REQUEST
 
     if ((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
 						  OPCODE_QUERY)) &&
@@ -498,7 +500,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	    if (cache_namecard)
 	      if ((cache_namecard->ismine) &&
-		  (cache_namecard->timeof_death > cur_time)) {
+		  (cache_namecard->timeof_death > cur_time) &&
+		  (! cache_namecard->isinconflict)) {
 		numof_answers++;
 		if (res) {
 		  res->next = malloc(sizeof(struct name_srvc_resource_lst));
@@ -694,7 +697,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 		label_type = label[NETBIOS_NAME_LEN-1];
 		label[NETBIOS_NAME_LEN-1] = '\0';
 
-		if (cache_namecard) {
+		if ((cache_namecard) &&
+		    (cache_namecard->timeof_death > cur_time) &&
+		    (! cache_namecard->isinconflict)) {
 		  pckt = name_srvc_make_name_reg_small(label, label_type,
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_NO,
@@ -711,7 +716,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  else
 		    cache_namecard->isinconflict = 1;
 		}
-		if (cache_namecard_b) {
+		if ((cache_namecard_b) &&
+		    (cache_namecard_b->timeof_death > cur_time) &&
+		    (! cache_namecard_b)) {
 		  pckt = name_srvc_make_name_reg_small(label, label_type,
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_YES,
@@ -841,6 +848,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    status = status | STATUS_DID_GROUP;
 		  else
 		    status = status | STATUS_DID_UNIQ;
+
+	      if (status == (STATUS_DID_GROUP | STATUS_DID_UNIQ))
+		break;
 	    }
 
 	    if (status & STATUS_DID_GROUP) {
@@ -851,7 +861,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    res->res->rrclass,
 					    res->res->name->next_name);
 	      if (cache_namecard)
-		cache_namecard->timeof_death = 0;
+		if (! cache_namecard->ismine)
+		  cache_namecard->timeof_death = 0; /* WRONG!!!!! */
 	    }
 	    if (status & STATUS_DID_UNIQ) {
 	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
@@ -861,7 +872,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    res->res->rrclass,
 					    res->res->name->next_name);
 	      if (cache_namecard)
-		cache_namecard->timeof_death = 0;
+		if (! cache_namecard->ismine)
+		  cache_namecard->timeof_death = 0;
+	      /* else: Did I just get a name release for my unique name? */
 	    }
 	  }
 	}
@@ -884,6 +897,7 @@ void *name_srvc_B_handle_newtid(void *input) {
      * records to make it work. I also had to implement linked list
      * cross-checker.
      */
+    /* And THEN I got it wrong. (The group part.) */
 
     if (((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
 						   OPCODE_REFRESH)) ||
@@ -931,37 +945,39 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    }
 		  }
 		} else {
-		  if (res->res->ttl)
-		    cache_namecard->timeof_death = cur_time + res->res->ttl;
-		  else
-		    cache_namecard->timeof_death = ZEROONES; /* infinity */
-		  cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+		  if (! cache_namecard->ismine) { /* I have a strong feeling this is wrong. */
+		    if (res->res->ttl)
+		      cache_namecard->timeof_death = cur_time + res->res->ttl;
+		    else
+		      cache_namecard->timeof_death = ZEROONES; /* infinity */
+		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-		  for (i=0; i<4; i++) {
-		    if (addr_bigblock->ysgrp.recrd[i].addr) {
-		      for (j=0; j<4; j++) {
-			if (cache_namecard->addrs.recrd[j].node_type ==
-			    addr_bigblock->ysgrp.recrd[i].node_type) {
-			  cache_namecard->addrs.recrd[j].addr =
-			    merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-					    addr_bigblock->ysgrp.recrd[i].addr);
-			} else {
-			  if (cache_namecard->addrs.recrd[j].node_type == 0) {
-			    cache_namecard->node_types = cache_namecard->node_types |
-			      addr_bigblock->ysgrp.recrd[i].node_type;
-
-			    cache_namecard->addrs.recrd[j].node_type =
-			      addr_bigblock->ysgrp.recrd[i].node_type;
+		    for (i=0; i<4; i++) {
+		      if (addr_bigblock->ysgrp.recrd[i].addr) {
+			for (j=0; j<4; j++) {
+			  if (cache_namecard->addrs.recrd[j].node_type ==
+			      addr_bigblock->ysgrp.recrd[i].node_type) {
 			    cache_namecard->addrs.recrd[j].addr =
-			      addr_bigblock->ysgrp.recrd[i].addr;
-			    addr_bigblock->ysgrp.recrd[i].addr = 0;
+			      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+					      addr_bigblock->ysgrp.recrd[i].addr);
+			  } else {
+			    if (cache_namecard->addrs.recrd[j].node_type == 0) {
+			      cache_namecard->node_types = cache_namecard->node_types |
+				addr_bigblock->ysgrp.recrd[i].node_type;
 
-			    break;
+			      cache_namecard->addrs.recrd[j].node_type =
+				addr_bigblock->ysgrp.recrd[i].node_type;
+			      cache_namecard->addrs.recrd[j].addr =
+				addr_bigblock->ysgrp.recrd[i].addr;
+			      addr_bigblock->ysgrp.recrd[i].addr = 0;
+
+			      break;
+			    }
 			  }
 			}
-		      }
-		    } else
-		      break;
+		      } else
+			break;
+		    }
 		  }
 		}
 	      }
@@ -996,39 +1012,42 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    }
 		  }
 		} else {
-		  if (res->res->ttl)
-		    cache_namecard->timeof_death = cur_time + res->res->ttl;
-		  else
-		    cache_namecard->timeof_death = ZEROONES; /* infinity */
-		  cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+		  if (! cache_namecard->ismine) {
+		    if (res->res->ttl)
+		      cache_namecard->timeof_death = cur_time + res->res->ttl;
+		    else
+		      cache_namecard->timeof_death = ZEROONES; /* infinity */
+		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-		  for (i=0; i<4; i++) {
-		    if (addr_bigblock->nogrp.recrd[i].addr) {
-		      for (j=0; j<4; j++) {
-			if (cache_namecard->addrs.recrd[j].node_type ==
-			    addr_bigblock->nogrp.recrd[i].node_type) {
-			  cache_namecard->addrs.recrd[j].addr =
-			    merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-					    addr_bigblock->nogrp.recrd[i].addr);
-			} else {
-			  if (cache_namecard->addrs.recrd[j].node_type == 0) {
-			    cache_namecard->node_types = cache_namecard->node_types |
-			      addr_bigblock->nogrp.recrd[i].node_type;
-
-			    cache_namecard->addrs.recrd[j].node_type =
-			      addr_bigblock->nogrp.recrd[i].node_type;
+		    for (i=0; i<4; i++) {
+		      if (addr_bigblock->nogrp.recrd[i].addr) {
+			for (j=0; j<4; j++) {
+			  if (cache_namecard->addrs.recrd[j].node_type ==
+			      addr_bigblock->nogrp.recrd[i].node_type) {
 			    cache_namecard->addrs.recrd[j].addr =
-			      addr_bigblock->nogrp.recrd[i].addr;
-			    addr_bigblock->nogrp.recrd[i].addr = 0;
+			      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+					      addr_bigblock->nogrp.recrd[i].addr);
+			  } else {
+			    if (cache_namecard->addrs.recrd[j].node_type == 0) {
+			      cache_namecard->node_types = cache_namecard->node_types |
+				addr_bigblock->nogrp.recrd[i].node_type;
 
-			    break;
+			      cache_namecard->addrs.recrd[j].node_type =
+				addr_bigblock->nogrp.recrd[i].node_type;
+			      cache_namecard->addrs.recrd[j].addr =
+				addr_bigblock->nogrp.recrd[i].addr;
+			      addr_bigblock->nogrp.recrd[i].addr = 0;
+
+			      break;
+			    }
 			  }
 			}
-		      }
-		    } else
-		      break;
+		      } else
+			break;
+		    }
 		  }
 		}
+		/* else: Sorry honey baby, you're cute, but that just ain't gonna work. */
 	      }
 
 	      destroy_bigblock(addr_bigblock);
@@ -1047,9 +1066,7 @@ void *name_srvc_B_handle_newtid(void *input) {
       continue;
     }
 
-
-    // NODE STATUS REQUEST
-
+    // NOOP
 
     destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
     outside_pckt->packet = 0;
