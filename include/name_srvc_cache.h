@@ -123,8 +123,8 @@ void
   destroy_namecard(struct cache_namenode *namecard);
 
 struct ipv4_addr_list *
-  merge_addrlists_cnsm(struct ipv4_addr_list *master,
-                       struct ipv4_addr_list *mergee);
+  merge_addrlists(struct ipv4_addr_list *master,
+                  struct ipv4_addr_list *mergee);
 
 struct addrlst_bigblock *
   sort_nbaddrs(struct nbaddress_list *nbaddr_list,
