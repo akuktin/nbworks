@@ -718,7 +718,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		}
 		if ((cache_namecard_b) &&
 		    (cache_namecard_b->timeof_death > cur_time) &&
-		    (! cache_namecard_b)) {
+		    (! cache_namecard_b->isinconflict)) {
 		  pckt = name_srvc_make_name_reg_small(label, label_type,
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_YES,
