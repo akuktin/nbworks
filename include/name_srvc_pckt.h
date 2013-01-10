@@ -4,7 +4,6 @@
 # include <stdint.h>
 
 # include "nodename.h"
-# include "name_srvc_cache.h"
 
 # define MAX_DNS_LABEL_LEN 0x3f
 # define ISGROUP_YES   1

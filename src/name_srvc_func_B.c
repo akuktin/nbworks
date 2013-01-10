@@ -893,8 +893,68 @@ void *name_srvc_B_handle_newtid(void *input) {
 	status = STATUS_DID_NONE;
 	if (res->res) {
 	  if (res->res->rdata_t == nb_address_list) {
+	    addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
+
+	    if (addr_bigblock) {
+	      if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
+		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					      NETBIOS_NAME_LEN,
+					      ANY_NODETYPE, ISGROUP_YES,
+					      res->res->rrtype,
+					      res->res->rrclass,
+					      res->res->name->next_name);
+
+		if (! cache_namecard) {
+		  cache_namecard = add_nblabel(decode_nbnodename(res->res->name->name, 0),
+					       NETBIOS_NAME_LEN,
+					       ((addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK)
+						>> 4),
+					       ISGROUP_YES,
+					       res->res->rrtype,
+					       res->res->rrclass,
+					       &(addr_bigblock.ysgrp),
+					       res->res->name->next_name);
+		  if (cache_namecard) { /* Race conditions, race conditions... */
+		    memcpy(&(cache_namecard->addrs), &(addr_bigblock->ysgrp),
+			   sizeof(struct addrlst_grpblock));
+		  
+		    for (i=0; i<4; i++) {
+		      addr_bigblock->ysgrp.recrd[i].addr = 0;
+		    }
+		  }
+		} else {
+		  
+		}
+	      }
+	      if (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
+					      NETBIOS_NAME_LEN,
+					      ANY_NODETYPE, ISGROUP_YES,
+					      res->res->rrtype,
+					      res->res->rrclass,
+					      res->res->name->next_name);
+
+		if (! cache_namecard) {
+		  cache_namecard = add_nblabel(decode_nbnodename(res->res->name->name, 0),
+					       NETBIOS_NAME_LEN,
+					       addr_bigblock->nogrp.node_types, ISGROUP_YES,
+					       res->res->rrtype,
+					       res->res->rrclass,
+					       res->res->name->next_name);
+		}
+		if (cache_namecard) { /* Race conditions, race conditions... */
+		  memcpy(&(cache_namecard->addrs), &(addr_bigblock->nogrp),
+			 sizeof(struct addrlst_grpblock));
+		  
+		  for (i=0; i<4; i++) {
+		    addr_bigblock->nogrp.recrd[i].addr = 0;
+		  }
+		}
+	      }
 
 
+	      destroy_bigblock(addr_bigblock);
+	    }
 	  }
 	}
 	res = res->next;
