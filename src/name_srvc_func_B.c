@@ -914,11 +914,23 @@ void *name_srvc_B_handle_newtid(void *input) {
 					       &(addr_bigblock->ysgrp),
 					       res->res->name->next_name);
 		  if (cache_namecard) { /* Race conditions, race conditions... */
+		    if (res->res->ttl)
+		      cache_namecard->ttl = cur_time + res->res->ttl;
+		    else
+		      cache_namecard->ttl = ZEROONES; /* infinity */
+		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
 		    for (i=0; i<4; i++) {
 		      addr_bigblock->ysgrp.recrd[i].addr = 0;
 		    }
 		  }
 		} else {
+		  if (res->res->ttl)
+		    cache_namecard->ttl = cur_time + res->res->ttl;
+		  else
+		    cache_namecard->ttl = ZEROONES; /* infinity */
+		  cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
 		  for (i=0; i<4; i++) {
 		    if (addr_bigblock->ysgrp.recrd[i].addr) {
 		      for (j=0; j<4; j++) {
@@ -967,11 +979,23 @@ void *name_srvc_B_handle_newtid(void *input) {
 					       res->res->name->next_name);
 
 		  if (cache_namecard) { /* Race conditions, race conditions... */
+		    if (res->res->ttl)
+		      cache_namecard->ttl = cur_time + res->res->ttl;
+		    else
+		      cache_namecard->ttl = ZEROONES; /* infinity */
+		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
 		    for (i=0; i<4; i++) {
 		      addr_bigblock->nogrp.recrd[i].addr = 0;
 		    }
 		  }
 		} else {
+		  if (res->res->ttl)
+		    cache_namecard->ttl = cur_time + res->res->ttl;
+		  else
+		    cache_namecard->ttl = ZEROONES; /* infinity */
+		  cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
 		  for (i=0; i<4; i++) {
 		    if (addr_bigblock->nogrp.recrd[i].addr) {
 		      for (j=0; j<4; j++) {

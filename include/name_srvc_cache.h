@@ -7,7 +7,9 @@
 # include "constdef.h"
 # include "name_srvc_pckt.h"
 
-# define ANY_GROUP ONES
+# define CONFLICT_TTL 1
+
+# define ANY_GROUP    ONES
 # define ANY_NODETYPE ONES
 
 # define CACHE_NODEFLG_B 0x01
