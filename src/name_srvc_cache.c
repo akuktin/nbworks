@@ -726,6 +726,9 @@ void destroy_bigblock(struct addrlst_bigblock *block) {
   struct ipv4_addr_list *deltree, *rm_rf;
   int i;
 
+  if (! block)
+    return;
+
   for (i=0; i<4; i++) {
     deltree = block.ysgrp.recrd[i].addr;
     while (deltree) {
