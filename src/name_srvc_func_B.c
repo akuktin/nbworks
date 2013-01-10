@@ -493,92 +493,95 @@ void *name_srvc_B_handle_newtid(void *input) {
       while (qstn) {
 
 	if (qstn->qstn)
-	  if (qstn->qstn->name) {
-	    cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name, 0),
-					  NETBIOS_NAME_LEN,
-					  ANY_NODETYPE, ANY_GROUP,
-					  qstn->qstn->qtype,
-					  qstn->qstn->qclass,
-					  qstn->qstn->name->next_name);
+	  if (qstn->qstn->qtype == QTYPE_NBSTAT) {
+	  } else {
+	    if (qstn->qstn->name) {
+	      cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    ANY_NODETYPE, ANY_GROUP,
+					    qstn->qstn->qtype,
+					    qstn->qstn->qclass,
+					    qstn->qstn->name->next_name);
 
-	    if (cache_namecard)
-	      if ((cache_namecard->ismine) &&
-		  (cache_namecard->timeof_death > cur_time) &&
-		  (! cache_namecard->isinconflict)) {
-		numof_answers++;
-		if (res) {
-		  res->next = malloc(sizeof(struct name_srvc_resource_lst));
-		  /* no check */
-		  res = res->next;
-		} else {
-		  res = malloc(sizeof(struct name_srvc_resource_lst));
-		  /* no check */
-		  answer_lst = res;
-		}
-		res->res = malloc(sizeof(struct name_srvc_resource));
-		/* no check */
-		res->res->name = clone_nbnodename(qstn->qstn->name);
-		res->res->rrtype = cache_namecard->dns_type;
-		res->res->rrclass = cache_namecard->dns_class;
-		res->res->ttl = (cache_namecard->timeof_death - cur_time);
-
-		if (cache_namecard->isgroup)
-		  flags = NBADDRLST_GROUP_YES;
-		else
-		  flags = NBADDRLST_GROUP_NO;
-		for (i=0; i<4; i++) {
-		  if (cache_namecard->addrs.recrd[i].node_type) {
-		    switch (cache_namecard->addrs.recrd[i].node_type) {
-		    case CACHE_NODEFLG_H:
-		      flags = flags | NBADDRLST_NODET_H;
-		      break;
-		    case CACHE_NODEFLG_M:
-		      flags = flags | NBADDRLST_NODET_M;
-		      break;
-		    case CACHE_NODEFLG_P:
-		      flags = flags | NBADDRLST_NODET_P;
-		      break;
-		    default: /* B */
-		      flags = flags | NBADDRLST_NODET_B;
-		    }
-
-		    ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
-
-		    break;
+	      if (cache_namecard)
+		if ((cache_namecard->ismine) &&
+		    (cache_namecard->timeof_death > cur_time) &&
+		    (! cache_namecard->isinconflict)) {
+		  numof_answers++;
+		  if (res) {
+		    res->next = malloc(sizeof(struct name_srvc_resource_lst));
+		    /* no check */
+		    res = res->next;
+		  } else {
+		    res = malloc(sizeof(struct name_srvc_resource_lst));
+		    /* no check */
+		    answer_lst = res;
 		  }
-		}
+		  res->res = malloc(sizeof(struct name_srvc_resource));
+		  /* no check */
+		  res->res->name = clone_nbnodename(qstn->qstn->name);
+		  res->res->rrtype = cache_namecard->dns_type;
+		  res->res->rrclass = cache_namecard->dns_class;
+		  res->res->ttl = (cache_namecard->timeof_death - cur_time);
 
-		i=0;
-		if (ipv4_addr_list) {
-		  nbaddr_list_frst = nbaddr_list = malloc(sizeof(struct nbaddress_list));
-		  //		  if (! nbaddr_list) {
-		  //		    /* Now what?? */
-		  //		  }
+		  if (cache_namecard->isgroup)
+		    flags = NBADDRLST_GROUP_YES;
+		  else
+		    flags = NBADDRLST_GROUP_NO;
+		  for (i=0; i<4; i++) {
+		    if (cache_namecard->addrs.recrd[i].node_type) {
+		      switch (cache_namecard->addrs.recrd[i].node_type) {
+		      case CACHE_NODEFLG_H:
+			flags = flags | NBADDRLST_NODET_H;
+			break;
+		      case CACHE_NODEFLG_M:
+			flags = flags | NBADDRLST_NODET_M;
+			break;
+		      case CACHE_NODEFLG_P:
+			flags = flags | NBADDRLST_NODET_P;
+			break;
+		      default: /* B */
+			flags = flags | NBADDRLST_NODET_B;
+		      }
 
-		  while (137) {
-		    i++;
-		    nbaddr_list->flags = flags;
-		    nbaddr_list->there_is_an_address = TRUE;
-		    nbaddr_list->address = ipv4_addr_list->ip_addr;
+		      ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 
-		    ipv4_addr_list = ipv4_addr_list->next;
-		    if (ipv4_addr_list) {
-		      nbaddr_list->next_address = malloc(sizeof(struct nbaddress_list));
-		      /* No test. */
-		      nbaddr_list = nbaddr_list->next_address;
-		    } else {
-		      nbaddr_list->next_address = 0;
 		      break;
 		    }
 		  }
-		} else
-		  nbaddr_list_frst = 0;
 
-		res->res->rdata_len = i * 6;
-		res->res->rdata_t = nb_address_list;
-		res->res->rdata = nbaddr_list_frst;
+		  i=0;
+		  if (ipv4_addr_list) {
+		    nbaddr_list_frst = nbaddr_list = malloc(sizeof(struct nbaddress_list));
+		    //		  if (! nbaddr_list) {
+		    //		    /* Now what?? */
+		    //		  }
 
-	      }
+		    while (137) {
+		      i++;
+		      nbaddr_list->flags = flags;
+		      nbaddr_list->there_is_an_address = TRUE;
+		      nbaddr_list->address = ipv4_addr_list->ip_addr;
+
+		      ipv4_addr_list = ipv4_addr_list->next;
+		      if (ipv4_addr_list) {
+			nbaddr_list->next_address = malloc(sizeof(struct nbaddress_list));
+			/* No test. */
+			nbaddr_list = nbaddr_list->next_address;
+		      } else {
+			nbaddr_list->next_address = 0;
+			break;
+		      }
+		    }
+		  } else
+		    nbaddr_list_frst = 0;
+
+		  res->res->rdata_len = i * 6;
+		  res->res->rdata_t = nb_address_list;
+		  res->res->rdata = nbaddr_list_frst;
+
+		}
+	    }
 	  }
 
 	qstn = qstn->next;
