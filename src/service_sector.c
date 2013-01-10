@@ -465,6 +465,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       }
       if (newtid_queue) {
 	/* Signaling the new queue. */
+	params.thread_id = 0;
 	params.tid = new_pckt->packet->header->transaction_id;
 	params.trans = newtid_queue;
 	pthread_create(&(params.thread_id), 0,
