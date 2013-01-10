@@ -94,6 +94,7 @@ void *prune_scopes(void *placeholder) {
   struct cache_scopenode *cur_scope, **last_scope, *for_del2;
   struct cache_namenode *cur_name, **last_name, *for_del;
   struct ipv4_addr_list *cur_addr, *addr_fordel;
+  int i;
   time_t curtime;
 
   waittime.tv_sec = 1;
@@ -117,11 +118,13 @@ void *prune_scopes(void *placeholder) {
 	  *last_name = cur_name->next;
 	  for_del = cur_name;
 	  cur_name = cur_name->next;
-	  cur_addr = for_del->addrlist;
-	  while (cur_addr) {
-	    addr_fordel = cur_addr->next;
-	    free(cur_addr);
-	    cur_addr = addr_fordel;
+	  for (i=0; i<4; i++) {
+	    cur_addr = for_del->addrs.recrd[i].addr;
+	    while (cur_addr) {
+	      addr_fordel = cur_addr->next;
+	      free(cur_addr);
+	      cur_addr = addr_fordel;
+	    }
 	  }
 	  free(for_del->name);
 	  free(for_del);
@@ -171,8 +174,8 @@ struct cache_namenode *add_name(struct cache_namenode *name,
 		       name->namelen)) &&
 	  ((cur_name->isgroup == name->isgroup) ||
 	   (name->isgroup == ANY_GROUP)) &&
-	  ((cur_name->node_type == name->node_type) ||
-	   (name->node_type == ANY_NODETYPE)) &&
+	  ((cur_name->node_types & name->node_types) ||
+	   (name->node_types == ANY_NODETYPE)) &&
 	  (cur_name->dns_type == name->dns_type) &&
 	  (cur_name->dns_class == name->dns_class)) {
 	if (cur_name != name) {
@@ -194,7 +197,7 @@ struct cache_namenode *add_name(struct cache_namenode *name,
 
 struct cache_namenode *add_nblabel(void *label,
 				   unsigned char labellen,
-				   unsigned char node_type,
+				   unsigned short node_types,
 				   unsigned char ismine,
 				   int isgroup,
 				   uint16_t dns_type,
@@ -202,11 +205,12 @@ struct cache_namenode *add_nblabel(void *label,
 				   uint32_t ip_addr,
 				   struct nbnodename_list *scope) {
   struct cache_namenode *result;
+  int i;
 
   if (! label)
     return 0;
 
-  result = malloc(sizeof(struct cache_namenode));
+  result = calloc(1, sizeof(struct cache_namenode));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -219,8 +223,8 @@ struct cache_namenode *add_nblabel(void *label,
     return 0;
   }
 
-  result->addrlist = malloc(sizeof(struct ipv4_addr_list));
-  if (! result->addrlist) {
+  result->addrs.recrd[0].addr = malloc(sizeof(struct ipv4_addr_list));
+  if (! result->addrs.recrd[0].addr) {
     /* TODO: errno signaling stuff */
     free(result->name);
     free(result);
@@ -229,12 +233,13 @@ struct cache_namenode *add_nblabel(void *label,
 
   memcpy(result->name, label, labellen);
 
-  result->addrlist->ip_addr = ip_addr;
-  result->addrlist->next = 0;
+  result->addrs.recrd[0].node_type = node_types;
+  result->addrs.recrd[0].addr->ip_addr = ip_addr;
+  result->addrs.recrd[0].addr->next = 0;
 
   result->namelen = labellen;
-  result->node_type = node_type;
-  result->isinconflict = 0; /* is not in conflict */
+  result->node_types = node_types;
+  result->isinconflict = FALSE;
   result->ismine = ismine;
   result->isgroup = isgroup;
   result->dns_type = dns_type;
@@ -254,7 +259,9 @@ struct cache_namenode *add_nblabel(void *label,
   } else {
     /* Failure. There is a duplicate. */
     /* TODO: errno signaling stuff */
-    free(result->addrlist);
+    for (i=0; i<4; i++) {
+      free(result->addrs.recrd[i].addr);
+    }
     free(result->name);
     free(result);
     return 0;
@@ -266,6 +273,7 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
   struct cache_scopenode *my_scope;
   struct cache_namenode *cur_name, **last_name;
   struct ipv4_addr_list *addrlist, *nextaddrlist;
+  int i;
 
   if (! name)
     return 0;
@@ -285,19 +293,21 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
 		     name->namelen)) &&
 	((cur_name->isgroup == name->isgroup) ||
 	 (name->isgroup == ANY_GROUP)) &&
-	((cur_name->node_type == name->node_type) ||
-	 (name->node_type == ANY_NODETYPE)) &&
+	((cur_name->node_types == name->node_types) ||
+	 (name->node_types == ANY_NODETYPE)) &&
 	(cur_name->dns_type == name->dns_type) &&
 	(cur_name->dns_class == name->dns_class)) {
 
       name->next = cur_name->next;
       *last_name = name;
 
-      addrlist = cur_name->addrlist;
-      while (addrlist) {
-	nextaddrlist = addrlist->next;
-	free(addrlist);
-	addrlist = nextaddrlist;
+      for (i=0; i<4; i++) {
+	addrlist = cur_name->addrs.recrd[i].addr;
+	while (addrlist) {
+	  nextaddrlist = addrlist->next;
+	  free(addrlist);
+	  addrlist = nextaddrlist;
+	}
       }
       free(cur_name->name);
       free(cur_name);
@@ -335,8 +345,8 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
 		     namecard->namelen)) &&
 	((cur_name->isgroup == namecard->isgroup) ||
 	 (namecard->isgroup == ANY_GROUP)) &&
-	((cur_name->node_type == namecard->node_type) ||
-	 (namecard->node_type == ANY_NODETYPE)) &&
+	((cur_name->node_types == namecard->node_types) ||
+	 (namecard->node_types == ANY_NODETYPE)) &&
 	(cur_name->dns_type == namecard->dns_type) &&
 	(cur_name->dns_class == namecard->dns_class)) {
       return cur_name;
@@ -350,7 +360,7 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
 
 struct cache_namenode *find_nblabel(void *label,
 				    unsigned char labellen,
-				    unsigned char node_type,
+				    unsigned short node_types,
 				    int isgroup,
 				    uint16_t dns_type,
 				    uint16_t dns_class,
@@ -375,8 +385,8 @@ struct cache_namenode *find_nblabel(void *label,
 		     labellen)) &&
 	((cur_name->isgroup == isgroup) ||
 	 (isgroup == ANY_GROUP)) &&
-	((cur_name->node_type == node_type) ||
-	 (node_type == ANY_NODETYPE)) &&
+	((cur_name->node_types == node_types) ||
+	 (node_types == ANY_NODETYPE)) &&
 	(cur_name->dns_type == dns_type) &&
 	(cur_name->dns_class == dns_class)) {
       return cur_name;
@@ -391,7 +401,7 @@ struct cache_namenode *find_nblabel(void *label,
 
 struct cache_namenode *alloc_namecard(void *label,
 				      unsigned char labellen,
-				      unsigned char node_type,
+				      unsigned short node_types,
 				      unsigned char ismine,
 				      int isgroup,
 				      uint16_t dns_type,
@@ -401,7 +411,7 @@ struct cache_namenode *alloc_namecard(void *label,
   if (! label)
     return 0;
 
-  result = malloc(sizeof(struct cache_namenode));
+  result = calloc(1, sizeof(struct cache_namenode));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -416,15 +426,14 @@ struct cache_namenode *alloc_namecard(void *label,
 
   memcpy(result->name, label, labellen);
   result->namelen = labellen;
-  result->node_type = node_type;
-  result->isinconflict = 0; /* is not in conflict */
+  result->node_types = node_types;
+  result->isinconflict = FALSE;
   result->ismine = ismine;
   result->isgroup = isgroup;
   result->dns_type = dns_type;
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
   result->endof_conflict_chance = 0;
-  result->addrlist = 0;
   result->next = 0;
 
   return result;
@@ -432,16 +441,19 @@ struct cache_namenode *alloc_namecard(void *label,
 
 void destroy_namecard(struct cache_namenode *namecard) {
   struct ipv4_addr_list *addrlist, *nextaddrlist;
+  int i;
 
   if (! namecard)
     return;
 
   free(namecard->name);
-  addrlist = namecard->addrlist;
-  while (addrlist) {
-    nextaddrlist = addrlist->next;
-    free(addrlist);
-    addrlist = nextaddrlist;
+  for (i=0; i<4; i++) {
+    addrlist = namecard->addrs.recrd[i].addr;
+    while (addrlist) {
+      nextaddrlist = addrlist->next;
+      free(addrlist);
+      addrlist = nextaddrlist;
+    }
   }
   free(namecard);
 
