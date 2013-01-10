@@ -449,6 +449,43 @@ void destroy_namecard(struct cache_namenode *namecard) {
 }
 
 
+struct ipv4_addr_list *merge_addrlists(struct ipv4_addr_list *master,
+				       struct ipv4_addr_list *mergee) {
+  /*
+   * Really, it was inevitable that
+   * I would eventually step onto the
+   * ONE landmine of linked lists.
+   */
+  struct ipv4_addr_list *iterator, **ptr;
+
+  if (! (master && mergee))
+    return 0;
+
+  while (mergee) {
+    iterator = master;
+    ptr = &master;
+    while (iterator) {
+      if (iterator->ip_addr == mergee->ip_addr)
+	break;
+      else {
+	ptr = &(iterator->next);
+	iterator = iterator->next;
+      }
+    }
+
+    if (! iterator) {
+      *ptr = mergee;
+      mergee = mergee->next;
+      (*ptr)->next = 0;
+    } else {
+      mergee = mergee->next;
+    }
+  }
+
+  return master;
+}
+
+
 struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
 				      struct addrlst_bigblock **writeem_here) {
   /*
@@ -730,13 +767,13 @@ void destroy_bigblock(struct addrlst_bigblock *block) {
     return;
 
   for (i=0; i<4; i++) {
-    deltree = block.ysgrp.recrd[i].addr;
+    deltree = block->ysgrp.recrd[i].addr;
     while (deltree) {
       rm_rf = deltree->next;
       free(deltree);
       deltree = rm_rf;
     }
-    deltree = block.nogrp.recrd[i].addr;
+    deltree = block->nogrp.recrd[i].addr;
     while (deltree) {
       rm_rf = deltree->next;
       free(deltree);
