@@ -220,7 +220,7 @@ struct cache_namenode *add_nblabel(void *label,
 
   memcpy(result->name, label, labellen);
 
-  memcpy(&(result->addr), addrblock, sizeof(struct addrlst_grpblock));
+  memcpy(&(result->addrs), addrblock, sizeof(struct addrlst_grpblock));
 
   result->namelen = labellen;
   result->node_types = node_types;
