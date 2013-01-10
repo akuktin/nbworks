@@ -23,6 +23,7 @@
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
+#include "name_srvc_func_B.h"
 #include "dtg_srvc_pckt.h"
 #include "randomness.h"
 #include "service_sector.h"
@@ -385,6 +386,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
   struct ss_name_pckt_list *new_pckt;
   struct ss_name_trans *cur_trans;
   struct ss_queue *newtid_queue;
+  struct newtid_params params;
   struct pollfd polldata;
   socklen_t addr_len;
   int ret_val;
@@ -463,7 +465,11 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       }
       if (newtid_queue) {
 	/* Signaling the new queue. */
-	//	...
+	params.tid = new_pckt->packet->header->transaction_id;
+	params.trans = newtid_queue;
+	pthread_create(&(params.thread_id), 0,
+		       name_srvc_B_handle_newtid, &params);
+	/* No. Fucking. Comment. */
       }
     }
   }

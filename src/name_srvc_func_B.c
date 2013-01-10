@@ -299,8 +299,6 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
 #define STATUS_DID_NONE   0x00
 #define STATUS_DID_GROUP  0x01
 #define STATUS_DID_UNIQ   0x02
-#define STATUS_CNFLCT_GRP 0x04
-#define STATUS_CNFLCT_UNQ 0x08
 void *name_srvc_B_handle_newtid(void *input) {
   struct timespec sleeptime;
   struct newtid_params params;
@@ -792,7 +790,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    cache_namecard = 0;
 
 	      }
-	      nbaddr_list = res->res->rdata
+	      nbaddr_list = res->res->rdata;
 
 	      /*
 	       * DOS_BUG: It is interesting.
@@ -821,7 +819,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  while (nbaddr_list) {
 		    if (!(nbaddr_list->flags & NBADDRLST_GROUP_MASK))
 		      break;
-		    if (nbaddr_list->addr == in_addr)
+		    if (nbaddr_list->address == in_addr)
 		      break;
 		    else
 		      nbaddr_list = nbaddr_list->next_address;
@@ -843,7 +841,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    for (i=0; i<4; i++) {
 		      ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 		      while (ipv4_addr_list) {
-			if (ipv4_addr_list->addr == in_addr)
+			if (ipv4_addr_list->ip_addr == in_addr)
 			  break;
 			else
 			  ipv4_addr_list = ipv4_addr_list->next;
@@ -872,7 +870,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		      nbaddr_list = nbaddr_list->next_address;
 		  /* Verify the sender lists himself as the owner. */
 		  while (nbaddr_list)
-		    if (nbaddr_list->addr == in_addr)
+		    if (nbaddr_list->address == in_addr)
 		      break;
 		    else
 		      nbaddr_list = nbaddr_list->next_address;
@@ -892,7 +890,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    for (i=0; i<4; i++) {
 		      ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 		      while (ipv4_addr_list) {
-			if (ipv4_addr_list->addr == in_addr)
+			if (ipv4_addr_list->ip_addr == in_addr)
 			  break;
 			else
 			  ipv4_addr_list = ipv4_addr_list->next;
@@ -1252,5 +1250,3 @@ void *name_srvc_B_handle_newtid(void *input) {
 #undef STATUS_DID_NONE
 #undef STATUS_DID_GROUP
 #undef STATUS_DID_UNIQ
-#undef STATUS_CNFLCT_GRP
-#undef STATUS_CNFLCT_UNQ
