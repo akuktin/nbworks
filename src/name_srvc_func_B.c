@@ -53,7 +53,7 @@ int name_srvc_B_add_name(unsigned char *name,
   addr.sin_addr.s_addr = INADDR_BROADCAST;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, ttl,
-				     my_ip_address, isgroup, 'B');
+				     my_ip_address, isgroup, CACHE_NODEFLG_B);
   if (! pckt) {
     /* TODO: errno signaling stuff */
     return -1;
@@ -155,7 +155,7 @@ int name_srvc_B_release_name(unsigned char *name,
   addr.sin_addr.s_addr = INADDR_BROADCAST;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
-				     my_ip_address, isgroup, 'B');
+				     my_ip_address, isgroup, CACHE_NODEFLG_B);
   if (! pckt) {
     /* TODO: errno signaling stuff */
     return -1;
@@ -316,7 +316,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     *nbaddr_list_hldme, **nbaddr_list_last;
 
   struct ipv4_addr_list *ipv4_addr_list;
-  struct addrlst_bigblock *addrbigblock;
+  struct addrlst_bigblock *addr_bigblock;
 
   uint32_t in_addr;
   uint16_t flags, numof_answers;
@@ -428,17 +428,19 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
 		  label_type = label[NETBIOS_NAME_LEN-1];
 		  label[NETBIOS_NAME_LEN-1] = '\0';
-		  if (cache_namecard->addrlist)
-		    in_addr = cache_namecard->addrlist->ip_addr;
-		  else
-		    in_addr = 0;
+		  for (i=0; i<4; i++) {
+		    if (cache_namecard->addrs.recrd[i].addr)
+		      in_addr = cache_namecard->addrs.recrd[i].addr->ip_addr;
+		    else
+		      in_addr = 0;
+		  }
 
 		  pckt = name_srvc_make_name_reg_small(label, label_type,
 						       res->res->name->next_name,
 						       (cache_namecard->timeof_death
 							  - cur_time),
 						       in_addr, ISGROUP_NO,
-						       cache_namecard->node_type);
+						       cache_namecard->addrs.recrd[i].node_type);
 		  pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
 		  pckt->header->rcode = RCODE_REGISTR_ACT_ERR;
@@ -695,7 +697,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  pckt = name_srvc_make_name_reg_small(label, label_type,
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_NO,
-						       cache_namecard->node_type);
+						       cache_namecard->addrs.recrd[0].node_type);
 		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
 		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
@@ -712,7 +714,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  pckt = name_srvc_make_name_reg_small(label, label_type,
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_YES,
-						       cache_namecard->node_type);
+						       cache_namecard->addrs.recrd[0].node_type);
 		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
 		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;

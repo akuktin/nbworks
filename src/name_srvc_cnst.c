@@ -54,20 +54,19 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
     addr->flags = NBADDRLST_GROUP_NO;
   }
   switch (node_type) {
-  case 'H':
+  case CACHE_NODEFLG_H:
     addr->flags = addr->flags | NBADDRLST_NODET_H;
     break;
 
-  case 'M':
+  case CACHE_NODEFLG_M:
     addr->flags = addr->flags | NBADDRLST_NODET_M;
     break;
 
-  case 'P':
+  case CACHE_NODEFLG_P:
     addr->flags = addr->flags | NBADDRLST_NODET_P;
     break;
 
-  case 'B':
-  default:
+  default: /* B */
     break;
   }
 
@@ -159,20 +158,19 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
     addr->flags = NBADDRLST_GROUP_NO;
   }
   switch (node_type) {
-  case 'H':
+  case CACHE_NODEFLG_H:
     addr->flags = addr->flags | NBADDRLST_NODET_H;
     break;
 
-  case 'M':
+  case CACHE_NODEFLG_M:
     addr->flags = addr->flags | NBADDRLST_NODET_M;
     break;
 
-  case 'P':
+  case CACHE_NODEFLG_P:
     addr->flags = addr->flags | NBADDRLST_NODET_P;
     break;
 
-  case 'B':
-  default:
+  default: /* B */
     break;
   }
 
