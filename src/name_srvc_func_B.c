@@ -407,8 +407,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 	    nbaddr_list = res->res->rdata;
 
 	    while (nbaddr_list) {
-	      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-		/* Jump over group addresses. */
+	      if ((nbaddr_list->flags & NBADDRLST_GROUP_MASK) ||
+		  (! nbaddr_list->there_is_an_address)) {
+		/* Jump over group addresses and empty fields. */
 		nbaddr_list = nbaddr_list->next_address;
 		continue;
 	      }
@@ -878,6 +879,12 @@ void *name_srvc_B_handle_newtid(void *input) {
     }
 
     // NAME UPDATE REQUEST
+    /*
+     * The hardest one to date, because I had to COMPLETELY redo the cache
+     * records to make it work. I also had to implement linked list
+     * cross-checker.
+     */
+                               
 
     if (((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
 						   OPCODE_REFRESH)) ||
