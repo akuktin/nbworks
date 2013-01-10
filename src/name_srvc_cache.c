@@ -27,9 +27,7 @@ struct {
 
 
 void init_name_srvc_cache() {
-  nbworks_rootscope->scope = 0;
-  nbworks_rootscope->names = 0;
-  nbworks_rootscope->next = 0;
+  nbworks_rootscope = 0;
 
   nbworks_cache_control.all_stop = 0;
 }
