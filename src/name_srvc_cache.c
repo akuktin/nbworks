@@ -464,12 +464,13 @@ struct ipv4_addr_list *merge_addrlists(struct ipv4_addr_list *master,
     }
 
     if (! iterator) {
-      *ptr = mergee;
-      mergee = mergee->next;
+      *ptr = malloc(sizeof(struct ipv4_addr_list));
+      /* no test */
+      (*ptr)->ip_addr = mergee->ip_addr;
       (*ptr)->next = 0;
-    } else {
-      mergee = mergee->next;
     }
+
+    mergee = mergee->next;
   }
 
   return master;
