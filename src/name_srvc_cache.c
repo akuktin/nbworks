@@ -721,3 +721,26 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
 
   return result;
 }
+
+void destroy_bigblock(struct addrlst_bigblock *block) {
+  struct ipv4_addr_list *deltree, *rm_rf;
+  int i;
+
+  for (i=0; i<4; i++) {
+    deltree = block.ysgrp.recrd[i].addr;
+    while (deltree) {
+      rm_rf = deltree->next;
+      free(deltree);
+      deltree = rm_rf;
+    }
+    deltree = block.nogrp.recrd[i].addr;
+    while (deltree) {
+      rm_rf = deltree->next;
+      free(deltree);
+      deltree = rm_rf;
+    }
+  }
+  free(block);
+
+  return;
+}

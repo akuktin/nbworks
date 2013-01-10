@@ -124,5 +124,7 @@ void
 struct addrlst_bigblock *
   sort_nbaddrs(struct nbaddress_list *nbaddr_list,
                struct addrlst_bigblock **writeem_here);
+void
+  destroy_bigblock(struct addrlst_bigblock *block);
 
 #endif /* NBWORKS_NAMESRVCCACHE_H*/
