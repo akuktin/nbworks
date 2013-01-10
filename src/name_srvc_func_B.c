@@ -301,10 +301,6 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
 #define STATUS_DID_UNIQ   0x02
 #define STATUS_CNFLCT_GRP 0x04
 #define STATUS_CNFLCT_UNQ 0x08
-#define STATUS_DID_B      0x10
-#define STATUS_DID_P      0x20
-#define STATUS_DID_M      0x40
-#define STATUS_DID_H      0x80
 void *name_srvc_B_handle_newtid(void *input) {
   struct timespec sleeptime;
   struct newtid_params params;
@@ -690,45 +686,46 @@ void *name_srvc_B_handle_newtid(void *input) {
 		 and effectivelly preventing me from ever obtaining
 		 any handles to other nodes.
 	      */
-	      memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
-	      label_type = label[NETBIOS_NAME_LEN-1];
-	      label[NETBIOS_NAME_LEN-1] = '\0';
+	      if (cache_namecard || cache_namecard_b) {
+		memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
+		label_type = label[NETBIOS_NAME_LEN-1];
+		label[NETBIOS_NAME_LEN-1] = '\0';
 
-	      if (cache_namecard) {
-		pckt = name_srvc_make_name_reg_small(label, label_type,
-						     res->res->name->next_name,
-						     0, 0, ISGROUP_NO,
-						     cache_namecard->node_type);
-		pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-		pckt->header->nm_flags = FLG_AA;
-		pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
-		pckt->for_del = 1;
+		if (cache_namecard) {
+		  pckt = name_srvc_make_name_reg_small(label, label_type,
+						       res->res->name->next_name,
+						       0, 0, ISGROUP_NO,
+						       cache_namecard->node_type);
+		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+		  pckt->header->nm_flags = FLG_AA;
+		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		  pckt->for_del = 1;
 
-		ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
 
-		if (! cache_namecard->ismine)
-		  cache_namecard->timeof_death = 0;
-		else
-		  cache_namecard->isinconflict = 1;
+		  if (! cache_namecard->ismine)
+		    cache_namecard->timeof_death = 0;
+		  else
+		    cache_namecard->isinconflict = 1;
+		}
+		if (cache_namecard_b) {
+		  pckt = name_srvc_make_name_reg_small(label, label_type,
+						       res->res->name->next_name,
+						       0, 0, ISGROUP_YES,
+						       cache_namecard->node_type);
+		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+		  pckt->header->nm_flags = FLG_AA;
+		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		  pckt->for_del = 1;
+
+		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+
+		  if (! cache_namecard->ismine)
+		    cache_namecard->timeof_death = 0;
+		  else
+		    cache_namecard->isinconflict = 1;
+		}
 	      }
-	      if (cache_namecard_b) {
-		pckt = name_srvc_make_name_reg_small(label, label_type,
-						     res->res->name->next_name,
-						     0, 0, ISGROUP_YES,
-						     cache_namecard->node_type);
-		pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-		pckt->header->nm_flags = FLG_AA;
-		pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
-		pckt->for_del = 1;
-
-		ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
-
-		if (! cache_namecard->ismine)
-		  cache_namecard->timeof_death = 0;
-		else
-		  cache_namecard->isinconflict = 1;
-	      }
-
 	      /* TODO: THIS ISN'T OVER YET, DOS_BUG!!! */
 	      /* TODO: make the function cross-reference the addr lists,
 		       looking for inconsistencies, like the
@@ -926,7 +923,3 @@ void *name_srvc_B_handle_newtid(void *input) {
 #undef STATUS_DID_UNIQ
 #undef STATUS_CNFLCT_GRP
 #undef STATUS_CNFLCT_UNQ
-#undef STATUS_DID_B
-#undef STATUS_DID_P
-#undef STATUS_DID_M
-#undef STATUS_DID_H
