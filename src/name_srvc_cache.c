@@ -171,7 +171,6 @@ struct cache_namenode *add_name(struct cache_namenode *name,
 	  (0 == memcmp(cur_name->name, name->name,
 		       name->namelen)) &&
 	  (cur_name->isgroup & name->isgroup) &&
-	  (cur_name->node_types & name->node_types) &&
 	  (cur_name->dns_type == name->dns_type) &&
 	  (cur_name->dns_class == name->dns_class)) {
 	if (cur_name != name) {
@@ -288,7 +287,6 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
 	(0 == memcmp(cur_name->name, name->name,
 		     name->namelen)) &&
 	(cur_name->isgroup & name->isgroup) &&
-	(cur_name->node_types & name->node_types) &&
 	(cur_name->dns_type == name->dns_type) &&
 	(cur_name->dns_class == name->dns_class)) {
 
