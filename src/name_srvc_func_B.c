@@ -311,9 +311,12 @@ void *name_srvc_B_handle_newtid(void *input) {
 
   struct name_srvc_resource_lst *res, *answer_lst;
   struct name_srvc_question_lst *qstn;
+  struct cache_scopenode *this_scope;
   struct cache_namenode *cache_namecard, *cache_namecard_b;
   struct nbaddress_list *nbaddr_list, *nbaddr_list_frst,
     *nbaddr_list_hldme, **nbaddr_list_last;
+  struct name_srvc_statistics_rfc1002 *stats;
+  struct nbnodename_list_backbone *names_list;
 
   struct ipv4_addr_list *ipv4_addr_list;
   struct addrlst_bigblock *addr_bigblock;
@@ -322,7 +325,7 @@ void *name_srvc_B_handle_newtid(void *input) {
   uint16_t flags, numof_answers;
   int i, j;
   unsigned char label[NETBIOS_NAME_LEN+1], label_type;
-  unsigned char waited, status;
+  unsigned char waited, status, numof_names;
 
   time_t cur_time;
 
@@ -374,6 +377,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     } while (! outside_pckt->packet);
 
     cur_time = time(0);
+    this_scope = 0;
     cache_namecard = 0;
     cache_namecard_b = 0;
     answer_lst = 0;
@@ -383,9 +387,12 @@ void *name_srvc_B_handle_newtid(void *input) {
     addr_bigblock = 0;
     in_addr = 0;
     numof_answers = 0;
+    numof_names = 0;
     nbaddr_list = nbaddr_list_frst =
       nbaddr_list_hldme = 0;
     nbaddr_list_last = 0;
+    stats = 0;
+    names_list = 0;
     status = STATUS_DID_NONE;
 
 
@@ -492,8 +499,104 @@ void *name_srvc_B_handle_newtid(void *input) {
       qstn = outside_pckt->packet->questions;
       while (qstn) {
 
-	if (qstn->qstn)
+	if (qstn->qstn) {
 	  if (qstn->qstn->qtype == QTYPE_NBSTAT) {
+	    if (qstn->qstn->name) {
+	      cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name, 0),
+					    NETBIOS_NAME_LEN,
+					    ANY_NODETYPE, ANY_GROUP,
+					    QTYPE_NB,
+					    qstn->qstn->qclass,
+					    qstn->qstn->name->next_name);
+
+	      if (cache_namecard)
+		if ((cache_namecard->ismine) &&
+		    (cache_namecard->timeof_death > cur_time) &&
+		    (! cache_namecard->isinconflict)) {
+		  this_scope = find_scope(qstn->qstn->name->next_name);
+		  if (this_scope) {
+
+		    numof_answers++;
+		    if (res) {
+		      res->next = malloc(sizeof(struct name_srvc_resource_lst));
+		      /* no check */
+		      res = res->next;
+		    } else {
+		      res = malloc(sizeof(struct name_srvc_resource_lst));
+		      /* no check */
+		      answer_lst = res;
+		    }
+		    res->res = malloc(sizeof(struct name_srvc_resource));
+		    /* no check */
+		    res->res->name = clone_nbnodename(qstn->qstn->name);
+		    res->res->rrtype = QTYPE_NBSTAT;
+		    res->res->rrclass = cache_namecard->dns_class;
+		    res->res->ttl = 0;
+
+		    stats = calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
+		    /* no check */
+
+		    cache_namecard_b = this_scope->names;
+		    if (cache_namecard_b) {
+		      stats->listof_names = malloc(sizeof(struct nbnodename_list_backbone));
+		      names_list = stats->listof_names;
+
+		      while (0xbab1) {
+			numof_names++;
+			names_list->nbnodename = malloc(sizeof(struct nbnodename_list));
+			names_list->nbnodename->name = encode_nbnodename(cache_namecard_b->name, 0);
+			names_list->nbnodename->len = NETBIOS_CODED_NAME_LEN;
+			names_list->nbnodename->next_name = 0;
+
+			if (cache_namecard_b->isgroup)
+			  names_list->name_flags = NBADDRLST_GROUP_YES;
+			else
+			  names_list->name_flags = NBADDRLST_GROUP_NO;
+			for (i=0; i<4; i++) {
+			  if (cache_namecard_b->addrs.recrd[i].node_type) {
+			    switch (cache_namecard_b->addrs.recrd[i].node_type) {
+			    case CACHE_NODEFLG_H:
+			      names_list->name_flags = names_list->name_flags | NBADDRLST_NODET_H;
+			      break;
+			    case CACHE_NODEFLG_M:
+			      names_list->name_flags = names_list->name_flags | NBADDRLST_NODET_M;
+			      break;
+			    case CACHE_NODEFLG_P:
+			      names_list->name_flags = names_list->name_flags | NBADDRLST_NODET_P;
+			      break;
+			    default: /* B */
+			      names_list->name_flags = names_list->name_flags | NBADDRLST_NODET_B;
+			    }
+
+			    break;
+			  }
+			}
+
+			names_list->name_flags = names_list->name_flags | NODENAMEFLG_ACT;
+			if (cache_namecard_b->isinconflict)
+			  names_list->name_flags = names_list->name_flags | NODENAMEFLG_CNF;
+
+			cache_namecard_b = cache_namecard_b->next;
+
+			if (cache_namecard_b) {
+			  names_list->next_nbnodename = malloc(sizeof(struct nbnodename_list));
+			  /* no check */
+			  names_list = names_list->next_nbnodename;
+			} else
+			  break;
+		      }
+		      names_list->next_nbnodename = 0;
+		    }
+		    stats->numof_names = numof_names;
+
+		    res->res->rdata_len = 1+20*2+6+(numof_names * (2+1+NETBIOS_CODED_NAME_LEN));
+		    res->res->rdata_t = nb_statistics_rfc1002;
+		    res->res->rdata = stats;
+
+		    numof_names = 0;
+		  }
+		}
+	    }
 	  } else {
 	    if (qstn->qstn->name) {
 	      cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name, 0),
@@ -583,6 +686,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		}
 	    }
 	  }
+	}
 
 	qstn = qstn->next;
       }

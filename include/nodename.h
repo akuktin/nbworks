@@ -6,6 +6,11 @@
 # define NETBIOS_NAME_LEN 16
 # define NETBIOS_CODED_NAME_LEN 32
 
+# define NODENAMEFLG_PRM 0x0200  /* Name is permanent. */
+# define NODENAMEFLG_ACT 0x0400  /* Name is active (bit is always on). */
+# define NODENAMEFLG_CNF 0x0800  /* Name is in conflict. */
+# define NODENAMEFLG_DRG 0x1000  /* Name is being deleted. */
+
 struct nbnodename_list {
   unsigned char *name;
   unsigned char len; /* Not int because the field is
