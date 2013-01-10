@@ -529,7 +529,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    res->res = malloc(sizeof(struct name_srvc_resource));
 		    /* no check */
 		    res->res->name = clone_nbnodename(qstn->qstn->name);
-		    res->res->rrtype = QTYPE_NBSTAT;
+		    res->res->rrtype = RRTYPE_NBSTAT;
 		    res->res->rrclass = cache_namecard->dns_class;
 		    res->res->ttl = 0;
 
@@ -729,6 +729,10 @@ void *name_srvc_B_handle_newtid(void *input) {
 	  if ((res->res->name) &&
 	      (res->res->rdata_t == nb_address_list) &&
 	      (res->res->rdata)) {
+	    /* Make sure noone spoofs the response. */
+	    /* VAXism below. */
+	    read_32field((unsigned char *)&(outside_pckt->addr.sin_addr), &in_addr);
+
 	    nbaddr_list_frst = nbaddr_list = res->res->rdata;
 	    nbaddr_list_last = &nbaddr_list_frst;
 
@@ -788,43 +792,41 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    cache_namecard = 0;
 
 	      }
+	      nbaddr_list = res->res->rdata
 
-
-	      /* DOS_BUG: It is interesting.
-		 RFC 1002 requires me to delete the entry from the
-		 cache if I receive a POSITIVE NAME QUERY RESPONSE.
-		 That would imply it is possible for an attacker to
-		 just send me a response, forcing the cache expulsion
-		 and effectivelly preventing me from ever obtaining
-		 any handles to other nodes.
-	      */
+	      /*
+	       * DOS_BUG: It is interesting.
+	       * RFC 1002 requires me to delete the entry from the
+	       * cache if I receive a POSITIVE NAME QUERY RESPONSE.
+	       * That would imply it is possible for an attacker to
+	       * just send me a response, forcing the cache expulsion
+	       * and effectivelly preventing me from ever obtaining
+	       * any handles to other nodes.
+	       *
+	       * Attempt at mitigation: verify the following matches:
+	       * 1. sender IP
+	       * 2. sender IP listed in the rdata of the res
+	       * 3. sender IP is listed in my cache (this may be a problem)
+	       */
 	      if (cache_namecard || cache_namecard_b) {
 		memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
 		label_type = label[NETBIOS_NAME_LEN-1];
 		label[NETBIOS_NAME_LEN-1] = '\0';
 
-		if ((cache_namecard) &&
-		    (cache_namecard->timeof_death > cur_time) &&
-		    (! cache_namecard->isinconflict)) {
-		  pckt = name_srvc_make_name_reg_small(label, label_type,
-						       res->res->name->next_name,
-						       0, 0, ISGROUP_NO,
-						       cache_namecard->addrs.recrd[0].node_type);
-		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-		  pckt->header->nm_flags = FLG_AA;
-		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
-		  pckt->for_del = 1;
-
-		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
-
-		  if (! cache_namecard->ismine)
-		    cache_namecard->timeof_death = 0;
-		  else
-		    cache_namecard->isinconflict = 1;
-		}
 		if ((cache_namecard_b) &&
 		    (cache_namecard_b->timeof_death > cur_time) &&
 		    (! cache_namecard_b->isinconflict)) {
+		  /* Verify the sender lists themselves as a member of the
+		     group being updated. */
+		  while (nbaddr_list) {
+		    if (!(nbaddr_list->flags & NBADDRLST_GROUP_MASK))
+		      break;
+		    if (nbaddr_list->addr == in_addr)
+		      break;
+		    else
+		      nbaddr_list = nbaddr_list->next_address;
+		  }
+
 		  pckt = name_srvc_make_name_reg_small(label, label_type,
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_YES,
@@ -836,10 +838,77 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
 
-		  if (! cache_namecard->ismine)
-		    cache_namecard->timeof_death = 0;
+		  if ((nbaddr_list) &&
+		      (nbaddr_list->flags & NBADDRLST_GROUP_MASK)) {
+		    for (i=0; i<4; i++) {
+		      ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
+		      while (ipv4_addr_list) {
+			if (ipv4_addr_list->addr == in_addr)
+			  break;
+			else
+			  ipv4_addr_list = ipv4_addr_list->next;
+		      }
+		      if (ipv4_addr_list)
+			break;
+		    }
+		  } else
+		    ipv4_addr_list = 0;
+
+		  if (ipv4_addr_list) {
+		    if (! cache_namecard->ismine)
+		      cache_namecard->timeof_death = 0;
+		    else
+		      cache_namecard->isinconflict = 1;  /* WRONG!!! */
+		  }
+		}
+		if ((cache_namecard) &&
+		    (cache_namecard->timeof_death > cur_time) &&
+		    (! cache_namecard->isinconflict)) {
+		  /* Skip a bit, till we get to the unique names. */
+		  while (nbaddr_list)
+		    if (!(nbaddr_list->flags & NBADDRLST_GROUP_MASK))
+		      break;
+		    else
+		      nbaddr_list = nbaddr_list->next_address;
+		  /* Verify the sender lists himself as the owner. */
+		  while (nbaddr_list)
+		    if (nbaddr_list->addr == in_addr)
+		      break;
+		    else
+		      nbaddr_list = nbaddr_list->next_address;
+
+		  pckt = name_srvc_make_name_reg_small(label, label_type,
+						       res->res->name->next_name,
+						       0, 0, ISGROUP_NO,
+						       cache_namecard->addrs.recrd[0].node_type);
+		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+		  pckt->header->nm_flags = FLG_AA;
+		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		  pckt->for_del = 1;
+
+		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+
+		  if (nbaddr_list)
+		    for (i=0; i<4; i++) {
+		      ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
+		      while (ipv4_addr_list) {
+			if (ipv4_addr_list->addr == in_addr)
+			  break;
+			else
+			  ipv4_addr_list = ipv4_addr_list->next;
+		      }
+		      if (ipv4_addr_list)
+			break;
+		    }
 		  else
-		    cache_namecard->isinconflict = 1;  /* WRONG!!! */
+		    ipv4_addr_list = 0;
+
+		  if (ipv4_addr_list) {
+		    if (! cache_namecard->ismine)
+		      cache_namecard->timeof_death = 0;
+		    else
+		      cache_namecard->isinconflict = 1;
+		  }
 		}
 	      }
 	      /* TODO: THIS ISN'T OVER YET, DOS_BUG!!! */
