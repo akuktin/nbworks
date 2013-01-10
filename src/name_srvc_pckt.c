@@ -1221,6 +1221,9 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
   ipv4_addr_listB = ipv4_addr_listP =
     ipv4_addr_listM = ipv4_addr_listH = 0;
 
+  if (! nbaddr_list)
+    return 0;
+
   if (writeem_here)
     result = *writeem_here;
   else
