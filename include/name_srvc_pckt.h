@@ -4,6 +4,7 @@
 # include <stdint.h>
 
 # include "nodename.h"
+# include "name_srvc_cache.h"
 
 # define MAX_DNS_LABEL_LEN 0x3f
 # define ISGROUP_YES   1
@@ -216,5 +217,9 @@ void
   destroy_name_srvc_pckt(struct name_srvc_packet *packet,
                          unsigned int complete,
                          unsigned int really_complete);
+
+struct addrlst_bigblock *
+  sort_nbaddrs(struct nbaddress_list *nbaddr_list,
+               struct addrlst_bigblock **writeem_here);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */
