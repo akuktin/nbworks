@@ -320,7 +320,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
   uint32_t in_addr;
   uint16_t flags, numof_answers;
-  int i;
+  int i, j;
   unsigned char label[NETBIOS_NAME_LEN+1], label_type;
   unsigned char waited, status;
 
@@ -890,7 +890,6 @@ void *name_srvc_B_handle_newtid(void *input) {
 
       res = outside_pckt->packet->aditionals;
       while (res) {
-	status = STATUS_DID_NONE;
 	if (res->res) {
 	  if (res->res->rdata_t == nb_address_list) {
 	    addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
@@ -920,7 +919,32 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    }
 		  }
 		} else {
-		  
+		  for (i=0; i<4; i++) {
+		    if (addr_bigblock->ysgrp.recrd[i].addr) {
+		      for (j=0; j<4; j++) {
+			if (cache_namecard->addrs.recrd[j].node_type ==
+			    addr_bigblock->ysgrp.recrd[i].node_type) {
+			  cache_namecard->addrs.recrd[j].addr =
+			    merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+					    addr_bigblock->ysgrp.recrd[i].addr);
+			} else {
+			  if (cache_namecard->addrs.recrd[j].node_type == 0) {
+			    cache_namecard->node_types = cache_namecard->node_types |
+			      addr_bigblock->ysgrp.recrd[i].node_type;
+
+			    cache_namecard->addrs.recrd[j].node_type =
+			      addr_bigblock->ysgrp.recrd[i].node_type;
+			    cache_namecard->addrs.recrd[j].addr =
+			      addr_bigblock->ysgrp.recrd[i].addr;
+			    addr_bigblock->ysgrp.recrd[i].addr = 0;
+
+			    break;
+			  }
+			}
+		      }
+		    } else
+		      break;
+		  }
 		}
 	      }
 	      if (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
@@ -941,14 +965,41 @@ void *name_srvc_B_handle_newtid(void *input) {
 					       res->res->rrclass,
 					       &(addr_bigblock->nogrp),
 					       res->res->name->next_name);
-		}
-		if (cache_namecard) { /* Race conditions, race conditions... */
+
+		  if (cache_namecard) { /* Race conditions, race conditions... */
+		    for (i=0; i<4; i++) {
+		      addr_bigblock->nogrp.recrd[i].addr = 0;
+		    }
+		  }
+		} else {
 		  for (i=0; i<4; i++) {
-		    addr_bigblock->nogrp.recrd[i].addr = 0;
+		    if (addr_bigblock->nogrp.recrd[i].addr) {
+		      for (j=0; j<4; j++) {
+			if (cache_namecard->addrs.recrd[j].node_type ==
+			    addr_bigblock->nogrp.recrd[i].node_type) {
+			  cache_namecard->addrs.recrd[j].addr =
+			    merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+					    addr_bigblock->nogrp.recrd[i].addr);
+			} else {
+			  if (cache_namecard->addrs.recrd[j].node_type == 0) {
+			    cache_namecard->node_types = cache_namecard->node_types |
+			      addr_bigblock->nogrp.recrd[i].node_type;
+
+			    cache_namecard->addrs.recrd[j].node_type =
+			      addr_bigblock->nogrp.recrd[i].node_type;
+			    cache_namecard->addrs.recrd[j].addr =
+			      addr_bigblock->nogrp.recrd[i].addr;
+			    addr_bigblock->nogrp.recrd[i].addr = 0;
+
+			    break;
+			  }
+			}
+		      }
+		    } else
+		      break;
 		  }
 		}
 	      }
-
 
 	      destroy_bigblock(addr_bigblock);
 	    }
