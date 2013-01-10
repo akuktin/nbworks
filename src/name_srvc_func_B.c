@@ -421,10 +421,23 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    res->res->rrclass,
 					    res->res->name->next_name);
 
+	      /*
+	       * RATIONALE: Names can be either group names or unique names. Since
+	       * we jump over group names, that means we are only looking for unique
+	       * names. Furthermore, we are only looking for our names. If we fail to
+	       * find a record for the asked unique name, that means we have no problem.
+	       * Also, if we find a record, but the name is not ours, we again have
+	       * no problem.
+	       */
+
 	      if (cache_namecard) {
 		if ((cache_namecard->ismine) &&
 		    (cache_namecard->timeof_death > cur_time) &&
-		    (! cache_namecard->isinconflict)) {
+		    (! cache_namecard->isinconflict)) { /* Paired with the DOS_BUG in the
+							 * POSITIVE NAME QUERY RESPONSE
+							 * section, this can be abused to
+							 * execute a hostile name takeover.
+							 */
 		  /* Someone is trying to take my name. */
 
 		  memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
@@ -445,7 +458,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 						       cache_namecard->addrs.recrd[i].node_type);
 		  pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
-		  pckt->header->rcode = RCODE_REGISTR_ACT_ERR;
+		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
 		  pckt->for_del = 1;
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
 
@@ -454,16 +467,6 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  break;
 	      } else
 		break;
-	      /* RATIONALE: Names can be either group names or unique names. Since
-	         we jump over group names, that means we are only looking for unique
-	         names. Furthermore, we are only looking for our names. If we fail to
-		 find a record for the asked unique name, that means we have no problem.
-		 Also, if we find a record, but the name is not ours, we again have
-		 no problem.
-	      */
-
-	      nbaddr_list = nbaddr_list->next_address; /* Technically, this line
-							  is not needed. */
 	    }
 	  }
 	}
@@ -644,10 +647,6 @@ void *name_srvc_B_handle_newtid(void *input) {
 	    }
 	    nbaddr_list = res->res->rdata = nbaddr_list_frst;
 
-
-	    /* Okay. So first, find the cards. Then list through their
-	       addresses, looking for a conflict. */
-	    /* Actually, don't do that -- RFC1002 does not require it. */
 	    if (nbaddr_list) {
 	      while (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
 		if (! status & STATUS_DID_GROUP) {
@@ -733,7 +732,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  if (! cache_namecard->ismine)
 		    cache_namecard->timeof_death = 0;
 		  else
-		    cache_namecard->isinconflict = 1;
+		    cache_namecard->isinconflict = 1;  /* WRONG!!! */
 		}
 	      }
 	      /* TODO: THIS ISN'T OVER YET, DOS_BUG!!! */
@@ -793,7 +792,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 					  res->res->name->next_name);
 	    if (cache_namecard)
 	      if (cache_namecard->ismine)
-		cache_namecard->isinconflict = TRUE;
+		cache_namecard->isinconflict = TRUE; /* WRONG ? */
 	  }
 	  if (status & STATUS_DID_UNIQ) {
 	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
@@ -874,7 +873,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      if (cache_namecard)
 		if (! cache_namecard->ismine)
 		  cache_namecard->timeof_death = 0;
-	      /* else: Did I just get a name release for my unique name? */
+	      /* else: Did I just get a name release for my own name? */
 	    }
 	  }
 	}
@@ -897,7 +896,6 @@ void *name_srvc_B_handle_newtid(void *input) {
      * records to make it work. I also had to implement linked list
      * cross-checker.
      */
-    /* And THEN I got it wrong. (The group part.) */
 
     if (((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
 						   OPCODE_REFRESH)) ||
@@ -945,39 +943,38 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    }
 		  }
 		} else {
-		  if (! cache_namecard->ismine) { /* I have a strong feeling this is wrong. */
-		    if (res->res->ttl)
-		      cache_namecard->timeof_death = cur_time + res->res->ttl;
-		    else
-		      cache_namecard->timeof_death = ZEROONES; /* infinity */
-		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+		  /* BUG: The number of problems a rogue node can create is mind boggling. */
+		  if (res->res->ttl)
+		    cache_namecard->timeof_death = cur_time + res->res->ttl;
+		  else
+		    cache_namecard->timeof_death = ZEROONES; /* infinity */
+		  cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-		    for (i=0; i<4; i++) {
-		      if (addr_bigblock->ysgrp.recrd[i].addr) {
-			for (j=0; j<4; j++) {
-			  if (cache_namecard->addrs.recrd[j].node_type ==
-			      addr_bigblock->ysgrp.recrd[i].node_type) {
+		  for (i=0; i<4; i++) {
+		    if (addr_bigblock->ysgrp.recrd[i].addr) {
+		      for (j=0; j<4; j++) {
+			if (cache_namecard->addrs.recrd[j].node_type ==
+			    addr_bigblock->ysgrp.recrd[i].node_type) {
+			  cache_namecard->addrs.recrd[j].addr =
+			    merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+					    addr_bigblock->ysgrp.recrd[i].addr);
+			} else {
+			  if (cache_namecard->addrs.recrd[j].node_type == 0) {
+			    cache_namecard->node_types = cache_namecard->node_types |
+			      addr_bigblock->ysgrp.recrd[i].node_type;
+
+			    cache_namecard->addrs.recrd[j].node_type =
+			      addr_bigblock->ysgrp.recrd[i].node_type;
 			    cache_namecard->addrs.recrd[j].addr =
-			      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-					      addr_bigblock->ysgrp.recrd[i].addr);
-			  } else {
-			    if (cache_namecard->addrs.recrd[j].node_type == 0) {
-			      cache_namecard->node_types = cache_namecard->node_types |
-				addr_bigblock->ysgrp.recrd[i].node_type;
+			      addr_bigblock->ysgrp.recrd[i].addr;
+			    addr_bigblock->ysgrp.recrd[i].addr = 0;
 
-			      cache_namecard->addrs.recrd[j].node_type =
-				addr_bigblock->ysgrp.recrd[i].node_type;
-			      cache_namecard->addrs.recrd[j].addr =
-				addr_bigblock->ysgrp.recrd[i].addr;
-			      addr_bigblock->ysgrp.recrd[i].addr = 0;
-
-			      break;
-			    }
+			    break;
 			  }
 			}
-		      } else
-			break;
-		    }
+		      }
+		    } else
+		      break;
 		  }
 		}
 	      }
@@ -1047,7 +1044,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    }
 		  }
 		}
-		/* else: Sorry honey baby, you're cute, but that just ain't gonna work. */
+		/* else: Sorry honey baby, you're cute, but that just ain't gonna work.
+		         MAYBE: send a NAME CONFLICT DEMAND packet. */
 	      }
 
 	      destroy_bigblock(addr_bigblock);
