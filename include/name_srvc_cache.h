@@ -5,6 +5,7 @@
 
 # include "nodename.h"
 # include "constdef.h"
+# include "name_srvc_pckt.h"
 
 # define ANY_GROUP ONES
 # define ANY_NODETYPE ONES
@@ -92,7 +93,7 @@ struct cache_namenode *
               int isgroup,
               uint16_t dns_type,
               uint16_t dns_class,
-              uint32_t ip_addr,
+              struct addrlst_grpblock *addrblock,
               struct nbnodename_list *scope);
 struct cache_namenode *
   replace_namecard(struct cache_namenode *name,
@@ -122,8 +123,8 @@ void
   destroy_namecard(struct cache_namenode *namecard);
 
 struct ipv4_addr_list *
-  merge_addrlists(struct ipv4_addr_list *master,
-                  struct ipv4_addr_list *mergee);
+  merge_addrlists_cnsm(struct ipv4_addr_list *master,
+                       struct ipv4_addr_list *mergee);
 
 struct addrlst_bigblock *
   sort_nbaddrs(struct nbaddress_list *nbaddr_list,

@@ -197,7 +197,7 @@ struct cache_namenode *add_nblabel(void *label,
 				   int isgroup,
 				   uint16_t dns_type,
 				   uint16_t dns_class,
-				   uint32_t ip_addr,
+				   struct addrlst_grpblock *addrblock,
 				   struct nbnodename_list *scope) {
   struct cache_namenode *result;
   int i;
@@ -218,19 +218,9 @@ struct cache_namenode *add_nblabel(void *label,
     return 0;
   }
 
-  result->addrs.recrd[0].addr = malloc(sizeof(struct ipv4_addr_list));
-  if (! result->addrs.recrd[0].addr) {
-    /* TODO: errno signaling stuff */
-    free(result->name);
-    free(result);
-    return 0;
-  }
-
   memcpy(result->name, label, labellen);
 
-  result->addrs.recrd[0].node_type = node_types;
-  result->addrs.recrd[0].addr->ip_addr = ip_addr;
-  result->addrs.recrd[0].addr->next = 0;
+  memcpy(&(result->addr), addrblock, sizeof(struct addrlst_grpblock));
 
   result->namelen = labellen;
   result->node_types = node_types;
