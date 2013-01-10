@@ -447,3 +447,277 @@ void destroy_namecard(struct cache_namenode *namecard) {
 
   return;
 }
+
+
+struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
+				      struct addrlst_bigblock **writeem_here) {
+  /*
+   * Objectivelly, the reason for the existance of this ABORTION of a function
+   * is the fact that I have made a switch statement the master worker. A switch
+   * statemet moves the complexity away from the data and into text. And that is
+   * the reason this function exists.
+   *
+   * TODO: NOTETOSELF: Think of a better way of doing this.
+   *
+   *              -> templates would be nice
+   *              -> maybe a macro or two??
+   *
+   */
+
+  struct addrlst_bigblock *result;
+  int i;
+
+  /* "Has the nature of Ctulhu." */
+  struct ipv4_addr_list *ipv4_addr_list_grpB_frst,
+    *ipv4_addr_list_grpP_frst, *ipv4_addr_list_grpM_frst,
+    *ipv4_addr_list_grpH_frst;
+  struct ipv4_addr_list *ipv4_addr_listB_frst,
+    *ipv4_addr_listP_frst, *ipv4_addr_listM_frst,
+    *ipv4_addr_listH_frst;
+  struct ipv4_addr_list *ipv4_addr_list_grpB,
+    *ipv4_addr_list_grpP, *ipv4_addr_list_grpM,
+    *ipv4_addr_list_grpH;
+  struct ipv4_addr_list *ipv4_addr_listB,
+    *ipv4_addr_listP, *ipv4_addr_listM,
+    *ipv4_addr_listH;
+
+  /* This batch of variables is the UGLIEST thing I have yet seen. */
+  ipv4_addr_list_grpB_frst = ipv4_addr_list_grpP_frst =
+    ipv4_addr_list_grpM_frst = ipv4_addr_list_grpH_frst = 0;
+  ipv4_addr_listB_frst = ipv4_addr_listP_frst  =
+    ipv4_addr_listM_frst = ipv4_addr_listH_frst = 0;
+  ipv4_addr_list_grpB = ipv4_addr_list_grpP =
+    ipv4_addr_list_grpM = ipv4_addr_list_grpH = 0;
+  ipv4_addr_listB = ipv4_addr_listP =
+    ipv4_addr_listM = ipv4_addr_listH = 0;
+
+  if (! nbaddr_list)
+    return 0;
+
+  if (writeem_here)
+    result = *writeem_here;
+  else
+    result = malloc(sizeof(struct addrlst_bigblock));
+
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  while (nbaddr_list) {
+    if (! nbaddr_list->there_is_an_address) {
+      nbaddr_list = nbaddr_list->next_address;
+      continue;
+    }
+
+    switch (nbaddr_list->flags & NBADDRLST_NODET_MASK) {
+    case NBADDRLST_NODET_B:
+      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+	if (ipv4_addr_list_grpB) {
+	  ipv4_addr_list_grpB->next = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_list_grpB = ipv4_addr_list_grpB->next;
+	} else {
+	  ipv4_addr_list_grpB = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_list_grpB_frst = ipv4_addr_list_grpB;
+	}
+	ipv4_addr_list_grpB->ip_addr = nbaddr_list->address;
+	ipv4_addr_list_grpB->next = 0;
+      } else {
+	if (ipv4_addr_listB) {
+	  ipv4_addr_listB->next = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_listB = ipv4_addr_listB->next;
+	} else {
+	  ipv4_addr_listB = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_listB_frst = ipv4_addr_listB;
+	}
+	ipv4_addr_listB->ip_addr = nbaddr_list->address;
+	ipv4_addr_listB->next = 0;
+      }
+      break;
+
+    case NBADDRLST_NODET_P:
+      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+	if (ipv4_addr_list_grpP) {
+	  ipv4_addr_list_grpP->next = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_list_grpP = ipv4_addr_list_grpP->next;
+	} else {
+	  ipv4_addr_list_grpP = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_list_grpP_frst = ipv4_addr_list_grpP;
+	}
+	ipv4_addr_list_grpP->ip_addr = nbaddr_list->address;
+	ipv4_addr_list_grpP->next = 0;
+      } else {
+	if (ipv4_addr_listP) {
+	  ipv4_addr_listP->next = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_listP = ipv4_addr_listP->next;
+	} else {
+	  ipv4_addr_listP = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_listP_frst = ipv4_addr_listP;
+	}
+	ipv4_addr_listP->ip_addr = nbaddr_list->address;
+	ipv4_addr_listP->next = 0;
+      }
+      break;
+
+    case NBADDRLST_NODET_M:
+      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+	if (ipv4_addr_list_grpM) {
+	  ipv4_addr_list_grpM->next = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_list_grpM = ipv4_addr_list_grpM->next;
+	} else {
+	  ipv4_addr_list_grpM = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_list_grpM_frst = ipv4_addr_list_grpM;
+	}
+	ipv4_addr_list_grpM->ip_addr = nbaddr_list->address;
+	ipv4_addr_list_grpM->next = 0;
+      } else {
+	if (ipv4_addr_listM) {
+	  ipv4_addr_listM->next = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_listM = ipv4_addr_listM->next;
+	} else {
+	  ipv4_addr_listM = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_listM_frst = ipv4_addr_listM;
+	}
+	ipv4_addr_listM->ip_addr = nbaddr_list->address;
+	ipv4_addr_listM->next = 0;
+      }
+      break;
+
+    case NBADDRLST_NODET_H:
+    default:
+      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+	if (ipv4_addr_list_grpH) {
+	  ipv4_addr_list_grpH->next = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_list_grpH = ipv4_addr_list_grpH->next;
+	} else {
+	  ipv4_addr_list_grpH = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_list_grpH_frst = ipv4_addr_list_grpH;
+	}
+	ipv4_addr_list_grpH->ip_addr = nbaddr_list->address;
+	ipv4_addr_list_grpH->next = 0;
+      } else {
+	if (ipv4_addr_listH) {
+	  ipv4_addr_listH->next = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_listH = ipv4_addr_listH->next;
+	} else {
+	  ipv4_addr_listH = malloc(sizeof(struct ipv4_addr_list));
+	  /* no test */
+	  ipv4_addr_listH_frst = ipv4_addr_listH;
+	}
+	ipv4_addr_listH->ip_addr = nbaddr_list->address;
+	ipv4_addr_listH->next = 0;
+      }
+      break;
+    }
+
+    nbaddr_list = nbaddr_list->next_address;
+  }
+
+
+  result->node_types = 0;
+  for (i=0; i<4; i++) {
+    result->ysgrp.recrd[i].node_type = 0;
+    result->ysgrp.recrd[i].addr = 0;
+    result->nogrp.recrd[i].node_type = 0;
+    result->nogrp.recrd[i].addr = 0;
+  }
+
+  if (ipv4_addr_list_grpB_frst) {
+    result->node_types = result->node_types & CACHE_NODEGRPFLG_B;
+    for (i=0; i<4; i++) {
+      if (! result->ysgrp.recrd[i].node_type) {
+	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_B; /* not a typo */
+	result->ysgrp.recrd[i].addr = ipv4_addr_list_grpB_frst;
+	break;
+      }
+    }
+  }
+  if (ipv4_addr_list_grpP_frst) {
+    result->node_types = result->node_types & CACHE_NODEGRPFLG_P;
+    for (i=0; i<4; i++) {
+      if (! result->ysgrp.recrd[i].node_type) {
+	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_P; /* not a typo */
+	result->ysgrp.recrd[i].addr = ipv4_addr_list_grpP_frst;
+	break;
+      }
+    }
+  }
+  if (ipv4_addr_list_grpM_frst) {
+    result->node_types = result->node_types & CACHE_NODEGRPFLG_M;
+    for (i=0; i<4; i++) {
+      if (! result->ysgrp.recrd[i].node_type) {
+	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_M; /* not a typo */
+	result->ysgrp.recrd[i].addr = ipv4_addr_list_grpM_frst;
+	break;
+      }
+    }
+  }
+  if (ipv4_addr_list_grpH_frst) {
+    result->node_types = result->node_types & CACHE_NODEGRPFLG_H;
+    for (i=0; i<4; i++) {
+      if (! result->ysgrp.recrd[i].node_type) {
+	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_H; /* not a typo */
+	result->ysgrp.recrd[i].addr = ipv4_addr_list_grpH_frst;
+	break;
+      }
+    }
+  }
+
+  if (ipv4_addr_listB_frst) {
+    result->node_types = result->node_types & CACHE_NODEFLG_B;
+    for (i=0; i<4; i++) {
+      if (! result->nogrp.recrd[i].node_type) {
+	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_B;
+	result->nogrp.recrd[i].addr = ipv4_addr_listB_frst;
+	break;
+      }
+    }
+  }
+  if (ipv4_addr_listP_frst) {
+    result->node_types = result->node_types & CACHE_NODEFLG_P;
+    for (i=0; i<4; i++) {
+      if (! result->nogrp.recrd[i].node_type) {
+	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_P;
+	result->nogrp.recrd[i].addr = ipv4_addr_listP_frst;
+	break;
+      }
+    }
+  }
+  if (ipv4_addr_listM_frst) {
+    result->node_types = result->node_types & CACHE_NODEFLG_M;
+    for (i=0; i<4; i++) {
+      if (! result->nogrp.recrd[i].node_type) {
+	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_M;
+	result->nogrp.recrd[i].addr = ipv4_addr_listM_frst;
+	break;
+      }
+    }
+  }
+  if (ipv4_addr_listH_frst) {
+    result->node_types = result->node_types & CACHE_NODEFLG_H;
+    for (i=0; i<4; i++) {
+      if (! result->nogrp.recrd[i].node_type) {
+	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_H;
+	result->nogrp.recrd[i].addr = ipv4_addr_listH_frst;
+	break;
+      }
+    }
+  }
+
+  return result;
+}

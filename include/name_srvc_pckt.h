@@ -218,8 +218,4 @@ void
                          unsigned int complete,
                          unsigned int really_complete);
 
-struct addrlst_bigblock *
-  sort_nbaddrs(struct nbaddress_list *nbaddr_list,
-               struct addrlst_bigblock **writeem_here);
-
 #endif /* NBWORKS_NAMESRVCPCKT_H */

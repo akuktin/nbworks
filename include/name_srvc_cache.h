@@ -121,4 +121,8 @@ struct cache_namenode *
 void
   destroy_namecard(struct cache_namenode *namecard);
 
+struct addrlst_bigblock *
+  sort_nbaddrs(struct nbaddress_list *nbaddr_list,
+               struct addrlst_bigblock **writeem_here);
+
 #endif /* NBWORKS_NAMESRVCCACHE_H*/
