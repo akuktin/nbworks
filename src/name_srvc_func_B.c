@@ -884,7 +884,6 @@ void *name_srvc_B_handle_newtid(void *input) {
      * records to make it work. I also had to implement linked list
      * cross-checker.
      */
-                               
 
     if (((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
 						   OPCODE_REFRESH)) ||
