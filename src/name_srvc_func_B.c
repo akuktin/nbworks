@@ -320,20 +320,8 @@ void *name_srvc_B_handle_newtid(void *input) {
     *nbaddr_list_hldme, **nbaddr_list_last;
 
   struct ipv4_addr_list *ipv4_addr_list;
-  /* "Has the nature of Ctulhu." */
-  struct ipv4_addr_list *ipv4_addr_list_grpB_frst,
-    *ipv4_addr_list_grpP_frst, *ipv4_addr_list_grpM_frst,
-    *ipv4_addr_list_grpH_frst;
-  struct ipv4_addr_list *ipv4_addr_listB_frst,
-    *ipv4_addr_listP_frst, *ipv4_addr_listM_frst,
-    *ipv4_addr_listH_frst;
-  struct ipv4_addr_list *ipv4_addr_list_grpB,
-    *ipv4_addr_list_grpP, *ipv4_addr_list_grpM,
-    *ipv4_addr_list_grpH;
-  struct ipv4_addr_list *ipv4_addr_listB,
-    *ipv4_addr_listP, *ipv4_addr_listM,
-    *ipv4_addr_listH;
-    
+  struct addrlst_bigblock *addrbigblock;
+
   uint32_t in_addr;
   uint16_t flags, numof_answers;
   int i;
@@ -396,22 +384,13 @@ void *name_srvc_B_handle_newtid(void *input) {
     res = 0;
     qstn = 0;
     ipv4_addr_list = 0;
+    addr_bigblock = 0;
     in_addr = 0;
     numof_answers = 0;
     nbaddr_list = nbaddr_list_frst =
       nbaddr_list_hldme = 0;
     nbaddr_list_last = 0;
     status = STATUS_DID_NONE;
-
-    /* This batch of variables is the UGLIEST thing I have yet seen. */
-    ipv4_addr_list_grpB_frst = ipv4_addr_list_grpP_frst =
-      ipv4_addr_list_grpM_frst = ipv4_addr_list_grpH_frst = 0;
-    ipv4_addr_listB_frst = ipv4_addr_listP_frst  =
-      ipv4_addr_listM_frst = ipv4_addr_listH_frst = 0;
-    ipv4_addr_list_grpB = ipv4_addr_list_grpP =
-      ipv4_addr_list_grpM = ipv4_addr_list_grpH = 0;
-    ipv4_addr_listB = ipv4_addr_listP =
-      ipv4_addr_listM = ipv4_addr_listH = 0;
 
 
     // NAME REGISTRATION REQUEST (UNIQUE)
@@ -542,21 +521,28 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  flags = NBADDRLST_GROUP_YES;
 		else
 		  flags = NBADDRLST_GROUP_NO;
-		switch (cache_namecard->node_type) {
-		case 'H':
-		  flags = flags | NBADDRLST_NODET_H;
-		  break;
-		case 'M':
-		  flags = flags | NBADDRLST_NODET_M;
-		  break;
-		case 'P':
-		  flags = flags | NBADDRLST_NODET_P;
-		  break;
-		default: /* B */
-		  flags = flags | NBADDRLST_NODET_B;
+		for (i=0; i<4; i++) {
+		  if (cache_namecard->addrs.recrd[i].node_type) {
+		    switch (cache_namecard->addrs.recrd[i].node_type) {
+		    case CACHE_NODEFLG_H:
+		      flags = flags | NBADDRLST_NODET_H;
+		      break;
+		    case CACHE_NODEFLG_M:
+		      flags = flags | NBADDRLST_NODET_M;
+		      break;
+		    case CACHE_NODEFLG_P:
+		      flags = flags | NBADDRLST_NODET_P;
+		      break;
+		    default: /* B */
+		      flags = flags | NBADDRLST_NODET_B;
+		    }
+
+		    ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
+
+		    break;
+		  }
 		}
 
-		ipv4_addr_list = cache_namecard->addrlist;
 		i=0;
 		if (ipv4_addr_list) {
 		  nbaddr_list_frst = nbaddr_list = malloc(sizeof(struct nbaddress_list));
@@ -629,7 +615,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	status = STATUS_DID_NONE;
 	if (res->res) {
 	  if ((res->res->name) &&
-	      (res->res->rdata_t == nb_address_list)) {
+	      (res->res->rdata_t == nb_address_list) &&
+	      (res->res->rdata)) {
 	    nbaddr_list_frst = nbaddr_list = res->res->rdata;
 	    nbaddr_list_last = &nbaddr_list_frst;
 
@@ -654,6 +641,7 @@ void *name_srvc_B_handle_newtid(void *input) {
               }
 	    }
 	    nbaddr_list = res->res->rdata = nbaddr_list_frst;
+
 
 	    /* Okay. So first, find the cards. Then list through their
 	       addresses, looking for a conflict. */
@@ -743,7 +731,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	      /* TODO: THIS ISN'T OVER YET, DOS_BUG!!! */
 	      /* TODO: make the function cross-reference the addr lists,
-		       looking for inconsistencies, like the 
+		       looking for inconsistencies, like the
 		       NAME RELEASE REQUEST section does. */
 
 	    }
@@ -906,221 +894,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	status = STATUS_DID_NONE;
 	if (res->res) {
 	  if (res->res->rdata_t == nb_address_list) {
-	    nbaddr_list = res->res->rdata;
 
-	    while (nbaddr_list) {
-	      if (! nbaddr_list->there_is_an_address) {
-		nbaddr_list = nbaddr_list->next_address;
-		continue;
-	      }
 
-	      switch (nbaddr_list->flags & NBADDRLST_NODET_MASK) {
-	      case NBADDRLST_NODET_B:
-		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-		  if (ipv4_addr_list_grpB) {
-		    ipv4_addr_list_grpB->next = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_list_grpB = ipv4_addr_list_grpB->next;
-		  } else {
-		    ipv4_addr_list_grpB = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_list_grpB_frst = ipv4_addr_list_grpB;
-		  }
-		  ipv4_addr_list_grpB->ip_addr = nbaddr_list->address;
-		  ipv4_addr_list_grpB->next = 0;
-		} else {
-		  if (ipv4_addr_listB) {
-		    ipv4_addr_listB->next = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_listB = ipv4_addr_listB->next;
-		  } else {
-		    ipv4_addr_listB = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_listB_frst = ipv4_addr_listB;
-		  }
-		  ipv4_addr_listB->ip_addr = nbaddr_list->address;
-		  ipv4_addr_listB->next = 0;
-		}
-		break;
-
-	      case NBADDRLST_NODET_P:
-		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-		  if (ipv4_addr_list_grpP) {
-		    ipv4_addr_list_grpP->next = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_list_grpP = ipv4_addr_list_grpP->next;
-		  } else {
-		    ipv4_addr_list_grpP = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_list_grpP_frst = ipv4_addr_list_grpP;
-		  }
-		  ipv4_addr_list_grpP->ip_addr = nbaddr_list->address;
-		  ipv4_addr_list_grpP->next = 0;
-		} else {
-		  if (ipv4_addr_listP) {
-		    ipv4_addr_listP->next = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_listP = ipv4_addr_listP->next;
-		  } else {
-		    ipv4_addr_listP = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_listP_frst = ipv4_addr_listP;
-		  }
-		  ipv4_addr_listP->ip_addr = nbaddr_list->address;
-		  ipv4_addr_listP->next = 0;
-		}
-		break;
-
-	      case NBADDRLST_NODET_M:
-		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-		  if (ipv4_addr_list_grpM) {
-		    ipv4_addr_list_grpM->next = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_list_grpM = ipv4_addr_list_grpM->next;
-		  } else {
-		    ipv4_addr_list_grpM = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_list_grpM_frst = ipv4_addr_list_grpM;
-		  }
-		  ipv4_addr_list_grpM->ip_addr = nbaddr_list->address;
-		  ipv4_addr_list_grpM->next = 0;
-		} else {
-		  if (ipv4_addr_listM) {
-		    ipv4_addr_listM->next = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_listM = ipv4_addr_listM->next;
-		  } else {
-		    ipv4_addr_listM = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_listM_frst = ipv4_addr_listM;
-		  }
-		  ipv4_addr_listM->ip_addr = nbaddr_list->address;
-		  ipv4_addr_listM->next = 0;
-		}
-		break;
-
-	      case NBADDRLST_NODET_H:
-	      default:
-		if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-		  if (ipv4_addr_list_grpH) {
-		    ipv4_addr_list_grpH->next = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_list_grpH = ipv4_addr_list_grpH->next;
-		  } else {
-		    ipv4_addr_list_grpH = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_list_grpH_frst = ipv4_addr_list_grpH;
-		  }
-		  ipv4_addr_list_grpH->ip_addr = nbaddr_list->address;
-		  ipv4_addr_list_grpH->next = 0;
-		} else {
-		  if (ipv4_addr_listH) {
-		    ipv4_addr_listH->next = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_listH = ipv4_addr_listH->next;
-		  } else {
-		    ipv4_addr_listH = malloc(sizeof(struct ipv4_addr_list));
-		    /* no test */
-		    ipv4_addr_listH_frst = ipv4_addr_listH;
-		  }
-		  ipv4_addr_listH->ip_addr = nbaddr_list->address;
-		  ipv4_addr_listH->next = 0;
-		}
-		break;
-	      }
-
-	      nbaddr_list = nbaddr_list->next_address;
-	    }
-
-	    if (ipv4_addr_list_grpB_frst) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    'B', ISGROUP_YES,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-
-	      if (cache_namecard) {
-		
-	      }
-	    }
-	    if (ipv4_addr_list_grpP_frst) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    'P', ISGROUP_YES,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-
-	      if (cache_namecard) {
-		
-	      }
-	    }
-	    if (ipv4_addr_list_grpM_frst) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    'M', ISGROUP_YES,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-
-	      if (cache_namecard) {
-		
-	      }
-	    }
-	    if (ipv4_addr_list_grpH_frst) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    'H', ISGROUP_YES,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-
-	      if (cache_namecard) {
-		
-	      }
-	    }
-
-	    if (ipv4_addr_listB_frst) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    'B', ISGROUP_NO,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-	      if (cache_namecard) {
-	      }
-	    }
-	    if (ipv4_addr_listP_frst) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    'P', ISGROUP_NO,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-	      if (cache_namecard) {
-	      }
-	    }
-	    if (ipv4_addr_listM_frst) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    'M', ISGROUP_NO,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-	      if (cache_namecard) {
-	      }
-	    }
-	    if (ipv4_addr_listH_frst) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, 0),
-					    NETBIOS_NAME_LEN,
-					    'H', ISGROUP_NO,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-	      if (cache_namecard) {
-	      }
-	    }
 	  }
 	}
 	res = res->next;
