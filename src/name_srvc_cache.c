@@ -10,6 +10,7 @@
 
 #include <pthread.h>
 
+#include "daemon_control.h"
 #include "constdef.h"
 #include "nodename.h"
 #include "pckt_routines.h"
@@ -20,10 +21,6 @@
 
 
 struct cache_scopenode *nbworks_rootscope;
-
-struct {
-  unsigned int all_stop;
-} nbworks_cache_control;
 
 
 void init_name_srvc_cache() {

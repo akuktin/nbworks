@@ -4,14 +4,11 @@
 #include <time.h>
 #include <pthread.h>
 
+#include "daemon_control.h"
 #include "service_sector_threads.h"
 
 
 struct thread_node *nbworks_all_threads;
-
-struct {
-  int all_stop;
-} nbworks_threadcontrol;
 
 
 void init_service_sector_threads() {

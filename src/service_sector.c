@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
+#include "daemon_control.h"
 #include "constdef.h"
 #include "nodename.h"
 #include "pckt_routines.h"
@@ -30,12 +31,6 @@
 
 
 struct ss_name_trans *nbworks_all_name_transactions;
-
-struct {
-  int all_stop;
-} nbworks_all_port_cntl;
-
-//int errno;
 
 
 void init_service_sector() {
