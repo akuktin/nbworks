@@ -66,7 +66,7 @@ inline struct ss_name_pckt_list *
 inline void
   ss_name_dstry_recv_queue(struct ss_queue *trans);
 
-int ss__port137();
+void *ss__port137(void *placeholder);
 void *ss_name_udp_recver(void *sckts_ptr);
 void *ss_name_udp_sender(void *sckts_ptr);
 unsigned int get_inaddr();

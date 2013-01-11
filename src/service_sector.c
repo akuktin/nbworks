@@ -283,10 +283,10 @@ inline void ss_name_dstry_recv_queue(struct ss_queue *trans) {
 }
 
 
-int ss__port137() {
+void *ss__port137(void *placeholder) {
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
-  pthread_t thread[3];
+  pthread_t thread[2];/*3];*/
   int ret_val, i;
 
   my_addr.sin_family = AF_INET;
@@ -295,60 +295,60 @@ int ss__port137() {
   my_addr.sin_addr.s_addr = get_inaddr();
 
   sckts.all_trans = nbworks_all_name_transactions;
-  sckts.tcp_sckt = socket(PF_INET, SOCK_STREAM, 0);
+  //XXX  sckts.tcp_sckt = socket(PF_INET, SOCK_STREAM, 0);
   sckts.udp_sckt = socket(PF_INET, SOCK_DGRAM, 0);
 
-  if (sckts.udp_sckt < 0 ||
-      sckts.tcp_sckt < 0) {
+  if (sckts.udp_sckt < 0) /* XXX ||
+			     sckts.tcp_sckt < 0)*/ {
     /* TODO: errno signaling stuff */
-    return -1;
+    return 0;
   }
 
   ret_val = fcntl(sckts.udp_sckt, F_SETFL, O_NONBLOCK);
   if (ret_val < 0) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
-    close(sckts.tcp_sckt);
-    return -1;
+    //XXX    close(sckts.tcp_sckt);
+    return 0;
   }
-
+  /* XXX
   ret_val = fcntl(sckts.tcp_sckt, F_SETFL, O_NONBLOCK);
   if (ret_val < 0) {
-    /* TODO: errno signaling stuff */
+    /...* TODO: errno signaling stuff *.../
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
-    return -1;
+    return 0;
   }
-
+*/
   ret_val = bind(sckts.udp_sckt, (struct sockaddr *)&my_addr,
 		 sizeof(struct sockaddr_in));
   if (ret_val < 0) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
-    return -1;
+    return 0;
   }
-
+/* XXX
   ret_val = bind(sckts.tcp_sckt, (struct sockaddr *)&my_addr,
 		 sizeof(struct sockaddr_in));
   if (ret_val < 0) {
-    /* TODO: errno signaling stuff */
+    /...* TODO: errno signaling stuff *.../
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
-    return -1;
+    return 0;
   }
 
   ret_val = listen(sckts.tcp_sckt, MAX_NAME_TCP_QUEUE);
   if (ret_val < 0) {
-    /* TODO: errno signaling stuff */
+    /...* TODO: errno signaling stuff *.../
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
-    return -1;
+    return 0;
   }
-
+*/
   thread[0] = 0;
   thread[1] = 0;
-  thread[2] = 0;
+  //XXX  thread[2] = 0;
 
   /* There HAS to be a very, very special place in
      hell for people as evil as I am. */
@@ -357,8 +357,8 @@ int ss__port137() {
   if (ret_val) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
-    close(sckts.tcp_sckt);
-    return -1;
+    //XXX    close(sckts.tcp_sckt);
+    return 0;
   }
   ret_val = pthread_create(&(thread[1]), 0,
 			   &ss_name_udp_recver, &sckts);
@@ -366,18 +366,18 @@ int ss__port137() {
     /* TODO: errno signaling stuff */
     pthread_cancel(thread[0]);
     close(sckts.udp_sckt);
-    close(sckts.tcp_sckt);
-    return -1;
+    //XXX    close(sckts.tcp_sckt);
+    return 0;
   }
 
-  for (i=0; i < 3; i++) {
+  for (i=0; i < 2/*XXX3*/; i++) {
     pthread_join(thread[i], 0);
   }
 
   close(sckts.udp_sckt);
-  close(sckts.tcp_sckt);
+  //XXX  close(sckts.tcp_sckt);
 
-  return 0;
+  return (void *)ONES;
 }
 
 void *ss_name_udp_recver(void *sckts_ptr) {
@@ -396,6 +396,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
   if (! sckts_ptr)
     return 0;
 
+  newtid_queue = 0;
   sckts = sckts_ptr;
   polldata.fd = sckts->udp_sckt;
   polldata.events = (POLLIN | POLLPRI);
@@ -434,7 +435,6 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
       new_pckt->next = 0;
 
-      newtid_queue = 0;
       while (new_pckt) {
 	cur_trans = sckts->all_trans;
 	while (cur_trans) {
@@ -471,6 +471,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	pthread_create(&(params.thread_id), 0,
 		       name_srvc_B_handle_newtid, &params);
 	/* No. Fucking. Comment. */
+	newtid_queue = 0;
       }
     }
   }
