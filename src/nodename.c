@@ -51,7 +51,8 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name,
        above the terminating NULL character in the string. */
     if (decoded_name_cntr > (NETBIOS_NAME_LEN +1) ||
 	coded_name_cntr > NETBIOS_CODED_NAME_LEN) {
-      free(decoded_name);
+      if (! result_buf)
+        free(decoded_name);
       return 0;
     }
   }
@@ -110,7 +111,8 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name,
        dangling above the terminating NULL character in the string. */
     if (decoded_name_cntr > NETBIOS_NAME_LEN ||
 	coded_name_cntr > (NETBIOS_CODED_NAME_LEN +1)) {
-      free(coded_name);
+      if (! result_buf)
+        free(coded_name);
       return 0;
     }
   }
