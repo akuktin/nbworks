@@ -29,14 +29,16 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 
   if (pthread_create(&(result->thread_joiner_tid), 0,
 		     thread_joiner, 0)) {
-    free(result);
+    if (! tcache)
+      free(result);
     return 0;
   }
 
   if (pthread_create(&(result->prune_scopes_tid), 0,
 		     prune_scopes, 0)) {
     pthread_cancel(result->thread_joiner_tid);
-    free(result);
+    if (! tcache)
+      free(result);
     return 0;
   }
 
@@ -44,7 +46,8 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 		     ss__port137, 0)) {
     pthread_cancel(result->thread_joiner_tid);
     pthread_cancel(result->prune_scopes_tid);
-    free(result);
+    if (! tcache)
+      free(result);
     return 0;
   }
 
