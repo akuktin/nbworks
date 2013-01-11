@@ -208,7 +208,7 @@ unsigned char *make_nbnodename(const unsigned char *string,
     prepared_name[j] = ' '; /* a space character */
   }
 
-  for (j = 0; j < NETBIOS_NAME_LEN; j++) {
+  for (j = 0; j < len; j++) {
     prepared_name[j] = toupper(prepared_name[j]);
   }
 
