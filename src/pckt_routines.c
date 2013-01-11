@@ -15,10 +15,10 @@ inline unsigned char *read_16field(unsigned char *content,
   int i;
 
   *field = 0;
-  for (i = 1; i >= 0; i--) {
-    *field = (*field | *content) << (8 * i);
-    content++;
-  }
+  *field = (*field | *content) << 8;
+  content++;
+  *field = (*field | *content);
+  content++;
 
   return content;
 }
@@ -27,10 +27,12 @@ inline unsigned char *read_32field(unsigned char *content,
   int i;
 
   *field = 0;
-  for (i = 3; i >= 0; i--) {
-    *field = (*field | *content) << (8 * i);
+  for (i = 2; i >= 0; i--) {
+    *field = (*field | *content) << 8;
     content++;
   }
+  *field = (*field | *content);
+  content++;
 
   return content;
 }
@@ -40,10 +42,12 @@ inline unsigned char *read_48field(unsigned char *content,
   int i;
 
   *field = 0;
-  for (i = 5; i >= 0; i--) {
-    *field = (*field | *content) << (8 * i);
+  for (i = 4; i >= 0; i--) {
+    *field = (*field | *content) << 8;
     content++;
   }
+  *field = (*field | *content);
+  content++;
 
   return content;
 }
@@ -53,10 +57,12 @@ inline unsigned char *read_64field(unsigned char *content,
   int i;
 
   *field = 0;
-  for (i = 7; i >= 0; i--) {
-    *field = (*field | *content) << (8 * i);
+  for (i = 6; i >= 0; i--) {
+    *field = (*field | *content) << 8;
     content++;
   }
+  *field = (*field | *content);
+  content++;
 
   return content;
 }
