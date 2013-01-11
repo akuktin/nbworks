@@ -36,6 +36,9 @@ struct ss_name_trans *nbworks_all_name_transactions;
 void init_service_sector() {
   nbworks_all_name_transactions = 0;
   nbworks_all_port_cntl.all_stop = 0;
+  nbworks_all_port_cntl.sleeptime.tv_sec = 0;
+  nbworks_all_port_cntl.sleeptime.tv_nsec = T_10MS;
+  nbworks_all_port_cntl.poll_timeout = 10; /* 10 ms */
 }
 
 struct ss_queue *ss_register_name_tid(uint16_t tid) {
@@ -353,6 +356,7 @@ void *ss__port137(void *placeholder) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     //XXX    close(sckts.tcp_sckt);
+    nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
   ret_val = pthread_create(&(thread[1]), 0,
@@ -362,6 +366,7 @@ void *ss__port137(void *placeholder) {
     pthread_cancel(thread[0]);
     close(sckts.udp_sckt);
     //XXX    close(sckts.tcp_sckt);
+    nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
 
@@ -397,7 +402,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
   polldata.events = (POLLIN | POLLPRI);
 
   while (! nbworks_all_port_cntl.all_stop) {
-    ret_val = poll(&polldata, 1, TP_10MS);
+    ret_val = poll(&polldata, 1, nbworks_all_port_cntl.poll_timeout);
     if (ret_val == 0)
       continue;
     if (ret_val < 0) {
@@ -475,7 +480,6 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 }
 
 void *ss_name_udp_sender(void *sckts_ptr) {
-  struct timespec waittime;
   struct ss_sckts *sckts;
   struct ss_name_pckt_list *for_del;
   struct ss_name_trans *cur_trans, **last_trans, *for_del2;
@@ -487,8 +491,6 @@ void *ss_name_udp_sender(void *sckts_ptr) {
     return 0;
 
   sckts = sckts_ptr;
-  waittime.tv_sec = 0;
-  waittime.tv_nsec = T_10MS;
 
   deleter = udp_pckt;
   for (i=0; i < MAX_UDP_PACKET_LEN; i++) {
@@ -577,7 +579,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
       }
     }
 
-    nanosleep(&waittime, 0);
+    nanosleep(&(nbworks_all_port_cntl.sleeptime), 0);
   }
 
   return 0;

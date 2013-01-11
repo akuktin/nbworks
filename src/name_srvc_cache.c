@@ -25,8 +25,9 @@ struct cache_scopenode *nbworks_rootscope;
 
 void init_name_srvc_cache() {
   nbworks_rootscope = 0;
-
   nbworks_cache_control.all_stop = 0;
+  nbworks_cache_control.sleeptime.tv_sec = 1;
+  nbworks_cache_control.sleeptime.tv_nsec = 0;
 }
 
 
@@ -85,15 +86,11 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 
 
 void *prune_scopes(void *placeholder) {
-  struct timespec waittime;
   struct cache_scopenode *cur_scope, **last_scope, *for_del2;
   struct cache_namenode *cur_name, **last_name, *for_del;
   struct ipv4_addr_list *cur_addr, *addr_fordel;
   int i;
   time_t curtime;
-
-  waittime.tv_sec = 1;
-  waittime.tv_nsec = 0;
 
   while (0xbeefcafe) {
     if (nbworks_cache_control.all_stop)
@@ -137,7 +134,7 @@ void *prune_scopes(void *placeholder) {
 	cur_scope = cur_scope->next;
     }
 
-    nanosleep(&waittime, 0);
+    nanosleep(&(nbworks_cache_control.sleeptime), 0);
   }
 
   return nbworks_rootscope;
