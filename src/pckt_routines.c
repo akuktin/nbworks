@@ -12,8 +12,6 @@
 
 inline unsigned char *read_16field(unsigned char *content,
 				   uint16_t *field) {
-  int i;
-
   *field = 0;
   *field = (*field | *content) << 8;
   content++;
