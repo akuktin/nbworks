@@ -9,13 +9,7 @@
 #include "name_srvc_cache.h"
 #include "service_sector.h"
 #include "service_sector_threads.h"
-
-
-struct thread_cache {
-  pthread_t thread_joiner_tid;
-  pthread_t prune_scopes_tid;
-  pthread_t ss__port137_tid;
-};
+#include "daemon.h"
 
 
 struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
