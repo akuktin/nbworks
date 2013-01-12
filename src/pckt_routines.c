@@ -403,7 +403,7 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
     iterator = content->next_name;
   }
 
-  field = '\0';
+  *field = '\0';
   field++;
 
   return field;
