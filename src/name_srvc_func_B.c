@@ -215,7 +215,7 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
   addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
-  addr.sin_addr.s_addr = INADDR_BROADCAST;
+  addr.sin_addr.s_addr = 0xff01a8c0; //INADDR_BROADCAST;
 
   pckt = name_srvc_make_name_qry_req(name, name_type, scope);
   if (! pckt) {
@@ -286,7 +286,6 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
 
     ss_set_normalstate_name_tid(tid);
   }
-
   ss_deregister_name_tid(tid);
   ss_name_dstry_recv_queue(trans);
   free(trans);
@@ -1250,3 +1249,57 @@ void *name_srvc_B_handle_newtid(void *input) {
 #undef STATUS_DID_NONE
 #undef STATUS_DID_GROUP
 #undef STATUS_DID_UNIQ
+
+
+// STUB, FOR TESTING!
+int name_srvc_B_find_name(unsigned char *name,
+			  unsigned char name_type,
+			  struct nbnodename_list *scope) {
+  struct name_srvc_resource *res;
+  struct nbaddress_list *list, *for_del;
+  struct cache_namenode *new_name;
+
+  res = name_srvc_B_callout_name(name, name_type, scope);
+
+  if (res) {
+    new_name = alloc_namecard(decode_nbnodename(res->name->name, 0),
+			      NETBIOS_NAME_LEN,
+			      CACHE_NODEFLG_B,
+			      FALSE, ISGROUP_NO,
+			      res->rrtype, res->rrclass);
+    if (new_name) {
+      if (add_name(new_name, scope)) {
+	free(res->name);
+	list = res->rdata;
+	while (list) {
+	  for_del = list;
+	  list = list->next_address;
+	  free(for_del);
+	}
+	free(res);
+	return 1;
+      } else {
+	free(res->name);
+	list = res->rdata;
+	while (list) {
+	  for_del = list;
+	  list = list->next_address;
+	  free(for_del);
+	}
+	free(res);
+	return 0;
+      }
+    } else {
+      free(res->name);
+      list = res->rdata;
+      while (list) {
+	for_del = list;
+	list = list->next_address;
+	free(for_del);
+      }
+      free(res);
+      return 0;
+    }
+  } else
+    return 0;
+}

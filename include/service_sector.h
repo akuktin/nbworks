@@ -36,7 +36,7 @@ struct ss_queue {
 struct ss_sckts {
   int udp_sckt;
   int tcp_sckt;
-  struct ss_name_trans *all_trans;
+  struct ss_name_trans **all_trans;
 };
 
 struct newtid_params {

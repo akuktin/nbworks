@@ -151,8 +151,8 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
   walker = fill_all_DNS_labels(question->name, walker, end_of_packet);
 
   /* Respect the 32-bit boundary. */
-  walker = (walker +
-	    ((4- ((field - walker) % 4)) %4));
+  //  walker = (walker +
+  //  	    ((4- ((field - walker) % 4)) %4));
 
   if ((walker +4) > end_of_packet) {
     /* OUT_OF_BOUNDS */

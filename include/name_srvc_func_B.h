@@ -21,5 +21,9 @@ struct name_srvc_resource *
                            struct nbnodename_list *scope);
 void *
   name_srvc_B_handle_newtid(void *input);
+int
+  name_srvc_B_find_name(unsigned char *name,
+                        unsigned char name_type,
+                        struct nbnodename_list *scope);
 
 #endif /* NBWORKS_NAMESRVCFUNCB_H */
