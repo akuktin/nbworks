@@ -285,20 +285,23 @@ void *ss__port137(void *placeholder) {
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
   pthread_t thread[2];/*3];*/
+  unsigned int ones;
   int ret_val, i;
 
+  ones = ONES;
   my_addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(my_addr.sin_port));
   my_addr.sin_addr.s_addr = get_inaddr();
 
-  sckts.all_trans = nbworks_all_name_transactions;
+  sckts.all_trans = &nbworks_all_name_transactions;
   //XXX  sckts.tcp_sckt = socket(PF_INET, SOCK_STREAM, 0);
   sckts.udp_sckt = socket(PF_INET, SOCK_DGRAM, 0);
 
   if (sckts.udp_sckt < 0) /* XXX ||
 			     sckts.tcp_sckt < 0)*/ {
     /* TODO: errno signaling stuff */
+    nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
 
@@ -307,6 +310,7 @@ void *ss__port137(void *placeholder) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     //XXX    close(sckts.tcp_sckt);
+    nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
   /* XXX
@@ -318,12 +322,23 @@ void *ss__port137(void *placeholder) {
     return 0;
   }
 */
-  ret_val = bind(sckts.udp_sckt, (struct sockaddr *)&my_addr,
-		 sizeof(struct sockaddr_in));
+  ret_val = setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
+		       &ones, sizeof(int));
   if (ret_val < 0) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
+    nbworks_all_port_cntl.all_stop = 2;
+    return 0;
+  }
+
+  ret_val = bind(sckts.udp_sckt, (struct sockaddr *)&my_addr,
+  		 sizeof(struct sockaddr_in));
+  if (ret_val < 0) {
+    /* TODO: errno signaling stuff */
+    close(sckts.udp_sckt);
+    close(sckts.tcp_sckt);
+    nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
 /* XXX
@@ -436,7 +451,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       new_pckt->next = 0;
 
       while (new_pckt) {
-	cur_trans = sckts->all_trans;
+	cur_trans = *(sckts->all_trans);
 	while (cur_trans) {
 	  if (cur_trans->tid == new_pckt->packet->header->transaction_id) {
 	    if (cur_trans->status == nmtrst_indrop) {
@@ -498,8 +513,8 @@ void *ss_name_udp_sender(void *sckts_ptr) {
   }
 
   while (! nbworks_all_port_cntl.all_stop) {
-    cur_trans = sckts->all_trans;
-    last_trans = &(sckts->all_trans);
+    cur_trans = *(sckts->all_trans);
+    last_trans = sckts->all_trans;
     while (cur_trans) {
       /* Special treatment of deregistered transactions. */
       if (cur_trans->status == nmtrst_deregister) {
@@ -518,6 +533,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	    deleter = udp_pckt;
 	    for (i=0; i<len; i++) {
 	      *deleter = '\0';
+	      deleter++;
 	    }
 	    if (cur_trans->outgoing->packet->for_del)
 	      destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
@@ -546,6 +562,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	    deleter = udp_pckt;
 	    for (i=0; i<len; i++) {
 	      *deleter = '\0';
+	      deleter++;
 	    }
 	    if (cur_trans->outgoing->packet->for_del)
 	      destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
@@ -568,6 +585,7 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	  deleter = udp_pckt;
 	  for (i=0; i<len; i++) {
 	    *deleter = '\0';
+	    deleter++;
 	  }
 	  if (cur_trans->outgoing->packet->for_del)
 	    destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
