@@ -435,12 +435,24 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       }
       len = recvfrom(sckts->udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
 		     MSG_DONTWAIT, &his_addr, &addr_len);
+      /* BUG: While testing, I have noticed that there appears to be
+	      a very strange behaviour regarding len.
+	      Sometimes, the below test passes (indicating len is either
+	      0 or positive), but if you read it after the if block,
+	      it is -1! This behaviour dissapears if the socket is blocking
+	      (the call to recvfrom() blocks). The only explanation so far
+	      is that recvfrom returns, but then retroactivelly fails and
+	      overwrites len to -1.
+	      The other explanation is that GCC fucks things up (again).
+
+              perror() displays "Resource temporarily unavailable" */
       if (len < 0) {
 	if (errno == EAGAIN ||
 	    errno == EWOULDBLOCK) {
 	  break;
 	} else {
 	  /* TODO: error handling */
+	  break;
 	}
       }
 
@@ -451,8 +463,11 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
 	new_pckt->next = 0;
       } else {
+	/* TODO: errno signalin stuff */
+	/* BUT see third comment up! */
 	free(new_pckt);
 	new_pckt = 0;
+	break;
       }
 
       while (new_pckt) {
