@@ -48,4 +48,21 @@
 # define UCAST_REQ_RETRY_COUNT   3
 # define MAX_DATAGRAM_LENGTH     576 /* bytes, that is, octets */
 
+
+# ifdef align_incr
+#  undef align_incr
+# endif
+# ifdef align
+#  undef align
+# endif
+
+# ifdef DO_ALIGN_FIELDS
+#  define align_incr(base, ptr, incr) ((incr- ((ptr-base) %incr)) %incr)
+# else
+#  define align_incr(base, ptr, incr) 0
+# endif
+
+# define align(base, ptr, incr) (ptr + align_incr(base, ptr, incr))
+
+
 #endif /* NBWORKS_CONSTDEF_H */

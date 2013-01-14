@@ -113,8 +113,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
       return 0;
     }
 
-    walker = (walker +
-	      ((4- ((walker - remember_walker) %4)) %4));
+    walker = align(remember_walker, walker, 4);
 
     if ((walker +1) > end_of_packet) {
       /* OUT_OF_BOUNDS */
@@ -221,8 +220,8 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
     remember_walker = walker +1;
     walker = fill_all_DNS_labels(two_names_payload->called_name, walker,
 				 endof_pckt);
-    walker = (walker +
-	      ((4- ((walker - remember_walker) %4)) %4));
+
+    walker = align(remember_walker, walker, 4);
     if ((walker +1) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */

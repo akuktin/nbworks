@@ -118,8 +118,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       return 0;
     }
 
-    walker = (walker +
-              ((4- ((walker - remember_walker) %4)) %4));
+    walker = align(remember_walker, walker, 4);
     if ((walker + 1 + normal_pckt->len) >= end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -142,8 +141,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     /* However, maybe I should ignore alignment things
        and instead focus on the PACKET_OFFSET field. */
 
-    walker = (walker +
-              ((4- ((walker - remember_walker) %4)) %4));
+    walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->len) >= end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -220,8 +218,8 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
 
     walker = fill_all_DNS_labels(normal_pckt->src_name, walker,
 				 endof_pckt);
-    walker = (walker +
-              ((4- ((walker - remember_walker) %4)) %4));
+
+    walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->len +1) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -230,8 +228,8 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
 
     walker = fill_all_DNS_labels(normal_pckt->dst_name, walker,
 				 endof_pckt);
-    walker = (walker +
-              ((4- ((walker - remember_walker) %4)) %4));
+
+    walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->len) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "constdef.h"
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
@@ -521,7 +522,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
   if (cur_names) {
     do {
       numof_names++;
-      lenof_names = lenof_names + ((4- (nbnodenamelen(cur_names->nbnodename) %4)) %4);
+      lenof_names = lenof_names + align_incr(0, nbnodenamelen(cur_names->nbnodename), 4);
       lenof_names = lenof_names +4; /* +2 if no alignment after flags */
       cur_names = cur_names->next_nbnodename;
     } while (cur_names);

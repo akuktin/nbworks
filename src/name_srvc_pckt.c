@@ -112,8 +112,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   }
 
   /* Fields in the packet are aligned to 32-bit boundaries. */
-  walker = (*master_packet_walker +
-	    ((4- ((*master_packet_walker - remember_walker) %4)) %4));
+  walker = align(remember_walker, *master_packet_walker, 4);
 
   if ((walker + 2 * sizeof(uint16_t)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
@@ -151,8 +150,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
   walker = fill_all_DNS_labels(question->name, walker, end_of_packet);
 
   /* Respect the 32-bit boundary. */
-  //  walker = (walker +
-  //  	    ((4- ((field - walker) % 4)) %4));
+  walker = align(field, walker, 4);
 
   if ((walker +4) > end_of_packet) {
     /* OUT_OF_BOUNDS */
@@ -196,8 +194,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   }
 
   /* Fields in the packet are aligned to 32-bit boundaries. */
-  walker = (*master_packet_walker +
-	    ((4- ((*master_packet_walker - remember_walker) %4)) %4));
+  walker = align(remember_walker, *master_packet_walker, 4);
 
   if ((walker + 5 * sizeof(uint16_t)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
@@ -240,8 +237,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
   walker = fill_all_DNS_labels(resource->name, walker, end_of_packet);
 
   /* Respect the 32-bit boundary. */
-  walker = (walker +
-	    ((4- ((field - walker) % 4)) %4));
+  walker = align(field, walker, 4);
 
   if ((walker +3*2+4) > end_of_packet) {
     /* OUT_OF_BOUNDS */
@@ -314,8 +310,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       /* TODO: errno signaling stuff */
       return 0;
     }
-    *start_and_end_of_walk = (*start_and_end_of_walk +
-			      ((4- ((*start_and_end_of_walk - weighted_companion_cube) %4)) %4));
+    *start_and_end_of_walk = align(weighted_companion_cube, *start_and_end_of_walk, 4);
     if (*start_and_end_of_walk > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -378,7 +373,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	}
 	listof_names->nbnodename = read_all_DNS_labels(&walker, start_of_packet,
 						       end_of_packet);
-	walker = walker + ((4- ((walker - weighted_companion_cube) %4)) %4);
+	walker = align(weighted_companion_cube, walker, 4);
 	if ((walker + 1 * sizeof(uint16_t)) > end_of_packet) {
 	  /* OUT_OF_BOUNDS */
 	  /* TODO: errno signaling stuff */
@@ -434,7 +429,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       walker++;
     }
 
-    walker = walker + ((4- ((walker - weighted_companion_cube) %4)) %4);
+    walker = align(weighted_companion_cube, walker, 4);
 
     if ((walker + 23 * sizeof(uint16_t)) > end_of_packet) {
       /* OUT_OF_BOUNDS */
@@ -536,7 +531,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     if (! content->rdata)
       return field;
     walker = fill_all_DNS_labels(content->rdata, walker, end_of_packet);
-    walker = walker + ((4- ((walker - field) %4)) %4);
+    walker = align(field, walker, 4);
     if (walker > end_of_packet) {
       /* TODO: maybe do errno signaling stuff */
       return end_of_packet;
@@ -564,14 +559,14 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     names = nbstat->listof_names;
     while (names) {
       walker = fill_all_DNS_labels(names->nbnodename, walker, end_of_packet);
-      walker = walker + ((4- ((walker - field) %4)) %4);
+      walker = align(field, walker, 4);
       if ((walker +2+6+2+19*2) > end_of_packet) {
 	/* OUT_OF_BOUNDS */
 	/* TODO: errno signaling stuff */
 	return walker;
       }
       walker = fill_16field(names->name_flags, walker);
-      walker = walker + ((4- ((walker - field) %4)) %4);
+      walker = align(field, walker, 4);
       names = names->next_nbnodename;
     }
     if ((walker +6+2+19*2) > end_of_packet) {

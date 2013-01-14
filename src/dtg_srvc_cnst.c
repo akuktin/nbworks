@@ -71,7 +71,7 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
   complete_dst->len = NETBIOS_CODED_NAME_LEN;
   complete_dst->next_name = clone_nbnodename(scope);
 
-  lenof_names = ((4- (nbnodenamelen(complete_src) %4)) %4) *2;
+  lenof_names = align_incr(0, nbnodenamelen(complete_src), 4) *2;
 
   result->len = lenof_names + lenof_pyld;
   result->offset = offset;
