@@ -444,11 +444,16 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	}
       }
 
-      new_pckt = calloc(1, sizeof(struct ss_name_pckt_list));
+      new_pckt = malloc(sizeof(struct ss_name_pckt_list));
       /* NOTE: No check for failure. */
       new_pckt->packet = master_name_srvc_pckt_reader(udp_pckt, len);
-      memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
-      new_pckt->next = 0;
+      if (new_pckt->packet) {
+	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
+	new_pckt->next = 0;
+      } else {
+	free(new_pckt);
+	new_pckt = 0;
+      }
 
       while (new_pckt) {
 	cur_trans = *(sckts->all_trans);
