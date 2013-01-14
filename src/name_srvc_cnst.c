@@ -48,7 +48,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
     return 0;
   }
   addr->next_address = 0;
-  addr->there_is_an_address = 1;
+  addr->there_is_an_address = TRUE;
   addr->address = in_address;
   if (isgroup) {
     addr->flags = NBADDRLST_GROUP_YES;
@@ -108,7 +108,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   result->questions->qstn->qtype = QTYPE_NB;
   result->questions->qstn->qclass = QCLASS_IN;
 
-  result->aditionals->res->name = complete_name;
+  result->aditionals->res->name = clone_nbnodename(complete_name);
   result->aditionals->res->rrtype = RRTYPE_NB;
   result->aditionals->res->rrclass = RRCLASS_IN;
   result->aditionals->res->ttl = ttl;
@@ -406,7 +406,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
   result->authorities->res->rdata_t = nb_nodename;
   result->authorities->res->rdata = namesrvr_name;
 
-  result->aditionals->res->name = namesrvr_name;
+  result->aditionals->res->name = clone_nbnodename(namesrvr_name);
   result->aditionals->res->rrtype = RRTYPE_A;
   result->aditionals->res->rrclass = RRCLASS_IN;
   result->aditionals->res->ttl = ttl; /* NOTE: there is good reason to have
