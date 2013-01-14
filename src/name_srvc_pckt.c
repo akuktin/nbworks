@@ -249,7 +249,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
   walker = fill_16field(resource->rrclass, walker);
   walker = fill_32field(resource->ttl, walker);
   walker = fill_16field(resource->rdata_len, walker);
-  walker = fill_name_srvc_resource_data(resource->rdata, walker,
+  walker = fill_name_srvc_resource_data(resource, walker,
 					end_of_packet);
 
   return walker;
