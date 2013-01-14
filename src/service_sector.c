@@ -467,7 +467,6 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	/* BUT see third comment up! */
 	free(new_pckt);
 	new_pckt = 0;
-	break;
       }
 
       while (new_pckt) {
