@@ -51,6 +51,12 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
     return 0;
   }
 
+#ifdef DO_ALIGN_FIELDS
+  nbworks_do_align = 1;
+#else
+  nbworks_do_align = 0;
+#endif
+
   return result;
 }
 
