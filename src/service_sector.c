@@ -38,7 +38,7 @@ void init_service_sector() {
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
   nbworks_all_port_cntl.sleeptime.tv_nsec = T_10MS;
-  nbworks_all_port_cntl.poll_timeout = 10; /* 10 ms */
+  nbworks_all_port_cntl.poll_timeout = TP_10MS;
 }
 
 struct ss_queue *ss_register_name_tid(uint16_t tid) {
