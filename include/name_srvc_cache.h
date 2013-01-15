@@ -63,7 +63,8 @@ struct cache_namenode {
   //  unsigned char magic_char;
   unsigned short node_types; /* flag field */
   unsigned char isinconflict;
-  unsigned char ismine;
+  uint64_t token; /* 0 if not mine name, 1 if name in
+                     process of being registered */
   int isgroup;
   uint16_t dns_type;
   uint16_t dns_class;
@@ -91,7 +92,7 @@ struct cache_namenode *
   add_nblabel(void *label,
               unsigned char labellen,
               unsigned short node_types,
-              unsigned char ismine,
+              uint64_t token,
               int isgroup,
               uint16_t dns_type,
               uint16_t dns_class,
@@ -117,7 +118,7 @@ struct cache_namenode *
   alloc_namecard(void *label,
                  unsigned char labellen,
                  unsigned short node_types,
-                 unsigned char ismine,
+                 uint64_t token,
                  int isgroup,
                  uint16_t dns_type,
                  uint16_t dns_class);

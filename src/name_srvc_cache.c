@@ -187,7 +187,7 @@ struct cache_namenode *add_name(struct cache_namenode *name,
 struct cache_namenode *add_nblabel(void *label,
 				   unsigned char labellen,
 				   unsigned short node_types,
-				   unsigned char ismine,
+				   uint64_t token,
 				   int isgroup,
 				   uint16_t dns_type,
 				   uint16_t dns_class,
@@ -219,7 +219,7 @@ struct cache_namenode *add_nblabel(void *label,
   result->namelen = labellen;
   result->node_types = node_types;
   result->isinconflict = FALSE;
-  result->ismine = ismine;
+  result->token = token;
   result->isgroup = isgroup;
   result->dns_type = dns_type;
   result->dns_class = dns_class;
@@ -374,7 +374,7 @@ struct cache_namenode *find_nblabel(void *label,
 struct cache_namenode *alloc_namecard(void *label,
 				      unsigned char labellen,
 				      unsigned short node_types,
-				      unsigned char ismine,
+				      uint64_t token,
 				      int isgroup,
 				      uint16_t dns_type,
 				      uint16_t dns_class) {
@@ -400,7 +400,7 @@ struct cache_namenode *alloc_namecard(void *label,
   result->namelen = labellen;
   result->node_types = node_types;
   result->isinconflict = FALSE;
-  result->ismine = ismine;
+  result->token = token;
   result->isgroup = isgroup;
   result->dns_type = dns_type;
   result->dns_class = dns_class;
