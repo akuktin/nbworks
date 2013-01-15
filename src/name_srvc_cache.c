@@ -370,6 +370,28 @@ struct cache_namenode *find_nblabel(void *label,
   return 0;
 }
 
+struct cache_namenode *find_namebytok(uint64_t token) {
+  struct cache_scopenode *scope;
+  struct cache_namenode *result;
+
+  if (! token)
+    return 0;
+
+  scope = nbworks_rootscope;
+
+  while (scope) {
+    result = scope->names;
+    while (result)
+      if (result->token == token)
+	return result;
+      else
+	result = result->next;
+    scope = scope->next;
+  }
+
+  return 0;
+}
+
 
 struct cache_namenode *alloc_namecard(void *label,
 				      unsigned char labellen,
