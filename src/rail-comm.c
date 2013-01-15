@@ -344,7 +344,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	add_scope(namedata->scope, cache_namecard);
 	add_name(cache_namecard, namedata->scope);
 	/* TODO: I won't really bother with error detection at this time. */
-	
+
 	cache_namecard->timeof_death = time(0) + namedata->ttl;
 	cache_namecard->addrs.recrd[0].node_type = CACHE_NODEFLG_B;
 	cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));
