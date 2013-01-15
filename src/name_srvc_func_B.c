@@ -435,7 +435,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	       */
 
 	      if (cache_namecard) {
-		if ((cache_namecard->ismine) &&
+		if ((cache_namecard->token) &&
 		    (cache_namecard->timeof_death > cur_time) &&
 		    (! cache_namecard->isinconflict)) { /* Paired with the DOS_BUG in the
 							 * POSITIVE NAME QUERY RESPONSE
@@ -507,7 +507,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    qstn->qstn->name->next_name);
 
 	      if (cache_namecard)
-		if ((cache_namecard->ismine) &&
+		if ((cache_namecard->token) &&
 		    (cache_namecard->timeof_death > cur_time) &&
 		    (! cache_namecard->isinconflict)) {
 		  this_scope = find_scope(qstn->qstn->name->next_name);
@@ -604,7 +604,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    qstn->qstn->name->next_name);
 
 	      if (cache_namecard)
-		if ((cache_namecard->ismine) &&
+		if ((cache_namecard->token) &&
 		    (cache_namecard->timeof_death > cur_time) &&
 		    (! cache_namecard->isinconflict)) {
 		  numof_answers++;
@@ -852,7 +852,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    ipv4_addr_list = 0;
 
 		  if (ipv4_addr_list) {
-		    if (! cache_namecard->ismine)
+		    if (! cache_namecard->token)
 		      cache_namecard->timeof_death = 0;
 		    else
 		      cache_namecard->isinconflict = 1;  /* WRONG!!! */
@@ -901,7 +901,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    ipv4_addr_list = 0;
 
 		  if (ipv4_addr_list) {
-		    if (! cache_namecard->ismine)
+		    if (! cache_namecard->token)
 		      cache_namecard->timeof_death = 0;
 		    else
 		      cache_namecard->isinconflict = 1;
@@ -964,7 +964,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 					  res->res->rrclass,
 					  res->res->name->next_name);
 	    if (cache_namecard)
-	      if (cache_namecard->ismine)
+	      if (cache_namecard->token)
 		cache_namecard->isinconflict = TRUE; /* WRONG ? */
 	  }
 	  if (status & STATUS_DID_UNIQ) {
@@ -975,7 +975,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 					  res->res->rrclass,
 					  res->res->name->next_name);
 	    if (cache_namecard)
-	      if (cache_namecard->ismine)
+	      if (cache_namecard->token)
 		cache_namecard->isinconflict = TRUE;
 	  }
 	}
@@ -1033,7 +1033,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    res->res->rrclass,
 					    res->res->name->next_name);
 	      if (cache_namecard)
-		if (! cache_namecard->ismine)
+		if (! cache_namecard->token)
 		  cache_namecard->timeof_death = 0; /* WRONG!!!!! */
 	    }
 	    if (status & STATUS_DID_UNIQ) {
@@ -1044,7 +1044,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    res->res->rrclass,
 					    res->res->name->next_name);
 	      if (cache_namecard)
-		if (! cache_namecard->ismine)
+		if (! cache_namecard->token)
 		  cache_namecard->timeof_death = 0;
 	      /* else: Did I just get a name release for my own name? */
 	    }
@@ -1182,7 +1182,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		    }
 		  }
 		} else {
-		  if (! cache_namecard->ismine) {
+		  if (! cache_namecard->token) {
 		    if (res->res->ttl)
 		      cache_namecard->timeof_death = cur_time + res->res->ttl;
 		    else
