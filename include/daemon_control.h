@@ -19,4 +19,9 @@ struct {
   struct timespec sleeptime;
 } nbworks_cache_control;
 
+struct {
+  unsigned char all_stop;
+  int poll_timeout;
+} nbworks__rail_control;
+
 #endif /* NBWORKS_DAEMONCONTROL_H */
