@@ -319,7 +319,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   }
 
   ret_val = recv(rail_sckt, data_buff,
-		 MAX_UDP_PACKET_LEN, MSG_DONTWAIT);
+		 command->len, MSG_DONTWAIT);
   if (ret_val < 1) {
     if ((errno == EAGAIN) ||
 	(errno == EWOULDBLOCK)) {
