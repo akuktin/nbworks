@@ -203,6 +203,39 @@ void *handle_rail(void *args) {
     return 0;
     break;
 
+  case rail_dtg_yes:
+  case rail_dtg_no:
+  case rail_ses_yes:
+  case rail_ses_no:
+    cache_namecard = find_namebytok(command->token);
+    if (cache_namecard) {
+      switch (command->command) {
+      case rail_dtg_yes:
+	cache_namecard->takes = cache_namecard->takes | CACHE_TAKES_DTG;
+	break;
+      case rail_dtg_no:
+	cache_namecard->takes = cache_namecard->takes & (~CACHE_TAKES_DTG);
+	break;
+      case rail_ses_yes:
+	cache_namecard->takes = cache_namecard->takes | CACHE_TAKES_SES;
+	break;
+      case rail_ses_no:
+	cache_namecard->takes = cache_namecard->takes & (~CACHE_TAKES_SES);
+	break;
+      default:
+      }
+      command->len = 0;
+      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+    }
+    close(params.rail_sckt);
+    free(command);
+    free(params.addr);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+    break;
+
   default:
     /* Unknown command. */
     close(params.rail_sckt);
