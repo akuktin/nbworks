@@ -30,6 +30,9 @@
 # define CACHE_NODET_M 'M'
 # define CACHE_NODET_H 'H'
 
+# define CACHE_TAKES_DTG 0x01
+# define CACHE_TAKES_SES 0x02
+
 
 struct ipv4_addr_list {
   uint32_t ip_addr;
@@ -63,6 +66,7 @@ struct cache_namenode {
   //  unsigned char magic_char;
   unsigned short node_types; /* flag field */
   unsigned char isinconflict;
+  unsigned char takes; /* flag field */
   uint64_t token; /* 0 if not mine name, 1 if name in
                      process of being registered */
   int isgroup;
