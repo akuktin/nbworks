@@ -166,8 +166,7 @@ void *handle_rail(void *args) {
 
   switch (command->command) {
   case rail_regname:
-    cache_namecard = do_rail_regname(params.rail_sckt, command,
-				     ISGROUP_NO);
+    cache_namecard = do_rail_regname(params.rail_sckt, command);
     if (cache_namecard) {
       command->token = cache_namecard->token;
       command->len = 0;
@@ -185,6 +184,22 @@ void *handle_rail(void *args) {
     break;
 
   case rail_delname:
+    cache_namecard = find_namebytok(command->token);
+    if (cache_namecard) {
+      /*      if (cache_namecard->isgroup) {
+
+	      } else {*/
+      cache_namecard->timeof_death = 0;    /* WRONG!!! */
+	/*      }*/
+      command->len = 0;
+      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+    }
+    close(params.rail_sckt);
+    free(command);
+    free(params.addr);
+    if (last_will)
+      last_will->dead = TRUE;
     return 0;
     break;
 
@@ -288,22 +303,31 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
 
 
 struct cache_namenode *do_rail_regname(int rail_sckt,
-				       struct com_comm *command,
-				       int isgroup) {
+				       struct com_comm *command) {
   struct cache_namenode *cache_namecard;
   struct rail_name_data *namedata;
   ssize_t ret_val;
-  unsigned char data_buff[MAX_UDP_PACKET_LEN];
+  unsigned char *data_buff;
+
+  /* WRONG FOR GROUPS!!! */
+
+  data_buff = malloc(command->len);
+  if (! data_buff) {
+    close(rail_sckt);
+    free(command);
+    return 0;
+  }
 
   ret_val = recv(rail_sckt, data_buff,
 		 MAX_UDP_PACKET_LEN, MSG_DONTWAIT);
   if (ret_val < 1) {
     if ((errno == EAGAIN) ||
 	(errno == EWOULDBLOCK)) {
-      //	continue; /* What do I do now? */
+      /* What do I do now? */
     } else {
       /* TODO: error handling */
       close(rail_sckt);
+      free(data_buff);
       free(command);
       return 0;
     }
@@ -312,6 +336,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   if (! command->data) {
     /* TODO: error handling */
     close(rail_sckt);
+    free(data_buff);
     free(command);
     return 0;
   } else
@@ -322,10 +347,11 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   default:
     cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
 				    CACHE_NODEFLG_B, make_token(),
-				    isgroup, QTYPE_NB, QCLASS_IN);
+				    namedata->isgroup, QTYPE_NB, QCLASS_IN);
     if (! cache_namecard) {
       /* TODO: error handling */
       close(rail_sckt);
+      free(data_buff);
       free(command);
       free(namedata->name);
       destroy_nbnodename(namedata->scope);
@@ -335,6 +361,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     if (find_name(cache_namecard, namedata->scope)) {
       close(rail_sckt);
       destroy_namecard(cache_namecard);
+      free(data_buff);
       free(command);
       free(namedata->name);
       destroy_nbnodename(namedata->scope);
@@ -355,6 +382,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	if (! cache_namecard->addrs.recrd[0].addr) {
 	  /* TODO: error handling */
 	  close(rail_sckt);
+	  free(data_buff);
 	  free(command);
 	  free(namedata->name);
 	  destroy_nbnodename(namedata->scope);
@@ -364,6 +392,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	}
 	cache_namecard->addrs.recrd[0].addr->ip_addr = command->addr.sin_addr.s_addr;
 
+	free(data_buff);
 	free(namedata->name);
 	destroy_nbnodename(namedata->scope);
 	free(namedata);
@@ -371,6 +400,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       } else {
 	/* TODO: error handling */
 	close(rail_sckt);
+	free(data_buff);
 	free(command);
 	free(namedata->name);
 	destroy_nbnodename(namedata->scope);
