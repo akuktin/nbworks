@@ -495,12 +495,12 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	     with this tid. Register a new one and signal its existance. */
 	  newtid_queue =
 	    ss_register_name_tid(new_pckt->packet->header->transaction_id);
+	  params.tid = new_pckt->packet->header->transaction_id;
 	}
       }
       if (newtid_queue) {
 	/* Signaling the new queue. */
 	params.thread_id = 0;
-	params.tid = new_pckt->packet->header->transaction_id;
 	params.trans = newtid_queue;
 	pthread_create(&(params.thread_id), 0,
 		       name_srvc_B_handle_newtid, &params);
