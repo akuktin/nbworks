@@ -5,6 +5,9 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -17,6 +20,7 @@
 #include "service_sector_threads.h"
 #include "pckt_routines.h"
 #include "name_srvc_cache.h"
+#include "name_srvc_func_B.h"
 #include "randomness.h"
 
 
@@ -34,13 +38,13 @@ int open_rail() {
   int i, result;
   unsigned char *deleter;
 
-  deleter = (unsigned char *)address;
+  deleter = (unsigned char *)&address;
   for (i=0; i<sizeof(struct sockaddr_un); i++) {
     *deleter = 0;
   }
 
-  address->sun_family = AF_UNIX;
-  memcpy(address->sun_path +1, NBWORKS_SCKT_NAME, NBWORKS_SCKT_NAMELEN);
+  address.sun_family = AF_UNIX;
+  memcpy(address.sun_path +1, NBWORKS_SCKT_NAME, NBWORKS_SCKT_NAMELEN);
 
   result = socket(PF_UNIX, SOCK_STREAM, 0);
   if (result == -1)
@@ -69,6 +73,7 @@ void *poll_rail(void *args) {
   struct pollfd pfd;
   struct sockaddr_un *address;
   struct thread_node *last_will;
+  socklen_t scktlen;
   int ret_val, new_sckt;
 
   memcpy(&params, args, sizeof(struct rail_params));
@@ -78,6 +83,7 @@ void *poll_rail(void *args) {
   else
     last_will = 0;
 
+  scktlen = sizeof(struct sockaddr_un);
   pfd.fd = params.rail_sckt;
   pfd.events = POLLIN;
 
@@ -100,7 +106,7 @@ void *poll_rail(void *args) {
     address = calloc(1, sizeof(struct sockaddr_un));
     /* no calloc check */
     new_sckt = accept(params.rail_sckt, (struct sockaddr *)address,
-		      sizeof(struct sockaddr_un));
+		      &scktlen);
     if (new_sckt < 0) {
       if ((errno == EAGAIN) ||
 	  (errno == EWOULDBLOCK)) {
@@ -123,7 +129,6 @@ void *handle_rail(void *args) {
   struct com_comm *command;
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
-  ssize_t ret_val;
   unsigned char buff[LEN_COMM_ONWIRE];
 
   memcpy(&params, args, sizeof(struct rail_params));
@@ -180,15 +185,13 @@ void *handle_rail(void *args) {
     break;
 
   case rail_delname:
+    return 0;
     break;
 
   default:
     /* Unknown command. */
     close(params.rail_sckt);
     free(command);
-    free(namedata->name);
-    destroy_nbnodename(namedata->scope);
-    free(namedata);
     free(params.addr);
     if (last_will)
       last_will->dead = TRUE;
@@ -239,9 +242,9 @@ unsigned char *fill_railcommand(struct com_comm *command,
   *walker = command->command;
   walker++;
   walker = fill_64field(command->token, walker);
-  walker = fill_16field(command->addr.sin_port);
-  walker = fill_32field(command->addr.sin_addr.s_addr);
-  walker = fill_32field(command->len);
+  walker = fill_16field(command->addr.sin_port, walker);
+  walker = fill_32field(command->addr.sin_addr.s_addr, walker);
+  walker = fill_32field(command->len, walker);
 
   return walker;
 }
@@ -287,6 +290,7 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
 struct cache_namenode *do_rail_regname(int rail_sckt,
 				       struct com_comm *command,
 				       int isgroup) {
+  struct cache_namenode *cache_namecard;
   struct rail_name_data *namedata;
   ssize_t ret_val;
   unsigned char data_buff[MAX_UDP_PACKET_LEN];
@@ -385,6 +389,7 @@ uint64_t make_token() {
 
   result = 0;
   while (result < 2) {
+    /* BUG: the below line causes GCC to emit a warning. */
     result = make_weakrandom() << (8*(sizeof(uint64_t)/2));
     result = make_weakrandom() + result;
   }

@@ -8,6 +8,8 @@
 
 # include <sys/socket.h>
 # include <sys/un.h>
+# include <netinet/in.h>
+# include <netinet/ip.h>
 
 enum rail_commands {
   rail_regname = 1,
@@ -37,7 +39,7 @@ struct com_comm {
 };
 
 struct rail_params {
-  pthread_t tid;
+  pthread_t thread_id;
   int rail_sckt;
   struct sockaddr_un *addr;
 };
@@ -51,5 +53,35 @@ struct rail_name_data {
   unsigned char node_type; /* one of {B, P, M, H}, flags are used internally */
   uint32_t ttl;
 };
+
+void
+  init_rail();
+
+int
+  open_rail();
+void *
+  poll_rail(void *args);
+
+void *
+  handle_rail(void *args);
+
+struct com_comm *
+  read_railcommand(unsigned char *packet,
+                   unsigned char *endof_pckt);
+unsigned char *
+  fill_railcommand(struct com_comm *command,
+                   unsigned char *packet,
+                   unsigned char *endof_packet);
+struct rail_name_data *
+  read_rail_name_data(unsigned char *startof_buff,
+                      unsigned char *endof_buff);
+
+struct cache_namenode *
+  do_rail_regname(int rail_sckt,
+                  struct com_comm *command,
+                  int isgroup);
+
+uint64_t
+  make_token();
 
 #endif /* NBWORKS_RAILCOMM_H */
