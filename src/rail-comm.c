@@ -174,9 +174,9 @@ void *handle_rail(void *args) {
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
       /* no check */
-      free(command);
-      close(params.rail_sckt);
     }
+    free(command);
+    close(params.rail_sckt);
     free(params.addr);
     if (last_will)
       last_will->dead = TRUE;
@@ -225,6 +225,21 @@ void *handle_rail(void *args) {
       default:
       }
       command->len = 0;
+      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+    }
+    close(params.rail_sckt);
+    free(command);
+    free(params.addr);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+    break;
+
+  case rail_send_dtg:
+    if (0 == rail_senddtg(params.rail_sckt, command)) {
+      command->len = 0;
+      command->data = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
     }
@@ -346,8 +361,6 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 
   data_buff = malloc(command->len);
   if (! data_buff) {
-    close(rail_sckt);
-    free(command);
     return 0;
   }
 
@@ -359,21 +372,16 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       /* What do I do now? */
     } else {
       /* TODO: error handling */
-      close(rail_sckt);
       free(data_buff);
-      free(command);
       return 0;
     }
   }
-  command->data = read_rail_name_data(data_buff, data_buff+ret_val);
-  if (! command->data) {
+  namedata = read_rail_name_data(data_buff, data_buff+ret_val);
+  if (! namedata) {
     /* TODO: error handling */
-    close(rail_sckt);
     free(data_buff);
-    free(command);
     return 0;
-  } else
-    namedata = command->data;
+  }
 
   switch (namedata->node_type) {
   case 'B':
@@ -383,19 +391,14 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 				    namedata->isgroup, QTYPE_NB, QCLASS_IN);
     if (! cache_namecard) {
       /* TODO: error handling */
-      close(rail_sckt);
       free(data_buff);
-      free(command);
       free(namedata->name);
       destroy_nbnodename(namedata->scope);
       free(namedata);
       return 0;
     }
     if (find_name(cache_namecard, namedata->scope)) {
-      close(rail_sckt);
-      destroy_namecard(cache_namecard);
       free(data_buff);
-      free(command);
       free(namedata->name);
       destroy_nbnodename(namedata->scope);
       free(namedata);
@@ -414,9 +417,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));
 	if (! cache_namecard->addrs.recrd[0].addr) {
 	  /* TODO: error handling */
-	  close(rail_sckt);
 	  free(data_buff);
-	  free(command);
 	  free(namedata->name);
 	  destroy_nbnodename(namedata->scope);
 	  free(namedata);
@@ -432,9 +433,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	return cache_namecard;
       } else {
 	/* TODO: error handling */
-	close(rail_sckt);
 	free(data_buff);
-	free(command);
 	free(namedata->name);
 	destroy_nbnodename(namedata->scope);
 	free(namedata);
@@ -445,6 +444,28 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   }
 }
 
+/* returns: 0 = success, >0 = fail, <0 = error */
+int rail_senddtg(int rail_sckt,
+		 struct com_comm *command) {
+  ssize_t ret_val;
+  int result;
+  unsigned char *buff;
+
+  buff = malloc(command->len);
+  if (! buff) {
+    /* TODO: errno signaling stuff */
+    return -1;
+  }
+
+  ret_val = recv(rail_sckt, buff, command->len, MSG_WAITALL);
+  if (ret_val < command->len) {
+    /* TODO: errno signaling stuff */
+    free(buff);
+    return 9008;
+  }
+
+  ...
+}
 
 
 uint64_t make_token() {
