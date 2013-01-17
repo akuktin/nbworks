@@ -50,7 +50,8 @@ void *
   read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
                                   unsigned char **master_packet_walker,
                                   unsigned char *start_of_packet,
-                                  unsigned char *end_of_packet);
+                                  unsigned char *end_of_packet,
+                                  unsigned char read_allpyld);
 unsigned char *
   fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
                                   unsigned char *field,
@@ -60,7 +61,8 @@ inline enum dtg_packet_payload_t
 
 void *
   master_dtg_srvc_pckt_reader(void *packet,
-                              int len);
+                              int len,
+                              unsigned char read_allpyld);
 void *
   master_dtg_srvc_pckt_writer(void *packet_ptr,
                               unsigned int *pckt_len,

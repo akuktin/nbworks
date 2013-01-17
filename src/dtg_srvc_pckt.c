@@ -71,7 +71,8 @@ unsigned char *fill_dtg_packet_header(struct dtg_srvc_packet *content,
 void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
                                       unsigned char **master_packet_walker,
                                       unsigned char *start_of_packet,
-                                      unsigned char *end_of_packet) {
+                                      unsigned char *end_of_packet,
+				      unsigned char read_allpyld) {
   struct dtg_pckt_pyld_normal *normal_pckt;
   unsigned char *walker, *remember_walker;
 
@@ -151,16 +152,20 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       return 0;
     }
 
-    normal_pckt->payload = malloc(normal_pckt->len);
-    if (! normal_pckt->payload) {
-      /* TODO: errno signaling stuff */
-      free(normal_pckt->src_name);
-      free(normal_pckt->dst_name);
-      free(normal_pckt);
-      return 0;
+    if (read_allpyld) {
+      normal_pckt->payload = malloc(normal_pckt->len);
+      if (! normal_pckt->payload) {
+	/* TODO: errno signaling stuff */
+	free(normal_pckt->src_name);
+	free(normal_pckt->dst_name);
+	free(normal_pckt);
+	return 0;
+      }
+      walker = mempcpy(normal_pckt->payload, walker,
+		       normal_pckt->len);
+    } else {
+      walker = walker + normal_pckt->len;
     }
-    walker = mempcpy(normal_pckt->payload, walker,
-		     normal_pckt->len);
 
     *master_packet_walker = walker;
     return normal_pckt;
@@ -299,7 +304,8 @@ inline enum dtg_packet_payload_t understand_dtg_pckt_type(unsigned char type_oct
 
 
 void *master_dtg_srvc_pckt_reader(void *packet,
-				  int len) {
+				  int len,
+				  unsigned char read_allpyld) {
   struct dtg_srvc_packet *result;
   unsigned char *startof_pckt, *endof_pckt, *walker;
 
@@ -319,7 +325,8 @@ void *master_dtg_srvc_pckt_reader(void *packet,
   }
 
   result->payload = read_dtg_srvc_pckt_payload_data(result, &walker,
-						    startof_pckt, endof_pckt);
+						    startof_pckt, endof_pckt,
+						    read_allpyld);
 
   return (void *)result;
 }
