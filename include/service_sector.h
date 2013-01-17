@@ -6,37 +6,49 @@
 # include <pthread.h>
 # include <netinet/in.h>
 
-struct ss_name_pckt_list {
-  struct name_srvc_packet *packet;
-  struct sockaddr_in addr;
-  struct ss_name_pckt_list *next;
-};
+# define NAME_SRVC 0
+# define DTG_SRVC  1
 
-enum nametrans_status {
+enum trans_status {
   nmtrst_normal = 0,
   nmtrst_indrop,
   nmtrst_deregister
 };
 
-/* This one is private to the service sector. */
-struct ss_name_trans {
-  uint16_t tid;
-  enum nametrans_status status;
-  struct ss_name_pckt_list *incoming;
-  struct ss_name_pckt_list *outgoing;
-  struct ss_name_trans *next;
+
+struct ss_unif_pckt_list {
+  uint16_t for_del;
+  void *packet;
+  void (*dstry)(void *, unsigned int, unsigned int);
+  struct sockaddr_in addr;
+  struct ss_unif_pckt_list *next;
 };
 
-/* This one is for the name sector. */
-struct ss_queue {
-  struct ss_name_pckt_list *incoming;
-  struct ss_name_pckt_list *outgoing;
+/* This one is private to the service sector. */
+struct ss_priv_trans {
+  uint16_t tid;
+  enum trans_status status;
+  struct ss_unif_pckt_list *in;
+  struct ss_unif_pckt_list *out;
+  struct ss_priv_trans *next;
 };
+
+/* This one is for the name/datagram sector. */
+struct ss_queue {
+  struct ss_unif_pckt_list *incoming;
+  struct ss_unif_pckt_list *outgoing;
+};
+
 
 struct ss_sckts {
   int udp_sckt;
   int tcp_sckt;
-  struct ss_name_trans **all_trans;
+  unsigned char branch; /* passthrough for ss_register_tid() */
+  void *(*master_reader)(void *, int, uint16_t *);
+  void *(*master_writer)(void *, unsigned int *, void *);
+  void  (*pckt_dstr)(void *, unsigned int, unsigned int);
+  void *(*newtid_handler)(void *);
+  struct ss_priv_trans **all_trans;
 };
 
 struct newtid_params {
@@ -47,28 +59,39 @@ struct newtid_params {
 
 void init_service_sector();
 struct ss_queue *
-  ss_register_name_tid(uint16_t tid);
+  ss_register_tid(uint16_t tid,
+                  unsigned char branch);
 void
-  ss_deregister_name_tid(uint16_t tid);
+  ss_deregister_tid(uint16_t tid,
+                    unsigned char branch);
 void
-  ss_set_inputdrop_name_tid(uint16_t tid);
+  ss_set_inputdrop_tid(uint16_t tid,
+                       unsigned char branch);
 void
-  ss_set_normalstate_name_tid(uint16_t tid);
+  ss_set_normalstate_tid(uint16_t tid,
+                         unsigned char branch);
 
 inline int
   ss_name_send_pckt(struct name_srvc_packet *pckt,
                     struct sockaddr_in *addr,
                     struct ss_queue *trans);
-inline struct name_srvc_packet *
-  ss_name_recv_pckt(struct ss_queue *trans);
-inline struct ss_name_pckt_list *
-  ss_name_recv_entry(struct ss_queue *trans);
+inline int
+  ss_dtg_send_pckt(struct dtg_srvc_packet *pckt,
+                   struct sockaddr_in *addr,
+                   struct ss_queue *trans);
+inline void *
+  ss__recv_pckt(struct ss_queue *trans);
+inline struct ss_unif_pckt_list *
+  ss__recv_entry(struct ss_queue *trans);
 inline void
-  ss_name_dstry_recv_queue(struct ss_queue *trans);
+  ss__dstry_recv_queue(struct ss_queue *trans);
 
 void *ss__port137(void *placeholder);
-void *ss_name_udp_recver(void *sckts_ptr);
-void *ss_name_udp_sender(void *sckts_ptr);
+void *ss__port138(void *i_dont_actually_use_this);
+
+void *ss__udp_recver(void *sckts_ptr);
+void *ss__udp_sender(void *sckts_ptr);
+
 unsigned int get_inaddr();
 
 #endif /* NBWORKS_SERVICESECTOR_H */

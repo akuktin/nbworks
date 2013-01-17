@@ -30,33 +30,22 @@
 #include "service_sector.h"
 
 
-struct ss_name_trans *nbworks_all_name_transactions;
+struct ss_priv_trans *nbworks_all_transactions[2];
 
 
 void init_service_sector() {
-  nbworks_all_name_transactions = 0;
+  nbworks_all_transactions[0] = 0;
+  nbworks_all_transactions[1] = 0;
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
   nbworks_all_port_cntl.sleeptime.tv_nsec = T_10MS;
   nbworks_all_port_cntl.poll_timeout = TP_10MS;
 }
 
-struct ss_queue *ss_register_name_tid(uint16_t tid) {
+struct ss_queue *ss_register_tid(uint16_t tid,
+				 unsigned char branch) {
   struct ss_queue *result;
-  struct ss_name_trans *cur_trans, *my_trans;
-  int break_me_out;
-
-  break_me_out = 0;
-  cur_trans = nbworks_all_name_transactions;
-
-  while (cur_trans) {
-    if (cur_trans->tid == tid) {
-      /* ALREADY_EXISTS */
-      /* TODO: errno signaling stuff */
-      return 0;
-    }
-    cur_trans = cur_trans->next;
-  }
+  struct ss_priv_trans *cur_trans, *my_trans;
 
   result = malloc(sizeof(struct ss_queue));
   if (! result) {
@@ -64,48 +53,56 @@ struct ss_queue *ss_register_name_tid(uint16_t tid) {
     return 0;
   }
 
-  my_trans = malloc(sizeof(struct ss_name_trans));
+  my_trans = malloc(sizeof(struct ss_priv_trans));
   if (! my_trans) {
     /* TODO: errno signaling stuff */
     free(result);
     return 0;
   }
+  my_trans->in = calloc(1, sizeof(struct ss_unif_pckt_list));
+  if (! my_trans->in) {
+    /* TODO: errno signaling stuff */
+    free(result);
+    free(my_trans);
+    return 0;
+  }
+  my_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));
+  if (! my_trans->out) {
+    /* TODO: errno signaling stuff */
+    free(result);
+    free(my_trans->in);
+    free(my_trans);
+    return 0;
+  }
   my_trans->tid = tid;
-  my_trans->incoming = calloc(1, sizeof(struct ss_name_trans));
-  if (! my_trans->incoming) {
-    /* TODO: errno signaling stuff */
-    free(result);
-    free(my_trans);
-    return 0;
-  }
-  my_trans->outgoing = calloc(1, sizeof(struct ss_name_trans));
-  if (! my_trans->outgoing) {
-    /* TODO: errno signaling stuff */
-    free(result);
-    free(my_trans->incoming);
-    free(my_trans);
-    return 0;
-  }
   my_trans->status = nmtrst_normal;
   my_trans->next = 0;
 
-  result->incoming = my_trans->incoming;
-  result->outgoing = my_trans->outgoing;
+  result->incoming = my_trans->in;
+  result->outgoing = my_trans->out;
 
   while (1) {
-    if (! nbworks_all_name_transactions) {
-      nbworks_all_name_transactions = my_trans;
+    if (! nbworks_all_transactions[branch]) {
+      nbworks_all_transactions[branch] = my_trans;
     }
 
-    cur_trans = nbworks_all_name_transactions;
+    cur_trans = nbworks_all_transactions[branch];
 
     while (cur_trans) {
       if (cur_trans->tid == tid &&
 	  (cur_trans->status == nmtrst_normal ||
 	   cur_trans->status == nmtrst_indrop)) {
-	/* Success! */
-	break_me_out = 1;
-	break;
+	if (cur_trans == my_trans) {
+	  /* Success! */
+	  return result;
+	} else {
+	  /* Duplicate. */
+	  free(my_trans->in);
+	  free(my_trans->out);
+	  free(my_trans);
+	  free(result);
+	  return 0;
+	}
       }
 
       if (! cur_trans->next) {
@@ -116,21 +113,17 @@ struct ss_queue *ss_register_name_tid(uint16_t tid) {
       }
       cur_trans = cur_trans->next;
     }
-
-    if (break_me_out)
-      break;
   }
-
-  return result;
 }
 
-void ss_deregister_name_tid(uint16_t tid) {
-  struct ss_name_trans *cur_trans;
+void ss_deregister_tid(uint16_t tid,
+		       unsigned char branch) {
+  struct ss_priv_trans *cur_trans;
 
-  if (! nbworks_all_name_transactions)
+  if (! nbworks_all_transactions[branch])
     return;
 
-  cur_trans = nbworks_all_name_transactions;
+  cur_trans = nbworks_all_transactions[branch];
 
   while (cur_trans) {
     if (cur_trans->tid == tid &&
@@ -145,13 +138,14 @@ void ss_deregister_name_tid(uint16_t tid) {
   return;
 }
 
-void ss_set_inputdrop_name_tid(uint16_t tid) {
-  struct ss_name_trans *cur_trans;
+void ss_set_inputdrop_tid(uint16_t tid,
+			  unsigned char branch) {
+  struct ss_priv_trans *cur_trans;
 
-  if (! nbworks_all_name_transactions)
+  if (! nbworks_all_transactions[branch])
     return;
 
-  cur_trans = nbworks_all_name_transactions;
+  cur_trans = nbworks_all_transactions[branch];
 
   while (cur_trans) {
     if (cur_trans->tid == tid &&
@@ -165,13 +159,14 @@ void ss_set_inputdrop_name_tid(uint16_t tid) {
   return;
 }
 
-void ss_set_normalstate_name_tid(uint16_t tid) {
-  struct ss_name_trans *cur_trans;
+void ss_set_normalstate_tid(uint16_t tid,
+			    unsigned char branch) {
+  struct ss_priv_trans *cur_trans;
 
-  if (! nbworks_all_name_transactions)
+  if (! nbworks_all_transactions[branch])
     return;
 
-  cur_trans = nbworks_all_name_transactions;
+  cur_trans = nbworks_all_transactions[branch];
 
   while (cur_trans) {
     if (cur_trans->tid == tid &&
@@ -190,19 +185,22 @@ void ss_set_normalstate_name_tid(uint16_t tid) {
 inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
 			     struct sockaddr_in *addr,
 			     struct ss_queue *trans) {
-  struct ss_name_pckt_list *trans_pckt;
+  struct ss_unif_pckt_list *trans_pckt;
 
   if (trans)
     if (trans->outgoing && pckt && addr) {
-      trans_pckt = malloc(sizeof(struct name_srvc_packet));
+      trans_pckt = malloc(sizeof(struct ss_unif_pckt_list));
       if (! trans_pckt) {
 	/* TODO: errno signaling stuff */
 	return -1;
       }
 
+      trans_pckt->for_del = pckt->for_del;
       trans_pckt->packet = pckt;
       memcpy(&(trans_pckt->addr), addr, sizeof(struct sockaddr_in));
+      trans_pckt->dstry = &destroy_name_srvc_pckt;
       trans_pckt->next = 0;
+
       /* Add packet to queue. */
       trans->outgoing->next = trans_pckt;
       /* Move the queue pointer. */
@@ -212,9 +210,36 @@ inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
   return 1;
 }
 
-inline struct name_srvc_packet *ss_name_recv_pckt(struct ss_queue *trans) {
-  struct name_srvc_packet *result;
-  struct ss_name_pckt_list *holdme;
+/* returns: 1=success, 0=failure, -1=error */
+inline int ss_dtg_send_pckt(struct dtg_srvc_packet *pckt,
+			    struct sockaddr_in *addr,
+			    struct ss_queue *trans) {
+  struct ss_unif_pckt_list *trans_pckt;
+
+  if (trans)
+    if (trans->outgoing && pckt && addr) {
+      trans_pckt = malloc(sizeof(struct ss_unif_pckt_list));
+      if (! trans_pckt) {
+	/* TODO: errno signaling stuff */
+	return -1;
+      }
+
+      trans_pckt->for_del = pckt->for_del;
+      trans_pckt->packet = pckt;
+      memcpy(&(trans_pckt->addr), addr, sizeof(struct sockaddr_in));
+      trans_pckt->dstry = &destroy_dtg_srvc_pckt;
+      trans_pckt->next = 0;
+
+      trans->outgoing->next = trans_pckt;
+      trans->outgoing = trans_pckt;
+    };
+
+  return 1;
+}
+
+inline void *ss__recv_pckt(struct ss_queue *trans) {
+  struct ss_unif_pckt_list *holdme;
+  void *result;
 
   if (! trans)
     return 0;
@@ -238,7 +263,7 @@ inline struct name_srvc_packet *ss_name_recv_pckt(struct ss_queue *trans) {
       /* NOTETOSELF: This too is safe. */
       free(holdme);
 
-      result = ss_name_recv_pckt(trans);
+      result = ss__recv_pckt(trans);
     } else {
       result = 0;
     }
@@ -247,8 +272,8 @@ inline struct name_srvc_packet *ss_name_recv_pckt(struct ss_queue *trans) {
   return result;
 }
 
-inline struct ss_name_pckt_list *ss_name_recv_entry(struct ss_queue *trans) {
-  struct ss_name_pckt_list *result;
+inline struct ss_unif_pckt_list *ss__recv_entry(struct ss_queue *trans) {
+  struct ss_unif_pckt_list *result;
 
   if (! trans)
     return 0;
@@ -262,15 +287,16 @@ inline struct ss_name_pckt_list *ss_name_recv_entry(struct ss_queue *trans) {
   return result;
 }
 
-inline void ss_name_dstry_recv_queue(struct ss_queue *trans) {
-  struct ss_name_pckt_list *for_del;
+inline void ss__dstry_recv_queue(struct ss_queue *trans) {
+  struct ss_unif_pckt_list *for_del;
 
   if (! trans)
     return;
 
   while (trans->incoming) {
-    if (trans->incoming->packet)
-      destroy_name_srvc_pckt(trans->incoming->packet, 1, 1);
+    if (trans->incoming->packet &&
+	trans->incoming->dstry)
+      trans->incoming->dstry(trans->incoming->packet, 1, 1);
     for_del = trans->incoming;
     trans->incoming = trans->incoming->next;
     /* NOTETOSELF: This is safe. */
@@ -294,7 +320,12 @@ void *ss__port137(void *placeholder) {
   fill_16field(137, (unsigned char *)&(my_addr.sin_port));
   my_addr.sin_addr.s_addr = get_inaddr();
 
-  sckts.all_trans = &nbworks_all_name_transactions;
+  sckts.all_trans = &(nbworks_all_transactions[NAME_SRVC]);
+  sckts.newtid_handler = &name_srvc_B_handle_newtid;
+  sckts.pckt_dstr = &destroy_name_srvc_pckt;
+  sckts.master_writer = &master_name_srvc_pckt_writer;
+  sckts.master_reader = &master_name_srvc_pckt_reader;
+  sckts.branch = NAME_SRVC;
   //XXX  sckts.tcp_sckt = socket(PF_INET, SOCK_STREAM, 0);
   sckts.udp_sckt = socket(PF_INET, SOCK_DGRAM, 0);
 
@@ -366,7 +397,7 @@ void *ss__port137(void *placeholder) {
   /* There HAS to be a very, very special place in
      hell for people as evil as I am. */
   ret_val = pthread_create(&(thread[0]), 0,
-			   &ss_name_udp_sender, &sckts);
+			   &ss__udp_sender, &sckts);
   if (ret_val) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
@@ -375,7 +406,7 @@ void *ss__port137(void *placeholder) {
     return 0;
   }
   ret_val = pthread_create(&(thread[1]), 0,
-			   &ss_name_udp_recver, &sckts);
+			   &ss__udp_recver, &sckts);
   if (ret_val) {
     /* TODO: errno signaling stuff */
     pthread_cancel(thread[0]);
@@ -395,17 +426,75 @@ void *ss__port137(void *placeholder) {
   return (void *)ONES;
 }
 
-void *ss_name_udp_recver(void *sckts_ptr) {
+void *ss__port138(void *i_dont_actually_use_this) {
+  struct ss_sckts sckts;
+  struct sockaddr_in my_addr;
+  pthread_t thread;
+  unsigned int ones;
+
+  ones = ONES;
+  my_addr.sin_family = AF_INET;
+  /* VAXism below. */
+  fill_16field(138, (unsigned char *)&(my_addr.sin_port));
+  my_addr.sin_addr.s_addr = get_inaddr();
+
+  sckts.all_trans = &(nbworks_all_transactions[DTG_SRVC]);
+  sckts.newtid_handler = 0; /* FIXME */
+  sckts.pckt_dstr = &destroy_dtg_srvc_pckt;
+  sckts.master_writer = &master_dtg_srvc_pckt_writer;
+  sckts.master_reader = &master_dtg_srvc_pckt_reader;
+  sckts.branch = DTG_SRVC;
+  sckts.udp_sckt = socket(PF_INET, SOCK_DGRAM, 0);
+
+  if (sckts.udp_sckt < 0) {
+    /* TODO: errno signaling stuff */
+    nbworks_all_port_cntl.all_stop = 4;
+    return 0;
+  }
+
+  if (0 > fcntl(sckts.udp_sckt, F_SETFL, O_NONBLOCK)) {
+    /* TODO: errno signaling stuff */
+    close(sckts.udp_sckt);
+    nbworks_all_port_cntl.all_stop = 4;
+    return 0;
+  }
+
+  if (0 > bind(sckts.udp_sckt, (struct sockaddr *)&my_addr,
+	       sizeof(struct sockaddr_in))) {
+    /* TODO: errno signaling stuff */
+    close(sckts.udp_sckt);
+    nbworks_all_port_cntl.all_stop = 4;
+    return 0;
+  }
+
+  if (pthread_create(&thread, 0,
+		     &ss__udp_recver, &sckts)) {
+    /* TODO: errno signaling stuff */
+    close(sckts.udp_sckt);
+    nbworks_all_port_cntl.all_stop = 4;
+    return 0;
+  }
+
+  pthread_join(thread, 0);
+
+  close(sckts.udp_sckt);
+
+  return (void *)ONES;
+}
+
+
+void *ss__udp_recver(void *sckts_ptr) {
   struct ss_sckts *sckts;
   struct sockaddr_in his_addr;
-  struct ss_name_pckt_list *new_pckt;
-  struct ss_name_trans *cur_trans;
+  struct ss_unif_pckt_list *new_pckt;
+  struct ss_priv_trans *cur_trans;
   struct ss_queue *newtid_queue;
   struct newtid_params params;
   struct pollfd polldata;
   socklen_t addr_len;
   int ret_val;
   unsigned int len;
+  uint16_t tid;
   unsigned char udp_pckt[MAX_UDP_PACKET_LEN], *deleter;
 
   if (! sckts_ptr)
@@ -456,14 +545,16 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	}
       }
 
-      new_pckt = malloc(sizeof(struct ss_name_pckt_list));
+      new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
       /* NOTE: No check for failure. */
-      new_pckt->packet = master_name_srvc_pckt_reader(udp_pckt, len);
+      new_pckt->packet = sckts->master_reader(udp_pckt, len, &tid);
+
       if (new_pckt->packet) {
 	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
+	new_pckt->dstry = sckts->pckt_dstr;
 	new_pckt->next = 0;
       } else {
-	/* TODO: errno signalin stuff */
+	/* TODO: errno signaling stuff */
 	/* BUT see third comment up! */
 	free(new_pckt);
 	new_pckt = 0;
@@ -472,16 +563,17 @@ void *ss_name_udp_recver(void *sckts_ptr) {
       while (new_pckt) {
 	cur_trans = *(sckts->all_trans);
 	while (cur_trans) {
-	  if (cur_trans->tid == new_pckt->packet->header->transaction_id) {
-	    if (cur_trans->status == nmtrst_indrop) {
-	      destroy_name_srvc_pckt(new_pckt->packet, 1, 1);
+	  if (cur_trans->tid == tid) {
+	    if ((cur_trans->status == nmtrst_indrop) ||
+		(cur_trans->status == nmtrst_deregister)) {
+	      sckts->pckt_dstr(new_pckt->packet, 1, 1);
 	      free(new_pckt);
 	      new_pckt = 0;
 	      break;
 	    }
 	    if (cur_trans->status == nmtrst_normal) {
-	      cur_trans->incoming->next = new_pckt;
-	      cur_trans->incoming = new_pckt;
+	      cur_trans->in->next = new_pckt;
+	      cur_trans->in = new_pckt;
 	      new_pckt = 0;
 	      break;
 	    }
@@ -494,8 +586,8 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	  /* This means there were no previously registered transactions
 	     with this tid. Register a new one and signal its existance. */
 	  newtid_queue =
-	    ss_register_name_tid(new_pckt->packet->header->transaction_id);
-	  params.tid = new_pckt->packet->header->transaction_id;
+	    ss_register_tid(tid, sckts->branch);
+	  params.tid = tid;
 	}
       }
       if (newtid_queue) {
@@ -503,7 +595,7 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 	params.thread_id = 0;
 	params.trans = newtid_queue;
 	pthread_create(&(params.thread_id), 0,
-		       name_srvc_B_handle_newtid, &params);
+		       sckts->newtid_handler, &params);
 	/* No. Fucking. Comment. */
 	newtid_queue = 0;
       }
@@ -515,8 +607,8 @@ void *ss_name_udp_recver(void *sckts_ptr) {
 
 void *ss_name_udp_sender(void *sckts_ptr) {
   struct ss_sckts *sckts;
-  struct ss_name_pckt_list *for_del;
-  struct ss_name_trans *cur_trans, **last_trans, *for_del2;
+  struct ss_unif_pckt_list *for_del;
+  struct ss_priv_trans *cur_trans, **last_trans, *for_del2;
   unsigned int len, i;
   unsigned char *deleter, udp_pckt[MAX_UDP_PACKET_LEN];
   void *ptr;
@@ -539,27 +631,27 @@ void *ss_name_udp_sender(void *sckts_ptr) {
       if (cur_trans->status == nmtrst_deregister) {
 	*last_trans = cur_trans->next;
 
-	while (cur_trans->outgoing) {
-	  if (cur_trans->outgoing->packet) {
-	    ptr = cur_trans->outgoing->packet;
+	while (cur_trans->out) {
+	  if (cur_trans->out->packet) {
+	    ptr = cur_trans->out->packet;
 	    len = MAX_UDP_PACKET_LEN;
-	    master_name_srvc_pckt_writer(ptr, &len, udp_pckt);
+	    sckts->master_writer(ptr, &len, udp_pckt);
 
 	    sendto(sckts->udp_sckt, udp_pckt, len, 0,
-		   &(cur_trans->outgoing->addr),
-		   sizeof(cur_trans->outgoing->addr));
+		   &(cur_trans->out->addr),
+		   sizeof(cur_trans->out->addr));
 
 	    deleter = udp_pckt;
 	    for (i=0; i<len; i++) {
 	      *deleter = '\0';
 	      deleter++;
 	    }
-	    if (cur_trans->outgoing->packet->for_del)
-	      destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
+	    if (cur_trans->out->for_del)
+	      sckts->pckt_dstr(cur_trans->out->packet, 1, 1);
 	  }
 
-	  for_del = cur_trans->outgoing;
-	  cur_trans->outgoing = cur_trans->outgoing->next;
+	  for_del = cur_trans->out;
+	  cur_trans->out = cur_trans->out->next;
 	  free(for_del);
 	}
 
@@ -568,47 +660,47 @@ void *ss_name_udp_sender(void *sckts_ptr) {
 	/* BUG: There is a (trivial?) chance of use-after-free. */
 	free(for_del2);
       } else {
-	while (cur_trans->outgoing->next) {
-	  if (cur_trans->outgoing->packet) {
-	    ptr = cur_trans->outgoing->packet;
+	while (cur_trans->out->next) {
+	  if (cur_trans->out->packet) {
+	    ptr = cur_trans->out->packet;
 	    len = MAX_UDP_PACKET_LEN;
-	    master_name_srvc_pckt_writer(ptr, &len, udp_pckt);
+	    sckts->master_writer(ptr, &len, udp_pckt);
 
 	    sendto(sckts->udp_sckt, udp_pckt, len, 0,
-		   &(cur_trans->outgoing->addr),
-		   sizeof(cur_trans->outgoing->addr));
+		   &(cur_trans->out->addr),
+		   sizeof(cur_trans->out->addr));
 
 	    deleter = udp_pckt;
 	    for (i=0; i<len; i++) {
 	      *deleter = '\0';
 	      deleter++;
 	    }
-	    if (cur_trans->outgoing->packet->for_del)
-	      destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
+	    if (cur_trans->out->for_del)
+	      sckts->pckt_dstr(cur_trans->out->packet, 1, 1);
 	  }
 
-	  for_del = cur_trans->outgoing;
-	  cur_trans->outgoing = cur_trans->outgoing->next;
+	  for_del = cur_trans->out;
+	  cur_trans->out = cur_trans->out->next;
 	  free(for_del);
 	}
 
-	if (cur_trans->outgoing->packet) {
-	  ptr = cur_trans->outgoing->packet;
+	if (cur_trans->out->packet) {
+	  ptr = cur_trans->out->packet;
 	  len = MAX_UDP_PACKET_LEN;
-	  master_name_srvc_pckt_writer(ptr, &len, udp_pckt);
+	  sckts->master_writer(ptr, &len, udp_pckt);
 
 	  sendto(sckts->udp_sckt, udp_pckt, len, 0,
-		 &(cur_trans->outgoing->addr),
-		 sizeof(cur_trans->outgoing->addr));
+		 &(cur_trans->out->addr),
+		 sizeof(cur_trans->out->addr));
 
 	  deleter = udp_pckt;
 	  for (i=0; i<len; i++) {
 	    *deleter = '\0';
 	    deleter++;
 	  }
-	  if (cur_trans->outgoing->packet->for_del)
-	    destroy_name_srvc_pckt(cur_trans->outgoing->packet, 1, 1);
-	  cur_trans->outgoing->packet = 0;
+	  if (cur_trans->out->for_del)
+	    sckts->pckt_dstr(cur_trans->out->packet, 1, 1);
+	  cur_trans->out->packet = 0;
 	};
 
 	last_trans = &(cur_trans->next);
