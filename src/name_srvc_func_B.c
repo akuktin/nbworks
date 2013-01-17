@@ -1010,17 +1010,15 @@ void *name_srvc_B_handle_newtid(void *input) {
 	  if (res->res->rdata_t == nb_address_list) {
 	    nbaddr_list = res->res->rdata;
 	    while (nbaddr_list) {
-	      if (! nbaddr_list->there_is_an_address)
-		nbaddr_list = nbaddr_list->next_address;
-	      else
-		if (nbaddr_list->address != in_addr)
-		  nbaddr_list = nbaddr_list->next_address;
-		else
+	      if ((nbaddr_list->there_is_an_address) &&
+		  (nbaddr_list->address == in_addr)) {
 		  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
 		    status = status | STATUS_DID_GROUP;
 		  else
 		    status = status | STATUS_DID_UNIQ;
+	      }
 
+	      nbaddr_list = nbaddr_list->next_address;
 	      if (status == (STATUS_DID_GROUP | STATUS_DID_UNIQ))
 		break;
 	    }
