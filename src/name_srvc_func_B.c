@@ -83,7 +83,7 @@ int name_srvc_B_add_name(unsigned char *name,
   ss_set_inputdrop_name_tid(tid);
 
   while (1) {
-    outside_pckt = ss_name_recv_pckt(trans);
+    outside_pckt = ss__recv_pckt(trans);
     if (! outside_pckt) {
       break;
     }
@@ -126,7 +126,7 @@ int name_srvc_B_add_name(unsigned char *name,
   }
 
   ss_deregister_name_tid(tid);
-  ss_name_dstry_recv_queue(trans);
+  ss__dstry_recv_queue(trans);
   free(trans);
 
   return result;
@@ -172,7 +172,7 @@ int name_srvc_B_release_name(unsigned char *name,
 
   /* Don't listen for incoming packets. */
   ss_set_inputdrop_name_tid(tid);
-  ss_name_dstry_recv_queue(trans);
+  ss__dstry_recv_queue(trans);
 
   pckt->header->transaction_id = tid;
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_RELEASE;
@@ -244,7 +244,7 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
     ss_set_inputdrop_name_tid(tid);
 
     while (1) {
-      outside_pckt = ss_name_recv_pckt(trans);
+      outside_pckt = ss__recv_pckt(trans);
       if (! outside_pckt) {
 	break;
       }
@@ -287,7 +287,7 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
     ss_set_normalstate_name_tid(tid);
   }
   ss_deregister_name_tid(tid);
-  ss_name_dstry_recv_queue(trans);
+  ss__dstry_recv_queue(trans);
   free(trans);
 
   destroy_name_srvc_pckt(pckt, 1, 1);
@@ -303,8 +303,8 @@ void *name_srvc_B_handle_newtid(void *input) {
   struct newtid_params params;
   struct thread_node *last_will;
 
-  struct name_srvc_packet *pckt;
-  struct ss_name_pckt_list *outside_pckt, *last_outpckt;
+  struct name_srvc_packet *outpckt, *pckt;
+  struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
 
   struct name_srvc_resource_lst *res, *answer_lst;
   struct name_srvc_question_lst *qstn;
@@ -347,14 +347,14 @@ void *name_srvc_B_handle_newtid(void *input) {
   while (0xceca) /* Also known as sesa. */ {
 
     do {
-      outside_pckt = ss_name_recv_entry(params.trans);
+      outside_pckt = ss__recv_entry(params.trans);
 
       if (outside_pckt == last_outpckt) {
 	/* No packet. */
 	if (waited) {
 	  /* Wait time passed. */
 	  ss_deregister_name_tid(params.tid);
-	  ss_name_dstry_recv_queue(params.trans);
+	  ss__dstry_recv_queue(params.trans);
 	  free(params.trans);
 	  if (last_will)
 	    last_will->dead = 9001; /* It's OVER *9000*!!! */
@@ -372,6 +372,13 @@ void *name_srvc_B_handle_newtid(void *input) {
       }
 
     } while (! outside_pckt->packet);
+
+    outpckt = outside_pckt->packet;
+
+    /* Hack to make the complex loops of
+       this function work as they should. */
+    outside_pckt->packet = 0;
+    last_outpckt = outside_pckt;
 
     cur_time = time(0);
     this_scope = 0;
@@ -396,12 +403,12 @@ void *name_srvc_B_handle_newtid(void *input) {
     // NAME REGISTRATION REQUEST (UNIQUE)
     // NAME REGISTRATION REQUEST (GROUP)
 
-    if ((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
 						  OPCODE_REGISTRATION)) &&
-	(! outside_pckt->packet->header->rcode)) {
+	(! outpckt->header->rcode)) {
       /* NAME REGISTRATION REQUEST */
 
-      for (res = outside_pckt->packet->aditionals;
+      for (res = outpckt->aditionals;
 	   res != 0;      /* Maybe test in questions too. */
 	   res = res->next) {
 	if (res->res) {
@@ -477,23 +484,18 @@ void *name_srvc_B_handle_newtid(void *input) {
 
       }
 
-      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-      /* Hack to make the complex loops and tests
-	 of this function work as they should. */
-      outside_pckt->packet = 0;
-      last_outpckt = outside_pckt;
-
+      destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
     }
 
     // NAME QUERY REQUEST
     // NODE STATUS REQUEST
 
-    if ((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
 						  OPCODE_QUERY)) &&
-	(! outside_pckt->packet->header->rcode)) {
+	(! outpckt->header->rcode)) {
 
-      qstn = outside_pckt->packet->questions;
+      qstn = outpckt->questions;
       while (qstn) {
 
 	if (qstn->qstn) {
@@ -703,23 +705,18 @@ void *name_srvc_B_handle_newtid(void *input) {
 	ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
       }
 
-      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-      /* Hack to make the complex loops and tests
-	 of this function work as they should. */
-      outside_pckt->packet = 0;
-      last_outpckt = outside_pckt;
-
+      destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
     }
 
     // POSITIVE NAME QUERY RESPONSE
 
-    if ((outside_pckt->packet->header->opcode == (OPCODE_RESPONSE |
+    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
 						  OPCODE_QUERY)) &&
-	(outside_pckt->packet->header->rcode == 0) &&
-	(outside_pckt->packet->header->nm_flags & FLG_AA)) {
+	(outpckt->header->rcode == 0) &&
+	(outpckt->header->nm_flags & FLG_AA)) {
 
-      res = outside_pckt->packet->answers;
+      res = outpckt->answers;
       while (res) {
 	status = STATUS_DID_NONE;
 	if (res->res) {
@@ -920,23 +917,18 @@ void *name_srvc_B_handle_newtid(void *input) {
 	res = res->next;
       }
 
-      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-      /* Hack to make the complex loops and tests
-	 of this function work as they should. */
-      outside_pckt->packet = 0;
-      last_outpckt = outside_pckt;
-
+      destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
     }
 
     // NAME CONFLICT DEMAND
 
-    if ((outside_pckt->packet->header->opcode == (OPCODE_RESPONSE |
+    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
 						  OPCODE_REGISTRATION)) &&
-	(outside_pckt->packet->header->rcode == RCODE_REGISTR_CFT_ERR) &&
-	(outside_pckt->packet->header->nm_flags & FLG_AA)) {
+	(outpckt->header->rcode == RCODE_REGISTR_CFT_ERR) &&
+	(outpckt->header->nm_flags & FLG_AA)) {
 
-      res = outside_pckt->packet->answers;
+      res = outpckt->answers;
       while (res) {
 	status = STATUS_DID_NONE;
 
@@ -983,26 +975,21 @@ void *name_srvc_B_handle_newtid(void *input) {
 	res = res->next;
       }
 
-      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-      /* Hack to make the complex loops and tests
-	 of this function work as they should. */
-      outside_pckt->packet = 0;
-      last_outpckt = outside_pckt;
-
+      destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
     }
 
     // NAME RELEASE REQUEST
 
-    if ((outside_pckt->packet->header->opcode == (OPCODE_RESPONSE |
+    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
 						  OPCODE_RELEASE)) &&
-	(outside_pckt->packet->header->rcode == 0)) {
+	(outpckt->header->rcode == 0)) {
 
       /* Make sure noone spoofs the release request. */
       /* VAXism below. */
       read_32field((unsigned char *)&(outside_pckt->addr.sin_addr), &in_addr);
 
-      res = outside_pckt->packet->aditionals;
+      res = outpckt->aditionals;
       while (res) {
 	status = STATUS_DID_NONE;
 
@@ -1052,12 +1039,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	res = res->next;
       }
 
-      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-      /* Hack to make the complex loops and tests
-	 of this function work as they should. */
-      outside_pckt->packet = 0;
-      last_outpckt = outside_pckt;
-
+      destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
     }
 
@@ -1068,16 +1050,16 @@ void *name_srvc_B_handle_newtid(void *input) {
      * cross-checker.
      */
 
-    if (((outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+    if (((outpckt->header->opcode == (OPCODE_REQUEST |
 						   OPCODE_REFRESH)) ||
-	 (outside_pckt->packet->header->opcode == (OPCODE_REQUEST |
+	 (outpckt->header->opcode == (OPCODE_REQUEST |
 						   OPCODE_REFRESH2))) &&
-	(outside_pckt->packet->header->rcode == 0)) {
+	(outpckt->header->rcode == 0)) {
 
       //      /* Make sure noone spoofs the update request. */
       //      read_32field(outside_pckt->addr.sinaddr, &in_addr);
 
-      res = outside_pckt->packet->aditionals;
+      res = outpckt->aditionals;
       while (res) {
 	if (res->res) {
 	  if (res->res->rdata_t == nb_address_list) {
@@ -1226,20 +1208,13 @@ void *name_srvc_B_handle_newtid(void *input) {
 	res = res->next;
       }
 
-      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-      /* Hack to make the complex loops and tests
-	 of this function work as they should. */
-      outside_pckt->packet = 0;
-      last_outpckt = outside_pckt;
-
+      destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
     }
 
     // NOOP
 
-    destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
-    outside_pckt->packet = 0;
-    last_outpckt = outside_pckt;
+    destroy_name_srvc_pckt(outpckt, 1, 1);
   }
 
   return 0;

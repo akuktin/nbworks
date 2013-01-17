@@ -6,6 +6,9 @@
 # include <pthread.h>
 # include <netinet/in.h>
 
+# include "name_srvc_pckt.h"
+# include "dtg_srvc_pckt.h"
+
 # define NAME_SRVC 0
 # define DTG_SRVC  1
 
@@ -93,5 +96,10 @@ void *ss__udp_recver(void *sckts_ptr);
 void *ss__udp_sender(void *sckts_ptr);
 
 unsigned int get_inaddr();
+
+# define ss_register_name_tid(tid)        ss_register_tid(tid, NAME_SRVC)
+# define ss_deregister_name_tid(tid)      ss_deregister_tid(tid, NAME_SRVC)
+# define ss_set_inputdrop_name_tid(tid)   ss_set_inputdrop_tid(tid, NAME_SRVC)
+# define ss_set_normalstate_name_tid(tid) ss_set_normalstate_tid(tid, NAME_SRVC)
 
 #endif /* NBWORKS_SERVICESECTOR_H */
