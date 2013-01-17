@@ -202,7 +202,8 @@ inline enum name_srvc_rdata_type
 
 void *
   master_name_srvc_pckt_reader(void *packet,
-                               int len);
+                               int len,
+                               uint16_t *tid);
 void *
   master_name_srvc_pckt_writer(void *packet_ptr,
                                unsigned int *pckt_len,
@@ -213,7 +214,7 @@ struct name_srvc_packet *
                        unsigned int auth,
                        unsigned int adit);
 void
-  destroy_name_srvc_pckt(struct name_srvc_packet *packet,
+  destroy_name_srvc_pckt(void *packet,
                          unsigned int complete,
                          unsigned int really_complete);
 

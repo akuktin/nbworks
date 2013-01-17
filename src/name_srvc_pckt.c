@@ -667,7 +667,8 @@ inline enum name_srvc_rdata_type name_srvc_understand_resource(uint16_t rrtype,
 
 
 void *master_name_srvc_pckt_reader(void *packet,
-				   int len) {
+				   int len,
+				   uint16_t *tid) {
   struct name_srvc_packet *result;
   struct name_srvc_question_lst *cur_qstn;
   struct name_srvc_resource_lst *cur_res;
@@ -700,6 +701,8 @@ void *master_name_srvc_pckt_reader(void *packet,
     free(result);
     return 0;
   }
+
+  *tid = result->header->transaction_id;
 
   i = result->header->numof_questions;
   if (i) {
@@ -1036,11 +1039,12 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   return result;
 }
 
-void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
+void destroy_name_srvc_pckt(void *packet_ptr,
 			    unsigned int complete,
 			    unsigned int really_complete) {
+  struct name_srvc_packet *packet;
   struct name_srvc_question_lst *qstn;
-  struct name_srvc_resource_lst *res, *cur_res, **all_res;
+  struct name_srvc_resource_lst *res, *cur_res, *all_res[3];
   struct nbnodename_list_backbone *nbnodename_bckbone,
     *next_nbnodename_bckbone;
   struct nbnodename_list *nbnodename, *next_nbnodename;
@@ -1048,10 +1052,10 @@ void destroy_name_srvc_pckt(struct name_srvc_packet *packet,
   struct name_srvc_statistics_rfc1002 *stats;
   int i;
 
-  if (! packet)
+  if (! packet_ptr)
     return;
 
-  all_res = malloc(sizeof(struct name_srvc_resource_lst *) *3);
+  packet = packet_ptr;
 
   free(packet->header);
 
