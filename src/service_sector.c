@@ -354,7 +354,7 @@ void *ss__port137(void *placeholder) {
   }
 */
   ret_val = setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
-		       &ones, sizeof(int));
+		       &ones, sizeof(unsigned int));
   if (ret_val < 0) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
@@ -460,7 +460,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
   }
 
   if (0 > setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
-		     &ones, sizeof(int))) {
+		     &ones, sizeof(unsigned int))) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     nbworks_all_port_cntl.all_stop = 4;
