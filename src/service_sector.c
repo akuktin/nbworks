@@ -429,7 +429,7 @@ void *ss__port137(void *placeholder) {
 void *ss__port138(void *i_dont_actually_use_this) {
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
-  pthread_t thread;
+  pthread_t thread[2];
   unsigned int ones;
 
   ones = ONES;
@@ -459,6 +459,14 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
+  if (0 > setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
+		     &ones, sizeof(int))) {
+    /* TODO: errno signaling stuff */
+    close(sckts.udp_sckt);
+    nbworks_all_port_cntl.all_stop = 4;
+    return 0;
+  }
+
   if (0 > bind(sckts.udp_sckt, (struct sockaddr *)&my_addr,
 	       sizeof(struct sockaddr_in))) {
     /* TODO: errno signaling stuff */
@@ -467,7 +475,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
-  if (pthread_create(&thread, 0,
+  if (pthread_create(&(thread[0]), 0,
 		     &ss__udp_recver, &sckts)) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
@@ -475,7 +483,18 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
-  pthread_join(thread, 0);
+  if (pthread_create(&(thread[1]), 0,
+		     &ss__udp_sender, &sckts)) {
+    /* TODO: errno signaling stuff */
+    pthread_cancel(thread[0]);
+    close(sckts.udp_sckt);
+    nbworks_all_port_cntl.all_stop = 4;
+    return 0;
+  }
+
+  for (ones = 0; ones < 2; ones++) {
+    pthread_join(thread[ones], 0);
+  }
 
   close(sckts.udp_sckt);
 
