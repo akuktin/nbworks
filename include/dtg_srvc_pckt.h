@@ -62,10 +62,15 @@ inline enum dtg_packet_payload_t
 void *
   master_dtg_srvc_pckt_reader(void *packet,
                               int len,
-                              unsigned char read_allpyld);
+                              uint16_t *tid);
 void *
   master_dtg_srvc_pckt_writer(void *packet_ptr,
                               unsigned int *pckt_len,
                               void *packet_field);
+
+void
+  destroy_dtg_srvc_pckt(void *packet,
+                        unsigned int placeholder1,
+                        unsigned int placeholder2);
 
 #endif /* NBWORKS_DTGSRVCPCKT_H */

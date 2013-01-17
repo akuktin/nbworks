@@ -305,7 +305,7 @@ inline enum dtg_packet_payload_t understand_dtg_pckt_type(unsigned char type_oct
 
 void *master_dtg_srvc_pckt_reader(void *packet,
 				  int len,
-				  unsigned char read_allpyld) {
+				  uint16_t *tid) {
   struct dtg_srvc_packet *result;
   unsigned char *startof_pckt, *endof_pckt, *walker;
 
@@ -326,7 +326,9 @@ void *master_dtg_srvc_pckt_reader(void *packet,
 
   result->payload = read_dtg_srvc_pckt_payload_data(result, &walker,
 						    startof_pckt, endof_pckt,
-						    read_allpyld);
+						    TRUE /*read_allpyld*/);
+
+  *tid = result->id;
 
   return (void *)result;
 }
@@ -362,4 +364,34 @@ void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 
   *pckt_len = walker - result;
   return (void *)result;
+}
+
+
+void destroy_dtg_srvc_pckt(void *packet_ptr,
+			   unsigned int placeholder1,
+			   unsigned int placeholder2) {
+  struct dtg_srvc_packet *packet;
+  struct dtg_pckt_pyld_normal *normal_pyld;
+
+  if (! packet_ptr)
+    return;
+
+  packet = packet_ptr;
+
+  if (packet->payload_t == normal) {
+    normal_pyld = packet->payload;
+
+    destroy_nbnodename(normal_pyld->src_name);
+    destroy_nbnodename(normal_pyld->dst_name);
+    free(normal_pyld->payload);
+    free(normal_pyld);
+  } else
+    if (packet->payload_t == nbnodename)
+      destroy_nbnodename(packet->payload);
+    else
+      free(packet->payload);
+
+  free(packet);
+
+  return;
 }
