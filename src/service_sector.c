@@ -605,7 +605,7 @@ void *ss__udp_recver(void *sckts_ptr) {
   return 0;
 }
 
-void *ss_name_udp_sender(void *sckts_ptr) {
+void *ss__udp_sender(void *sckts_ptr) {
   struct ss_sckts *sckts;
   struct ss_unif_pckt_list *for_del;
   struct ss_priv_trans *cur_trans, **last_trans, *for_del2;
