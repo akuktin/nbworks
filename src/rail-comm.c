@@ -21,6 +21,7 @@
 #include "pckt_routines.h"
 #include "name_srvc_cache.h"
 #include "name_srvc_func_B.h"
+#include "dtg_srvc_pckt.h"
 #include "randomness.h"
 
 
@@ -242,7 +243,8 @@ void *handle_rail(void *args) {
     break;
 
   case rail_send_dtg:
-    if (0 == rail_senddtg(params.rail_sckt, command)) {
+    if (find_namebytok(command->token) &&
+	(0 == rail_senddtg(params.rail_sckt, command))) {
       command->len = 0;
       command->data = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
@@ -452,9 +454,12 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 /* returns: 0 = success, >0 = fail, <0 = error */
 int rail_senddtg(int rail_sckt,
 		 struct com_comm *command) {
-  ssize_t ret_val;
+  struct dtg_srvc_pckt *pckt;
+  struct dtg_pckt_pyld_normal *normal_pyld;
+  struct cache_nodename *namecard;
   int result;
   unsigned char *buff;
+  uint16_t tid;
 
   buff = malloc(command->len);
   if (! buff) {
@@ -462,14 +467,21 @@ int rail_senddtg(int rail_sckt,
     return -1;
   }
 
-  ret_val = recv(rail_sckt, buff, command->len, MSG_WAITALL);
-  if (ret_val < command->len) {
+  if (command->len > recv(rail_sckt, buff, command->len, MSG_WAITALL)) {
     /* TODO: errno signaling stuff */
     free(buff);
     return 9008;
   }
 
-  ...
+  pckt = partial_dtg_srvc_pckt_reader(buff, command->len, &tid);
+  if (! pckt) {
+    /* TODO: errno signaling stuff */
+    free(buff);
+    return 1;
+  }
+
+  //  switch 
+  //  namecard = find_nblabel(decode_nbnodename(
 }
 
 
