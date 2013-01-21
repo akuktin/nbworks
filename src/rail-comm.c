@@ -47,9 +47,10 @@ int open_rail() {
   memcpy(address.sun_path +1, NBWORKS_SCKT_NAME, NBWORKS_SCKT_NAMELEN);
 
   result = socket(PF_UNIX, SOCK_STREAM, 0);
-  if (result == -1)
+  if (result == -1) {
     /* TODO: errno signaling stuff */
     return -1;
+  }
 
   if (0 > fcntl(result, F_SETFL, O_NONBLOCK)) {
     /* TODO: errno signaling stuff */
@@ -57,14 +58,16 @@ int open_rail() {
     return -1;
   }
 
-  if (0 > bind(result, (struct sockaddr *)&address, sizeof(struct sockaddr_un)))
+  if (0 > bind(result, (struct sockaddr *)&address, sizeof(struct sockaddr_un))) {
     /* TODO: errno signaling stuff */
+    close(result);
     return -1;
-  else 
-    if (0 > listen(result, SOMAXCONN))
+  } else 
+    if (0 > listen(result, SOMAXCONN)) {
       /* TODO: errno signaling stuff */
+      close(result);
       return -1;
-    else
+    } else
       return result;
 }
 
@@ -223,6 +226,7 @@ void *handle_rail(void *args) {
 	cache_namecard->takes = cache_namecard->takes & (~CACHE_TAKES_SES);
 	break;
       default:
+	break;
       }
       command->len = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
@@ -410,7 +414,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 				    namedata->isgroup, namedata->ttl)) {
 	add_scope(namedata->scope, cache_namecard);
 	add_name(cache_namecard, namedata->scope);
-	/* TODO: I won't really bother with error detection at this time. */
+	/* FIXME: I won't really bother with error detection at this time. */
 
 	cache_namecard->timeof_death = time(0) + namedata->ttl;
 	cache_namecard->addrs.recrd[0].node_type = CACHE_NODEFLG_B;
@@ -473,8 +477,8 @@ uint64_t make_token() {
 
   result = 0;
   while (result < 2) {
-    /* BUG: the below line causes GCC to emit a warning. */
-    result = make_weakrandom() << (8*(sizeof(uint64_t)/2));
+    result = make_weakrandom();
+    result = result << (8*(sizeof(uint64_t)/2));
     result = make_weakrandom() + result;
   }
   return result;

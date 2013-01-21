@@ -78,8 +78,11 @@ struct rail_name_data *
 
 struct cache_namenode *
   do_rail_regname(int rail_sckt,
-                  struct com_comm *command,
-                  int isgroup);
+                  struct com_comm *command);
+
+int
+  rail_senddtg(int rail_sckt,
+               struct com_comm *command);
 
 uint64_t
   make_token();
