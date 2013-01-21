@@ -326,7 +326,39 @@ void *master_dtg_srvc_pckt_reader(void *packet,
 
   result->payload = read_dtg_srvc_pckt_payload_data(result, &walker,
 						    startof_pckt, endof_pckt,
-						    TRUE /*read_allpyld*/);
+						    TRUE);
+
+  *tid = result->id;
+
+  return (void *)result;
+}
+
+/* The difference to the master reader is in the call to
+   read_dtg_srvc_pckt_payload_data(). */
+void *partial_dtg_srvc_pckt_reader(void *packet,
+				   int len,
+				   uint16_t *tid) {
+  struct dtg_srvc_packet *result;
+  unsigned char *startof_pckt, *endof_pckt, *walker;
+
+  if (len <= 0) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  startof_pckt = (unsigned char *)packet;
+  walker = startof_pckt;
+  endof_pckt = startof_pckt + len;
+
+  result = read_dtg_packet_header(&walker, endof_pckt);
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result->payload = read_dtg_srvc_pckt_payload_data(result, &walker,
+						    startof_pckt, endof_pckt,
+						    FALSE);
 
   *tid = result->id;
 

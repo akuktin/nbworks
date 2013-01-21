@@ -64,6 +64,10 @@ void *
                               int len,
                               uint16_t *tid);
 void *
+  partial_dtg_srvc_pckt_reader(void *packet,
+                               int len,
+                               uint16_t *tid);
+void *
   master_dtg_srvc_pckt_writer(void *packet_ptr,
                               unsigned int *pckt_len,
                               void *packet_field);
