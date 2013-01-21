@@ -62,13 +62,14 @@ int open_rail() {
     /* TODO: errno signaling stuff */
     close(result);
     return -1;
-  } else 
+  } else {
     if (0 > listen(result, SOMAXCONN)) {
       /* TODO: errno signaling stuff */
       close(result);
       return -1;
     } else
       return result;
+  }
 }
 
 void *poll_rail(void *args) {
