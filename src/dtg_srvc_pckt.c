@@ -153,6 +153,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     }
 
     if (read_allpyld) {
+      normal_pckt->do_del_pyldpyld = TRUE;
       normal_pckt->payload = malloc(normal_pckt->len);
       if (! normal_pckt->payload) {
 	/* TODO: errno signaling stuff */
@@ -164,6 +165,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       walker = mempcpy(normal_pckt->payload, walker,
 		       normal_pckt->len);
     } else {
+      normal_pckt->do_del_pyldpyld = FALSE;
       walker = walker + normal_pckt->len;
     }
 
@@ -415,7 +417,9 @@ void destroy_dtg_srvc_pckt(void *packet_ptr,
 
     destroy_nbnodename(normal_pyld->src_name);
     destroy_nbnodename(normal_pyld->dst_name);
-    free(normal_pyld->payload);
+    if (normal_pyld->do_del_pyldpyld) {
+      free(normal_pyld->payload);
+    }
     free(normal_pyld);
   } else
     if (packet->payload_t == nbnodename)

@@ -25,6 +25,7 @@ struct dtg_pckt_pyld_normal {
   struct nbnodename_list *src_name;
   struct nbnodename_list *dst_name;
   void *payload;
+  unsigned char do_del_pyldpyld;
 };
 
 struct dtg_srvc_packet {
