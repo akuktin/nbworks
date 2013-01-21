@@ -166,6 +166,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 		       normal_pckt->len);
     } else {
       normal_pckt->do_del_pyldpyld = FALSE;
+      normal_pckt->payload = walker;
       walker = walker + normal_pckt->len;
     }
 
