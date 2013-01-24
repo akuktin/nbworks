@@ -130,11 +130,13 @@ void *poll_rail(void *args) {
 
 
 void *handle_rail(void *args) {
+  struct nbnodename_list *scope;
   struct rail_params params;
   struct com_comm *command;
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
-  unsigned char buff[LEN_COMM_ONWIRE];
+  uint32_t my_ipv4, i;
+  unsigned char buff[LEN_COMM_ONWIRE], *name_ptr;
 
   memcpy(&params, args, sizeof(struct rail_params));
 
@@ -189,14 +191,29 @@ void *handle_rail(void *args) {
     break;
 
   case rail_delname:
-    cache_namecard = find_namebytok(command->token);
+    cache_namecard = find_namebytok(command->token, &scope);
     if (cache_namecard) {
-      /*      if (cache_namecard->isgroup) {
+      for (i=0; i<4; i++) {
+	if (cache_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
+	  my_ipv4 = cache_namecard->addrs.recrd[i].addr->ip_addr;
+      }
 
-	      } else {*/
-      cache_namecard->timeof_death = 0;    /* WRONG!!! */
-                                           /* Also, send a name release pckt. */
-	/*      }*/
+      name_ptr = cache_namecard->name;
+      name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
+			       scope, my_ipv4, cache_namecard->isgroup); 
+
+      if (cache_namecard->isgroup) {
+	cache_namecard->token = 0;
+	for (i=0; i<4; i++) {
+	  if (cache_namecard->addrs.recrd[i].addr)
+	    break;
+	}
+	if (i > 3) {
+	  cache_namecard->timeof_death = 0;
+	}
+      } else {
+	cache_namecard->timeof_death = 0;
+      }
       command->len = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
@@ -204,6 +221,7 @@ void *handle_rail(void *args) {
     close(params.rail_sckt);
     free(command);
     free(params.addr);
+    destroy_nbnodename(scope);
     if (last_will)
       last_will->dead = TRUE;
     return 0;
@@ -213,7 +231,7 @@ void *handle_rail(void *args) {
   case rail_dtg_no:
   case rail_ses_yes:
   case rail_ses_no:
-    cache_namecard = find_namebytok(command->token);
+    cache_namecard = find_namebytok(command->token, 0);
     if (cache_namecard) {
       switch (command->command) {
       case rail_dtg_yes:
@@ -244,12 +262,13 @@ void *handle_rail(void *args) {
     break;
 
   case rail_send_dtg:
-    if (find_namebytok(command->token) &&
-	(0 == rail_senddtg(params.rail_sckt, command))) {
-      command->len = 0;
-      command->data = 0;
-      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+    if (find_namebytok(command->token, 0)) {
+      if (0 == rail_senddtg(params.rail_sckt, command)) {
+	command->len = 0;
+	command->data = 0;
+	fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+	send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+      }
     }
     close(params.rail_sckt);
     free(command);
@@ -386,7 +405,6 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 				       struct com_comm *command) {
   struct cache_namenode *cache_namecard;
   struct rail_name_data *namedata;
-  ssize_t ret_val;
   unsigned char *data_buff;
 
   /* WRONG FOR GROUPS!!! */
@@ -502,7 +520,6 @@ int rail_senddtg(int rail_sckt,
     return 1;
   }
 
-  //  switch 
   //  namecard = find_nblabel(decode_nbnodename(
 }
 
