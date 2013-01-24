@@ -217,5 +217,9 @@ void
   destroy_name_srvc_pckt(void *packet,
                          unsigned int complete,
                          unsigned int really_complete);
+void
+  destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
+                            unsigned int complete,
+                            unsigned int really_complete);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */
