@@ -195,6 +195,7 @@ void *handle_rail(void *args) {
 
 	      } else {*/
       cache_namecard->timeof_death = 0;    /* WRONG!!! */
+                                           /* Also, send a name release pckt. */
 	/*      }*/
       command->len = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
@@ -324,7 +325,7 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
   struct rail_name_data *result;
   unsigned char *walker;
 
-  if ((startof_buff + LEN_NAMEDT_ONWIREMIN) < endof_buff) {
+  if ((startof_buff + LEN_NAMEDT_ONWIREMIN) > endof_buff) {
     /* TODO: errno signaling stuff */
     return 0;
   }
@@ -332,9 +333,10 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
   walker = startof_buff;
 
   result = malloc(sizeof(struct rail_name_data));
-  if (! result)
+  if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
+  }
 
   result->name = malloc(NETBIOS_NAME_LEN);
   if (! result->name) {
@@ -346,7 +348,9 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
   walker = walker + (NETBIOS_NAME_LEN -1);
   result->name_type = *walker;
   walker++;
+
   result->scope = read_all_DNS_labels(&walker, walker, endof_buff);
+
   result->isgroup = *walker;
   walker++;
   result->node_type = *walker;
@@ -354,6 +358,27 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
   read_32field(walker, &(result->ttl));
 
   return result;
+}
+
+unsigned char *fill_rail_name_data(struct rail_name_data *data,
+				   unsigned char *startof_buff,
+				   unsigned char *endof_buff) {
+  unsigned char *walker;
+
+  if ((startof_buff + LEN_NAMEDT_ONWIREMIN) > endof_buff) {
+    /* TODO: errno signaling stuff */
+    return startof_buff;
+  }
+
+  walker = mempcpy(startof_buff, data->name, NETBIOS_NAME_LEN);
+  walker = fill_all_DNS_labels(data->scope, walker, endof_buff);
+  *walker = data->isgroup;
+  walker++;
+  *walker = data->node_type;
+  walker++;
+  walker = fill_32field(data->ttl, walker);
+
+  return walker;
 }
 
 
@@ -371,19 +396,14 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     return 0;
   }
 
-  ret_val = recv(rail_sckt, data_buff,
-		 command->len, MSG_DONTWAIT);
-  if (ret_val < 1) {
-    if ((errno == EAGAIN) ||
-	(errno == EWOULDBLOCK)) {
-      /* What do I do now? */
-    } else {
-      /* TODO: error handling */
-      free(data_buff);
-      return 0;
-    }
+  if (command->len > recv(rail_sckt, data_buff,
+			  command->len, MSG_WAITALL)) {
+    /* TODO: error handling */
+    free(data_buff);
+    return 0;
   }
-  namedata = read_rail_name_data(data_buff, data_buff+ret_val);
+
+  namedata = read_rail_name_data(data_buff, data_buff+command->len);
   if (! namedata) {
     /* TODO: error handling */
     free(data_buff);
@@ -406,6 +426,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     }
     if (find_name(cache_namecard, namedata->scope)) {
       free(data_buff);
+      destroy_namecard(cache_namecard);
       free(namedata->name);
       destroy_nbnodename(namedata->scope);
       free(namedata);
@@ -419,19 +440,19 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	add_name(cache_namecard, namedata->scope);
 	/* FIXME: I won't really bother with error detection at this time. */
 
-	cache_namecard->timeof_death = time(0) + namedata->ttl;
 	cache_namecard->addrs.recrd[0].node_type = CACHE_NODEFLG_B;
 	cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));
 	if (! cache_namecard->addrs.recrd[0].addr) {
 	  /* TODO: error handling */
 	  free(data_buff);
+	  cache_namecard->timeof_death = 0;
 	  free(namedata->name);
 	  destroy_nbnodename(namedata->scope);
 	  free(namedata);
-	  cache_namecard->timeof_death = 0;
 	  return 0;
 	}
 	cache_namecard->addrs.recrd[0].addr->ip_addr = command->addr.sin_addr.s_addr;
+	cache_namecard->timeof_death = time(0) + namedata->ttl;
 
 	free(data_buff);
 	free(namedata->name);
@@ -441,6 +462,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       } else {
 	/* TODO: error handling */
 	free(data_buff);
+	destroy_namecard(cache_namecard);
 	free(namedata->name);
 	destroy_nbnodename(namedata->scope);
 	free(namedata);
