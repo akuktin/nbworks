@@ -29,11 +29,12 @@ enum rail_commands {
   rail_addr_ofX     /* what is the address of X? */
 };
 
-# define LEN_COMM_ONWIRE (1+8+(2+4)+4)
+# define LEN_COMM_ONWIRE (1+8+(2+4)+1+4)
 struct com_comm {
   unsigned char command;
   uint64_t token;
   struct sockaddr_in addr; /* on wire: uint16_t port, uint32_t ip_addr */
+  unsigned char node_type; /* one of {B, P, M, H}, flags are used internally */
   uint32_t len;
   void *data;
 };
@@ -44,13 +45,12 @@ struct rail_params {
   struct sockaddr_un *addr;
 };
 
-# define LEN_NAMEDT_ONWIREMIN ((NETBIOS_NAME_LEN+1)+1+1+4)
+# define LEN_NAMEDT_ONWIREMIN ((NETBIOS_NAME_LEN+1)+1+4)
 struct rail_name_data {
   unsigned char *name; /* whole name, the entire NETBIOS_NAME_LEN */
   unsigned char name_type;
   struct nbnodename_list *scope;
   unsigned char isgroup;
-  unsigned char node_type; /* one of {B, P, M, H}, flags are used internally */
   uint32_t ttl;
 };
 

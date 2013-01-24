@@ -19,6 +19,7 @@
 #include "nodename.h"
 #include "service_sector_threads.h"
 #include "pckt_routines.h"
+#include "name_srvc_pckt.h"
 #include "name_srvc_cache.h"
 #include "name_srvc_func_B.h"
 #include "dtg_srvc_pckt.h"
@@ -200,7 +201,7 @@ void *handle_rail(void *args) {
 
       name_ptr = cache_namecard->name;
       name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			       scope, my_ipv4, cache_namecard->isgroup); 
+			       scope, my_ipv4, cache_namecard->isgroup);
 
       if (cache_namecard->isgroup) {
 	cache_namecard->token = 0;
@@ -309,6 +310,8 @@ struct com_comm *read_railcommand(unsigned char *packet,
   walker = read_64field(walker, &(result->token));
   walker = read_16field(walker, &(result->addr.sin_port));
   walker = read_32field(walker, &(result->addr.sin_addr.s_addr));
+  result->node_type = *walker;
+  walker++;
   walker = read_32field(walker, &(result->len));
 
   result->addr.sin_family = AF_INET;
@@ -334,6 +337,8 @@ unsigned char *fill_railcommand(struct com_comm *command,
   walker = fill_64field(command->token, walker);
   walker = fill_16field(command->addr.sin_port, walker);
   walker = fill_32field(command->addr.sin_addr.s_addr, walker);
+  *walker = command->node_type;
+  walker++;
   walker = fill_32field(command->len, walker);
 
   return walker;
@@ -372,8 +377,6 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
 
   result->isgroup = *walker;
   walker++;
-  result->node_type = *walker;
-  walker++;
   read_32field(walker, &(result->ttl));
 
   return result;
@@ -392,8 +395,6 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
   walker = mempcpy(startof_buff, data->name, NETBIOS_NAME_LEN);
   walker = fill_all_DNS_labels(data->scope, walker, endof_buff);
   *walker = data->isgroup;
-  walker++;
-  *walker = data->node_type;
   walker++;
   walker = fill_32field(data->ttl, walker);
 
@@ -428,7 +429,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     return 0;
   }
 
-  switch (namedata->node_type) {
+  switch (command->node_type) {
   case 'B':
   default:
     cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
@@ -494,12 +495,32 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 /* returns: 0 = success, >0 = fail, <0 = error */
 int rail_senddtg(int rail_sckt,
 		 struct com_comm *command) {
-  struct dtg_srvc_pckt *pckt;
+  struct dtg_srvc_packet *pckt;
   struct dtg_pckt_pyld_normal *normal_pyld;
-  struct cache_nodename *namecard;
-  int result;
-  unsigned char *buff;
+  struct cache_namenode *namecard;
+  struct ipv4_addr_list *dst_addrs;
+  int result, isgroup, i;
+  unsigned short node_type;
   uint16_t tid;
+  unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
+
+  switch (command->node_type) {
+  case 'H':
+    node_type = CACHE_NODEFLG_H;
+    break;
+  case 'M':
+    node_type = CACHE_NODEFLG_M;
+    break;
+  case 'P':
+    node_type = CACHE_NODEFLG_P;
+    break;
+  case 'B':
+  default:
+    node_type = CACHE_NODEFLG_B;
+    break;
+  }
+  dst_addrs = 0;
+  decoded_name[NETBIOS_NAME_LEN] = 0;
 
   buff = malloc(command->len);
   if (! buff) {
@@ -520,7 +541,28 @@ int rail_senddtg(int rail_sckt,
     return 1;
   }
 
-  //  namecard = find_nblabel(decode_nbnodename(
+  if (pckt->type == DIR_GRP_DTG)
+    isgroup = ISGROUP_YES;
+
+  switch (pckt->payload_t) {
+  case normal:
+    normal_pyld = pckt->payload;
+    namecard = find_nblabel(decode_nbnodename(normal_pyld->dst_name->name,
+					      (unsigned char **)&decoded_name),
+			    NETBIOS_NAME_LEN, node_type, isgroup,
+			    QTYPE_NB, QCLASS_IN, normal_pyld->dst_name->next_name);
+    if (namecard) {
+      for (i=0; i<4; i++) {
+	if (namecard->addrs.recrd[i].node_type == node_type)
+	  break;
+      }
+      if (i<4) { /* paranoid */
+	dst_addrs = namecard->addrs.recrd[i].addr;
+      }
+    } else {
+      
+    }
+  }
 }
 
 
