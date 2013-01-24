@@ -195,19 +195,19 @@ int name_srvc_B_release_name(unsigned char *name,
   return 0;
 }
 
-struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
-						    unsigned char name_type,
-						    struct nbnodename_list *scope) {
+struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
+							unsigned char name_type,
+							struct nbnodename_list *scope) {
   struct timespec sleeptime;
   struct sockaddr_in addr;
-  struct name_srvc_resource_lst *res;
+  struct name_srvc_resource_lst *res, **last_res;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
-  struct name_srvc_resource *result;
+  struct name_srvc_resource_lst *result, *walker;
   int i;
   uint16_t tid;
 
-  result = 0;
+  walker = result = 0;
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
   sleeptime.tv_nsec = T_250MS;
@@ -255,6 +255,7 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
 	  (outside_pckt->header->rcode != 0)) {
 	/* POSITIVE NAME QUERY RESPONSE */
 	res = outside_pckt->answers;
+	last_res = &(outside_pckt->answers);
 
 	while (res) {
 	  if ((0 == cmp_nbnodename(pckt->questions->qstn->name,
@@ -266,23 +267,31 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
 	      (res->res->rdata_t == nb_address_list)) {
 	    /* This is what we are looking for. */
 
-	    result = res->res;
-	    res->res = 0;
+	    if (result) {
+	      walker->next = res;
+	      walker = walker->next;
+	    } else {
+	      result = res;
+	      walker = result;
+	    }
+
+	    res = *last_res = res->next;
 	    break;
 
-	  } else
+	  } else {
+	    last_res = &(res->next);
 	    res = res->next;
+	  }
 	}
       }
 
       destroy_name_srvc_pckt(outside_pckt, 1, 1);
-
-      if (result)
-	break;
     }
 
-    if (result)
+    if (result) {
+      walker->next = 0;
       break;
+    }
 
     ss_set_normalstate_name_tid(tid);
   }
@@ -293,6 +302,103 @@ struct name_srvc_resource *name_srvc_B_callout_name(unsigned char *name,
   destroy_name_srvc_pckt(pckt, 1, 1);
 
   return result;
+}
+
+struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
+					     unsigned char name_type,
+					     struct nbnodename_list *scope,
+					     unsigned short nodetype, /* Only one node type! */
+					     int isgroup) {
+  struct name_srvc_resource_lst *res, *cur_res;
+  struct nbaddress_list *list;//, *cmpnd_lst;
+  struct ipv4_addr_list *addrlst;
+  struct cache_namenode *new_name;
+  time_t curtime;
+  uint16_t target_flags;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  decoded_name[NETBIOS_NAME_LEN] = 0;
+
+  if (isgroup)
+    target_flags = NBADDRLST_GROUP_YES;
+  else
+    target_flags = NBADDRLST_GROUP_NO;
+  switch (nodetype) {
+  case CACHE_NODEFLG_H:
+    target_flags = target_flags | NBADDRLST_NODET_H;
+    break;
+  case CACHE_NODEFLG_M:
+    target_flags = target_flags | NBADDRLST_NODET_M;
+    break;
+  case CACHE_NODEFLG_P:
+    target_flags = target_flags | NBADDRLST_NODET_P;
+    break;
+  case CACHE_NODEFLG_B:
+    break;
+  default:
+    /* TODO: errno signaling stuff */
+    return 0;
+    break;
+  }
+
+  res = name_srvc_B_callout_name(name, name_type, scope);
+  if (! res)
+    return 0;
+  else {
+    cur_res = res;
+    do {
+      if (cur_res->res->rdata_t == nb_address_list) {
+	list = cur_res->res->rdata;
+	while (list) {
+	  if (list->there_is_an_address &&
+	      (list->flags == target_flags))       /* WRONG FOR GROUPS!!! */
+	    break;
+	  list = list->next_address;
+	}
+      }
+      if (list)
+	break;
+      cur_res = cur_res->next;
+    } while (cur_res);
+  }
+
+  if (list) {
+    addrlst = malloc(sizeof(struct ipv4_addr_list));
+    if (! addrlst) {
+      /* TODO: errno signaling stuff */
+      destroy_name_srvc_res_lst(res, TRUE, TRUE);
+      return 0;
+    }
+    addrlst->ip_addr = list->address;   /* Again, WRONG FOR GROUPS !!! */
+    addrlst->next = 0;
+
+    new_name = alloc_namecard(decode_nbnodename(res->name->name, decoded_name),
+			      NETBIOS_NAME_LEN,
+			      nodetype, 0, isgroup,
+			      cur_res->res->rrtype, cur_res->res->rrclass);
+    if (new_name) {
+      new_name->addrs.recrds[0].node_type = nodetype;
+      new_name->addrs.recrds[0].addrs = addrlst;
+
+      add_scope(scope, new_name);
+      if (add_name(new_name, scope)) {
+	curtime = time(0);
+	new_name->endof_conflict_chance = curtime + CONFLICT_TTL;
+	new_name->timeof_death = curtime + cur_res->res->ttl;
+
+	destroy_name_srvc_res_lst(res, TRUE, TRUE);
+	return new_name;
+      } else {
+	destroy_name_srvc_res_lst(res, TRUE, TRUE);
+	return 0;
+      }
+    } else {
+      destroy_name_srvc_res_lst(res, TRUE, TRUE);
+      return 0;
+    }
+  } else
+    destroy_name_srvc_res_lst(res, TRUE, TRUE);
+    return 0;
 }
 
 #define STATUS_DID_NONE   0x00
@@ -1224,60 +1330,3 @@ void *name_srvc_B_handle_newtid(void *input) {
 #undef STATUS_DID_NONE
 #undef STATUS_DID_GROUP
 #undef STATUS_DID_UNIQ
-
-
-// STUB, FOR TESTING!
-int name_srvc_B_find_name(unsigned char *name,
-			  unsigned char name_type,
-			  struct nbnodename_list *scope) {
-  struct name_srvc_resource *res;
-  struct nbaddress_list *list, *for_del;
-  struct cache_namenode *new_name;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
-
-  decoded_name[NETBIOS_NAME_LEN] = 0;
-
-  res = name_srvc_B_callout_name(name, name_type, scope);
-
-  if (res) {
-    new_name = alloc_namecard(decode_nbnodename(res->name->name, decoded_name),
-			      NETBIOS_NAME_LEN,
-			      CACHE_NODEFLG_B,
-			      FALSE, ISGROUP_NO,
-			      res->rrtype, res->rrclass);
-    if (new_name) {
-      if (add_name(new_name, scope)) {
-	free(res->name);
-	list = res->rdata;
-	while (list) {
-	  for_del = list;
-	  list = list->next_address;
-	  free(for_del);
-	}
-	free(res);
-	return 1;
-      } else {
-	free(res->name);
-	list = res->rdata;
-	while (list) {
-	  for_del = list;
-	  list = list->next_address;
-	  free(for_del);
-	}
-	free(res);
-	return 0;
-      }
-    } else {
-      free(res->name);
-      list = res->rdata;
-      while (list) {
-	for_del = list;
-	list = list->next_address;
-	free(for_del);
-      }
-      free(res);
-      return 0;
-    }
-  } else
-    return 0;
-}

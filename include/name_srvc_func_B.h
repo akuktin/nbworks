@@ -19,11 +19,13 @@ struct name_srvc_resource *
   name_srvc_B_callout_name(unsigned char *name,
                            unsigned char name_type,
                            struct nbnodename_list *scope);
-void *
-  name_srvc_B_handle_newtid(void *input);
-int
+struct cache_namenode *
   name_srvc_B_find_name(unsigned char *name,
                         unsigned char name_type,
-                        struct nbnodename_list *scope);
+                        struct nbnodename_list *scope,
+                        unsigned short nodetype, /* Only one node type! */
+                        int isgroup);
+void *
+  name_srvc_B_handle_newtid(void *input);
 
 #endif /* NBWORKS_NAMESRVCFUNCB_H */
