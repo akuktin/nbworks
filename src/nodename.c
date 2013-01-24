@@ -204,7 +204,7 @@ unsigned char *make_nbnodename(const unsigned char *string,
 
   strncpy((char *)prepared_name, (char *)string, NETBIOS_NAME_LEN -1);
 
-  for (j = len; j < NETBIOS_NAME_LEN; j++) {
+  for (j = len; j < (NETBIOS_NAME_LEN -1); j++) {
     prepared_name[j] = ' '; /* a space character */
   }
 
