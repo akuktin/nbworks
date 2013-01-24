@@ -1,6 +1,8 @@
 #ifndef NBWORKS_NAMESRVCFUNCB_H
 # define NBWORKS_NAMESRVCFUNCB_H 1
 
+# include "name_srvc_pckt.h"
+
 int
   name_srvc_B_add_name(unsigned char *name,
                        unsigned char name_type,
@@ -15,7 +17,7 @@ int
                            struct nbnodename_list *scope,
                            uint32_t my_ip_address,
                            int isgroup);
-struct name_srvc_resource *
+struct name_srvc_resource_lst *
   name_srvc_B_callout_name(unsigned char *name,
                            unsigned char name_type,
                            struct nbnodename_list *scope);
