@@ -67,7 +67,7 @@ struct cache_namenode {
   unsigned short node_types; /* flag field */
   unsigned char isinconflict;
   unsigned char takes; /* flag field */
-  uint64_t token; /* 0 if not mine name, 1 if name in
+  uint64_t token; /* 0 if name not mine, 1 if name in
                      process of being registered */
   int isgroup;
   uint16_t dns_type;
