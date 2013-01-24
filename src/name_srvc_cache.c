@@ -370,7 +370,8 @@ struct cache_namenode *find_nblabel(void *label,
   return 0;
 }
 
-struct cache_namenode *find_namebytok(uint64_t token) {
+struct cache_namenode *find_namebytok(uint64_t token,
+				      struct nbnodename_list **ret_scope) {
   struct cache_scopenode *scope;
   struct cache_namenode *result;
 
@@ -382,9 +383,11 @@ struct cache_namenode *find_namebytok(uint64_t token) {
   while (scope) {
     result = scope->names;
     while (result)
-      if (result->token == token)
+      if (result->token == token) {
+	if (ret_scope)
+	  *ret_scope = clone_nbnodename(scope->scope);
 	return result;
-      else
+      } else
 	result = result->next;
     scope = scope->next;
   }

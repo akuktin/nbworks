@@ -118,7 +118,8 @@ struct cache_namenode *
                uint16_t dns_class,
                struct nbnodename_list *scope);
 struct cache_namenode *
-  find_namebytok(uint64_t token);
+  find_namebytok(uint64_t token,
+                 struct nbnodename_list **scope);
 
 struct cache_namenode *
   alloc_namecard(void *label,
