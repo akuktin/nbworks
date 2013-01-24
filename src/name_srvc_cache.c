@@ -348,7 +348,6 @@ struct cache_namenode *find_nblabel(void *label,
   my_scope = find_scope(scope);
 
   if (! my_scope)
-    /* TODO: errno signaling stuff */
     return 0;
 
   cur_name = my_scope->names;
