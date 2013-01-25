@@ -215,7 +215,6 @@ struct ss_queue *ss_find_queuestorage(uint16_t tid,
     if (cur_stor->tid == tid) {
       return &(cur_stor->queue);
     } else {
-      last_stor = &(cur_stor->next);
       cur_stor = cur_stor->next;
     }
   }
