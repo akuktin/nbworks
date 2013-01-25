@@ -81,7 +81,7 @@ void *poll_rail(void *args) {
   struct pollfd pfd;
   struct sockaddr_un *address;
   struct thread_node *last_will;
-  time_t prunetime;
+  time_t prunetime, prevprune;
   socklen_t scktlen;
   int ret_val, new_sckt;
 
@@ -108,13 +108,17 @@ void *poll_rail(void *args) {
     if (ret_val == 0) {
       /* BTW, it is NOT guaranteed we will ever reach this point. */
 
-      prunetime = time(0) - PRUNE_QUEUESTORAGE_TIME;
+      prunetime = time(0) - nbworks_prune_queuestorage_time;
+      if (prunetime == prevprune)
+	continue;
+      else
+	prevprune = prunetime;
       for (ret_val=0; ret_val<2; ret_val++) {
 	cur_queuestor = params.queue_stor[ret_val];
 	last_queuestor = &(params.queue_stor[ret_val]);
 
-	while (cur_questor) {
-	  if (cur_questor->last_active < prunetime) {
+	while (cur_queuestor) {
+	  if (cur_queuestor->last_active < prunetime) {
 	    *last_queuestor = cur_queuestor->next;
 	    ss_deregister_tid(cur_queuestor->tid, ret_val);
 	    for_del = cur_queuestor;

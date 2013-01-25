@@ -24,4 +24,6 @@ struct {
   int poll_timeout;
 } nbworks__rail_control;
 
+time_t nbworks_prune_queuestorage_time;
+
 #endif /* NBWORKS_DAEMONCONTROL_H */
