@@ -31,11 +31,15 @@
 
 
 struct ss_priv_trans *nbworks_all_transactions[2];
+struct ss_queue_storage *nbworks_all_queues[2];
 
 
 void init_service_sector() {
   nbworks_all_transactions[0] = 0;
   nbworks_all_transactions[1] = 0;
+  nbworks_all_queues[0] = 0;
+  nbworks_all_queues[1] = 0;
+
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
   nbworks_all_port_cntl.sleeptime.tv_nsec = T_10MS;
@@ -137,6 +141,85 @@ void ss_deregister_tid(uint16_t tid,
 
   return;
 }
+
+
+struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
+					     uint16_t tid,
+					     unsigned char branch) {
+  struct ss_queue_storage *result, *cur_stor, **last_stor;
+
+  result = malloc(sizeof(struct ss_queue_storage));
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result->tid = tid;
+  result->queue.incoming = queue->incoming;
+  result->queue.outgoing = queue->outgoing;
+  result->next = 0;
+
+  while (0666) {
+    cur_stor = nbworks_all_queues[branch];
+    last_stor = &(nbworks_all_queues[branch]);
+
+    while (cur_stor) {
+      if (cur_stor->tid == tid) {
+	if (cur_stor == result)
+	  return result;
+	else {
+	  free(result);
+	  return 0;
+	}
+      } else {
+	last_stor = &(cur_stor->next);
+	cur_stor = cur_stor->next;
+      }
+    }
+
+    *last_stor = result;
+  }
+}
+
+void ss_del_queuestorage(uint16_t tid,
+			 unsigned char branch) {
+  struct ss_queue_storage *cur_stor, **last_stor;
+
+  cur_stor = nbworks_all_queues[branch];
+  last_stor = &(nbworks_all_queues[branch]);
+
+  while (cur_stor) {
+    if (cur_stor->tid == tid) {
+      *last_stor = cur_stor->next;
+      free(cur_stor);
+      return;
+    } else {
+      last_stor = &(cur_stor->next);
+      cur_stor = cur_stor->next;
+    }
+  }
+
+  return;
+}
+
+struct ss_queue *ss_find_queuestorage(uint16_t tid,
+				      unsigned char branch) {
+  struct ss_queue_storage *cur_stor;
+
+  cur_stor = nbworks_all_queues[branch];
+
+  while (cur_stor) {
+    if (cur_stor->tid == tid) {
+      return &(cur_stor->queue);
+    } else {
+      last_stor = &(cur_stor->next);
+      cur_stor = cur_stor->next;
+    }
+  }
+
+  return 0;
+}
+
 
 void ss_set_inputdrop_tid(uint16_t tid,
 			  unsigned char branch) {

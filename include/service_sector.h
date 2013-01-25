@@ -42,6 +42,12 @@ struct ss_queue {
   struct ss_unif_pckt_list *outgoing;
 };
 
+struct ss_queue_storage {
+  uint16_t tid;
+  struct ss_queue queue;
+  struct ss_queue_storage *next;
+};
+
 
 struct ss_sckts {
   int udp_sckt;
@@ -67,6 +73,17 @@ struct ss_queue *
 void
   ss_deregister_tid(uint16_t tid,
                     unsigned char branch);
+struct ss_queue_storage *
+  ss_add_queuestorage(struct ss_queue *queue,
+                      uint16_t tid,
+                      unsigned char branch);
+void
+  ss_del_queuestorage(uint16_t tid,
+                      unsigned char branch);
+struct ss_queue *
+  ss_find_queuestorage(uint16_t tid,
+                       unsigned char branch);
+
 void
   ss_set_inputdrop_tid(uint16_t tid,
                        unsigned char branch);
