@@ -419,10 +419,10 @@ void destroy_dtg_srvc_pckt(void *packet_ptr,
 
     destroy_nbnodename(normal_pyld->src_name);
     destroy_nbnodename(normal_pyld->dst_name);
-    if (normal_pyld->do_del_pyldpyld) {
+    if (normal_pyld->do_del_pyldpyld)
       free(normal_pyld->payload);
-    }
-    free(normal_pyld->pyldpyld_delptr);
+    else
+      free(normal_pyld->pyldpyld_delptr);
     free(normal_pyld);
   } else
     if (packet->payload_t == nbnodename)
