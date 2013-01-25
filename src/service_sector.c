@@ -148,6 +148,9 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
 					     unsigned char branch) {
   struct ss_queue_storage *result, *cur_stor, **last_stor;
 
+  if (! queue)
+    return 0;
+
   result = malloc(sizeof(struct ss_queue_storage));
   if (! result) {
     /* TODO: errno signaling stuff */
