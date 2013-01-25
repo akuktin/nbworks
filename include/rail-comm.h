@@ -2,6 +2,7 @@
 # define NBWORKS_RAILCOMM_H 1
 
 # include "nodename.h"
+# include "service_sector.h"
 
 # include <stdint.h>
 # include <pthread.h>
@@ -42,6 +43,7 @@ struct com_comm {
 struct rail_params {
   pthread_t thread_id;
   int rail_sckt;
+  struct ss_queue_storage *queue_stor[2];
   struct sockaddr_un *addr;
 };
 
@@ -86,7 +88,8 @@ struct cache_namenode *
 
 int
   rail_senddtg(int rail_sckt,
-               struct com_comm *command);
+               struct com_comm *command,
+               struct ss_queue_storage *queue_stor);
 
 uint64_t
   make_token();

@@ -31,14 +31,11 @@
 
 
 struct ss_priv_trans *nbworks_all_transactions[2];
-struct ss_queue_storage *nbworks_all_queues[2];
 
 
 void init_service_sector() {
   nbworks_all_transactions[0] = 0;
   nbworks_all_transactions[1] = 0;
-  nbworks_all_queues[0] = 0;
-  nbworks_all_queues[1] = 0;
 
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
@@ -145,7 +142,7 @@ void ss_deregister_tid(uint16_t tid,
 
 struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
 					     uint16_t tid,
-					     unsigned char branch) {
+					     struct ss_queue_storage **queue_stor) {
   struct ss_queue_storage *result, *cur_stor, **last_stor;
 
   if (! queue)
@@ -163,8 +160,8 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
   result->next = 0;
 
   while (0666) {
-    cur_stor = nbworks_all_queues[branch];
-    last_stor = &(nbworks_all_queues[branch]);
+    cur_stor = *queue_stor;
+    last_stor = queue_stor;
 
     while (cur_stor) {
       if (cur_stor->tid == tid) {
@@ -185,11 +182,11 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
 }
 
 void ss_del_queuestorage(uint16_t tid,
-			 unsigned char branch) {
+			 struct ss_queue_storage **queue_stor) {
   struct ss_queue_storage *cur_stor, **last_stor;
 
-  cur_stor = nbworks_all_queues[branch];
-  last_stor = &(nbworks_all_queues[branch]);
+  cur_stor = *queue_stor;
+  last_stor = queue_stor;
 
   while (cur_stor) {
     if (cur_stor->tid == tid) {
@@ -206,10 +203,10 @@ void ss_del_queuestorage(uint16_t tid,
 }
 
 struct ss_queue *ss_find_queuestorage(uint16_t tid,
-				      unsigned char branch) {
+				      struct ss_queue_storage *queue_stor) {
   struct ss_queue_storage *cur_stor;
 
-  cur_stor = nbworks_all_queues[branch];
+  cur_stor = queue_stor;
 
   while (cur_stor) {
     if (cur_stor->tid == tid) {

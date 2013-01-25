@@ -76,10 +76,12 @@ int open_rail() {
 }
 
 void *poll_rail(void *args) {
+  struct ss_queue_storage *cur_queuestor, **last_queuestor, *for_del;
   struct rail_params params, new_params;
   struct pollfd pfd;
   struct sockaddr_un *address;
   struct thread_node *last_will;
+  time_t prunetime;
   socklen_t scktlen;
   int ret_val, new_sckt;
 
@@ -103,8 +105,30 @@ void *poll_rail(void *args) {
 
     ret_val = poll(&pfd, 1, nbworks__rail_control.poll_timeout);
 
-    if (ret_val == 0)
+    if (ret_val == 0) {
+      /* BTW, it is NOT guaranteed we will ever reach this point. */
+
+      prunetime = time(0) - PRUNE_QUEUESTORAGE_TIME;
+      for (ret_val=0; ret_val<2; ret_val++) {
+	cur_queuestor = params.queue_stor[ret_val];
+	last_queuestor = &(params.queue_stor[ret_val]);
+
+	while (cur_questor) {
+	  if (cur_questor->last_active < prunetime) {
+	    *last_queuestor = cur_queuestor->next;
+	    ss_deregister_tid(cur_queuestor->tid, ret_val);
+	    for_del = cur_queuestor;
+	    cur_queuestor = cur_queuestor->next;
+	    free(for_del);
+	  } else {
+	    last_queuestor = &(cur_queuestor->next);
+	    cur_queuestor = cur_queuestor->next;
+	  }
+	}
+      }
+
       continue;
+    }
     if (ret_val < 0) {
       /* TODO: error handling */
       continue;
@@ -265,7 +289,7 @@ void *handle_rail(void *args) {
 
   case rail_send_dtg:
     if (find_namebytok(command->token, 0)) {
-      if (0 == rail_senddtg(params.rail_sckt, command)) {
+      if (0 == rail_senddtg(params.rail_sckt, command, params.queue_stor[DTG_SRVC])) {
 	command->len = 0;
 	command->data = 0;
 	fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
@@ -495,7 +519,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 
 /* returns: 0 = success, >0 = fail, <0 = error */
 int rail_senddtg(int rail_sckt,
-		 struct com_comm *command) {
+		 struct com_comm *command,
+		 struct ss_queue_storage *queue_stor) {
   struct dtg_srvc_packet *pckt;
   struct dtg_pckt_pyld_normal *normal_pyld;
   struct cache_namenode *namecard;
@@ -570,12 +595,13 @@ int rail_senddtg(int rail_sckt,
 	  break;
       }
       if (i<4) { /* paranoid */
-	trans = ss_find_queuestorage(pckt->id, DTG_SRVC);
+	trans = ss_find_queuestorage(pckt->id, queue_stor);
 	while (! trans) {
 	  ss_add_queuestorage(ss_register_tid(pckt->id, DTG_SRVC), pckt->id,
-			      DTG_SRVC);
-	  trans = ss_find_queuestorage(pckt->id, DTG_SRVC);
+			      &queue_stor);
+	  trans = ss_find_queuestorage(pckt->id, queue_stor);
 	}
+	queue_stor->last_active = time(0);
 
 	dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
 	pckt->for_del = 1;

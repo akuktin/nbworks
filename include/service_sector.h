@@ -3,6 +3,7 @@
 
 # define MAX_NAME_TCP_QUEUE 16
 
+# include <time.h>
 # include <pthread.h>
 # include <netinet/in.h>
 
@@ -11,6 +12,8 @@
 
 # define NAME_SRVC 0
 # define DTG_SRVC  1
+
+# define PRUNE_QUEUESTORAGE_TIME 5
 
 enum trans_status {
   nmtrst_normal = 0,
@@ -44,6 +47,7 @@ struct ss_queue {
 
 struct ss_queue_storage {
   uint16_t tid;
+  time_t last_active;
   struct ss_queue queue;
   struct ss_queue_storage *next;
 };
@@ -76,13 +80,13 @@ void
 struct ss_queue_storage *
   ss_add_queuestorage(struct ss_queue *queue,
                       uint16_t tid,
-                      unsigned char branch);
+                      struct ss_queue_storage **queue_stor);
 void
   ss_del_queuestorage(uint16_t tid,
-                      unsigned char branch);
+                      struct ss_queue_storage **queue_stor);
 struct ss_queue *
   ss_find_queuestorage(uint16_t tid,
-                       unsigned char branch);
+                       struct ss_queue_storage *queue_stor);
 
 void
   ss_set_inputdrop_tid(uint16_t tid,
