@@ -18,6 +18,7 @@
 #include "rail-comm.h"
 #include "nodename.h"
 #include "service_sector_threads.h"
+#include "service_sector.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
 #include "name_srvc_cache.h"
@@ -498,8 +499,9 @@ int rail_senddtg(int rail_sckt,
   struct dtg_srvc_packet *pckt;
   struct dtg_pckt_pyld_normal *normal_pyld;
   struct cache_namenode *namecard;
-  struct ipv4_addr_list *dst_addrs;
-  int result, isgroup, i;
+  struct ss_queue *trans;
+  struct sockaddr_in dst_addr;
+  int isgroup, i;
   unsigned short node_type;
   uint16_t tid;
   unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
@@ -519,8 +521,10 @@ int rail_senddtg(int rail_sckt,
     node_type = CACHE_NODEFLG_B;
     break;
   }
-  dst_addrs = 0;
   decoded_name[NETBIOS_NAME_LEN] = 0;
+  dst_addr.sin_family = AF_INET;
+  /* VAXism below */
+  fill_16field(138, (unsigned char *)&(dst_addr.sin_port));
 
   buff = malloc(command->len);
   if (! buff) {
@@ -547,33 +551,60 @@ int rail_senddtg(int rail_sckt,
   switch (pckt->payload_t) {
   case normal:
     normal_pyld = pckt->payload;
+    normal_pyld->pyldpyld_delptr = buff;
+    buff = 0;
+
     namecard = find_nblabel(decode_nbnodename(normal_pyld->dst_name->name,
 					      (unsigned char **)&decoded_name),
 			    NETBIOS_NAME_LEN, node_type, isgroup,
 			    QTYPE_NB, QCLASS_IN, normal_pyld->dst_name->next_name);
+    if (! namecard)
+      namecard = name_srvc_B_find_name(decoded_name,
+				       decoded_name[NETBIOS_NAME_LEN-1],
+				       normal_pyld->dst_name->next_name,
+				       node_type,
+				       isgroup);
     if (namecard) {
       for (i=0; i<4; i++) {
 	if (namecard->addrs.recrd[i].node_type == node_type)
 	  break;
       }
       if (i<4) { /* paranoid */
-	dst_addrs = namecard->addrs.recrd[i].addr;
+	trans = ss_find_queuestorage(pckt->id, DTG_SRVC);
+	while (! trans) {
+	  ss_add_queuestorage(ss_register_tid(pckt->id, DTG_SRVC), pckt->id,
+			      DTG_SRVC);
+	  trans = ss_find_queuestorage(pckt->id, DTG_SRVC);
+	}
+
+	dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
+	pckt->for_del = 1;
+
+	ss_dtg_send_pckt(pckt, &dst_addr, trans);   /* WRONG FOR GROUPS!!! */
+
+	pckt = 0;
       }
-    } else {
-      
-    }
+    } /* else
+	 FU(); */
+    break;
+
+  default:
+    break;
   }
+
+  destroy_dtg_srvc_pckt(pckt, 1, 1);
+  free(buff);
+  return 0;
 }
 
 
 uint64_t make_token() {
   uint64_t result;
 
-  result = 0;
-  while (result < 2) {
+  do {
     result = make_weakrandom();
     result = result << (8*(sizeof(uint64_t)/2));
     result = make_weakrandom() + result;
-  }
+  } while (result < 2);
   return result;
 }
