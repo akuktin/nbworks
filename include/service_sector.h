@@ -13,8 +13,6 @@
 # define NAME_SRVC 0
 # define DTG_SRVC  1
 
-# define PRUNE_QUEUESTORAGE_TIME 5
-
 enum trans_status {
   nmtrst_normal = 0,
   nmtrst_indrop,
