@@ -380,8 +380,8 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
       new_name->addrs.recrd[0].node_type = nodetype;
       new_name->addrs.recrd[0].addr = addrlst;
 
-      add_scope(scope, new_name);
-      if (add_name(new_name, scope)) {
+      if (add_scope(scope, new_name) ||
+	  add_name(new_name, scope)) {
 	curtime = time(0);
 	new_name->endof_conflict_chance = curtime + CONFLICT_TTL;
 	new_name->timeof_death = curtime + cur_res->res->ttl;

@@ -57,8 +57,9 @@ struct cache_scopenode *add_scope(struct nbnodename_list *scope,
 	if (result != new_scope) {
 	  destroy_nbnodename(new_scope->scope);
 	  free(new_scope);
-	}
-	return result;
+	  return 0;
+	} else
+	  return result;
       }
 
       last_scope = &(cur_scope->next);
@@ -230,9 +231,8 @@ struct cache_namenode *add_nblabel(void *label,
   /* The below code GUARANTEES insertion
      (unless a use-after-free or similar happens). */
 
-  add_scope(scope, result);
-
-  if (add_name(result, scope)) {
+  if (add_scope(scope, result) ||
+      add_name(result, scope)) {
     /* Success! */
     return result;
   } else {
