@@ -592,8 +592,10 @@ int rail_senddtg(int rail_sckt,
     break;
   }
 
-  destroy_dtg_srvc_pckt(pckt, 1, 1);
-  free(buff);
+  if (pckt)
+    destroy_dtg_srvc_pckt(pckt, 1, 1);
+  if (buff)
+    free(buff);
   return 0;
 }
 
