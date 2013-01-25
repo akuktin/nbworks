@@ -79,6 +79,7 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
   result->dst_name = complete_dst;
   result->payload = payload;
   result->do_del_pyldpyld = TRUE;
+  result->pyldpyld_delptr = 0;
 
   return result;
 }
