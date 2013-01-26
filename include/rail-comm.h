@@ -89,7 +89,7 @@ struct cache_namenode *
 int
   rail_senddtg(int rail_sckt,
                struct com_comm *command,
-               struct ss_queue_storage *queue_stor);
+               struct ss_queue_storage **queue_stor);
 
 uint64_t
   make_token();
