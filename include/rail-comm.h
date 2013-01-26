@@ -43,7 +43,6 @@ struct com_comm {
 struct rail_params {
   pthread_t thread_id;
   int rail_sckt;
-  struct ss_queue_storage *queue_stor[2];
   struct sockaddr_un *addr;
 };
 

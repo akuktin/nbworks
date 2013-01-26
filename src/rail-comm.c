@@ -27,7 +27,13 @@
 #include "randomness.h"
 
 
+struct ss_queue_storage *nbworks_queue_storage[2];
+
+
 void init_rail() {
+  nbworks_queue_storage[0] = 0;
+  nbworks_queue_storage[1] = 0;
+
   nbworks__rail_control.all_stop = 0;
   nbworks__rail_control.poll_timeout = TP_100MS;
 }
@@ -114,8 +120,8 @@ void *poll_rail(void *args) {
       else
 	prevprune = prunetime;
       for (ret_val=0; ret_val<2; ret_val++) {
-	cur_queuestor = params.queue_stor[ret_val];
-	last_queuestor = &(params.queue_stor[ret_val]);
+	cur_queuestor = nbworks_queue_storage[ret_val];
+	last_queuestor = &(nbworks_queue_storage[ret_val]);
 
 	while (cur_queuestor) {
 	  if (cur_queuestor->last_active < prunetime) {
@@ -293,7 +299,7 @@ void *handle_rail(void *args) {
 
   case rail_send_dtg:
     if (find_namebytok(command->token, 0)) {
-      if (0 == rail_senddtg(params.rail_sckt, command, &(params.queue_stor[DTG_SRVC]))) {
+      if (0 == rail_senddtg(params.rail_sckt, command, &(nbworks_queue_storage[DTG_SRVC]))) {
 	command->len = 0;
 	command->data = 0;
 	fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
