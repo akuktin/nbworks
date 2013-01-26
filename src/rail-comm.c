@@ -601,7 +601,7 @@ int rail_senddtg(int rail_sckt,
       if (i<4) { /* paranoid */
 	trans = ss_find_queuestorage(pckt->id, *queue_stor);
 	while (! trans) {
-	  ss_add_queuestorage(ss_register_tid(pckt->id, DTG_SRVC), pckt->id,
+	  ss_add_queuestorage(ss_register_dtg_tid(pckt->id), pckt->id,
 			      queue_stor);
 	  trans = ss_find_queuestorage(pckt->id, *queue_stor);
 	}

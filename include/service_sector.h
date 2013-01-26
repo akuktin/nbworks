@@ -121,4 +121,9 @@ unsigned int get_inaddr();
 # define ss_set_inputdrop_name_tid(tid)   ss_set_inputdrop_tid(tid, NAME_SRVC)
 # define ss_set_normalstate_name_tid(tid) ss_set_normalstate_tid(tid, NAME_SRVC)
 
+# define ss_register_dtg_tid(tid)        ss_register_tid(tid, DTG_SRVC)
+# define ss_deregister_dtg_tid(tid)      ss_deregister_tid(tid, DTG_SRVC)
+# define ss_set_inputdrop_dtg_tid(tid)   ss_set_inputdrop_tid(tid, DTG_SRVC)
+# define ss_set_normalstate_dtg_tid(tid) ss_set_normalstate_tid(tid, DTG_SRVC)
+
 #endif /* NBWORKS_SERVICESECTOR_H */
