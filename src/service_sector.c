@@ -205,15 +205,15 @@ void ss_del_queuestorage(uint16_t tid,
   return;
 }
 
-struct ss_queue *ss_find_queuestorage(uint16_t tid,
-				      struct ss_queue_storage *queue_stor) {
+struct ss_queue_storage *ss_find_queuestorage(uint16_t tid,
+					      struct ss_queue_storage *queue_stor) {
   struct ss_queue_storage *cur_stor;
 
   cur_stor = queue_stor;
 
   while (cur_stor) {
     if (cur_stor->tid == tid) {
-      return &(cur_stor->queue);
+      return cur_stor;
     } else {
       cur_stor = cur_stor->next;
     }

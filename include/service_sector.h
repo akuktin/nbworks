@@ -85,7 +85,7 @@ struct ss_queue_storage *
 void
   ss_del_queuestorage(uint16_t tid,
                       struct ss_queue_storage **queue_stor);
-struct ss_queue *
+struct ss_queue_storage *
   ss_find_queuestorage(uint16_t tid,
                        struct ss_queue_storage *queue_stor);
 

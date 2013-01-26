@@ -525,7 +525,7 @@ int rail_senddtg(int rail_sckt,
   struct dtg_srvc_packet *pckt;
   struct dtg_pckt_pyld_normal *normal_pyld;
   struct cache_namenode *namecard;
-  struct ss_queue *trans;
+  struct ss_queue_storage *trans;
   struct sockaddr_in dst_addr;
   int isgroup, i;
   unsigned short node_type;
@@ -602,12 +602,12 @@ int rail_senddtg(int rail_sckt,
 			      queue_stor);
 	  trans = ss_find_queuestorage(pckt->id, *queue_stor);
 	}
-	(*queue_stor)->last_active = time(0);
+	trans->last_active = time(0);
 
 	dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
 	pckt->for_del = 1;
 
-	ss_dtg_send_pckt(pckt, &dst_addr, trans);   /* WRONG FOR GROUPS!!! */
+	ss_dtg_send_pckt(pckt, &dst_addr, trans->queue);   /* WRONG FOR GROUPS!!! */
 
 	pckt = 0;
       }
