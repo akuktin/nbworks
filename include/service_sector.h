@@ -13,6 +13,7 @@
 # define NAME_SRVC 0
 # define DTG_SRVC  1
 
+
 enum trans_status {
   nmtrst_normal = 0,
   nmtrst_indrop,
@@ -67,6 +68,8 @@ struct newtid_params {
   uint16_t tid;
   struct ss_queue *trans;
 };
+
+struct ss_queue_storage *nbworks_queue_storage[2];
 
 void init_service_sector();
 struct ss_queue *

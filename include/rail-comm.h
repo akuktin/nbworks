@@ -12,6 +12,9 @@
 # include <netinet/in.h>
 # include <netinet/ip.h>
 
+# define NBWORKS_SCKT_NAME "NBWORKS_MULTIPLEX_DAEMON"
+# define NBWORKS_SCKT_NAMELEN (7+1+9+1+6)
+
 enum rail_commands {
   rail_regname = 1,
   rail_delname,

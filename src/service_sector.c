@@ -37,6 +37,9 @@ void init_service_sector() {
   nbworks_all_transactions[0] = 0;
   nbworks_all_transactions[1] = 0;
 
+  nbworks_queue_storage[0] = 0;
+  nbworks_queue_storage[1] = 0;
+
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
   nbworks_all_port_cntl.sleeptime.tv_nsec = T_10MS;

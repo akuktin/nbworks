@@ -27,20 +27,11 @@
 #include "randomness.h"
 
 
-struct ss_queue_storage *nbworks_queue_storage[2];
-
-
 void init_rail() {
-  nbworks_queue_storage[0] = 0;
-  nbworks_queue_storage[1] = 0;
-
   nbworks__rail_control.all_stop = 0;
   nbworks__rail_control.poll_timeout = TP_100MS;
 }
 
-
-# define NBWORKS_SCKT_NAME "NBWORKS_MULTIPLEX_DAEMON"
-# define NBWORKS_SCKT_NAMELEN (7+1+9+1+6)
 
 int open_rail() {
   struct sockaddr_un address;
