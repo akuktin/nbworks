@@ -53,6 +53,7 @@ struct ss_queue {
 struct ss_queue_storage {
   union trans_id id;
   time_t last_active;
+  int rail_sckt;
   struct ss_queue queue;
   struct ss_queue_storage *next;
 };

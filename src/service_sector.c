@@ -194,6 +194,7 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
     tid = arg->tid;
     result->id.tid = tid;
   }
+  result->rail_sckt = 0;
   result->queue.incoming = queue->incoming;
   result->queue.outgoing = queue->outgoing;
   result->next = 0;
