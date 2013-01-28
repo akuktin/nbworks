@@ -4,14 +4,15 @@
 # define MAX_NAME_TCP_QUEUE 16
 
 # include <time.h>
+# include <sys/time.h>
 # include <pthread.h>
 # include <netinet/in.h>
 
 # include "name_srvc_pckt.h"
 # include "dtg_srvc_pckt.h"
 
-# define NAME_SRVC 0
-# define DTG_SRVC  1
+# define NAME_SRVC 1
+# define DTG_SRVC  0
 
 
 enum trans_status {
@@ -20,6 +21,11 @@ enum trans_status {
   nmtrst_deregister
 };
 
+
+union trans_id {
+  uint16_t tid;
+  struct nbnodename_list *name_scope;
+};
 
 struct ss_unif_pckt_list {
   uint16_t for_del;
@@ -31,7 +37,7 @@ struct ss_unif_pckt_list {
 
 /* This one is private to the service sector. */
 struct ss_priv_trans {
-  uint16_t tid;
+  union trans_id id;
   enum trans_status status;
   struct ss_unif_pckt_list *in;
   struct ss_unif_pckt_list *out;
@@ -45,7 +51,7 @@ struct ss_queue {
 };
 
 struct ss_queue_storage {
-  uint16_t tid;
+  union trans_id id;
   time_t last_active;
   struct ss_queue queue;
   struct ss_queue_storage *next;
@@ -65,36 +71,41 @@ struct ss_sckts {
 
 struct newtid_params {
   pthread_t thread_id;
-  uint16_t tid;
+  union trans_id id;
   struct ss_queue *trans;
 };
 
 struct ss_queue_storage *nbworks_queue_storage[2];
 
 void init_service_sector();
+# define UNION__TRANS_ID void
 struct ss_queue *
-  ss_register_tid(uint16_t tid,
+  ss_register_tid(UNION__TRANS_ID *trans_id,
                   unsigned char branch);
 void
-  ss_deregister_tid(uint16_t tid,
+  ss_deregister_tid(UNION__TRANS_ID *trans_id,
                     unsigned char branch);
 struct ss_queue_storage *
   ss_add_queuestorage(struct ss_queue *queue,
-                      uint16_t tid,
+                      UNION__TRANS_ID *trans_id,
+                      unsigned char branch,
                       struct ss_queue_storage **queue_stor);
 void
-  ss_del_queuestorage(uint16_t tid,
+  ss_del_queuestorage(UNION__TRANS_ID *trans_id,
+                      unsigned char branch,
                       struct ss_queue_storage **queue_stor);
 struct ss_queue_storage *
-  ss_find_queuestorage(uint16_t tid,
+  ss_find_queuestorage(UNION__TRANS_ID *trans_id,
+                       unsigned char branch,
                        struct ss_queue_storage *queue_stor);
 
 void
-  ss_set_inputdrop_tid(uint16_t tid,
+  ss_set_inputdrop_tid(UNION__TRANS_ID *trans_id,
                        unsigned char branch);
 void
-  ss_set_normalstate_tid(uint16_t tid,
+  ss_set_normalstate_tid(UNION__TRANS_ID *trans_id,
                          unsigned char branch);
+# undef UNION__TRANS_ID
 
 inline int
   ss_name_send_pckt(struct name_srvc_packet *pckt,

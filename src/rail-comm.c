@@ -117,7 +117,7 @@ void *poll_rail(void *args) {
 	while (cur_queuestor) {
 	  if (cur_queuestor->last_active < prunetime) {
 	    *last_queuestor = cur_queuestor->next;
-	    ss_deregister_tid(cur_queuestor->tid, ret_val);
+	    ss_deregister_tid(&(cur_queuestor->id.tid), ret_val);
 	    for_del = cur_queuestor;
 	    cur_queuestor = cur_queuestor->next;
 	    free(for_del);
@@ -596,18 +596,18 @@ int rail_senddtg(int rail_sckt,
 	  break;
       }
       if (i<4) { /* paranoid */
-	trans = ss_find_queuestorage(pckt->id, *queue_stor);
+	trans = ss_find_queuestorage(normal_pyld->src_name, DTG_SRVC, *queue_stor);
 	while (! trans) {
-	  ss_add_queuestorage(ss_register_dtg_tid(pckt->id), pckt->id,
-			      queue_stor);
-	  trans = ss_find_queuestorage(pckt->id, *queue_stor);
+	  ss_add_queuestorage(ss_register_dtg_tid(normal_pyld->src_name), normal_pyld->src_name,
+			      DTG_SRVC, queue_stor);
+	  trans = ss_find_queuestorage(normal_pyld->src_name, DTG_SRVC, *queue_stor);
 	}
 	trans->last_active = time(0);
 
 	dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
 	pckt->for_del = 1;
 
-	ss_dtg_send_pckt(pckt, &dst_addr, trans->queue);   /* WRONG FOR GROUPS!!! */
+	ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));   /* WRONG FOR GROUPS!!! */
 
 	pckt = 0;
       }

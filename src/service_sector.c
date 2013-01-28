@@ -26,6 +26,7 @@
 #include "name_srvc_pckt.h"
 #include "name_srvc_func_B.h"
 #include "dtg_srvc_pckt.h"
+#include "dtg_srvc_func.h"
 #include "randomness.h"
 #include "service_sector.h"
 
@@ -46,10 +47,15 @@ void init_service_sector() {
   nbworks_all_port_cntl.poll_timeout = TP_10MS;
 }
 
-struct ss_queue *ss_register_tid(uint16_t tid,
+struct ss_queue *ss_register_tid(void *arg_ptr,
 				 unsigned char branch) {
   struct ss_queue *result;
   struct ss_priv_trans *cur_trans, *my_trans;
+  union trans_id *arg;
+  uint16_t tid;
+
+  /* POSSIBLE_BUG: this might break */
+  arg = arg_ptr;
 
   result = malloc(sizeof(struct ss_queue));
   if (! result) {
@@ -78,12 +84,17 @@ struct ss_queue *ss_register_tid(uint16_t tid,
     free(my_trans);
     return 0;
   }
-  my_trans->tid = tid;
+  if (branch == DTG_SRVC)
+    my_trans->id.name_scope = clone_nbnodename(arg->name_scope);
+  else
+    my_trans->id.tid = arg->tid;
   my_trans->status = nmtrst_normal;
   my_trans->next = 0;
 
   result->incoming = my_trans->in;
   result->outgoing = my_trans->out;
+
+  tid = arg->tid;
 
   while (1) {
     if (! nbworks_all_transactions[branch]) {
@@ -93,7 +104,10 @@ struct ss_queue *ss_register_tid(uint16_t tid,
     cur_trans = nbworks_all_transactions[branch];
 
     while (cur_trans) {
-      if (cur_trans->tid == tid &&
+      if ((branch == DTG_SRVC ?
+	   (! cmp_nbnodename(cur_trans->id.name_scope,
+			     arg->name_scope)) :
+	   cur_trans->id.tid == tid) &&
 	  (cur_trans->status == nmtrst_normal ||
 	   cur_trans->status == nmtrst_indrop)) {
 	if (cur_trans == my_trans) {
@@ -120,17 +134,27 @@ struct ss_queue *ss_register_tid(uint16_t tid,
   }
 }
 
-void ss_deregister_tid(uint16_t tid,
+void ss_deregister_tid(void *arg_ptr,
 		       unsigned char branch) {
   struct ss_priv_trans *cur_trans;
+  union trans_id *arg;
+  uint16_t tid;
 
   if (! nbworks_all_transactions[branch])
     return;
 
+  /* POSSIBLE_BUG: this might break */
+  arg = arg_ptr;
+
   cur_trans = nbworks_all_transactions[branch];
 
+  tid = arg->tid;
+
   while (cur_trans) {
-    if (cur_trans->tid == tid &&
+    if ((branch == DTG_SRVC ?
+	 (! cmp_nbnodename(cur_trans->id.name_scope,
+			   arg->name_scope)) :
+	 cur_trans->id.tid == tid) &&
 	(cur_trans->status == nmtrst_normal ||
 	 cur_trans->status == nmtrst_indrop)) {
       cur_trans->status = nmtrst_deregister;
@@ -144,12 +168,17 @@ void ss_deregister_tid(uint16_t tid,
 
 
 struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
-					     uint16_t tid,
+					     void *arg_ptr,
+					     unsigned char branch,
 					     struct ss_queue_storage **queue_stor) {
   struct ss_queue_storage *result, *cur_stor, **last_stor;
+  union trans_id *arg;
+  uint16_t tid;
 
   if (! queue)
     return 0;
+
+  arg = arg_ptr;
 
   result = malloc(sizeof(struct ss_queue_storage));
   if (! result) {
@@ -157,7 +186,12 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
     return 0;
   }
 
-  result->tid = tid;
+  if (branch == DTG_SRVC)
+    result->id.name_scope = clone_nbnodename(arg->name_scope);
+  else {
+    tid = arg->tid;
+    result->id.tid = tid;
+  }
   result->queue.incoming = queue->incoming;
   result->queue.outgoing = queue->outgoing;
   result->next = 0;
@@ -167,10 +201,16 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
     last_stor = queue_stor;
 
     while (cur_stor) {
-      if (cur_stor->tid == tid) {
+      if ((branch == DTG_SRVC) ?
+	  (! cmp_nbnodename(cur_stor->id.name_scope,
+			    arg->name_scope)) :
+	  cur_stor->id.tid == tid) {
 	if (cur_stor == result)
 	  return result;
 	else {
+	  if (branch == DTG_SRVC) {
+	    destroy_nbnodename(result->id.name_scope);
+	  }
 	  free(result);
 	  return 0;
 	}
@@ -184,15 +224,25 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
   }
 }
 
-void ss_del_queuestorage(uint16_t tid,
+void ss_del_queuestorage(void *arg_ptr,
+			 unsigned char branch,
 			 struct ss_queue_storage **queue_stor) {
   struct ss_queue_storage *cur_stor, **last_stor;
+  union trans_id *arg;
+  uint16_t tid;
+
+  arg = arg_ptr;
 
   cur_stor = *queue_stor;
   last_stor = queue_stor;
 
+  tid = arg->tid;
+
   while (cur_stor) {
-    if (cur_stor->tid == tid) {
+    if ((branch == DTG_SRVC) ?
+	(! cmp_nbnodename(cur_stor->id.name_scope,
+			  arg->name_scope)) :
+	cur_stor->id.tid == tid) {
       *last_stor = cur_stor->next;
       free(cur_stor);
       return;
@@ -205,14 +255,24 @@ void ss_del_queuestorage(uint16_t tid,
   return;
 }
 
-struct ss_queue_storage *ss_find_queuestorage(uint16_t tid,
+struct ss_queue_storage *ss_find_queuestorage(void *arg_ptr,
+					      unsigned char branch,
 					      struct ss_queue_storage *queue_stor) {
   struct ss_queue_storage *cur_stor;
+  union trans_id *arg;
+  uint16_t tid;
+
+  arg = arg_ptr;
 
   cur_stor = queue_stor;
 
+  tid = arg->tid;
+
   while (cur_stor) {
-    if (cur_stor->tid == tid) {
+    if ((branch == DTG_SRVC) ?
+	(! cmp_nbnodename(cur_stor->id.name_scope,
+			  arg->name_scope)) :
+	cur_stor->id.tid == tid) {
       return cur_stor;
     } else {
       cur_stor = cur_stor->next;
@@ -223,17 +283,26 @@ struct ss_queue_storage *ss_find_queuestorage(uint16_t tid,
 }
 
 
-void ss_set_inputdrop_tid(uint16_t tid,
+void ss_set_inputdrop_tid(void *trans_id,
 			  unsigned char branch) {
   struct ss_priv_trans *cur_trans;
+  union trans_id *arg;
+  uint16_t tid;
 
   if (! nbworks_all_transactions[branch])
     return;
 
+  arg = trans_id;
+
   cur_trans = nbworks_all_transactions[branch];
 
+  tid = arg->tid;
+
   while (cur_trans) {
-    if (cur_trans->tid == tid &&
+    if (((branch == DTG_SRVC) ?
+	 (! cmp_nbnodename(cur_trans->id.name_scope,
+			   arg->name_scope)) :
+	 cur_trans->id.tid == tid) &&
 	cur_trans->status == nmtrst_normal) {
       cur_trans->status = nmtrst_indrop;
       return;
@@ -244,17 +313,26 @@ void ss_set_inputdrop_tid(uint16_t tid,
   return;
 }
 
-void ss_set_normalstate_tid(uint16_t tid,
+void ss_set_normalstate_tid(void *trans_id,
 			    unsigned char branch) {
   struct ss_priv_trans *cur_trans;
+  union trans_id *arg;
+  uint16_t tid;
 
   if (! nbworks_all_transactions[branch])
     return;
 
+  arg = trans_id;
+
   cur_trans = nbworks_all_transactions[branch];
 
+  tid = arg->tid;
+
   while (cur_trans) {
-    if (cur_trans->tid == tid &&
+    if (((branch == DTG_SRVC) ?
+	 (! cmp_nbnodename(cur_trans->id.name_scope,
+			   arg->name_scope)) :
+	 cur_trans->id.tid == tid) &&
 	cur_trans->status != nmtrst_deregister) {
       cur_trans->status = nmtrst_normal;
       return;
@@ -595,6 +673,7 @@ void *ss__udp_recver(void *sckts_ptr) {
   struct ss_queue *newtid_queue;
   struct newtid_params params;
   struct pollfd polldata;
+  struct nbnodename_list *name_as_id;
   socklen_t addr_len;
   int ret_val;
   unsigned int len;
@@ -657,6 +736,8 @@ void *ss__udp_recver(void *sckts_ptr) {
 	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
 	new_pckt->dstry = sckts->pckt_dstr;
 	new_pckt->next = 0;
+	if (sckts->branch == DTG_SRVC)
+	  name_as_id = dtg_srvc_extract_dstname(new_pckt->packet);
       } else {
 	/* TODO: errno signaling stuff */
 	/* BUT see third comment up! */
@@ -664,10 +745,15 @@ void *ss__udp_recver(void *sckts_ptr) {
 	new_pckt = 0;
       }
 
+      // FIXME: Handle datagram service error packets.
+
       while (new_pckt) {
 	cur_trans = *(sckts->all_trans);
 	while (cur_trans) {
-	  if (cur_trans->tid == tid) {
+	  if (((sckts->branch) == DTG_SRVC) ?           /* The problem with this scheme */
+	      cmp_nbnodename(cur_trans->id.name_scope,  /* is that it is possible for a */
+			     name_as_id) :              /* torrent of datagram packets  */
+	      cur_trans->id.tid == tid) {               /* to criple the daemon.        */
 	    if ((cur_trans->status == nmtrst_indrop) ||
 		(cur_trans->status == nmtrst_deregister)) {
 	      sckts->pckt_dstr(new_pckt->packet, 1, 1);
@@ -689,9 +775,13 @@ void *ss__udp_recver(void *sckts_ptr) {
 	if (new_pckt) {
 	  /* This means there were no previously registered transactions
 	     with this tid. Register a new one and signal its existance. */
-	  newtid_queue =
-	    ss_register_tid(tid, sckts->branch);
-	  params.tid = tid;
+	  if ((sckts->branch) == DTG_SRVC) { /* There goes my terminally abstract code... */
+	    newtid_queue = ss_register_dtg_tid(name_as_id);
+	    params.id.name_scope = clone_nbnodename(name_as_id);
+	  } else {
+	    newtid_queue = ss_register_name_tid(&tid);
+	    params.id.tid = tid;
+	  }
 	}
       }
       if (newtid_queue) {

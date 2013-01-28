@@ -61,7 +61,7 @@ int name_srvc_B_add_name(unsigned char *name,
 
   tid = make_weakrandom();
 
-  trans = ss_register_name_tid(tid);
+  trans = ss_register_name_tid(&tid);
   if (! trans) {
     /* TODO: errno signaling stuff */
     destroy_name_srvc_pckt(pckt, 1, 1);
@@ -80,7 +80,7 @@ int name_srvc_B_add_name(unsigned char *name,
     nanosleep(&sleeptime, 0);
   }
 
-  ss_set_inputdrop_name_tid(tid);
+  ss_set_inputdrop_name_tid(&tid);
 
   while (1) {
     outside_pckt = ss__recv_pckt(trans);
@@ -125,7 +125,7 @@ int name_srvc_B_add_name(unsigned char *name,
     destroy_name_srvc_pckt(pckt, 1, 1);
   }
 
-  ss_deregister_name_tid(tid);
+  ss_deregister_name_tid(&tid);
   ss__dstry_recv_queue(trans);
   free(trans);
 
@@ -163,7 +163,7 @@ int name_srvc_B_release_name(unsigned char *name,
 
   tid = make_weakrandom();
 
-  trans = ss_register_name_tid(tid);
+  trans = ss_register_name_tid(&tid);
   if (! trans) {
     /* TODO: errno signaling stuff */
     destroy_name_srvc_pckt(pckt, 1, 1);
@@ -171,7 +171,7 @@ int name_srvc_B_release_name(unsigned char *name,
   }
 
   /* Don't listen for incoming packets. */
-  ss_set_inputdrop_name_tid(tid);
+  ss_set_inputdrop_name_tid(&tid);
   ss__dstry_recv_queue(trans);
 
   pckt->header->transaction_id = tid;
@@ -189,7 +189,7 @@ int name_srvc_B_release_name(unsigned char *name,
   pckt->for_del = 1;
   ss_name_send_pckt(pckt, &addr, trans);
 
-  ss_deregister_name_tid(tid);
+  ss_deregister_name_tid(&tid);
   free(trans);
 
   return 0;
@@ -225,7 +225,7 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
 
   tid = make_weakrandom();
 
-  trans = ss_register_name_tid(tid);
+  trans = ss_register_name_tid(&tid);
   if (! trans) {
     /* TODO: errno signaling stuff */
     destroy_name_srvc_pckt(pckt, 1, 1);
@@ -241,7 +241,7 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
 
     nanosleep(&sleeptime, 0);
 
-    ss_set_inputdrop_name_tid(tid);
+    ss_set_inputdrop_name_tid(&tid);
 
     while (1) {
       outside_pckt = ss__recv_pckt(trans);
@@ -293,9 +293,9 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
       break;
     }
 
-    ss_set_normalstate_name_tid(tid);
+    ss_set_normalstate_name_tid(&tid);
   }
-  ss_deregister_name_tid(tid);
+  ss_deregister_name_tid(&tid);
   ss__dstry_recv_queue(trans);
   free(trans);
 
@@ -448,7 +448,7 @@ void *name_srvc_B_handle_newtid(void *input) {
   label[NETBIOS_NAME_LEN] = '\0';
   decoded_name[NETBIOS_NAME_LEN] = '\0';
 
-  ss_set_inputdrop_name_tid(params.tid);
+  ss_set_inputdrop_name_tid(&(params.id.tid));
   last_outpckt = 0;
   waited = 0;
 
@@ -461,7 +461,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	/* No packet. */
 	if (waited) {
 	  /* Wait time passed. */
-	  ss_deregister_name_tid(params.tid);
+	  ss_deregister_name_tid(&(params.id.tid));
 	  ss__dstry_recv_queue(params.trans);
 	  free(params.trans);
 	  if (last_will)
@@ -469,9 +469,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 	  return 0;
 	} else {
 	  waited = 1;
-	  ss_set_normalstate_name_tid(params.tid);
+	  ss_set_normalstate_name_tid(&(params.id.tid));
 	  nanosleep(&sleeptime, 0);
-	  ss_set_inputdrop_name_tid(params.tid);
+	  ss_set_inputdrop_name_tid(&(params.id.tid));
 	}
       } else {
 	if (last_outpckt)
