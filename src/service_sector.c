@@ -118,6 +118,8 @@ struct ss_queue *ss_register_tid(void *arg_ptr,
 	  free(my_trans->in);
 	  free(my_trans->out);
 	  free(my_trans);
+	  if (branch == DTG_SRVC)
+	    destroy_nbnodename(result->id.name_scope);
 	  free(result);
 	  return 0;
 	}
