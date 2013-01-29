@@ -753,20 +753,20 @@ void *ss__udp_recver(void *sckts_ptr) {
       while (new_pckt) {
 	cur_trans = *(sckts->all_trans);
 	while (cur_trans) {
-	  if (((sckts->branch) == DTG_SRVC) ?           /* The problem with this scheme */
-	      cmp_nbnodename(cur_trans->id.name_scope,  /* is that it is possible for a */
-			     name_as_id) :              /* torrent of datagram packets  */
-	      cur_trans->id.tid == tid) {               /* to criple the daemon.        */
-	    if ((cur_trans->status == nmtrst_indrop) ||
-		(cur_trans->status == nmtrst_deregister)) {
-	      sckts->pckt_dstr(new_pckt->packet, 1, 1);
-	      free(new_pckt);
-	      new_pckt = 0;
-	      break;
-	    }
+	  if (((sckts->branch) == DTG_SRVC) ?             /* The problem with this scheme */
+	      (! cmp_nbnodename(cur_trans->id.name_scope, /* is that it is possible for a */
+				name_as_id)) :            /* torrent of datagram packets  */
+	      cur_trans->id.tid == tid) {                 /* to criple the daemon.        */
 	    if (cur_trans->status == nmtrst_normal) {
 	      cur_trans->in->next = new_pckt;
 	      cur_trans->in = new_pckt;
+	      new_pckt = 0;
+	      break;
+	    } else {
+	      /* ((cur_trans->status == nmtrst_indrop) ||
+		  (cur_trans->status == nmtrst_deregister)) */
+	      sckts->pckt_dstr(new_pckt->packet, 1, 1);
+	      free(new_pckt);
 	      new_pckt = 0;
 	      break;
 	    }
@@ -792,7 +792,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	  }
 	}
       }
-      /* Surpefluous in datagram mode. */
+      /* Superfluous in datagram mode. */
       if (newtid_queue) {
 	/* Signaling the new queue. */
 	params.thread_id = 0;
