@@ -777,7 +777,7 @@ void *dtg_server(void *arg) {
 	    send(cur_rail->rail_sckt, buff, (pckt_len+sizeof(uint32_t)),
 		 MSG_DONTWAIT);
 	  else
-	    if (pollfd.revents & (POLLERR | POLLHUP)) {
+	    if (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
 	      *last_rail = cur_rail->next;
 	      close(cur_rail->rail_sckt);
 	      free(cur_rail);
@@ -794,6 +794,21 @@ void *dtg_server(void *arg) {
       } else {
 	break;
       }
+    }
+
+    cur_rail = queue->rail;
+    last_rail = &(queue->rail);
+    while (cur_rail) {
+      pollfd.fd = cur_rail->rail_sckt;
+      poll(&pollfd, 1, 0);
+      if (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+	*last_rail = cur_rail->next;
+	close(cur_rail->rail_sckt);
+	free(cur_rail);
+	cur_rail = *last_rail;
+	continue;
+      }
+      cur_rail = cur_rail->next;
     }
 
     if (! queue->rail)
