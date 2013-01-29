@@ -30,8 +30,10 @@
 void init_rail() {
   nbworks__rail_control.all_stop = 0;
   nbworks__rail_control.poll_timeout = TP_100MS;
-  nbworks__rail_control.dtg_srv_sleeptime.tv_sec = 0;
-  nbworks__rail_control.dtg_srv_sleeptime.tv_nsec = T_10MS;
+
+  nbworks_dtg_srv_cntrl.all_stop = 0;
+  nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_sec = 0;
+  nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_nsec = T_10MS;
 }
 
 
@@ -732,8 +734,14 @@ void *dtg_server(void *arg) {
   struct dtg_srv_params *params;
   struct thread_node *last_will;
   struct nbnodename_list *nbname;
+  struct ss_queue *trans;
   struct ss_queue_storage *queue;
   struct ss_queue_storage **all_queues;
+  struct dtg_srvc_packet *pckt;
+  struct rail_list *cur_rail, **last_rail;
+  struct pollfd pollfd;
+  unsigned int pckt_len;
+  unsigned char buff[MAX_UDP_PACKET_LEN+sizeof(uint32_t)];
 
   if (! arg)
     return 0;
@@ -748,7 +756,51 @@ void *dtg_server(void *arg) {
   all_queues = params->all_queues;
   free(params);
 
+  trans = &(queue->queue);
+  pollfd.events = POLLOUT;
 
+  while (! nbworks_dtg_srv_cntrl.all_stop) {
+    while (438) {
+      pckt = ss__recv_pckt(trans);
+      if (pckt) {
+	pckt_len = MAX_UDP_PACKET_LEN;
+	master_dtg_srvc_pckt_writer(pckt, &pckt_len,
+				    (buff+sizeof(uint32_t)));
+	fill_32field(pckt_len, buff);
+
+	cur_rail = queue->rail;
+	last_rail = &(queue->rail);
+	while (cur_rail) {
+	  pollfd.fd = cur_rail->rail_sckt;
+	  poll(&pollfd, 1, 0);
+	  if (pollfd.revents & POLLOUT)
+	    send(cur_rail->rail_sckt, buff, (pckt_len+sizeof(uint32_t)),
+		 MSG_DONTWAIT);
+	  else
+	    if (pollfd.revents & (POLLERR | POLLHUP)) {
+	      *last_rail = cur_rail->next;
+	      close(cur_rail->rail_sckt);
+	      free(cur_rail);
+	      cur_rail = *last_rail;
+	      continue;
+	    }
+	  cur_rail = cur_rail->next;
+	}
+
+	destroy_dtg_srvc_pckt(pckt, 1, 1);
+
+	if (! queue->rail)
+	  break;
+      } else {
+	break;
+      }
+    }
+
+    if (! queue->rail)
+      break;
+
+    nanosleep(&(nbworks_dtg_srv_cntrl.dtg_srv_sleeptime), 0);
+  }
 
   ss_deregister_dtg_tid(nbname);
   ss__dstry_recv_queue(&(queue->queue));
@@ -756,7 +808,7 @@ void *dtg_server(void *arg) {
   destroy_nbnodename(nbname);
 
   if (last_will)
-    last_will->dead = 0xb00;
+    last_will->dead = 0xb00; /* said the ghost */
   return 0;
 }
 

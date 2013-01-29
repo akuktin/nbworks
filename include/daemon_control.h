@@ -22,8 +22,12 @@ struct {
 struct {
   unsigned char all_stop;
   int poll_timeout;
-  struct timespec dtg_srv_sleeptime;
 } nbworks__rail_control;
+
+struct {
+  unsigned char all_stop;
+  struct timespec dtg_srv_sleeptime;
+} nbworks_dtg_srv_cntrl;
 
 time_t nbworks_prune_queuestorage_time;
 
