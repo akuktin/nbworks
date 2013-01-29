@@ -194,7 +194,7 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
     tid = arg->tid;
     result->id.tid = tid;
   }
-  result->rail_sckt = 0;
+  result->rail = 0;
   result->queue.incoming = queue->incoming;
   result->queue.outgoing = queue->outgoing;
   result->next = 0;
@@ -231,6 +231,7 @@ void ss_del_queuestorage(void *arg_ptr,
 			 unsigned char branch,
 			 struct ss_queue_storage **queue_stor) {
   struct ss_queue_storage *cur_stor, **last_stor;
+  struct rail_list *for_del2, *for_del2prim;
   union trans_id *arg;
   uint16_t tid;
 
@@ -247,6 +248,12 @@ void ss_del_queuestorage(void *arg_ptr,
 			  arg->name_scope)) :
 	cur_stor->id.tid == tid) {
       *last_stor = cur_stor->next;
+      for_del2prim = cur_stor->rail;
+      while (for_del2prim) {
+	for_del2 = for_del2prim->next;
+	free(for_del2prim);
+	for_del2prim = for_del2;
+      }
       free(cur_stor);
       return;
     } else {

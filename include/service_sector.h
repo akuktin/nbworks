@@ -27,6 +27,11 @@ union trans_id {
   struct nbnodename_list *name_scope;
 };
 
+struct rail_list {
+  int rail_sckt;
+  struct rail_list *next;
+};
+
 struct ss_unif_pckt_list {
   uint16_t for_del;
   void *packet;
@@ -53,7 +58,7 @@ struct ss_queue {
 struct ss_queue_storage {
   union trans_id id;
   time_t last_active;
-  int rail_sckt;
+  struct rail_list *rail;
   struct ss_queue queue;
   struct ss_queue_storage *next;
 };
@@ -74,6 +79,13 @@ struct newtid_params {
   pthread_t thread_id;
   union trans_id id;
   struct ss_queue *trans;
+};
+
+struct dtg_srv_params {
+  pthread_t thread_id;
+  struct nbnodename_list *nbname;
+  struct ss_queue_storage *queue;
+  struct ss_queue_storage **all_queues;
 };
 
 struct ss_queue_storage *nbworks_queue_storage[2];

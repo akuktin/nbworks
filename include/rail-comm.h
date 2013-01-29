@@ -92,6 +92,13 @@ int
   rail_senddtg(int rail_sckt,
                struct com_comm *command,
                struct ss_queue_storage **queue_stor);
+int
+  rail_add_dtg_server(int rail_sckt,
+                      struct com_comm *command,
+                      struct ss_queue_storage **queue_stor);
+
+void *
+  dtg_server(void *arg);
 
 uint64_t
   make_token();

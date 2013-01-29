@@ -30,6 +30,8 @@
 void init_rail() {
   nbworks__rail_control.all_stop = 0;
   nbworks__rail_control.poll_timeout = TP_100MS;
+  nbworks__rail_control.dtg_srv_sleeptime.tv_sec = 0;
+  nbworks__rail_control.dtg_srv_sleeptime.tv_nsec = T_10MS;
 }
 
 
@@ -74,6 +76,7 @@ int open_rail() {
 
 void *poll_rail(void *args) {
   struct ss_queue_storage *cur_queuestor, **last_queuestor, *for_del;
+  struct rail_list *for_del2, *for_del2prim;
   struct rail_params params, new_params;
   struct pollfd pfd;
   struct sockaddr_un *address;
@@ -120,6 +123,12 @@ void *poll_rail(void *args) {
 	    ss_deregister_tid(&(cur_queuestor->id.tid), ret_val);
 	    for_del = cur_queuestor;
 	    cur_queuestor = cur_queuestor->next;
+	    for_del2prim = for_del->rail;
+	    while (for_del2prim) {
+	      for_del2 = for_del2prim->next;
+	      free(for_del2prim);
+	      for_del2prim = for_del2;
+	    }
 	    free(for_del);
 	  } else {
 	    last_queuestor = &(cur_queuestor->next);
@@ -145,6 +154,7 @@ void *poll_rail(void *args) {
 	free(address);
       } else {
 	/* TODO: error handling */
+	free(address);
       }
     } else {
       new_params.rail_sckt = new_sckt;
@@ -209,12 +219,7 @@ void *handle_rail(void *args) {
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
       /* no check */
     }
-    free(command);
     close(params.rail_sckt);
-    free(params.addr);
-    if (last_will)
-      last_will->dead = TRUE;
-    return 0;
     break;
 
   case rail_delname:
@@ -246,12 +251,7 @@ void *handle_rail(void *args) {
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
     }
     close(params.rail_sckt);
-    free(command);
-    free(params.addr);
     destroy_nbnodename(scope);
-    if (last_will)
-      last_will->dead = TRUE;
-    return 0;
     break;
 
   case rail_dtg_yes:
@@ -281,11 +281,6 @@ void *handle_rail(void *args) {
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
     }
     close(params.rail_sckt);
-    free(command);
-    free(params.addr);
-    if (last_will)
-      last_will->dead = TRUE;
-    return 0;
     break;
 
   case rail_send_dtg:
@@ -298,22 +293,31 @@ void *handle_rail(void *args) {
       }
     }
     close(params.rail_sckt);
-    free(command);
-    free(params.addr);
-    if (last_will)
-      last_will->dead = TRUE;
-    return 0;
+    break;
+
+  case rail_dtg_sckt:
+    if (0 == rail_add_dtg_server(params.rail_sckt,
+				 command,
+				 &(nbworks_queue_storage[DTG_SRVC]))) {
+      command->len = 0;
+      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+      shutdown(params.rail_sckt, SHUT_RD);
+    } else {
+      close(params.rail_sckt);
+    }
     break;
 
   default:
     /* Unknown command. */
-    close(params.rail_sckt);
-    free(command);
-    free(params.addr);
-    if (last_will)
-      last_will->dead = TRUE;
-    return 0;
+    break;
   }
+
+  free(command);
+  free(params.addr);
+  if (last_will)
+    last_will->dead = TRUE;
+  return 0;
 }
 
 
@@ -623,6 +627,132 @@ int rail_senddtg(int rail_sckt,
     destroy_dtg_srvc_pckt(pckt, 1, 1);
   if (buff)
     free(buff);
+  return 0;
+}
+
+/* returns: 0=success, >0=fail, <0=error */
+int rail_add_dtg_server(int rail_sckt,
+			struct com_comm *command,
+			struct ss_queue_storage **queue_stor) {
+  struct ss_queue *trans;
+  struct ss_queue_storage *queue;
+  struct cache_namenode *namecard;
+  struct nbnodename_list *nbname;
+  struct rail_list *new_rail;
+  struct dtg_srv_params *params;
+  time_t cur_time;
+
+  params = malloc(sizeof(struct dtg_srv_params));
+  if (! params) {
+    return -1;
+  }
+
+  new_rail = malloc(sizeof(struct rail_list));
+  if (! new_rail) {
+    free(params);
+    return -1;
+  }
+  new_rail->rail_sckt = rail_sckt;
+
+  nbname = malloc(sizeof(struct nbnodename_list));
+  if (! nbname) {
+    free(new_rail);
+    free(params);
+    return -1;
+  }
+
+  cur_time = time(0);
+
+  namecard = find_namebytok(command->token, &(nbname->next_name));
+  if ((! namecard) ||
+      (namecard->timeof_death <= cur_time) ||
+      (namecard->isinconflict)) {
+    free(new_rail);
+    free(params);
+    free(nbname);
+    return 1;
+  }
+
+  nbname->name = encode_nbnodename(namecard->name, 0);
+  nbname->len = NETBIOS_CODED_NAME_LEN;
+
+  trans = ss_register_dtg_tid(nbname);
+  if (! trans) {
+    /* This can only mean there is already
+       a registered queue with this name. */
+    queue = ss_find_queuestorage(nbname, DTG_SRVC, *queue_stor);
+  } else {
+    queue = ss_add_queuestorage(trans, nbname, DTG_SRVC, queue_stor);
+  }
+
+  if (! queue) {
+    /* Dafuq!?! */
+    if (trans) {
+      ss_deregister_dtg_tid(nbname);
+      ss__dstry_recv_queue(trans);
+      free(trans);
+    }
+    destroy_nbnodename(nbname);
+    free(new_rail);
+    free(params);
+    return 1;
+  }
+
+  new_rail->next = queue->rail;
+  queue->rail = new_rail;
+
+  if (trans)
+    free(trans);
+
+  params->nbname = nbname;
+  params->queue = queue;
+  params->all_queues = queue_stor;
+
+  if (0 != pthread_create(&(params->thread_id), 0,
+			  dtg_server, params)) {
+    ss_deregister_dtg_tid(nbname);
+    ss__dstry_recv_queue(&(queue->queue));
+    ss_del_queuestorage(nbname, DTG_SRVC, queue_stor);
+    destroy_nbnodename(nbname);
+    free(new_rail);
+    free(params);
+
+    return -1;
+  }
+
+  return 0;
+}
+
+
+void *dtg_server(void *arg) {
+  struct dtg_srv_params *params;
+  struct thread_node *last_will;
+  struct nbnodename_list *nbname;
+  struct ss_queue_storage *queue;
+  struct ss_queue_storage **all_queues;
+
+  if (! arg)
+    return 0;
+  else
+    params = arg;
+  if (params->thread_id)
+    last_will = add_thread(params->thread_id);
+  else
+    last_will = 0;
+  nbname = params->nbname;
+  queue = params->queue;
+  all_queues = params->all_queues;
+  free(params);
+
+
+
+  ss_deregister_dtg_tid(nbname);
+  ss__dstry_recv_queue(&(queue->queue));
+  ss_del_queuestorage(nbname, DTG_SRVC, all_queues);
+  destroy_nbnodename(nbname);
+
+  if (last_will)
+    last_will->dead = 0xb00;
   return 0;
 }
 
