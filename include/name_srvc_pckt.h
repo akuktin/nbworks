@@ -46,13 +46,13 @@
 
 
 /* rcode */
-/* rcodes for OPCODE_REGISTRATION */
-# define RCODE_REGISTR_FMT_ERR 0x1 /* Request was incorrectly formated. */
-# define RCODE_REGISTR_SRV_ERR 0x2 /* NBNS server failed. */
-# define RCODE_REGISTR_IMP_ERR 0x4 /* Not implemented or implementation error. */
-# define RCODE_REGISTR_RFS_ERR 0x5 /* Refused. Against the policy. */
-# define RCODE_REGISTR_ACT_ERR 0x6 /* Name in active use by someone else. */
-# define RCODE_REGISTR_CFT_ERR 0x7 /* Name in conflict. */
+# define RCODE_FMT_ERR 0x1 /* Request was incorrectly formated. */
+# define RCODE_SRV_ERR 0x2 /* NBNS server failed. */
+# define RCODE_NAM_ERR 0x3 /* Requested name does not exist. */
+# define RCODE_IMP_ERR 0x4 /* Not implemented or implementation error. */
+# define RCODE_RFS_ERR 0x5 /* Refused. Against the policy. */
+# define RCODE_ACT_ERR 0x6 /* Name in active use by someone else. */
+# define RCODE_CFT_ERR 0x7 /* Name in conflict. */
 
 
 /* nbaddress_list */

@@ -577,7 +577,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 						       cache_namecard->addrs.recrd[i].node_type);
 		  pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
-		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		  pckt->header->rcode = RCODE_CFT_ERR;
 		  pckt->for_del = 1;
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
 
@@ -935,7 +935,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 						       cache_namecard->addrs.recrd[0].node_type);
 		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
-		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		  pckt->header->rcode = RCODE_CFT_ERR;
 		  pckt->for_del = 1;
 
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
@@ -985,7 +985,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 						       cache_namecard->addrs.recrd[0].node_type);
 		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
-		  pckt->header->rcode = RCODE_REGISTR_CFT_ERR;
+		  pckt->header->rcode = RCODE_CFT_ERR;
 		  pckt->for_del = 1;
 
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
@@ -1033,7 +1033,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
     if ((outpckt->header->opcode == (OPCODE_RESPONSE |
 						  OPCODE_REGISTRATION)) &&
-	(outpckt->header->rcode == RCODE_REGISTR_CFT_ERR) &&
+	(outpckt->header->rcode == RCODE_CFT_ERR) &&
 	(outpckt->header->nm_flags & FLG_AA)) {
 
       res = outpckt->answers;
