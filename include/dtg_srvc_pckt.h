@@ -11,6 +11,21 @@
 # define DTG_POS_QRY_RSPNS 0x15
 # define DTG_NEG_QRY_RSPNS 0x16
 
+/* datagram flags field */
+# define DTG_MORE_FLAG      0x01
+# define DTG_FIRST_FLAG     0x02
+# define DTG_NODE_TYPE_MASK 0x0c
+
+# define DTG_NODE_TYPE_B    0x00
+# define DTG_NODE_TYPE_P    0x04
+# define DTG_NODE_TYPE_M    0x08
+# define DTG_NODE_TYPE_NBDD 0x0c
+
+/* datagram errors */
+# define DTG_ERR_DSTNAM_NOTHERE 0x82 /* Destination name not present here. */
+# define DTG_ERR_SRCNAM_BADFORM 0x83 /* Invalid format of the source name. */
+# define DTG_ERR_DSTNAM_BADFORM 0x84 /* Invalid format of the destination name. */
+
 enum dtg_packet_payload_t {
   unknown = 0,
   normal,

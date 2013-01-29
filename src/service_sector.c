@@ -117,9 +117,9 @@ struct ss_queue *ss_register_tid(void *arg_ptr,
 	  /* Duplicate. */
 	  free(my_trans->in);
 	  free(my_trans->out);
-	  free(my_trans);
 	  if (branch == DTG_SRVC)
-	    destroy_nbnodename(result->id.name_scope);
+	    destroy_nbnodename(my_trans->id.name_scope);
+	  free(my_trans);
 	  free(result);
 	  return 0;
 	}
@@ -777,16 +777,22 @@ void *ss__udp_recver(void *sckts_ptr) {
 
 	if (new_pckt) {
 	  /* This means there were no previously registered transactions
-	     with this tid. Register a new one and signal its existance. */
+	     with this tid. If name service, register a new one and signal
+	     its existance. If datagram service, send a NOT-HERE error.
+	     MUSING: perhaps I could just drop the datagram and not send
+	             the error. */
 	  if ((sckts->branch) == DTG_SRVC) { /* There goes my terminally abstract code... */
-	    newtid_queue = ss_register_dtg_tid(name_as_id);
-	    params.id.name_scope = clone_nbnodename(name_as_id);
+	    dtg_srvc_send_NOTHERE_error(new_pckt);
+
+	    free(new_pckt);
+	    break;
 	  } else {
 	    newtid_queue = ss_register_name_tid(&tid);
 	    params.id.tid = tid;
 	  }
 	}
       }
+      /* Surpefluous in datagram mode. */
       if (newtid_queue) {
 	/* Signaling the new queue. */
 	params.thread_id = 0;
@@ -920,4 +926,10 @@ unsigned int get_inaddr() {
   result = 0xff01a8c0;
 
   return result;
+}
+
+unsigned int my_ipv4_address() {
+  // FIXME: stub
+  //        192.168.1.2/24
+  return 0x0201a8c0;
 }
