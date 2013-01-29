@@ -12,15 +12,7 @@
 #include "service_sector.h"
 #include "service_sector_threads.h"
 
-/*
-int dtg_srvc_doesnametake(unsigned char *name,
-			  unsigned char name_type,
-			  struct nbnodename *scope) {
-  
-}
-*/
 
-/* returns: >0=success, 0=fail */
 inline uint16_t dtg_srvc_doesitmatch(struct nbnodename_list *target,
 				     struct dtg_srvc_packet *shot) {
   struct nbnodename_list *gun;
