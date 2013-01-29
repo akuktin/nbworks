@@ -643,14 +643,8 @@ int rail_add_dtg_server(int rail_sckt,
   struct dtg_srv_params *params;
   time_t cur_time;
 
-  params = malloc(sizeof(struct dtg_srv_params));
-  if (! params) {
-    return -1;
-  }
-
   new_rail = malloc(sizeof(struct rail_list));
   if (! new_rail) {
-    free(params);
     return -1;
   }
   new_rail->rail_sckt = rail_sckt;
@@ -658,7 +652,6 @@ int rail_add_dtg_server(int rail_sckt,
   nbname = malloc(sizeof(struct nbnodename_list));
   if (! nbname) {
     free(new_rail);
-    free(params);
     return -1;
   }
 
@@ -669,7 +662,6 @@ int rail_add_dtg_server(int rail_sckt,
       (namecard->timeof_death <= cur_time) ||
       (namecard->isinconflict)) {
     free(new_rail);
-    free(params);
     free(nbname);
     return 1;
   }
@@ -695,30 +687,41 @@ int rail_add_dtg_server(int rail_sckt,
     }
     destroy_nbnodename(nbname);
     free(new_rail);
-    free(params);
     return 1;
   }
 
   new_rail->next = queue->rail;
   queue->rail = new_rail;
 
-  if (trans)
+  if (trans) {
     free(trans);
 
-  params->nbname = nbname;
-  params->queue = queue;
-  params->all_queues = queue_stor;
+    params = malloc(sizeof(struct dtg_srv_params));
+    if (! params) {
+      ss_deregister_dtg_tid(nbname);
+      ss__dstry_recv_queue(&(queue->queue));
+      ss_del_queuestorage(nbname, DTG_SRVC, queue_stor);
+      destroy_nbnodename(nbname);
+      free(new_rail);
 
-  if (0 != pthread_create(&(params->thread_id), 0,
-			  dtg_server, params)) {
-    ss_deregister_dtg_tid(nbname);
-    ss__dstry_recv_queue(&(queue->queue));
-    ss_del_queuestorage(nbname, DTG_SRVC, queue_stor);
-    destroy_nbnodename(nbname);
-    free(new_rail);
-    free(params);
+      return -1;
+    }
 
-    return -1;
+    params->nbname = nbname;
+    params->queue = queue;
+    params->all_queues = queue_stor;
+
+    if (0 != pthread_create(&(params->thread_id), 0,
+			    dtg_server, params)) {
+      ss_deregister_dtg_tid(nbname);
+      ss__dstry_recv_queue(&(queue->queue));
+      ss_del_queuestorage(nbname, DTG_SRVC, queue_stor);
+      destroy_nbnodename(nbname);
+      free(new_rail);
+      free(params);
+
+      return -1;
+    }
   }
 
   return 0;
