@@ -310,6 +310,7 @@ void *handle_rail(void *args) {
 
   default:
     /* Unknown command. */
+    close(params.rail_sckt);
     break;
   }
 
