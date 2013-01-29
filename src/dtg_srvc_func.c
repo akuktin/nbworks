@@ -13,6 +13,7 @@
 #include "service_sector_threads.h"
 
 
+/* returns: >0=success, 0=fail */
 inline uint16_t dtg_srvc_doesitmatch(struct nbnodename_list *target,
 				     struct dtg_srvc_packet *shot) {
   struct nbnodename_list *gun;
