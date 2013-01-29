@@ -87,45 +87,50 @@ void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
 
   packet = pckt->packet;
 
-  if (packet->payload_t == normal) {
-    normal_pyld = packet->payload;
+  if ((packet->type == DIR_UNIQ_DTG) ||
+      (packet->type == DIR_GRP_DTG)) {
+    if (packet->payload_t == normal) {
+      normal_pyld = packet->payload;
 
-    destroy_nbnodename(normal_pyld->src_name);
-    tid = normal_pyld->dst_name;
-    normal_pyld->dst_name = 0;
-    if (normal_pyld->do_del_pyldpyld)
-      free(normal_pyld->payload);
-    else
-      free(normal_pyld->pyldpyld_delptr);
-    free(normal_pyld);
-  } else
-    if (packet->payload_t == nbnodename)
-      destroy_nbnodename(packet->payload);
-    else
-      free(packet->payload);
+      destroy_nbnodename(normal_pyld->src_name);
+      tid = normal_pyld->dst_name;
+      normal_pyld->dst_name = 0;
+      if (normal_pyld->do_del_pyldpyld)
+	free(normal_pyld->payload);
+      else
+	free(normal_pyld->pyldpyld_delptr);
+      free(normal_pyld);
+    } else
+      if (packet->payload_t == nbnodename)
+	destroy_nbnodename(packet->payload);
+      else
+	free(packet->payload);
 
-  packet->for_del = TRUE;
-  packet->payload = 0;
-  packet->payload_t = error_code;
+    packet->for_del = TRUE;
+    packet->payload = 0;
+    packet->payload_t = error_code;
 
-  packet->type = DTG_ERROR;
-  packet->error_code = DTG_ERR_DSTNAM_NOTHERE;
+    packet->type = DTG_ERROR;
+    packet->error_code = DTG_ERR_DSTNAM_NOTHERE;
 
-  packet->src_port = 138; /* >< */
-  packet->src_address = my_ipv4_address();
+    packet->src_port = 138; /* >< */
+    packet->src_address = my_ipv4_address();
 
-  /* This will occationally produce some weird effects. */
-  packet->flags = (packet->flags & DTG_NODE_TYPE_MASK) | DTG_FIRST_FLAG;
+    /* This will occationally produce some weird effects. */
+    packet->flags = (packet->flags & DTG_NODE_TYPE_MASK) | DTG_FIRST_FLAG;
 
-  /* This is inefficient. TODO: think of a better way. */
-  trans = ss_register_dtg_tid(tid);
-  if (trans) {
-    ss_dtg_send_pckt(packet, &(pckt->addr), trans);
-    ss_deregister_tid(tid, DTG_SRVC);
-    ss__dstry_recv_queue(trans);
+    /* This is inefficient. TODO: think of a better way. */
+    trans = ss_register_dtg_tid(tid);
+    if (trans) {
+      ss_dtg_send_pckt(packet, &(pckt->addr), trans);
+      ss_deregister_tid(tid, DTG_SRVC);
+      ss__dstry_recv_queue(trans);
 
-    free(trans);
+      free(trans);
+    }
+    destroy_nbnodename(tid);
+  } else {
+    destroy_dtg_srvc_pckt(packet, 1, 1);
   }
-  destroy_nbnodename(tid);
   return;
 }
