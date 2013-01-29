@@ -918,17 +918,13 @@ void *ss__udp_sender(void *sckts_ptr) {
 }
 
 
-unsigned int get_inaddr() {
-  unsigned int result;
-
+uint32_t get_inaddr() {
   // FIXME: stub
   //        192.168.1.255/24
-  result = 0xff01a8c0;
-
-  return result;
+  return 0xff01a8c0;
 }
 
-unsigned int my_ipv4_address() {
+uint32_t my_ipv4_address() {
   // FIXME: stub
   //        192.168.1.2/24
   return 0x0201a8c0;

@@ -129,7 +129,8 @@ void *ss__port138(void *i_dont_actually_use_this);
 void *ss__udp_recver(void *sckts_ptr);
 void *ss__udp_sender(void *sckts_ptr);
 
-unsigned int get_inaddr();
+uint32_t get_inaddr();
+uint32_t my_ipv4_address();
 
 # define ss_register_name_tid(tid)        ss_register_tid(tid, NAME_SRVC)
 # define ss_deregister_name_tid(tid)      ss_deregister_tid(tid, NAME_SRVC)

@@ -3,6 +3,7 @@
 
 # include "nodename.h"
 # include "dtg_srvc_pckt.h"
+# include "service_sector.h"
 
 inline uint16_t
   dtg_srvc_doesitmatch(struct nbnodename_list *target,
