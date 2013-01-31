@@ -108,37 +108,6 @@ void *poll_rail(void *args) {
     ret_val = poll(&pfd, 1, nbworks__rail_control.poll_timeout);
 
     if (ret_val == 0) {
-      /* BTW, it is NOT guaranteed we will ever reach this point. */
-
-      prunetime = time(0) - nbworks_prune_queuestorage_time;
-      if (prunetime == prevprune)
-	continue;
-      else
-	prevprune = prunetime;
-      for (ret_val=0; ret_val<2; ret_val++) {
-	cur_queuestor = nbworks_queue_storage[ret_val];
-	last_queuestor = &(nbworks_queue_storage[ret_val]);
-
-	while (cur_queuestor) {
-	  if (cur_queuestor->last_active < prunetime) {
-	    *last_queuestor = cur_queuestor->next;
-	    ss_deregister_tid(&(cur_queuestor->id.tid), ret_val);
-	    for_del = cur_queuestor;
-	    cur_queuestor = cur_queuestor->next;
-	    for_del2prim = for_del->rail;
-	    while (for_del2prim) {
-	      for_del2 = for_del2prim->next;
-	      free(for_del2prim);
-	      for_del2prim = for_del2;
-	    }
-	    free(for_del);
-	  } else {
-	    last_queuestor = &(cur_queuestor->next);
-	    cur_queuestor = cur_queuestor->next;
-	  }
-	}
-      }
-
       continue;
     }
     if (ret_val < 0) {
