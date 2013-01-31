@@ -77,13 +77,10 @@ int open_rail() {
 }
 
 void *poll_rail(void *args) {
-  struct ss_queue_storage *cur_queuestor, **last_queuestor, *for_del;
-  struct rail_list *for_del2, *for_del2prim;
   struct rail_params params, new_params;
   struct pollfd pfd;
   struct sockaddr_un *address;
   struct thread_node *last_will;
-  time_t prunetime, prevprune;
   socklen_t scktlen;
   int ret_val, new_sckt;
 
