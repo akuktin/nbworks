@@ -6,18 +6,34 @@
 #include <errno.h>
 #include <unistd.h>
 
-#define DEFAULT_TUNNEL_LEN 0x10000
+#include "constdef.h"
 
-int errno;
+#define DEFAULT_TUNNEL_LEN (1600*30) /* The point with this is to figure
+				      * out a number which equals maximum
+				      * transmission unit times the number
+				      * of TCP packets we will receive in
+				      * the time it takes us to send the
+				      * data down the tunnel. */
 
-int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
+struct stream_connector_args {
+  int sckt_lcl;
+  int sckt_rmt;
+};
+
+//int errno;
+
+void *tunnel_stream_sockets(void *arg) {
+  struct stream_connector_args *params;
   struct pollfd fds[2];
-  nfds_t numof_fds;
   ssize_t trans_len, sent_len;
+  int sckt_lcl, sckt_rmt;
   int ret_val, i;
   unsigned char buf[DEFAULT_TUNNEL_LEN][2];
 
-  numof_fds = 2;
+  params = arg;
+  sckt_lcl = params->sckt_lcl;
+  sckt_rmt = params->sckt_rmt;
+
   trans_len = sent_len = 0;
 
   fds[0].fd = sckt_lcl;
@@ -25,8 +41,8 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
   fds[1].fd = sckt_rmt;
   fds[1].events = (POLLIN | POLLPRI);
 
-  while (1) {
-    ret_val = poll(fds, numof_fds, 100 /* milisecond */);
+  while (0xdeaf) {
+    ret_val = poll(fds, 2, TP_100MS);
     if (ret_val == 0) {
       continue;
     } else {
@@ -34,12 +50,12 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
 	/* TODO: error handling */
 	close(sckt_lcl);
 	close(sckt_rmt);
-	return -1;
+	return 0;
       }
     }
 
     for (i = 0; i < 2; i++) {
-      if (fds[i].revents | POLLIN) {
+      if (fds[i].revents & POLLIN) {
 	trans_len = recv(fds[i].fd, buf[i], DEFAULT_TUNNEL_LEN,
 			 (MSG_DONTWAIT));
 
@@ -53,7 +69,7 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
 	  /* TODO: error handling */
 	  close(sckt_lcl);
 	  close(sckt_rmt);
-	  return -1;
+	  return 0;
 	}
 
 	sent_len = 0;
@@ -68,12 +84,12 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
 	    /* TODO: error handling */
 	    close(sckt_lcl);
 	    close(sckt_rmt);
-	    return -1;
+	    return 0;
 	  }
 	}
       }
 
-      if (fds[i].revents | POLLPRI) {
+      if (fds[i].revents & POLLPRI) {
 	trans_len = recv(fds[i].fd, buf[i], DEFAULT_TUNNEL_LEN,
 			 (MSG_DONTWAIT | MSG_OOB));
 
@@ -87,7 +103,7 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
 	  /* TODO: error handling */
 	  close(sckt_lcl);
 	  close(sckt_rmt);
-	  return -1;
+	  return 0;
 	}
 
 	sent_len = 0;
@@ -102,24 +118,23 @@ int tunnel_stream_sockets(int sckt_lcl, int sckt_rmt) {
 	    /* TODO: error handling */
 	    close(sckt_lcl);
 	    close(sckt_rmt);
-	    return -1;
+	    return 0;
 	  }
 	}
       }
 
-      if (fds[i].revents | POLLHUP) {
-	close(sckt_lcl);
-	close(sckt_rmt);
-	return 0;
+      if (fds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+	if (fds[i].revents & POLLHUP) {
+	  close(sckt_lcl);
+	  close(sckt_rmt);
+	  return 0;
+	} else {
+	  /* TODO: error handling */
+	  close(sckt_lcl);
+	  close(sckt_rmt);
+	  return 0;
+	}
       }
-
-      if (fds[i].revents | POLLERR | POLLNVAL) {
-	/* TODO: errno handling */
-	close(sckt_lcl);
-	close(sckt_rmt);
-	return -1;
-      }
-
     }
   }
 

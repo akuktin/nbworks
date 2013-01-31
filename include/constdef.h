@@ -60,7 +60,8 @@
 
 unsigned char nbworks_do_align;
 
-# define align_incr(base, ptr, incr) (nbworks_do_align ? ((incr- ((ptr-base) %incr)) %incr) : 0)
+# define align_incr(base, ptr, incr) (nbworks_do_align ? \
+                                      ((incr- ((ptr-base) %incr)) %incr) : 0)
 # define align(base, ptr, incr) (ptr + align_incr(base, ptr, incr))
 
 
