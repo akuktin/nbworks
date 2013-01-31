@@ -19,17 +19,11 @@ enum rail_commands {
   rail_regname = 1,
   rail_delname,
 
-  rail_dtg_yes,
-  rail_dtg_no,      /* default */
-  rail_ses_yes,
-  rail_ses_no,      /* default */
-
   rail_make_stream,
   rail_stream_sckt, /* for the server */
   rail_send_dtg,
   rail_dtg_sckt,    /* for the server */
 
-  rail_ask_X_dtgp,  /* does X accept datagrams? */
   rail_addr_ofX     /* what is the address of X? */
 };
 

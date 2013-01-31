@@ -225,35 +225,6 @@ void *handle_rail(void *args) {
     destroy_nbnodename(scope);
     break;
 
-  case rail_dtg_yes:
-  case rail_dtg_no:
-  case rail_ses_yes:
-  case rail_ses_no:
-    cache_namecard = find_namebytok(command->token, 0);
-    if (cache_namecard) {
-      switch (command->command) {
-      case rail_dtg_yes:
-	cache_namecard->takes = cache_namecard->takes | CACHE_TAKES_DTG;
-	break;
-      case rail_dtg_no:
-	cache_namecard->takes = cache_namecard->takes & (~CACHE_TAKES_DTG);
-	break;
-      case rail_ses_yes:
-	cache_namecard->takes = cache_namecard->takes | CACHE_TAKES_SES;
-	break;
-      case rail_ses_no:
-	cache_namecard->takes = cache_namecard->takes & (~CACHE_TAKES_SES);
-	break;
-      default:
-	break;
-      }
-      command->len = 0;
-      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
-    }
-    close(params.rail_sckt);
-    break;
-
   case rail_send_dtg:
     if (find_namebytok(command->token, 0)) {
       if (0 == rail_senddtg(params.rail_sckt, command, &(nbworks_queue_storage[DTG_SRVC]))) {
