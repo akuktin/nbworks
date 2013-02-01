@@ -34,6 +34,8 @@ void init_rail() {
   nbworks_dtg_srv_cntrl.all_stop = 0;
   nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_sec = 0;
   nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_nsec = T_10MS;
+
+  nbworks_ses_srv_cntrl.all_stop = 0;
 }
 
 
@@ -761,6 +763,170 @@ void *dtg_server(void *arg) {
 
   if (last_will)
     last_will->dead = 0xb00; /* said the ghost */
+  return 0;
+}
+
+
+void *tunnel_stream_sockets(void *arg) {
+  struct stream_connector_args *params;
+  struct thread_node *last_will;
+  struct pollfd fds[2];
+  ssize_t trans_len, sent_len;
+  int sckt_lcl, sckt_rmt, read_sckt, write_sckt, l;
+  int ret_val, i;
+  unsigned char buf[DEFAULT_TUNNEL_LEN];
+
+  params = arg;
+  sckt_lcl = params->sckt_lcl;
+  sckt_rmt = params->sckt_rmt;
+  if (params->thread_id)
+    last_will = add_thread(params->thread_id);
+  else
+    last_will = 0;
+  free(params);
+
+  trans_len = sent_len = 0;
+  read_sckt = sckt_lcl;
+  write_sckt = sckt_rmt;
+
+  fds[0].fd = sckt_lcl;
+  fds[0].events = (POLLIN | POLLPRI);
+  fds[1].fd = sckt_rmt;
+  fds[1].events = (POLLIN | POLLPRI);
+
+  while (! nbworks_ses_srv_cntrl.all_stop) {
+    ret_val = poll(fds, 2, TP_100MS);
+    if (ret_val == 0) {
+      continue;
+    } else {
+      if (ret_val < 0) {
+	/* TODO: error handling */
+	close(sckt_lcl);
+	close(sckt_rmt);
+	if (last_will)
+	  last_will->dead = TRUE;
+	return 0;
+      }
+    }
+
+    /* A weird loop.
+     * Coming in, write_sckt equals sckt_rmt. At the start of the loop,
+     * write_sckt gets swaped out and is now equal to sckt_lcl. The test
+     * at the end passes, loop reenters and write_sckt again gets swaped,
+     * this time to sckt_rmt which causes the end test to fail and the
+     * loop exits.
+     * This was done because it's fun. */
+    i = 0;
+    do {
+      /* Swap the sockets. */
+      l = write_sckt;
+      write_sckt = read_sckt;
+      read_sckt = l;
+
+      if (fds[i].revents & (POLLIN | POLLPRI)) {
+	if (fds[i].revents & POLLIN) {
+	  trans_len = recv(read_sckt, buf, DEFAULT_TUNNEL_LEN,
+			   MSG_DONTWAIT);
+
+	  if (trans_len <= 0) {
+	    if (trans_len == 0) {
+	      close(sckt_lcl);
+	      close(sckt_rmt);
+	      if (last_will)
+		last_will->dead = TRUE;
+	      return 0;
+	    } else {
+	      /* TODO: error handling */
+	      close(sckt_lcl);
+	      close(sckt_rmt);
+	      if (last_will)
+		last_will->dead = TRUE;
+	      return 0;
+	    }
+	  }
+
+	  sent_len = 0;
+	  while (sent_len < trans_len) {
+	    errno = 0;
+	    sent_len = sent_len + send(write_sckt, (buf + sent_len),
+				       (trans_len - sent_len),
+				       MSG_NOSIGNAL);
+
+	    if (errno != 0) {
+	      /* TODO: error handling */
+	      close(sckt_lcl);
+	      close(sckt_rmt);
+	      if (last_will)
+		last_will->dead = TRUE;
+	      return 0;
+	    }
+	  }
+	}
+	if (fds[i].revents & POLLPRI) {
+	  trans_len = recv(read_sckt, buf, DEFAULT_TUNNEL_LEN,
+			   (MSG_DONTWAIT | MSG_OOB));
+
+	  if (trans_len <= 0) {
+	    if (trans_len == 0) {
+	      close(sckt_lcl);
+	      close(sckt_rmt);
+	      if (last_will)
+		last_will->dead = TRUE;
+	      return 0;
+	    } else {
+	      /* TODO: error handling */
+	      close(sckt_lcl);
+	      close(sckt_rmt);
+	      if (last_will)
+		last_will->dead = TRUE;
+	      return 0;
+	    }
+	  }
+
+	  sent_len = 0;
+	  while (sent_len < trans_len) {
+	    errno = 0;
+	    sent_len = sent_len + send(write_sckt, (buf + sent_len),
+				       (trans_len - sent_len),
+				       (MSG_NOSIGNAL | MSG_OOB));
+
+	    if (errno != 0) {
+	      /* TODO: error handling */
+	      close(sckt_lcl);
+	      close(sckt_rmt);
+	      if (last_will)
+		last_will->dead = TRUE;
+	      return 0;
+	    }
+	  }
+	}
+      }
+
+      if (fds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+	if (fds[i].revents & POLLHUP) {
+	  close(sckt_lcl);
+	  close(sckt_rmt);
+	  if (last_will)
+	    last_will->dead = TRUE;
+	  return 0;
+	} else {
+	  /* TODO: error handling */
+	  close(sckt_lcl);
+	  close(sckt_rmt);
+	  if (last_will)
+	    last_will->dead = TRUE;
+	  return 0;
+	}
+      }
+
+      i++;
+    } while (write_sckt == sckt_lcl);
+  }
+
+  close(sckt_lcl);
+  close(sckt_rmt);
+  if (last_will)
+    last_will->dead = TRUE;
   return 0;
 }
 

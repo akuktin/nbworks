@@ -52,6 +52,20 @@ struct rail_name_data {
   uint32_t ttl;
 };
 
+/* For the session tunnel. */
+#define DEFAULT_TUNNEL_LEN (1600*30) /* The point with this is to figure
+				      * out a number which equals maximum
+				      * transmission unit times the number
+				      * of TCP packets we will receive in
+				      * the time it takes us to send the
+				      * data down the tunnel. */
+
+struct stream_connector_args {
+  pthread_t thread_id;
+  int sckt_lcl;
+  int sckt_rmt;
+};
+
 void
   init_rail();
 

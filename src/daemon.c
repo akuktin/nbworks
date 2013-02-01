@@ -57,8 +57,6 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_do_align = 0;
 #endif
 
-  nbworks_prune_queuestorage_time = 5;
-
   return result;
 }
 
