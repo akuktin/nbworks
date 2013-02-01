@@ -131,7 +131,8 @@ inline unsigned char *fill_64field(uint64_t content,
 
 struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_walk,
 					    unsigned char *start_of_packet,
-					    unsigned char *end_of_packet) {
+					    unsigned char *end_of_packet,
+					    struct state__readDNSlabels **state) {
   struct DNS_label_pointer_list {
     uint16_t pointer;
     struct DNS_label_pointer_list *next_pointer;
@@ -152,21 +153,41 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
     return 0;
   }
 
-  first_label = malloc(sizeof(struct nbnodename_list));
-  if (! first_label) {
-    /* TODO: errno signaling stuff */
-    return 0;
-  }
-  first_label->name = 0;
-  first_label->next_name = 0;
-  cur_label = first_label;
+  if (state) {
+    if (*state) {
+      first_label = (*state)->first_label;
+      cur_label = (*state)->cur_label;
+      pointers_visited_root = (*state)->pointers_visited_root;
+      name_offset = (*state)->name_offset;
+      walker = (*state)->walker;
 
-  walker = *start_and_end_of_walk;
-  name_offset = ONES;
+      if (walker >= end_of_packet)
+	return 0;
+    } else {
+      *state = malloc(sizeof(struct state__readDNSlabels));
+      if (! (*state)) {
+	/* TODO: errno signaling stuff */
+	return 0;
+      }
+    }
+  }
+
+  if (! state) {
+    first_label = malloc(sizeof(struct nbnodename_list));
+    if (! first_label) {
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
+    first_label->name = 0;
+    first_label->next_name = 0;
+    cur_label = first_label;
+
+    pointers_visited_root = 0;
+    name_offset = ONES;
+    walker = *start_and_end_of_walk;
+  }
   buf[MAX_DNS_LABEL_LEN] = '\0';
-  pointers_visited = 0;
-  pointers_visited_root = 0;
-  pointers_visited_last = 0;
+  pointers_visited = pointers_visited_last = 0;
 
   /* Read RFC 1002 and RFC 883 for
      details and understanding of
@@ -176,25 +197,37 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
     if (*walker <= MAX_DNS_LABEL_LEN) {
       while (0xf0e4) { /* while 0xf0r_ev4! */
 	name_len = *walker;
+	if ((walker + name_len +1) >= end_of_packet) {
+	  /* OUT_OF_BOUNDS */
+	  if (state) {
+	    (*state)->first_label = first_label;
+	    (*state)->cur_label = cur_label;
+	    (*state)->pointers_visited_root = pointers_visited_root;
+	    (*state)->name_offset = name_offset;
+	    (*state)->walker = walker;
+
+	    if (name_offset == ONES)
+	      *start_and_end_of_walk = walker;
+	    return 0;
+	  } else {
+	    /* TODO: errno signaling stuff */
+	    while (first_label) {
+	      cur_label = first_label->next_name;
+	      free(first_label->name);
+	      free(first_label);
+	      first_label = cur_label;
+	    }
+	    while (pointers_visited_root) {
+	      pointers_visited = pointers_visited_root->next_pointer;
+	      free(pointers_visited_root);
+	      pointers_visited_root = pointers_visited;
+	    }
+	    *start_and_end_of_walk = end_of_packet;
+	    return 0;
+	  }
+	}
 	cur_label->len = name_len;
 	walker++;
-	if ((walker + name_len) >= end_of_packet) {
-	  /* OUT_OF_BOUNDS */
-	  /* TODO: errno signaling stuff */
-	  while (first_label) {
-	    cur_label = first_label->next_name;
-	    free(first_label->name);
-	    free(first_label);
-	    first_label = cur_label;
-	  }
-	  while (pointers_visited_root) {
-	    pointers_visited = pointers_visited_root->next_pointer;
-	    free(pointers_visited_root);
-	    pointers_visited_root = pointers_visited;
-	  }
-	  *start_and_end_of_walk = end_of_packet;
-	  return 0;
-	}
 	for (weighted_companion_pointer = 0;
 	     weighted_companion_pointer < name_len;
 	     weighted_companion_pointer++) {
@@ -244,20 +277,32 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
     } else { /* that is, *walker > MAX_DNS_LABEL_LEN */
       if ((walker +1) >= end_of_packet) {
 	/* OUT_OF_BOUNDS */
-	/* TODO: errno signaling stuff */
-	while (first_label) {
-	  cur_label = first_label->next_name;
-	  free(first_label->name);
-	  free(first_label);
-	  first_label = cur_label;
+	if (state) {
+	  (*state)->first_label = first_label;
+	  (*state)->cur_label = cur_label;
+	  (*state)->pointers_visited_root = pointers_visited_root;
+	  (*state)->name_offset = name_offset;
+	  (*state)->walker = walker;
+
+	  if (name_offset == ONES)
+	    *start_and_end_of_walk = walker;
+	  return 0;
+	} else {
+	  /* TODO: errno signaling stuff */
+	  while (first_label) {
+	    cur_label = first_label->next_name;
+	    free(first_label->name);
+	    free(first_label);
+	    first_label = cur_label;
+	  }
+	  while (pointers_visited_root) {
+	    pointers_visited = pointers_visited_root->next_pointer;
+	    free(pointers_visited_root);
+	    pointers_visited_root = pointers_visited;
+	  }
+	  *start_and_end_of_walk = end_of_packet;
+	  return 0;
 	}
-	while (pointers_visited_root) {
-	  pointers_visited = pointers_visited_root->next_pointer;
-	  free(pointers_visited_root);
-	  pointers_visited_root = pointers_visited;
-	}
-	*start_and_end_of_walk = end_of_packet;
-	return 0;
       };
       if (name_offset == ONES) {
 	/* Because of the way name_offset is filled (look below),
@@ -275,21 +320,37 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
       walker = (start_of_packet + name_offset);
       if (walker >= end_of_packet) {
 	/* OUT_OF_BOUNDS */
-	/* TODO: errno signaling stuff */
-	while (first_label) {
-	  cur_label = first_label->next_name;
-	  free(first_label->name);
-	  free(first_label);
-	  first_label = cur_label;
+	if (state) {
+	  (*state)->first_label = first_label;
+	  (*state)->cur_label = cur_label;
+	  (*state)->pointers_visited_root = pointers_visited_root;
+	  (*state)->name_offset = name_offset;
+	  (*state)->walker = walker;
+
+	  if (name_offset == ONES)
+	    *start_and_end_of_walk = walker;
+	  return 0;
+	} else {
+	  /* TODO: errno signaling stuff */
+	  while (first_label) {
+	    cur_label = first_label->next_name;
+	    free(first_label->name);
+	    free(first_label);
+	    first_label = cur_label;
+	  }
+	  while (pointers_visited_root) {
+	    pointers_visited = pointers_visited_root->next_pointer;
+	    free(pointers_visited_root);
+	    pointers_visited_root = pointers_visited;
+	  }
+	  *start_and_end_of_walk = end_of_packet;
+	  return 0;
 	}
-	while (pointers_visited_root) {
-	  pointers_visited = pointers_visited_root->next_pointer;
-	  free(pointers_visited_root);
-	  pointers_visited_root = pointers_visited;
-	}
-	*start_and_end_of_walk = end_of_packet;
-	return 0;
       }
+
+      /* ------------------------ */
+      /* The walker has now been updated. The "pointers_visited" code
+	 Below is for detecting infinite loops. */
 
       /* Now, I COULD have been civilized and just followed the
          RFC 883 which specifies that pointers can only point
@@ -370,6 +431,9 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
        updated, so we update it now. */
     *start_and_end_of_walk = walker +1;
   }
+
+  if (state)
+    free(*state);
 
   return first_label;
 }
