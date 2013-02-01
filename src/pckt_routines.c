@@ -169,10 +169,21 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 	/* TODO: errno signaling stuff */
 	return 0;
       }
-    }
-  }
 
-  if (! state) {
+      first_label = malloc(sizeof(struct nbnodename_list));
+      if (! first_label) {
+	/* TODO: errno signaling stuff */
+	return 0;
+      }
+      first_label->name = 0;
+      first_label->next_name = 0;
+      cur_label = first_label;
+
+      pointers_visited_root = 0;
+      name_offset = ONES;
+      walker = *start_and_end_of_walk;
+    }
+  } else {
     first_label = malloc(sizeof(struct nbnodename_list));
     if (! first_label) {
       /* TODO: errno signaling stuff */
