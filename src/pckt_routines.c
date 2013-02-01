@@ -161,7 +161,8 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
       name_offset = (*state)->name_offset;
       walker = (*state)->walker;
 
-      if (walker >= end_of_packet)
+      if (walker >= end_of_packet ||
+	  walker < start_of_packet)
 	return 0;
     } else {
       *state = malloc(sizeof(struct state__readDNSlabels));
@@ -203,6 +204,7 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   /* Read RFC 1002 and RFC 883 for
      details and understanding of
      what exactly is going on here. */
+  /* Not counting the start-stop system, ofcourse. */
 
   while (*walker != 0) {
     if (*walker <= MAX_DNS_LABEL_LEN) {
@@ -451,7 +453,8 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 
 unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
 				   unsigned char *field,
-				   unsigned char *endof_pckt) {
+				   unsigned char *endof_pckt,
+				   struct nbnodename_list **state) {
   struct nbnodename_list *iterator;
 
   /* I have to check if I can fit the terminating 0 into
@@ -462,7 +465,13 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
     return field;
   }
 
-  iterator = content;
+  if (state) {
+    if (*state) {
+      iterator = *state;
+    }
+  } else {
+    iterator = content;
+  }
 
   while (iterator) {
     /* field + 1 octet for the len + 1 octet for the
@@ -470,6 +479,8 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
     if ((field + 2 + content->len) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
+      if (state)
+	*state = iterator;
       return field;
     }
     *field = content->len;

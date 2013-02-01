@@ -40,7 +40,8 @@ struct nbnodename_list *
 unsigned char *
   fill_all_DNS_labels(struct nbnodename_list *content,
                       unsigned char *field,
-                      unsigned char *endof_pckt);
+                      unsigned char *endof_pckt,
+                      struct nbnodename_list **state);
 struct nbaddress_list *
   read_nbaddress_list(unsigned char **start_and_end_of_walk,
                       uint16_t len_of_addresses,
