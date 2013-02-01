@@ -469,9 +469,8 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
     if (*state) {
       iterator = *state;
     }
-  } else {
-    iterator = content;
   }
+  iterator = content;
 
   while (iterator) {
     /* field + 1 octet for the len + 1 octet for the
