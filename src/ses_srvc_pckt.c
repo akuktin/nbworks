@@ -33,9 +33,9 @@ struct ses_srvc_packet *read_ses_packet_header(unsigned char **master_packet_wal
   packet->flags = (*walker & 0xfe) >> 1;
   packet->len = (*walker & 0x01) << 8;
   walker++;
-  packet->len = (packet->len & *walker) << 8;
+  packet->len = (packet->len | *walker) << 8;
   walker++;
-  packet->len = packet->len & *walker;
+  packet->len = packet->len | *walker;
 
   *master_packet_walker = walker +1;
 
@@ -61,11 +61,11 @@ unsigned char *fill_ses_packet_header(struct ses_srvc_packet *content,
   *walker = content->type;
   walker++;
   *walker = content->flags << 1;
-  *walker = *walker | ((content->len & 0x100) >> 16);
+  *walker = *walker | ((content->len & 0x10000) >> 16);
   walker++;
-  *walker = (content->len & 0x0f0) >> 8;
+  *walker = (content->len & 0x0ff00) >> 8;
   walker++;
-  *walker = content->len & 0x00f;
+  *walker = content->len & 0x000ff;
 
   return walker +1;
 }
@@ -106,7 +106,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
        increase the pointer by at least one. */
     remember_walker = walker +1;
     two_names_payload->called_name = read_all_DNS_labels(&walker, start_of_packet,
-							 end_of_packet);
+							 end_of_packet, 0)
     if (! two_names_payload->called_name) {
       /* TODO: errno signaling stuff */
       free(two_names_payload);
@@ -124,7 +124,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
     }
 
     two_names_payload->calling_name = read_all_DNS_labels(&walker, start_of_packet,
-							  end_of_packet);
+							  end_of_packet, 0);
     if (! two_names_payload->calling_name) {
       /* TODO: errno signaling stuff */
       free(two_names_payload->called_name);
@@ -219,7 +219,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
     }
     remember_walker = walker +1;
     walker = fill_all_DNS_labels(two_names_payload->called_name, walker,
-				 endof_pckt);
+				 endof_pckt, 0);
 
     walker = align(remember_walker, walker, 4);
     if ((walker +1) > endof_pckt) {
@@ -228,7 +228,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
       return walker;
     }
     return fill_all_DNS_labels(two_names_payload->calling_name, walker,
-			       endof_pckt);
+			       endof_pckt, 0);
     break;
 
   case null:
