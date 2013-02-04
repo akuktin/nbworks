@@ -486,7 +486,6 @@ void *name_srvc_B_handle_newtid(void *input) {
     /* Hack to make the complex loops of
        this function work as they should. */
     outside_pckt->packet = 0;
-    last_outpckt = outside_pckt;
 
     cur_time = time(0);
     this_scope = 0;
