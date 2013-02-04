@@ -31,6 +31,7 @@ struct {
 
 struct {
   unsigned char all_stop;
+  struct timespec take_timeout;
 } nbworks_ses_srv_cntrl;
 
 #endif /* NBWORKS_DAEMONCONTROL_H */

@@ -111,7 +111,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     /* read_all_DNS_labels() increments the walker by at least one. */
     remember_walker = walker +1;
     normal_pckt->src_name = read_all_DNS_labels(&walker, start_of_packet,
-						end_of_packet);
+						end_of_packet, 0);
     if (! normal_pckt->src_name) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -130,7 +130,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
     remember_walker = walker +1;
     normal_pckt->dst_name = read_all_DNS_labels(&walker, start_of_packet,
-						end_of_packet);
+						end_of_packet, 0);
     if (! normal_pckt->dst_name) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -185,7 +185,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
   case nbnodename:
     packet->payload_t = nbnodename;
     return read_all_DNS_labels(master_packet_walker, start_of_packet,
-			       end_of_packet);
+			       end_of_packet, 0);
     break;
 
   case bad_type_dtg:
@@ -226,7 +226,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     remember_walker = walker;
 
     walker = fill_all_DNS_labels(normal_pckt->src_name, walker,
-				 endof_pckt);
+				 endof_pckt, 0);
 
     walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->len +1) > endof_pckt) {
@@ -236,7 +236,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     }
 
     walker = fill_all_DNS_labels(normal_pckt->dst_name, walker,
-				 endof_pckt);
+				 endof_pckt, 0);
 
     walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->len) > endof_pckt) {
@@ -266,7 +266,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     if (! content->payload)
       return walker;
     return fill_all_DNS_labels(content->payload, walker,
-			       endof_pckt);
+			       endof_pckt, 0);
     break;
 
   case bad_type_dtg:

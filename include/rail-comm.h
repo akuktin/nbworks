@@ -16,15 +16,19 @@
 # define NBWORKS_SCKT_NAMELEN (7+1+9+1+6)
 
 enum rail_commands {
-  rail_regname = 1,
-  rail_delname,
+  rail_regname = 1,    /* library wants to register a name in the scope */
+  rail_delname,        /* library wants to delete a name from the scope */
 
-  rail_make_stream,
-  rail_stream_sckt, /* for the server */
-  rail_send_dtg,
-  rail_dtg_sckt,    /* for the server */
+  rail_make_stream,    /* library wants to establist a session with port 139 */
+  rail_stream_sckt,    /* library informs the daemon it wants to be a server */
+  rail_stream_pending, /* inform library there is a new session request */
+  rail_stream_take,    /* library requests forwarding the session request */
+  rail_stream_accept,  /* library accepts the new session */
 
-  rail_addr_ofX     /* what is the address of X? */
+  rail_send_dtg,       /* library wants to send a datagram with port 138 */
+  rail_dtg_sckt,       /* library informs the daemon it wants to be a server */
+
+  rail_addr_ofX        /* what is the address of X? */
 };
 
 # define LEN_COMM_ONWIRE (1+8+(2+4)+1+4)
@@ -53,7 +57,7 @@ struct rail_name_data {
 };
 
 /* For the session tunnel. */
-#define DEFAULT_TUNNEL_LEN (1600*30) /* The point with this is to figure
+#define DEFAULT_TUNNEL_LEN (1600*32) /* The point with this is to figure
 				      * out a number which equals maximum
 				      * transmission unit times the number
 				      * of TCP packets we will receive in
@@ -100,6 +104,7 @@ int
   rail_senddtg(int rail_sckt,
                struct com_comm *command,
                struct ss_queue_storage **queue_stor);
+/* returns: 0=success, >0=fail, <0=error */
 int
   rail_add_dtg_server(int rail_sckt,
                       struct com_comm *command,
@@ -107,6 +112,21 @@ int
 
 void *
   dtg_server(void *arg);
+
+/* returns: 0=success, >0=fail, <0=error */
+int
+  rail_add_ses_server(int rail_sckt,
+                      struct com_comm *command);
+/* returns: >0 = success, 0 = failed, <0 = error */
+int
+  rail__send_ses_pending(int rail,
+                         uint64_t token);
+/* returns: >0 = success, 0 = failed, <0 = error */
+int
+  rail_setup_session(int rail,
+                     uint64_t token);
+void *
+  tunnel_stream_sockets(void *arg);
 
 uint64_t
   make_token();

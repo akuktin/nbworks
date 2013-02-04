@@ -82,7 +82,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
   if (*master_packet_walker > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
-    packet->payload_t = unknown;
+    packet->payload_t = unknown_ses;
     return 0;
   }
 
@@ -106,7 +106,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
        increase the pointer by at least one. */
     remember_walker = walker +1;
     two_names_payload->called_name = read_all_DNS_labels(&walker, start_of_packet,
-							 end_of_packet, 0)
+							 end_of_packet, 0);
     if (! two_names_payload->called_name) {
       /* TODO: errno signaling stuff */
       free(two_names_payload);
@@ -142,8 +142,8 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
     return 0;
     break;
 
-  case error_code:
-    packet->payload_t = error_code;
+  case error_code_ses:
+    packet->payload_t = error_code_ses;
     packet->error_code = *walker;
     *master_packet_walker = walker +1;
     return 0;
@@ -235,7 +235,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
     return walker;
     break;
 
-  case error_code:
+  case error_code_ses:
     if ((walker +1) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -293,7 +293,7 @@ inline enum ses_packet_payload_t understand_ses_pckt_type(unsigned char type_oct
     break;
 
   case NEG_SESSION_RESPONSE:
-    return error_code;
+    return error_code_ses;
     break;
 
   case RETARGET_SESSION:
@@ -314,7 +314,7 @@ inline enum ses_packet_payload_t understand_ses_pckt_type(unsigned char type_oct
   }
 
   /* Never reached. */
-  return unknown;
+  return unknown_ses;
 }
 
 
@@ -376,4 +376,23 @@ void *master_ses_srvc_pckt_writer(void *packet_ptr,
 
   *pckt_len = walker - result;
   return result;
+}
+
+
+void destroy_ses_srvc_pckt(struct ses_srvc_packet *pckt) {
+  struct ses_pckt_pyld_two_names *two_names_ptr;
+
+  if (pckt->payload) {
+    if (pckt->payload_t == two_names) {
+      two_names_ptr = pckt->payload;
+      destroy_nbnodename(two_names_ptr->called_name);
+      destroy_nbnodename(two_names_ptr->calling_name);
+    }
+
+    free(pckt->payload);
+  }
+
+  free(pckt);
+
+  return;
 }

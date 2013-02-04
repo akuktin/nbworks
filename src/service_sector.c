@@ -27,11 +27,16 @@
 #include "name_srvc_func_B.h"
 #include "dtg_srvc_pckt.h"
 #include "dtg_srvc_func.h"
+#include "ses_srvc_pckt.h"
 #include "randomness.h"
 #include "service_sector.h"
+#include "service_sector_threads.h"
+#include "rail-comm.h"
 
 
 struct ss_priv_trans *nbworks_all_transactions[2];
+struct ses_srv_rails *nbworks_all_session_srvrs;
+struct ses_srv_sessions *nbworks_all_sessions;
 
 
 void init_service_sector() {
@@ -41,10 +46,21 @@ void init_service_sector() {
   nbworks_queue_storage[0] = 0;
   nbworks_queue_storage[1] = 0;
 
+  nbworks_all_session_srvrs = 0;
+  nbworks_all_sessions = 0;
+
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
   nbworks_all_port_cntl.sleeptime.tv_nsec = T_10MS;
   nbworks_all_port_cntl.poll_timeout = TP_10MS;
+
+  nbworks_dtg_srv_cntrl.all_stop = 0;
+  nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_sec = 0;
+  nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_nsec = T_10MS;
+
+  nbworks_ses_srv_cntrl.all_stop = 0;
+  nbworks_ses_srv_cntrl.take_timeout.tv_sec = 0;
+  nbworks_ses_srv_cntrl.take_timeout.tv_nsec = T_500MS;
 }
 
 struct ss_queue *ss_register_tid(void *arg_ptr,
@@ -474,6 +490,169 @@ inline void ss__dstry_recv_queue(struct ss_queue *trans) {
     trans->incoming = trans->incoming->next;
     /* NOTETOSELF: This is safe. */
     free(for_del);
+  }
+
+  return;
+}
+
+
+struct ses_srv_rails *ss__add_sessrv(struct nbnodename_list *name,
+				     int rail) {
+  struct ses_srv_rails *result, *cur_srv, **last_srv;
+
+  result = malloc(sizeof(struct ses_srv_rails));
+  if (! result)
+    return 0;
+
+  result->name = clone_nbnodename(name);
+  result->rail = rail;
+  result->next = 0;
+
+  while (218) {
+    last_srv = &(nbworks_all_session_srvrs);
+    cur_srv = *last_srv;
+
+    while (cur_srv) {
+      if (0 == cmp_nbnodename(cur_srv->name, name)) {
+	if (cur_srv == result)
+	  return result;
+	else {
+	  destroy_nbnodename(result->name);
+	  free(result);
+	  return 0;
+	}
+      } else {
+	last_srv = &(cur_srv->next);
+	cur_srv = *last_srv;
+      }
+    }
+
+    *last_srv = cur_srv;
+  }
+}
+
+struct ses_srv_rails *ss__find_sessrv(struct nbnodename_list *name) {
+  struct ses_srv_rails *result;
+
+  result = nbworks_all_session_srvrs;
+  while (result) {
+    if (0 == cmp_nbnodename(result->name, name))
+      break;
+    else
+      result = result->next;
+  }
+
+  return result;
+}
+
+void ss__del_sessrv(struct nbnodename_list *name) {
+  struct ses_srv_rails *cur_srv, **last_srv;
+
+  last_srv = &(nbworks_all_session_srvrs);
+  cur_srv = *last_srv;
+
+  while (cur_srv) {
+    if (0 == cmp_nbnodename(cur_srv->name, name)) {
+      *last_srv = cur_srv->next;
+      destroy_nbnodename(cur_srv->name);
+      free(cur_srv);
+
+      return;
+    } else {
+      last_srv = &(cur_srv->next);
+      cur_srv = *last_srv;
+    }
+  }
+
+  return;
+}
+
+
+struct ses_srv_sessions *ss__add_session(uint64_t token,
+					 int out_sckt,
+					 unsigned char *first_buff) {
+  struct ses_srv_sessions *result, *cur_ses, **last_ses;
+
+  result = malloc(sizeof(struct ses_srv_sessions));
+  if (! result) {
+    return 0;
+  }
+
+  result->token = token;
+  result->out_sckt = out_sckt;
+  result->first_buff = first_buff;
+  result->next = 0;
+
+  while (0xb00b5) {
+    cur_ses = nbworks_all_sessions;
+    last_ses = &(nbworks_all_sessions);
+
+    while (cur_ses) {
+      if (cur_ses->token == token) {
+	if (cur_ses != result) {
+	  free(result);
+	  return 0;
+	} else
+	  return result;
+      } else {
+	last_ses = &(cur_ses->next);
+	cur_ses = cur_ses->next;
+      }
+    }
+
+    *last_ses = result;
+  }
+}
+
+struct ses_srv_sessions *ss__find_session(uint64_t token) {
+  struct ses_srv_sessions *result;
+
+  result = nbworks_all_sessions;
+  while (result) {
+    if (result->token == token)
+      break;
+    else
+      result = result->next;
+  }
+
+  return result;
+}
+
+struct ses_srv_sessions *ss__take_session(uint64_t token) {
+  struct ses_srv_sessions *cur_ses, **last_ses;
+
+  last_ses = &(nbworks_all_sessions);
+  cur_ses = *last_ses;
+  while (cur_ses) {
+    if (cur_ses->token == token) {
+      *last_ses = cur_ses->next;
+      return cur_ses;
+    } else {
+      last_ses = &(cur_ses->next);
+      cur_ses = *last_ses;
+    }
+  }
+
+  return 0;
+}
+
+void ss__del_session(uint64_t token,
+		     unsigned char close_sckt) {
+  struct ses_srv_sessions *cur_ses, **last_ses;
+
+  last_ses = &(nbworks_all_sessions);
+  cur_ses = *last_ses;
+  while (cur_ses) {
+    if (cur_ses->token == token) {
+      *last_ses = cur_ses->next;
+      if (close_sckt)
+	close(cur_ses->out_sckt);
+      free(cur_ses);
+      return;
+    } else {
+      last_ses = &(cur_ses->next);
+      cur_ses = *last_ses;
+    }
   }
 
   return;
@@ -922,6 +1101,233 @@ void *ss__udp_sender(void *sckts_ptr) {
   }
 
   return 0;
+}
+
+
+void *ss__port139(void *args) {
+  struct ss_tcp_sckts params;
+  struct pollfd pfd;
+  struct sockaddr_in port_addr;
+  ssize_t ret_val;
+  int sckt139, new_sckt;
+  unsigned int ones;
+
+  ones = ZEROONES;
+  port_addr.sin_family = AF_INET;
+  /* VAXism below */
+  fill_16field(139, (unsigned char *)&(port_addr.sin_port));
+  port_addr.sin_addr.s_addr = get_inaddr();
+
+  sckt139 = socket(PF_INET, SOCK_STREAM, 0);
+  if (sckt139 < 0) {
+    return 0;
+  }
+
+  if (0 > fcntl(sckt139, F_SETFL, O_NONBLOCK)) {
+    /* TODO: errno signaling stuff */
+    close(sckt139);
+    return 0;
+  }
+
+  if (0 != bind(sckt139, &port_addr, sizeof(struct sockaddr_in))) {
+    close(sckt139);
+    return 0;
+  }
+
+  if (0 != listen(sckt139, SOMAXCONN)) {
+    close(sckt139);
+    return 0;
+  }
+
+  pfd.fd = sckt139;
+  pfd.events = POLLIN;
+
+  while (! nbworks_ses_srv_cntrl.all_stop) {
+    ret_val = poll(&pfd, 1, TP_100MS);
+    if (ret_val <= 0) {
+      if (ret_val == 0) {
+	/* NOTE: There is a possibility we may never enter this. */
+	ss_check_all_ses_server_rails(&(nbworks_all_session_srvrs));
+	continue;
+      } else {
+	/* TODO: error handling */
+	continue;
+      }
+    }
+
+    new_sckt = accept(sckt139, 0, 0);
+    if (new_sckt < 0) {
+      continue;
+    } else {
+      params.sckt139 = new_sckt;
+      params.servers = &(nbworks_all_session_srvrs);
+      if (0 != pthread_create(&(params.thread_id), 0,
+			      take_incoming_session, &params)) {
+	close(new_sckt);
+      }
+    }
+  }
+
+  close(sckt139);
+  return nbworks_all_session_srvrs;
+}
+
+void *take_incoming_session(void *arg) {
+  struct ss_tcp_sckts params;
+  struct ses_srv_rails *servers;
+  struct ses_srvc_packet *new_pckt;
+  struct nbnodename_list *called_name;
+  struct ses_srv_sessions *session;
+  struct thread_node *last_will;
+  uint64_t token;
+  unsigned char buf[SES_HEADER_LEN];
+  unsigned char *walker, *big_buff;
+
+  memcpy(&params, arg, sizeof(struct ss_tcp_sckts));
+  if (params.thread_id)
+    last_will = add_thread(params.thread_id);
+  else
+    last_will = 0;
+
+  if (SES_HEADER_LEN > recv(params.sckt139, buf,
+			    SES_HEADER_LEN, MSG_WAITALL)) {
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = 0xda; /* My favourite line. */
+    return 0;
+  }
+
+  walker = buf;
+  new_pckt = read_ses_srvc_pckt_header(&walker, buf+SES_HEADER_LEN);
+  if (! new_pckt) {
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+  }
+
+  if (two_names != (new_pckt->payload_t =
+		    understand_ses_pckt_type(new_pckt->type))) {
+    /* Sorry, wrong daemon. */
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+  }
+
+  /* This can probably be made in a better way. */
+  big_buff = malloc(new_pckt->len+SES_HEADER_LEN);
+  if (! big_buff) {
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+  }
+
+  memcpy(big_buff, buf, SES_HEADER_LEN);
+
+  if (new_pckt->len > recv(params.sckt139, big_buff+SES_HEADER_LEN,
+			   new_pckt->len, MSG_WAITALL)) {
+    free(big_buff);
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+  }
+
+  walker = big_buff+SES_HEADER_LEN;
+
+  new_pckt->payload = read_ses_srvc_pckt_payload_data(new_pckt, &walker,
+						      big_buff, (big_buff+new_pckt->len));
+  if (! new_pckt->payload) {
+    destroy_ses_srvc_pckt(new_pckt);
+    free(big_buff);
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+  }
+
+  called_name = ((struct ses_pckt_pyld_two_names *)new_pckt->payload)->called_name;
+  servers = *(params.servers);
+  while (servers) {
+    if (0 != cmp_nbnodename(called_name, servers->name))
+      servers = servers->next;
+    else
+      break;
+  }
+
+  destroy_ses_srvc_pckt(new_pckt);
+
+  if (servers) {
+    token = make_token();
+    if (0 > fcntl(params.sckt139, F_SETFL, O_NONBLOCK)) {
+      free(big_buff);
+      close(params.sckt139);
+      if (last_will)
+	last_will->dead = TRUE;
+      return 0;
+    }
+
+    if (! ((session = ss__add_session(token, params.sckt139, big_buff)) &&
+	   (0 < rail__send_ses_pending(servers->rail, token)))) {
+      if (session)
+	ss__del_session(token, FALSE);
+      free(big_buff);
+      close(params.sckt139);
+      if (last_will)
+	last_will->dead = TRUE;
+      return 0;
+    }
+  } else {
+    free(big_buff);
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+  }
+
+  nanosleep(&(nbworks_ses_srv_cntrl.take_timeout), 0);
+
+  if (session->token) {
+    ss__del_session(params.sckt139, TRUE);
+  } else {
+    /* For preventing a use-after-free, session is freed here
+     * instead of in rail_setup_session() from the rail sector. */
+    free(session);
+  }
+
+  if (last_will)
+    last_will->dead = TRUE;
+  return 0;
+}
+
+
+void check_all_ses_server_rails(struct ses_srv_rails **rails) {
+  struct ses_srv_rails *cur_rail;
+  struct pollfd pfd;
+
+  if (! rails)
+    return;
+
+  pfd.events = POLLOUT;
+
+  cur_rail = *rails;
+  while (cur_rail) {
+    pfd.fd = cur_rail->rail;
+    poll(&pfd, 1, 0);
+
+    if (pfd.revents & POLLHUP) {
+      *rails = cur_rail->next;
+      close(cur_rail->rail);
+      free(cur_rail);
+    } else {
+      rails = &(cur_rail->next);
+    }
+    cur_rail = *rails;
+  }
+
+  return;
 }
 
 

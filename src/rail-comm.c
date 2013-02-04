@@ -24,18 +24,13 @@
 #include "name_srvc_cache.h"
 #include "name_srvc_func_B.h"
 #include "dtg_srvc_pckt.h"
+#include "ses_srvc_pckt.h"
 #include "randomness.h"
 
 
 void init_rail() {
   nbworks__rail_control.all_stop = 0;
   nbworks__rail_control.poll_timeout = TP_100MS;
-
-  nbworks_dtg_srv_cntrl.all_stop = 0;
-  nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_sec = 0;
-  nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_nsec = T_10MS;
-
-  nbworks_ses_srv_cntrl.all_stop = 0;
 }
 
 
@@ -249,6 +244,22 @@ void *handle_rail(void *args) {
     }
     break;
 
+  case rail_stream_sckt:
+    if (0 == rail_add_ses_server(params.rail_sckt,
+				 command)) {
+      command->len = 0;
+      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+    } else {
+      close(params.rail_sckt);
+    }
+    break;
+
+  case rail_stream_take:
+    rail_setup_session(params.rail_sckt,
+		       command->token);
+    break;
+
   default:
     /* Unknown command. */
     close(params.rail_sckt);
@@ -345,7 +356,7 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
   result->name_type = *walker;
   walker++;
 
-  result->scope = read_all_DNS_labels(&walker, walker, endof_buff);
+  result->scope = read_all_DNS_labels(&walker, walker, endof_buff, 0);
 
   result->isgroup = *walker;
   walker++;
@@ -365,7 +376,7 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
   }
 
   walker = mempcpy(startof_buff, data->name, NETBIOS_NAME_LEN);
-  walker = fill_all_DNS_labels(data->scope, walker, endof_buff);
+  walker = fill_all_DNS_labels(data->scope, walker, endof_buff, 0);
   *walker = data->isgroup;
   walker++;
   walker = fill_32field(data->ttl, walker);
@@ -543,12 +554,14 @@ int rail_senddtg(int rail_sckt,
       }
       if (i<4) { /* paranoid */
 	trans = ss_find_queuestorage(normal_pyld->src_name, DTG_SRVC, *queue_stor);
-	while (! trans) {
-	  ss_add_queuestorage(ss_register_dtg_tid(normal_pyld->src_name), normal_pyld->src_name,
-			      DTG_SRVC, queue_stor);
-	  trans = ss_find_queuestorage(normal_pyld->src_name, DTG_SRVC, *queue_stor);
+	if (! trans) {
+	  do {
+	    ss_add_queuestorage(ss_register_dtg_tid(normal_pyld->src_name), normal_pyld->src_name,
+				DTG_SRVC, queue_stor);
+	    trans = ss_find_queuestorage(normal_pyld->src_name, DTG_SRVC, *queue_stor);
+	  } while (! trans);
+	  trans->last_active = time(0);
 	}
-	trans->last_active = time(0);
 
 	dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
 	pckt->for_del = 1;
@@ -634,6 +647,7 @@ int rail_add_dtg_server(int rail_sckt,
   new_rail->next = queue->rail;
   queue->rail = new_rail;
 
+  queue->last_active = ZEROONES;
   if (trans) {
     free(trans);
 
@@ -767,6 +781,160 @@ void *dtg_server(void *arg) {
 }
 
 
+/* returns: 0=success, >0=fail, <0=error */
+int rail_add_ses_server(int rail_sckt,
+			struct com_comm *command) {
+  struct nbnodename_list *name;
+  unsigned char *buff, *walker;
+
+  buff = malloc(command->len);
+  if (! buff)
+    return -1;
+
+  walker = buff;
+
+  if (command->len > recv(rail_sckt, buff, command->len, MSG_WAITALL)) {
+    free(buff);
+    return 1;
+  }
+
+  name = read_all_DNS_labels(&walker, buff, (buff + command->len), 0);
+  if (! name) {
+    free(buff);
+    return 1;
+  }
+
+  free(buff);
+
+  if (ss__add_sessrv(name, rail_sckt)) {
+    destroy_nbnodename(name);
+    return 0;
+  } else {
+    destroy_nbnodename(name);
+    return 1;
+  }
+}
+
+/* returns: >0 = success, 0 = failed, <0 = error */
+int rail__send_ses_pending(int rail,
+			   uint64_t token) {
+  struct com_comm command;
+  struct pollfd pfd;
+  unsigned char wire_com[LEN_COMM_ONWIRE];
+
+  memset(&command, 0, sizeof(struct com_comm));
+  command.command = rail_stream_pending;
+  command.token = token;
+
+  fill_railcommand(&command, wire_com, wire_com + LEN_COMM_ONWIRE);
+
+  pfd.fd = rail;
+  pfd.events = POLLOUT;
+  if ((0 < poll(&pfd, 1, 0)) &&
+      (pfd.revents & POLLOUT) &&
+      (! (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)))) {
+    if (LEN_COMM_ONWIRE == send(rail, wire_com, LEN_COMM_ONWIRE,
+				MSG_NOSIGNAL)) 
+      return 1;
+  }
+
+  return 0;
+}
+
+/* returns: >0 = success, 0 = failed, <0 = error */
+int rail_setup_session(int rail,
+		       uint64_t token) {
+  struct ses_srv_sessions *session;
+  struct ses_srvc_packet *pckt;
+  struct com_comm *answer;
+  struct stream_connector_args *new_session;
+  ssize_t read;
+  int out_sckt;
+  unsigned char rail_buff[LEN_COMM_ONWIRE];
+  unsigned char *walker;
+
+  session = ss__take_session(token);
+  if (! session) {
+    close(rail);
+    return 0;
+  }
+  /* To prevent a use-after-free, session is freed by
+   * take_incoming_session() from the service sector. */
+
+  session->token = 0;
+
+  walker = session->first_buff;
+  pckt = read_ses_srvc_pckt_header(&walker, walker+SES_HEADER_LEN);
+  pckt->payload = 0;
+
+  if ((pckt->len+SES_HEADER_LEN) > send(rail, session->first_buff,
+					(pckt->len+SES_HEADER_LEN),
+					(MSG_NOSIGNAL | MSG_DONTWAIT))) {
+    close(rail);
+    close(session->out_sckt);
+    free(session->first_buff);
+    free(pckt);
+    return -1;
+  } else {
+    out_sckt = session->out_sckt;
+    free(session->first_buff);
+    free(pckt);
+  }
+
+  if (LEN_COMM_ONWIRE > recv(rail, rail_buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
+    close(rail);
+    close(out_sckt);
+    return -1;
+  }
+
+  answer = read_railcommand(rail_buff, (rail_buff+LEN_COMM_ONWIRE));
+  if (! answer) {
+    close(rail);
+    close(out_sckt);
+    return -1;
+  }
+
+  if (answer->command != rail_stream_accept ||
+      answer->token != token) {
+    close(rail);
+    close(out_sckt);
+    free(answer);
+    return -1;
+  } else {
+    while (answer->len) {
+      read = recv(rail, rail_buff, LEN_COMM_ONWIRE, 0);
+      answer->len = answer->len - read;
+    }
+    free(answer);
+  }
+
+  if (0 > fcntl(rail, F_SETFL, O_NONBLOCK)) {
+    close(rail);
+    close(out_sckt);
+    return -1;
+  }
+  /* The rail socket is now ready for operation. Establish a tunnel. */
+
+  new_session = malloc(sizeof(struct stream_connector_args));
+  if (! new_session) {
+    close(rail);
+    close(out_sckt);
+    return -1;
+  }
+
+  new_session->sckt_lcl = rail;
+  new_session->sckt_rmt = out_sckt;
+
+  if (0 != pthread_create(&(new_session->thread_id), 0,
+			  tunnel_stream_sockets, new_session)) {
+    close(rail);
+    close(out_sckt);
+    return -1;
+  }
+
+  return TRUE;
+}
+
 void *tunnel_stream_sockets(void *arg) {
   struct stream_connector_args *params;
   struct thread_node *last_will;
@@ -789,13 +957,13 @@ void *tunnel_stream_sockets(void *arg) {
   read_sckt = sckt_lcl;
   write_sckt = sckt_rmt;
 
-  fds[0].fd = sckt_lcl;
+  fds[0].fd = sckt_rmt;
   fds[0].events = (POLLIN | POLLPRI);
-  fds[1].fd = sckt_rmt;
+  fds[1].fd = sckt_lcl;
   fds[1].events = (POLLIN | POLLPRI);
 
   while (! nbworks_ses_srv_cntrl.all_stop) {
-    ret_val = poll(fds, 2, TP_100MS);
+    ret_val = poll(fds, 2, TP_250MS);
     if (ret_val == 0) {
       continue;
     } else {
@@ -816,6 +984,9 @@ void *tunnel_stream_sockets(void *arg) {
      * this time to sckt_rmt which causes the end test to fail and the
      * loop exits.
      * This was done because it's fun. */
+    /* It was also done because I forgot that there is a deeper meaning to
+     * the relationship between the socket on whose pollfd I operate and the
+     * socket from which data is being read. Stupid. */
     i = 0;
     do {
       /* Swap the sockets. */
@@ -828,7 +999,9 @@ void *tunnel_stream_sockets(void *arg) {
 	  trans_len = recv(read_sckt, buf, DEFAULT_TUNNEL_LEN,
 			   MSG_DONTWAIT);
 
-	  if (trans_len <= 0) {
+	  if ((trans_len <= 0) &&
+	      ((errno != EAGAIN) ||
+	       (errno != EWOULDBLOCK))) {
 	    if (trans_len == 0) {
 	      close(sckt_lcl);
 	      close(sckt_rmt);
@@ -852,7 +1025,9 @@ void *tunnel_stream_sockets(void *arg) {
 				       (trans_len - sent_len),
 				       MSG_NOSIGNAL);
 
-	    if (errno != 0) {
+	    if ((errno != 0) &&
+		((errno != EAGAIN) ||
+		 (errno != EWOULDBLOCK))) {
 	      /* TODO: error handling */
 	      close(sckt_lcl);
 	      close(sckt_rmt);
@@ -866,7 +1041,9 @@ void *tunnel_stream_sockets(void *arg) {
 	  trans_len = recv(read_sckt, buf, DEFAULT_TUNNEL_LEN,
 			   (MSG_DONTWAIT | MSG_OOB));
 
-	  if (trans_len <= 0) {
+	  if ((trans_len <= 0) &&
+	      ((errno != EAGAIN) ||
+	       (errno != EWOULDBLOCK))) {
 	    if (trans_len == 0) {
 	      close(sckt_lcl);
 	      close(sckt_rmt);
@@ -890,7 +1067,9 @@ void *tunnel_stream_sockets(void *arg) {
 				       (trans_len - sent_len),
 				       (MSG_NOSIGNAL | MSG_OOB));
 
-	    if (errno != 0) {
+	    if ((errno != 0) &&
+		((errno != EAGAIN) ||
+		 (errno != EWOULDBLOCK))) {
 	      /* TODO: error handling */
 	      close(sckt_lcl);
 	      close(sckt_rmt);

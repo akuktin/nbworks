@@ -88,6 +88,25 @@ struct dtg_srv_params {
   struct ss_queue_storage **all_queues;
 };
 
+struct ss_tcp_sckts {
+  int sckt139;
+  struct ses_srv_rails **servers;
+  pthread_t thread_id;
+};
+
+struct ses_srv_rails {
+  struct nbnodename_list *name;
+  int rail;
+  struct ses_srv_rails *next;
+};
+
+struct ses_srv_sessions {
+  uint64_t token;
+  int out_sckt;
+  unsigned char *first_buff;
+  struct ses_srv_sessions *next;
+};
+
 struct ss_queue_storage *nbworks_queue_storage[2];
 
 void init_service_sector();
@@ -135,14 +154,47 @@ inline struct ss_unif_pckt_list *
 inline void
   ss__dstry_recv_queue(struct ss_queue *trans);
 
-void *ss__port137(void *placeholder);
-void *ss__port138(void *i_dont_actually_use_this);
+struct ses_srv_rails *
+  ss__add_sessrv(struct nbnodename_list *name,
+                 int rail);
+struct ses_srv_rails *
+  ss__find_sessrv(struct nbnodename_list *name);
+void
+  ss__del_sessrv(struct nbnodename_list *name);
 
-void *ss__udp_recver(void *sckts_ptr);
-void *ss__udp_sender(void *sckts_ptr);
+struct ses_srv_sessions *
+  ss__add_session(uint64_t token,
+                  int out_sckt,
+                  unsigned char *first_buff);
+struct ses_srv_sessions *
+  ss__find_session(uint64_t token);
+struct ses_srv_sessions *
+  ss__take_session(uint64_t token);
+void
+  ss__del_session(uint64_t token,
+                  unsigned char close_sckt);
 
-uint32_t get_inaddr();
-uint32_t my_ipv4_address();
+void *
+  ss__port137(void *placeholder);
+void *
+  ss__port138(void *i_dont_actually_use_this);
+void *
+  ss__port139(void *non_args);
+
+void *
+  ss__udp_recver(void *sckts_ptr);
+void *
+  ss__udp_sender(void *sckts_ptr);
+
+void *
+  take_incoming_session(void *arg);
+void
+  ss_check_all_ses_server_rails(struct ses_srv_rails **rails);
+
+uint32_t
+  get_inaddr();
+uint32_t
+  my_ipv4_address();
 
 # define ss_register_name_tid(tid)        ss_register_tid(tid, NAME_SRVC)
 # define ss_deregister_name_tid(tid)      ss_deregister_tid(tid, NAME_SRVC)

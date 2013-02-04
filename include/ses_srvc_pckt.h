@@ -10,11 +10,13 @@
 # define RETARGET_SESSION     0x84
 # define SESSION_KEEP_ALIVE   0x85
 
+# define SES_HEADER_LEN 4
+
 enum ses_packet_payload_t {
-  unknown = 0,
+  unknown_ses = 0,
   two_names,
   null,
-  error_code,
+  error_code_ses,
   retarget_blob_rfc1002,
   payloadpayload,
   bad_type_ses
@@ -67,5 +69,8 @@ void *
   master_ses_srvc_pckt_writer(void *packet_ptr,
                               unsigned int *pckt_len,
                               void *packet_field);
+
+void
+  destroy_ses_srvc_pckt(struct ses_srvc_packet *pckt);
 
 #endif /* NBWORKS_SESSRVCPCKT_H */
