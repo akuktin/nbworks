@@ -53,18 +53,18 @@ int open_rail() {
     return -1;
   }
 
-  if (0 > fcntl(result, F_SETFL, O_NONBLOCK)) {
+  if (0 != fcntl(result, F_SETFL, O_NONBLOCK)) {
     /* TODO: errno signaling stuff */
     close(result);
     return -1;
   }
 
-  if (0 > bind(result, (struct sockaddr *)&address, sizeof(struct sockaddr_un))) {
+  if (0 != bind(result, (struct sockaddr *)&address, sizeof(struct sockaddr_un))) {
     /* TODO: errno signaling stuff */
     close(result);
     return -1;
   } else {
-    if (0 > listen(result, SOMAXCONN)) {
+    if (0 != listen(result, SOMAXCONN)) {
       /* TODO: errno signaling stuff */
       close(result);
       return -1;
@@ -910,7 +910,7 @@ int rail_setup_session(int rail,
     free(answer);
   }
 
-  if (0 > fcntl(rail, F_SETFL, O_NONBLOCK)) {
+  if (0 != fcntl(rail, F_SETFL, O_NONBLOCK)) {
     close(rail);
     close(out_sckt);
     return -1;

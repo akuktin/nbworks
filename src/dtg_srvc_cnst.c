@@ -20,8 +20,8 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
 						       uint16_t offset) {
   struct dtg_pckt_pyld_normal *result;
   struct nbnodename_list *complete_src, *complete_dst;
-  unsigned char *label_src, *label_dst;
   int lenof_names;
+  unsigned char *label_src, *label_dst;
 
   label_src = make_nbnodename(src, src_type);
   if (! label_src) {
@@ -56,8 +56,8 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
   result = malloc(sizeof(struct dtg_pckt_pyld_normal));
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_src);
     free(complete_dst);
+    free(complete_src);
     free(label_dst);
     free(label_src);
     return 0;

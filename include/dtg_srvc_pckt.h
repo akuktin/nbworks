@@ -44,6 +44,7 @@ struct dtg_pckt_pyld_normal {
   void *pyldpyld_delptr;
 };
 
+# define DTG_HDR_LEN (1+1+2+4+2)
 struct dtg_srvc_packet {
   unsigned char for_del;
   unsigned char type;

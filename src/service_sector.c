@@ -805,14 +805,14 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
-  if (0 > fcntl(sckts.udp_sckt, F_SETFL, O_NONBLOCK)) {
+  if (0 != fcntl(sckts.udp_sckt, F_SETFL, O_NONBLOCK)) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     nbworks_all_port_cntl.all_stop = 4;
     return 0;
   }
 
-  if (0 > setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
+  if (0 != setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
 		     &ones, sizeof(unsigned int))) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
@@ -820,7 +820,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
-  if (0 > bind(sckts.udp_sckt, (struct sockaddr *)&my_addr,
+  if (0 != bind(sckts.udp_sckt, (struct sockaddr *)&my_addr,
 	       sizeof(struct sockaddr_in))) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
@@ -1124,7 +1124,7 @@ void *ss__port139(void *args) {
     return 0;
   }
 
-  if (0 > fcntl(sckt139, F_SETFL, O_NONBLOCK)) {
+  if (0 != fcntl(sckt139, F_SETFL, O_NONBLOCK)) {
     /* TODO: errno signaling stuff */
     close(sckt139);
     return 0;
@@ -1262,7 +1262,7 @@ void *take_incoming_session(void *arg) {
 
   if (servers) {
     token = make_token();
-    if (0 > fcntl(params.sckt139, F_SETFL, O_NONBLOCK)) {
+    if (0 != fcntl(params.sckt139, F_SETFL, O_NONBLOCK)) {
       free(big_buff);
       close(params.sckt139);
       if (last_will)
