@@ -600,7 +600,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     // NODE STATUS REQUEST
 
     if ((outpckt->header->opcode == (OPCODE_REQUEST |
-						  OPCODE_QUERY)) &&
+				     OPCODE_QUERY)) &&
 	(! outpckt->header->rcode)) {
 
       qstn = outpckt->questions;

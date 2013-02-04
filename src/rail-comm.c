@@ -834,7 +834,7 @@ int rail__send_ses_pending(int rail,
       (pfd.revents & POLLOUT) &&
       (! (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)))) {
     if (LEN_COMM_ONWIRE == send(rail, wire_com, LEN_COMM_ONWIRE,
-				MSG_NOSIGNAL)) 
+				MSG_NOSIGNAL))
       return 1;
   }
 
