@@ -560,7 +560,8 @@ int rail_senddtg(int rail_sckt,
 				DTG_SRVC, queue_stor);
 	    trans = ss_find_queuestorage(normal_pyld->src_name, DTG_SRVC, *queue_stor);
 	  } while (! trans);
-	  trans->last_active = time(0);
+	  if (trans->last_active < ZEROONES)
+	    trans->last_active = time(0);
 	}
 
 	dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
@@ -759,9 +760,10 @@ void *dtg_server(void *arg) {
 	close(cur_rail->rail_sckt);
 	free(cur_rail);
 	cur_rail = *last_rail;
-	continue;
+      } else {
+	last_rail = &(cur_rail->next);
+	cur_rail = *last_rail;
       }
-      cur_rail = cur_rail->next;
     }
 
     if (! queue->rail)
