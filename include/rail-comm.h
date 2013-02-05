@@ -83,7 +83,8 @@ void *
 
 struct com_comm *
   read_railcommand(unsigned char *packet,
-                   unsigned char *endof_pckt);
+                   unsigned char *endof_pckt,
+                   struct com_comm *field);
 unsigned char *
   fill_railcommand(struct com_comm *command,
                    unsigned char *packet,

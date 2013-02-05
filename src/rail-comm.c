@@ -163,7 +163,7 @@ void *handle_rail(void *args) {
     return 0;
   }
 
-  command = read_railcommand(buff, (buff+LEN_COMM_ONWIRE));
+  command = read_railcommand(buff, (buff+LEN_COMM_ONWIRE), 0);
   if (! command) {
     /* TODO: error handling */
     close(params.rail_sckt);
@@ -275,16 +275,21 @@ void *handle_rail(void *args) {
 
 
 struct com_comm *read_railcommand(unsigned char *packet,
-				  unsigned char *endof_pckt) {
+				  unsigned char *endof_pckt,
+				  struct com_comm *field) {
   struct com_comm *result;
   unsigned char *walker;
 
   if ((packet + LEN_COMM_ONWIRE) > endof_pckt)
     return 0;
 
-  result = malloc(sizeof(struct com_comm));
-  if (! result)
-    return 0;
+  if (field)
+    result = field;
+  else {
+    result = malloc(sizeof(struct com_comm));
+    if (! result)
+      return 0;
+  }
 
   walker = packet;
 
@@ -850,7 +855,6 @@ int rail_setup_session(int rail,
   struct ses_srvc_packet *pckt;
   struct com_comm *answer;
   struct stream_connector_args *new_session;
-  ssize_t read;
   int out_sckt;
   unsigned char rail_buff[LEN_COMM_ONWIRE];
   unsigned char *walker;
@@ -889,7 +893,7 @@ int rail_setup_session(int rail,
     return -1;
   }
 
-  answer = read_railcommand(rail_buff, (rail_buff+LEN_COMM_ONWIRE));
+  answer = read_railcommand(rail_buff, (rail_buff+LEN_COMM_ONWIRE), 0);
   if (! answer) {
     close(rail);
     close(out_sckt);
@@ -904,8 +908,23 @@ int rail_setup_session(int rail,
     return -1;
   } else {
     while (answer->len) {
-      read = recv(rail, rail_buff, LEN_COMM_ONWIRE, 0);
-      answer->len = answer->len - read;
+      if (answer->len > LEN_COMM_ONWIRE) {
+	if (LEN_COMM_ONWIRE > recv(rail, rail_buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
+	  close(rail);
+	  close(out_sckt);
+	  free(answer);
+	  return -1;
+	}
+	answer->len = answer->len - LEN_COMM_ONWIRE;
+      } else {
+	if (answer->len > recv(rail, rail_buff, answer->len, MSG_WAITALL)) {
+	  close(rail);
+	  close(out_sckt);
+	  free(answer);
+	  return -1;
+	}
+	answer->len = 0;
+      }
     }
     free(answer);
   }

@@ -1,6 +1,8 @@
 #ifndef NBWORKS_DTGSRVCPCKT_H
 # define NBWORKS_DTGSRVCPCKT_H 1
 
+# include <time.h>
+
 # include "nodename.h"
 
 # define DIR_UNIQ_DTG      0x10
@@ -25,6 +27,8 @@
 # define DTG_ERR_DSTNAM_NOTHERE 0x82 /* Destination name not present here. */
 # define DTG_ERR_SRCNAM_BADFORM 0x83 /* Invalid format of the source name. */
 # define DTG_ERR_DSTNAM_BADFORM 0x84 /* Invalid format of the destination name. */
+
+# define FRAG_TIMEOUT  1 /* seconds */
 
 enum dtg_packet_payload_t {
   unknown = 0,
@@ -55,6 +59,21 @@ struct dtg_srvc_packet {
   enum dtg_packet_payload_t payload_t;
   void *payload;
   unsigned char error_code;
+};
+
+struct dtg_frag {
+  uint16_t offset;
+  uint16_t len;
+  void *data;
+  struct dtg_frag *next;
+};
+
+struct dtg_frag_bckbone {
+  uint16_t id;
+  time_t last_active;
+  struct nbnodename_list *src;
+  struct dtg_frag *frags;
+  struct dtg_frag_bckbone *next;
 };
 
 struct dtg_srvc_packet *
