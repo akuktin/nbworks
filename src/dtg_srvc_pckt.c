@@ -14,7 +14,11 @@ struct dtg_srvc_packet *read_dtg_packet_header(unsigned char **master_packet_wal
   struct dtg_srvc_packet *packet;
   unsigned char *walker;
 
-  if ((*master_packet_walker + 10) > end_of_packet) {
+  if (! master_packet_walker)
+    return 0;
+
+  if ((! *master_packet_walker) ||
+      ((*master_packet_walker + 10) > end_of_packet)) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     return 0;
@@ -46,7 +50,7 @@ unsigned char *fill_dtg_packet_header(struct dtg_srvc_packet *content,
 				      unsigned char *endof_pckt) {
   unsigned char *walker;
 
-  if (! content)
+  if (! (content && field))
     return field;
 
   walker = field;
@@ -75,6 +79,9 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 				      unsigned char read_allpyld) {
   struct dtg_pckt_pyld_normal *normal_pckt;
   unsigned char *walker, *remember_walker;
+
+  if (! (packet && master_packet_walker))
+    return 0;
 
   if (*master_packet_walker > end_of_packet ||
       *master_packet_walker < start_of_packet) {
@@ -205,7 +212,8 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
   struct dtg_pckt_pyld_normal *normal_pckt;
   unsigned char *walker, *remember_walker;
 
-  if (! content)
+  if ((! (content && field)) ||
+      (field > endof_pckt))
     return field;
 
   walker = field;
@@ -313,10 +321,9 @@ void *master_dtg_srvc_pckt_reader(void *packet,
   struct dtg_srvc_packet *result;
   unsigned char *startof_pckt, *endof_pckt, *walker;
 
-  if (len <= 0) {
-    /* TODO: errno signaling stuff */
+  if ((len <= 0) ||
+      (! packet))
     return 0;
-  }
 
   startof_pckt = (unsigned char *)packet;
   walker = startof_pckt;
@@ -332,7 +339,8 @@ void *master_dtg_srvc_pckt_reader(void *packet,
 						    startof_pckt, endof_pckt,
 						    TRUE);
 
-  *tid = result->id;
+  if (tid)
+    *tid = result->id;
 
   return (void *)result;
 }
@@ -345,10 +353,9 @@ void *partial_dtg_srvc_pckt_reader(void *packet,
   struct dtg_srvc_packet *result;
   unsigned char *startof_pckt, *endof_pckt, *walker;
 
-  if (len <= 0) {
-    /* TODO: errno signaling stuff */
+  if ((len <= 0) ||
+      (! packet))
     return 0;
-  }
 
   startof_pckt = (unsigned char *)packet;
   walker = startof_pckt;
@@ -364,7 +371,8 @@ void *partial_dtg_srvc_pckt_reader(void *packet,
 						    startof_pckt, endof_pckt,
 						    FALSE);
 
-  *tid = result->id;
+  if (tid)
+    *tid = result->id;
 
   return (void *)result;
 }

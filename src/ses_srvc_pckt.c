@@ -14,6 +14,9 @@ struct ses_srvc_packet *read_ses_packet_header(unsigned char **master_packet_wal
   struct ses_srvc_packet *packet;
   unsigned char *walker;
 
+  if (! master_packet_walker)
+    return 0;
+
   if ((*master_packet_walker + 4) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
@@ -47,7 +50,7 @@ unsigned char *fill_ses_packet_header(struct ses_srvc_packet *content,
 				      unsigned char *endof_pckt) {
   unsigned char *walker;
 
-  if (! content)
+  if (! (content && field))
     return field;
 
   walker = field;
@@ -79,7 +82,12 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
   unsigned char *walker, *remember_walker;
   void *payload_ptr;
 
-  if (*master_packet_walker > end_of_packet) {
+  if (! master_packet_walker)
+    return 0;
+
+  if ((! *master_packet_walker) ||
+      (*master_packet_walker < start_of_packet) ||
+      (*master_packet_walker > end_of_packet)) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     packet->payload_t = unknown_ses;
@@ -202,7 +210,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
   unsigned char *walker, *remember_walker;
 
-  if (! content)
+  if (! (content && field))
     return field;
 
   walker = field;
@@ -323,10 +331,9 @@ struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
   struct ses_srvc_packet *result;
   unsigned char *startof_pckt, *endof_pckt, *walker;
 
-  if (len <= 0) {
-    /* TODO: errno signaling stuff */
+  if ((len <= 0) ||
+      (! packet))
     return 0;
-  }
 
   startof_pckt = (unsigned char *)packet;
   walker = startof_pckt;
@@ -381,6 +388,9 @@ void *master_ses_srvc_pckt_writer(void *packet_ptr,
 
 void destroy_ses_srvc_pckt(struct ses_srvc_packet *pckt) {
   struct ses_pckt_pyld_two_names *two_names_ptr;
+
+  if (! pckt)
+    return;
 
   if (pckt->payload) {
     if (pckt->payload_t == two_names) {

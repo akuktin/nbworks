@@ -15,7 +15,11 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_
   struct name_srvc_pckt_header *header;
   unsigned char *walker;
 
-  if ((*master_packet_walker + 6 * sizeof(uint16_t)) > end_of_packet) {
+  if (! master_packet_walker)
+    return 0;
+
+  if ((! *master_packet_walker) ||
+      ((*master_packet_walker + 6 * sizeof(uint16_t)) > end_of_packet)) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     return 0;
@@ -53,7 +57,7 @@ unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *he
 					  unsigned char *end_of_packet) {
   unsigned char *walker;
 
-  if (! header)
+  if (! (header && field))
     return field;
 
   walker = field;
@@ -87,7 +91,12 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   struct name_srvc_question *question;
   unsigned char *walker, *remember_walker;
 
-  if (*master_packet_walker >= end_of_packet) {
+  if (! master_packet_walker)
+    return 0;
+
+  if ((! *master_packet_walker) ||
+      (*master_packet_walker < start_of_packet) ||
+      (*master_packet_walker >= end_of_packet)) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     return 0;
@@ -142,7 +151,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 					    unsigned char *end_of_packet) {
   unsigned char *walker;
 
-  if (! question)
+  if (! (question && field))
     return field;
 
   walker = field;
@@ -170,7 +179,12 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   struct name_srvc_resource *resource;
   unsigned char *walker, *remember_walker;
 
-  if (*master_packet_walker >= end_of_packet) {
+  if (! master_packet_walker)
+    return 0;
+
+  if ((! *master_packet_walker) ||
+      (*master_packet_walker < start_of_packet) ||
+      (*master_packet_walker >= end_of_packet)) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     return 0;
@@ -229,7 +243,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 				       unsigned char *end_of_packet) {
   unsigned char *walker;
 
-  if (! resource)
+  if (! (resource && field))
     return field;
 
   walker = field;
@@ -264,7 +278,13 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *weighted_companion_cube, *walker, num_names;
 
-  if ((*start_and_end_of_walk + resource->rdata_len) > end_of_packet) {
+  if (! start_and_end_of_walk)
+    return 0;
+
+  if ((! *start_and_end_of_walk) ||
+      (! resource) ||
+      (*start_and_end_of_walk < start_of_packet) ||
+      (*start_and_end_of_walk + resource->rdata_len) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     return 0;
@@ -500,7 +520,8 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *walker;
 
-  if (! content)
+  if ((! (content && field)) ||
+      (field >= end_of_packet))
     return field;
 
   walker = field;
@@ -675,10 +696,9 @@ void *master_name_srvc_pckt_reader(void *packet,
   int i;
   unsigned char *startof_pckt, *endof_pckt, *walker;
 
-  if (len <= 0) {
-    /* TODO: errno signaling stuff */
+  if ((len <= 0) ||
+      (! packet))
     return 0;
-  }
 
   startof_pckt = (unsigned char *)packet;
   walker = startof_pckt;
@@ -702,7 +722,8 @@ void *master_name_srvc_pckt_reader(void *packet,
     return 0;
   }
 
-  *tid = result->header->transaction_id;
+  if (tid)
+    *tid = result->header->transaction_id;
 
   i = result->header->numof_questions;
   if (i) {
