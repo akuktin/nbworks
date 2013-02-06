@@ -28,9 +28,9 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name,
     decoded_name = result_buf;
   } else {
     decoded_name = malloc(NETBIOS_NAME_LEN +1);
-  }
-  if (! decoded_name) {
-    return 0;
+    if (! decoded_name) {
+      return 0;
+    }
   }
 
   decoded_name_cntr = 0;
@@ -89,9 +89,9 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name,
     coded_name = result_buf;
   } else {
     coded_name = malloc(NETBIOS_CODED_NAME_LEN +1);
-  }
-  if (! coded_name) {
-    return 0;
+    if (! coded_name) {
+      return 0;
+    }
   }
 
   coded_name_cntr = 0;
