@@ -523,7 +523,10 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
     do {
       numof_names++;
       lenof_names = lenof_names + align_incr(0, nbnodenamelen(cur_names->nbnodename), 4);
-      lenof_names = lenof_names +4; /* +2 if no alignment after flags */
+      if (nbworks_do_align)
+        lenof_names = lenof_names +4;
+      else
+        lenof_names = lenof_names +2;
       cur_names = cur_names->next_nbnodename;
     } while (cur_names);
   };

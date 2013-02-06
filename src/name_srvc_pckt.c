@@ -783,7 +783,7 @@ void *master_name_srvc_pckt_reader(void *packet,
 	cur_res = cur_res->next;
 	cur_res->next = 0;
 	i--;
-	} else {
+      } else {
 	break;
       }
     }
@@ -816,7 +816,7 @@ void *master_name_srvc_pckt_reader(void *packet,
 	cur_res = cur_res->next;
 	cur_res->next = 0;
 	i--;
-	} else {
+      } else {
 	break;
       }
     }
@@ -849,7 +849,7 @@ void *master_name_srvc_pckt_reader(void *packet,
 	cur_res = cur_res->next;
 	cur_res->next = 0;
 	i--;
-	} else {
+      } else {
 	break;
       }
     }

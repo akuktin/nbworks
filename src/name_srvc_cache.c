@@ -87,8 +87,8 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 
 
 void *prune_scopes(void *placeholder) {
-  struct cache_scopenode *cur_scope, **last_scope, *for_del2;
-  struct cache_namenode *cur_name, **last_name, *for_del;
+  struct cache_scopenode *cur_scope, **last_scope;
+  struct cache_namenode *cur_name, **last_name;
   struct ipv4_addr_list *cur_addr, *addr_fordel;
   int i;
   time_t curtime;
@@ -109,30 +109,32 @@ void *prune_scopes(void *placeholder) {
       while (cur_name) {
 	if (cur_name->timeof_death < curtime) {
 	  *last_name = cur_name->next;
-	  for_del = cur_name;
-	  cur_name = cur_name->next;
 	  for (i=0; i<4; i++) {
-	    cur_addr = for_del->addrs.recrd[i].addr;
+	    cur_addr = cur_name->addrs.recrd[i].addr;
 	    while (cur_addr) {
 	      addr_fordel = cur_addr->next;
 	      free(cur_addr);
 	      cur_addr = addr_fordel;
 	    }
 	  }
-	  free(for_del->name);
-	  free(for_del);
-	} else
-	  cur_name = cur_name->next;
+	  free(cur_name->name);
+	  free(cur_name);
+          cur_name = *last_name
+	} else {
+          last_name = &(cur_name->next);
+          cur_name = *last_name;
+        }
       }
 
       if (! cur_scope->names) {
 	*last_scope = cur_scope->next;
 	destroy_nbnodename(cur_scope->scope);
-	for_del2 = cur_scope;
-	cur_scope = cur_scope->next;
-	free(for_del2);
-      } else
-	cur_scope = cur_scope->next;
+	free(cur_scope);
+	cur_scope = *last_scope;
+      } else {
+	last_scope = &(cur_scope->next);
+        cur_scope = *last_scope;
+      }
     }
 
     nanosleep(&(nbworks_cache_control.sleeptime), 0);

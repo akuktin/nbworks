@@ -512,7 +512,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     // NAME REGISTRATION REQUEST (GROUP)
 
     if ((outpckt->header->opcode == (OPCODE_REQUEST |
-						  OPCODE_REGISTRATION)) &&
+				     OPCODE_REGISTRATION)) &&
 	(! outpckt->header->rcode)) {
       /* NAME REGISTRATION REQUEST */
 
@@ -823,7 +823,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     // POSITIVE NAME QUERY RESPONSE
 
     if ((outpckt->header->opcode == (OPCODE_RESPONSE |
-						  OPCODE_QUERY)) &&
+				     OPCODE_QUERY)) &&
 	(outpckt->header->rcode == 0) &&
 	(outpckt->header->nm_flags & FLG_AA)) {
 
@@ -865,7 +865,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	    if (nbaddr_list) {
 	      while (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-		if (! status & STATUS_DID_GROUP) {
+		if (! (status & STATUS_DID_GROUP)) {
 		  status = status | STATUS_DID_GROUP;
 		  cache_namecard_b = find_nblabel(decode_nbnodename(res->res->name->name,
                                                                     decoded_name),
@@ -1037,7 +1037,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     // NAME CONFLICT DEMAND
 
     if ((outpckt->header->opcode == (OPCODE_RESPONSE |
-						  OPCODE_REGISTRATION)) &&
+				     OPCODE_REGISTRATION)) &&
 	(outpckt->header->rcode == RCODE_CFT_ERR) &&
 	(outpckt->header->nm_flags & FLG_AA)) {
 
@@ -1097,7 +1097,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     // NAME RELEASE REQUEST
 
     if ((outpckt->header->opcode == (OPCODE_RESPONSE |
-						  OPCODE_RELEASE)) &&
+				     OPCODE_RELEASE)) &&
 	(outpckt->header->rcode == 0)) {
 
       /* Make sure noone spoofs the release request. */
@@ -1168,9 +1168,9 @@ void *name_srvc_B_handle_newtid(void *input) {
      */
 
     if (((outpckt->header->opcode == (OPCODE_REQUEST |
-						   OPCODE_REFRESH)) ||
+				      OPCODE_REFRESH)) ||
 	 (outpckt->header->opcode == (OPCODE_REQUEST |
-						   OPCODE_REFRESH2))) &&
+				      OPCODE_REFRESH2))) &&
 	(outpckt->header->rcode == 0)) {
 
       //      /* Make sure noone spoofs the update request. */

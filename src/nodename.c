@@ -249,13 +249,17 @@ struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
 
     while (1) {
       clone->len = original->len;
-      clone->name = malloc(clone->len);
-      if (! clone->name) {
-	/* TODO: errno signaling stuff */
-	destroy_nbnodename(first_clone);
-	return 0;
+      if (original->name) {
+        clone->name = malloc(clone->len);
+        if (! clone->name) {
+	  /* TODO: errno signaling stuff */
+	  destroy_nbnodename(first_clone);
+	  return 0;
+        }
+        memcpy(clone->name, original->name, clone->len);
+      } else {
+        clone->name = 0;
       }
-      memcpy(clone->name, original->name, clone->len);
       if (original->next_name) {
 	original = original->next_name;
 	clone->next_name = malloc(sizeof(struct nbnodename_list));
@@ -265,10 +269,10 @@ struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
 	  return 0;
 	}
 	clone = clone->next_name;
+      } else {
 	clone->next_name = 0;
-	clone->name = 0;
-      } else
 	break;
+      }
     }
     return first_clone;
   } else
