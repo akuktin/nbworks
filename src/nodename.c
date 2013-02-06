@@ -8,7 +8,7 @@
 
 
 unsigned char *decode_nbnodename(const unsigned char *coded_name,
-				 unsigned char **result_buf) {
+				 unsigned char *result_buf) {
   int coded_name_cntr, decoded_name_cntr;
   int coded_name_len;
   unsigned char *decoded_name;
@@ -25,12 +25,12 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name,
     return 0;
   }
   if (result_buf) {
-    decoded_name = *result_buf;
+    decoded_name = result_buf;
   } else {
     decoded_name = malloc(NETBIOS_NAME_LEN +1);
-    if (! decoded_name) {
-      return 0;
-    }
+  }
+  if (! decoded_name) {
+    return 0;
   }
 
   decoded_name_cntr = 0;
@@ -63,7 +63,7 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name,
 }
 
 unsigned char *encode_nbnodename(const unsigned char *decoded_name,
-				 unsigned char **result_buf) {
+				 unsigned char *result_buf) {
   int coded_name_cntr, decoded_name_cntr;
   unsigned char *coded_name;
   unsigned char nibble_reactor;
@@ -86,12 +86,12 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name,
    */
 
   if (result_buf) {
-    coded_name = *result_buf;
+    coded_name = result_buf;
   } else {
     coded_name = malloc(NETBIOS_CODED_NAME_LEN +1);
-    if (! coded_name) {
-      return 0;
-    }
+  }
+  if (! coded_name) {
+    return 0;
   }
 
   coded_name_cntr = 0;

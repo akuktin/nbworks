@@ -9,8 +9,8 @@
 #include "pckt_routines.h"
 #include "ses_srvc_pckt.h"
 
-struct ses_srvc_packet *read_ses_packet_header(unsigned char **master_packet_walker,
-					       unsigned char *end_of_packet) {
+struct ses_srvc_packet *read_ses_srvc_pckt_header(unsigned char **master_packet_walker,
+					          unsigned char *end_of_packet) {
   struct ses_srvc_packet *packet;
   unsigned char *walker;
 

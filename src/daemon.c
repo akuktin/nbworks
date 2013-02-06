@@ -24,6 +24,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   }
 
   init_service_sector_threads();
+//  init_rail();
   init_service_sector();
   init_name_srvc_cache();
 

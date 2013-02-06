@@ -1304,7 +1304,7 @@ void *take_incoming_session(void *arg) {
 }
 
 
-void check_all_ses_server_rails(struct ses_srv_rails **rails) {
+void ss_check_all_ses_server_rails(struct ses_srv_rails **rails) {
   struct ses_srv_rails *cur_rail;
   struct pollfd pfd;
 

@@ -372,7 +372,8 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
     addrlst->ip_addr = list->address;   /* Again, WRONG FOR GROUPS !!! */
     addrlst->next = 0;
 
-    new_name = alloc_namecard(decode_nbnodename(cur_res->res->name->name, (unsigned char **)&decoded_name),
+    new_name = alloc_namecard(decode_nbnodename(cur_res->res->name->name,
+                                                decoded_name),
 			      NETBIOS_NAME_LEN,
 			      nodetype, 0, isgroup,
 			      cur_res->res->rrtype, cur_res->res->rrclass);
@@ -532,7 +533,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 		continue;
 	      }
 
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                              decoded_name),
 					    NETBIOS_NAME_LEN,
 					    ANY_NODETYPE, ISGROUP_NO,
 					    res->res->rrtype,
@@ -608,7 +610,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	if (qstn->qstn) {
 	  if (qstn->qstn->qtype == QTYPE_NBSTAT) {
 	    if (qstn->qstn->name) {
-	      cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name, (unsigned char **)&decoded_name),
+	      cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name,
+                                                              decoded_name),
 					    NETBIOS_NAME_LEN,
 					    ANY_NODETYPE, ANY_GROUP,
 					    QTYPE_NB,
@@ -705,7 +708,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	    }
 	  } else {
 	    if (qstn->qstn->name) {
-	      cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name, (unsigned char **)&decoded_name),
+	      cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name,
+                                                              decoded_name),
 					    NETBIOS_NAME_LEN,
 					    ANY_NODETYPE, ANY_GROUP,
 					    qstn->qstn->qtype,
@@ -863,7 +867,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      while (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
 		if (! status & STATUS_DID_GROUP) {
 		  status = status | STATUS_DID_GROUP;
-		  cache_namecard_b = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+		  cache_namecard_b = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                                    decoded_name),
 						  NETBIOS_NAME_LEN,
 						  ANY_NODETYPE, ISGROUP_YES,
 						  res->res->rrtype,
@@ -881,7 +886,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      }
 
 	      if (nbaddr_list) {
-		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                                decoded_name),
 					      NETBIOS_NAME_LEN,
 					      ANY_NODETYPE, ISGROUP_NO,
 					      res->res->rrtype,
@@ -1056,7 +1062,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	  }
 
 	  if (status & STATUS_DID_GROUP) {
-	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                            decoded_name),
 					  NETBIOS_NAME_LEN,
 					  ANY_NODETYPE, ISGROUP_YES,
 					  res->res->rrtype,
@@ -1067,7 +1074,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 		cache_namecard->isinconflict = TRUE; /* WRONG ? */
 	  }
 	  if (status & STATUS_DID_UNIQ) {
-	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                            decoded_name),
 					  NETBIOS_NAME_LEN,
 					  ANY_NODETYPE, ISGROUP_NO,
 					  res->res->rrtype,
@@ -1118,7 +1126,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	    }
 
 	    if (status & STATUS_DID_GROUP) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                              decoded_name),
 					    NETBIOS_NAME_LEN,
 					    ANY_NODETYPE, ISGROUP_YES,
 					    res->res->rrtype,
@@ -1129,7 +1138,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  cache_namecard->timeof_death = 0; /* WRONG!!!!! */
 	    }
 	    if (status & STATUS_DID_UNIQ) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                              decoded_name),
 					    NETBIOS_NAME_LEN,
 					    ANY_NODETYPE, ISGROUP_NO,
 					    res->res->rrtype,
@@ -1174,7 +1184,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 	    if (addr_bigblock) {
 	      if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
-		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                                decoded_name),
 					      NETBIOS_NAME_LEN,
 					      ANY_NODETYPE, ISGROUP_YES,
 					      res->res->rrtype,
@@ -1182,7 +1193,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 					      res->res->name->next_name);
 
 		if (! cache_namecard) {
-		  cache_namecard = add_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+		  cache_namecard = add_nblabel(decode_nbnodename(res->res->name->name,
+                                                                 decoded_name),
 					       NETBIOS_NAME_LEN,
 					       ((addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK)
 						>> 4),
@@ -1239,7 +1251,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 		}
 	      }
 	      if (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
-		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
+                                                                decoded_name),
 					      NETBIOS_NAME_LEN,
 					      ANY_NODETYPE, ISGROUP_YES,
 					      res->res->rrtype,
@@ -1247,7 +1260,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 					      res->res->name->next_name);
 
 		if (! cache_namecard) {
-		  cache_namecard = add_nblabel(decode_nbnodename(res->res->name->name, (unsigned char **)&decoded_name),
+		  cache_namecard = add_nblabel(decode_nbnodename(res->res->name->name,
+                                                                 decoded_name),
 					       NETBIOS_NAME_LEN,
 					       (addr_bigblock->node_types &
 						CACHE_ADDRBLCK_UNIQ_MASK),

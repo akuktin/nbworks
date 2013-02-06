@@ -543,7 +543,7 @@ int rail_senddtg(int rail_sckt,
     buff = 0;
 
     namecard = find_nblabel(decode_nbnodename(normal_pyld->dst_name->name,
-					      (unsigned char **)&decoded_name),
+					      decoded_name),
 			    NETBIOS_NAME_LEN, node_type, isgroup,
 			    QTYPE_NB, QCLASS_IN, normal_pyld->dst_name->next_name);
     if (! namecard)
