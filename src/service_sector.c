@@ -688,15 +688,15 @@ void *ss__port137(void *placeholder) {
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
-
+  /*
   ret_val = fcntl(sckts.udp_sckt, F_SETFL, O_NONBLOCK);
   if (ret_val < 0) {
-    /* TODO: errno signaling stuff */
+    /...* TODO: errno signaling stuff *.../
     close(sckts.udp_sckt);
     //XXX    close(sckts.tcp_sckt);
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
-  }
+  }*/
   /* XXX
   ret_val = fcntl(sckts.tcp_sckt, F_SETFL, O_NONBLOCK);
   if (ret_val < 0) {
@@ -896,9 +896,10 @@ void *ss__udp_recver(void *sckts_ptr) {
 	deleter++;
       }
       len = recvfrom(sckts->udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
-		     MSG_DONTWAIT, &his_addr, &addr_len);
+		     /*MSG_DONTWAIT*/0, &his_addr, &addr_len);
       /* BUG: While testing, I have noticed that there appears to be
 	      a very strange behaviour regarding len.
+	      * the below line used to read (len < 0) *
 	      Sometimes, the below test passes (indicating len is either
 	      0 or positive), but if you read it after the if block,
 	      it is -1! This behaviour dissapears if the socket is blocking
@@ -908,7 +909,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	      The other explanation is that GCC fucks things up (again).
 
               perror() displays "Resource temporarily unavailable" */
-      if (len < 0) {
+      if (len <= 0) {
 	if (errno == EAGAIN ||
 	    errno == EWOULDBLOCK) {
 	  break;
