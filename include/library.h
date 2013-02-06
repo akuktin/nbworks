@@ -18,6 +18,21 @@ struct packet_cooked {
   struct packet_cooked *next;
 };
 
+struct dtg_frag {
+  uint32_t offset;
+  uint32_t len;
+  void *data;
+  struct dtg_frag *next;
+};
+
+struct dtg_frag_bckbone {
+  uint16_t id;
+  time_t last_active;
+  struct nbnodename_list *src;
+  struct dtg_frag *frags;
+  struct dtg_frag_bckbone *next;
+};
+
 struct name_state {
   uint64_t token;
   struct nbnodename_list *name;
@@ -45,10 +60,10 @@ struct name_state {
   struct name_state *next;
 };
 
-
 void
   lib_init();
 
+/* returns: >0 = success, 0 = fail, <0 = error */
 int
   lib_start_dtg_srv(struct name_state *handle,
                     unsigned char takes_field,
@@ -87,6 +102,14 @@ struct dtg_frag_bckbone *
 struct dtg_frag *
   lib_order_frags(struct dtg_frag *frags,
                   uint32_t *len);
+void *
+  lib_assemble_frags(struct dtg_frag *frags,
+                     uint32_t len);
+
+/* returns: 0 = YES, listens to, !0 = NO, doesn't listen to */
+int
+  lib_doeslistento(struct nbnodename_list *query,
+                   struct nbnodename_list *answerlist);
 
 int
   lib_daemon_socket();

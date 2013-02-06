@@ -290,9 +290,12 @@ struct dtg_frag_bckbone *lib_add_frag_tobone(uint16_t id,
       if (cur_frag == result)
 	return bone;
       else {
-	last_frag = &(cur_frag->next);
-	cur_frag = *last_frag;
+	free(result);
+	return 0;
       }
+
+      last_frag = &(cur_frag->next);
+      cur_frag = *last_frag;
     }
 
     *last_frag = cur_frag;
@@ -404,6 +407,64 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
     *len = size_todate;
 
   return master;
+}
+
+void *lib_assemble_frags(struct dtg_frag *frags,
+			 uint32_t len) {
+  struct dtg_frag *tmp;
+  uint32_t done;
+  void *result;
+
+  if (! frags)
+    return 0;
+
+  if (len == 0) {
+    tmp = frags;
+    while (tmp) {
+      len = len+tmp->len;
+      tmp = tmp->next;
+    }
+  }
+
+  result = malloc(len);
+  if (! result)
+    return 0;
+
+  done = 0;
+  while (frags) {
+    memcpy((result + done), frags->data, frags->len);
+    done = done + len;
+    frags = frags->next;
+  }
+
+  return result;
+}
+
+
+/* returns: 0 = YES, listens to, !0 = NO, doesn't listen to */
+int lib_doeslistento(struct nbnodename_list *query,
+		     struct nbnodename_list *answerlist) {
+  int labellen;
+  unsigned char *label;
+
+  if (! (query && answerlist)) {
+    if (query == answerlist)
+      return TRUE;
+    else
+      return FALSE;
+  }
+
+  labellen = query->len;
+  label = query->name;
+  while (answerlist) {
+    if (answerlist->len == labellen)
+      if (0 == memcmp(label, answerlist->name, labellen))
+	return TRUE;
+
+    answerlist = answerlist->next_name;
+  }
+
+  return FALSE;
 }
 
 
@@ -580,14 +641,16 @@ void lib_dstry_packets(struct packet_cooked *forkill) {
 }
 
 
-/* returns: >0 = success, 0 = fail, <0 = error */
 void *lib_dtgserver(void *arg) {
   struct name_state *handle;
   struct pollfd pfd;
+  struct dtg_frag_bckbone *fragbone;
+  struct packet_cooked *toshow;
   struct dtg_srvc_packet *dtg;
+  struct dtg_pckt_pyld_normal *nrml_pyld;
   uint32_t len;
   unsigned char lenbuf[sizeof(uint32_t)];
-  unsigned char *new_pckt, *datagram;
+  unsigned char *new_pckt, take_dtg;
 
   if (arg)
     handle = arg;
@@ -596,6 +659,11 @@ void *lib_dtgserver(void *arg) {
 
   pfd.fd = handle->dtg_srv_sckt;
   pfd.events = POLLIN;
+
+  handle->in_server = handle->in_library = 0;
+
+  toshow = 0;
+  take_dtg = FALSE;
 
   while ((! nbworks_libcntl.stop_dtg_srv) ||
 	 (! handle->dtg_srv_stop)) {
@@ -612,38 +680,155 @@ void *lib_dtgserver(void *arg) {
 
     if (sizeof(uint32_t) > recv(handle->dtg_srv_sckt, lenbuf,
 				sizeof(uint32_t), MSG_WAITALL)) {
-      /* FIXME: errno signaling stuff */
-      return 0;
+      break;
     }
 
     read_32field(lenbuf, &len);
 
     new_pckt = malloc(len);
     if (! new_pckt) {
-      /* FIXME: errno signaling stuff */
-      return 0;
+      break;
     }
 
     if (len > recv(handle->dtg_srv_sckt, new_pckt, len, MSG_WAITALL)) {
-      /* FIXME: errno signaling stuff */
-      return 0;
+      break;
     }
 
     dtg = master_dtg_srvc_pckt_reader(new_pckt, len, 0);
     free(new_pckt);
     if (! dtg) {
-      /* FIXME: errno signaling stuff */
-      return 0;
+      break;
     }
 
-    
+    if (dtg->payload_t == normal) {
+      nrml_pyld = dtg->payload;
+      if (handle->dtg_takes == HANDLE_TAKES_ALL)
+	take_dtg = TRUE;
+      else {
+	switch (dtg->type) {
+	case BRDCST_DTG:
+	  if (handle->dtg_takes & HANDLE_TAKES_ALLBRDCST) {
+	    take_dtg = TRUE;
+	  } else {
+	    if (0 == lib_doeslistento(nrml_pyld->src_name,
+				      handle->dtg_listento)) {
+	      take_dtg = TRUE;
+	    }
+	  }
+	  break;
+
+	  /* I think I implemented the below wrong (groups again). */
+	case DIR_UNIQ_DTG:
+	case DIR_GRP_DTG:
+	  if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
+	    take_dtg = TRUE;
+	  } else {
+	    if (0 == lib_doeslistento(nrml_pyld->src_name,
+				      handle->dtg_listento)) {
+	      take_dtg = TRUE;
+	    }
+	  }
+	  break;
+
+	default:
+	  break;
+	}
+      }
+
+      if (take_dtg == TRUE) {
+	take_dtg = FALSE;
+
+	destroy_nbnodename(nrml_pyld->src_name->next_name);
+	nrml_pyld->src_name->next_name = 0;
+
+	if (! (dtg->flags & DTG_FIRST_FLAG)) {
+	  if (lib_add_frag_tobone(dtg->id, nrml_pyld->src_name,
+				  nrml_pyld->offset, nrml_pyld->len,
+				  nrml_pyld->payload, handle->dtg_frags)) {
+	    nrml_pyld->payload = 0;
+	  } else {
+	    destroy_dtg_srvc_pckt(dtg, 1, 1);
+	    lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
+				&(handle->dtg_frags));
+	    continue;
+	  }
+	} else {
+	  if (dtg->flags & DTG_MORE_FLAG) {
+	    if (lib_add_fragbckbone(dtg->id, nrml_pyld->src_name,
+				    nrml_pyld->offset, nrml_pyld->len,
+				    nrml_pyld->payload, &(handle->dtg_frags))) {
+	      nrml_pyld->payload = 0;
+	    } else {
+	      destroy_dtg_srvc_pckt(dtg, 1, 1);
+	      lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
+				  &(handle->dtg_frags));
+	      continue;
+	    }
+	  }
+	}
+
+	if (! (dtg->flags & DTG_MORE_FLAG)) {
+	  toshow = malloc(sizeof(struct packet_cooked));
+	  if (! toshow)
+	    continue;
+
+	  if (dtg->flags & DTG_FIRST_FLAG) {
+	    toshow->data = nrml_pyld->payload;
+	    nrml_pyld->payload = 0;
+
+	    /* Ignore the offset field. */
+	    toshow->len = nrml_pyld->len;
+
+	    toshow->src = nrml_pyld->src_name;
+	    nrml_pyld->src_name = 0;
+
+	    toshow->next = 0;
+	  } else {
+	    fragbone = lib_take_fragbckbone(dtg->id, nrml_pyld->src_name,
+					    &(handle->dtg_frags));
+	    if (fragbone) {
+	      /* A spooky statement. */
+	      toshow->data =
+		lib_assemble_frags(lib_order_frags(fragbone->frags,
+						   &(toshow->len)),
+				   toshow->len);
+	      toshow->src = fragbone->src;
+	      toshow->next = 0;
+
+	      free(fragbone);
+	    } else {
+	      free(toshow);
+	      toshow = 0;
+	    }
+	  }
+	}
+
+	if (toshow) {
+	  if (handle->in_server) {
+	    handle->in_server->next = toshow;
+	    handle->in_server = toshow;
+	  } else {
+	    handle->in_server = toshow;
+	    handle->in_library = toshow;
+	  }
+
+	  toshow = 0;
+	}
+      }
+    }
+
+    destroy_dtg_srvc_pckt(dtg, 1, 1);
   }
 
   close(handle->dtg_srv_sckt);
+
   destroy_nbnodename(handle->dtg_listento);
   handle->dtg_listento = 0;
+
   lib_destroy_fragbckbone(handle->dtg_frags);
   handle->dtg_frags = 0;
+
+  handle->in_server = 0;
 
   return 0;
 }

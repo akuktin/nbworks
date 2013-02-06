@@ -61,20 +61,6 @@ struct dtg_srvc_packet {
   unsigned char error_code;
 };
 
-struct dtg_frag {
-  uint16_t offset;
-  uint16_t len;
-  void *data;
-  struct dtg_frag *next;
-};
-
-struct dtg_frag_bckbone {
-  uint16_t id;
-  time_t last_active;
-  struct nbnodename_list *src;
-  struct dtg_frag *frags;
-  struct dtg_frag_bckbone *next;
-};
 
 struct dtg_srvc_packet *
   read_dtg_packet_header(unsigned char **master_packet_walker,
