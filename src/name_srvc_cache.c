@@ -119,7 +119,7 @@ void *prune_scopes(void *placeholder) {
 	  }
 	  free(cur_name->name);
 	  free(cur_name);
-          cur_name = *last_name
+          cur_name = *last_name;
 	} else {
           last_name = &(cur_name->next);
           cur_name = *last_name;
