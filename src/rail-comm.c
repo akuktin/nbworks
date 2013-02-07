@@ -892,7 +892,7 @@ int rail_setup_session(int rail,
   if (LEN_COMM_ONWIRE > recv(rail, rail_buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
     close(rail);
     close(out_sckt);
-    return -1;
+    return 0;
   }
 
   answer = read_railcommand(rail_buff, (rail_buff+LEN_COMM_ONWIRE), 0);
