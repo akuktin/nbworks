@@ -390,16 +390,15 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
 	destroy_name_srvc_res_lst(res, TRUE, TRUE);
 	return new_name;
       } else {
-	destroy_name_srvc_res_lst(res, TRUE, TRUE);
-	return 0;
+	destroy_namecard(new_name);
       }
     } else {
-      destroy_name_srvc_res_lst(res, TRUE, TRUE);
-      return 0;
+      free(addrlist);
     }
-  } else
-    destroy_name_srvc_res_lst(res, TRUE, TRUE);
-    return 0;
+  }
+
+  destroy_name_srvc_res_lst(res, TRUE, TRUE);
+  return 0;
 }
 
 #define STATUS_DID_NONE   0x00
