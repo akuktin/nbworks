@@ -879,11 +879,13 @@ int rail_setup_session(int rail,
     close(rail);
     close(session->out_sckt);
     free(session->first_buff);
+    session->first_buff = 0;
     free(pckt);
     return -1;
   } else {
     out_sckt = session->out_sckt;
     free(session->first_buff);
+    session->first_buff = 0;
     free(pckt);
   }
 
