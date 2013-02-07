@@ -264,11 +264,11 @@ void *handle_rail(void *args) {
     ipv4 = rail_whatisaddrX(params.rail_sckt,
 			    command);
     if (ipv4) {
-      command->len = 4;
+      command->len = sizeof(uint32_t);
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
       fill_32field(ipv4, buff);
-      send(params.rail_sckt, buff, 4, 0);
+      send(params.rail_sckt, buff, sizeof(uint32_t), 0);
     }
     close(params.rail_sckt);
     break;
