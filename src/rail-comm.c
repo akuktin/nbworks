@@ -137,7 +137,7 @@ void *handle_rail(void *args) {
   struct com_comm *command;
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
-  uint32_t my_ipv4, i;
+  uint32_t ipv4, i;
   unsigned char buff[LEN_COMM_ONWIRE], *name_ptr;
 
   memcpy(&params, args, sizeof(struct rail_params));
@@ -192,12 +192,12 @@ void *handle_rail(void *args) {
     if (cache_namecard) {
       for (i=0; i<4; i++) {
 	if (cache_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
-	  my_ipv4 = cache_namecard->addrs.recrd[i].addr->ip_addr;
+	  ipv4 = cache_namecard->addrs.recrd[i].addr->ip_addr;
       }
 
       name_ptr = cache_namecard->name;
       name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			       scope, my_ipv4, cache_namecard->isgroup);
+			       scope, ipv4, cache_namecard->isgroup);
 
       if (cache_namecard->isgroup) {
 	cache_namecard->token = 0;
@@ -258,6 +258,19 @@ void *handle_rail(void *args) {
   case rail_stream_take:
     rail_setup_session(params.rail_sckt,
 		       command->token);
+    break;
+
+  case rail_addr_ofX:
+    ipv4 = rail_whatisaddrX(params.rail_sckt,
+			    command);
+    if (ipv4) {
+      command->len = 4;
+      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+      fill_32field(ipv4, buff);
+      send(params.rail_sckt, buff, 4, 0);
+    }
+    close(params.rail_sckt);
     break;
 
   default:
@@ -1129,6 +1142,74 @@ void *tunnel_stream_sockets(void *arg) {
   close(sckt_rmt);
   if (last_will)
     last_will->dead = TRUE;
+  return 0;
+}
+
+
+/* WRONG FOR GROUPS! */
+uint32_t rail_whatisaddrX(int rail_sckt,
+			  struct com_comm *command) {
+  struct cache_namenode *namecard;
+  struct rail_name_data *name;
+  int i;
+  unsigned char node_type;
+  unsigned char *buff;
+
+  if (! command)
+    return 0;
+
+  switch (command->node_type) {
+  case H:
+    node_type = CACHE_NODEFLG_H;
+    break;
+  case M:
+    node_type = CACHE_NODEFLG_M;
+    break;
+  case P:
+    node_type = CACHE_NODEFLG_P;
+    break;
+  case B:
+  default:
+    node_type = CACHE_NODEFLG_B;
+    break;
+  }
+
+  buff = malloc(command->len);
+  if (! buff) {
+    return 0;
+  }
+
+  if (command->len > recv(rail_sckt, buff, command->len, MSG_WAITALL)) {
+    return 0;
+  }
+
+  name = read_rail_name_data(buff, buff + command->len);
+  free(buff);
+  if (! name) {
+    return 0;
+  }
+
+  namecard = find_nblabel(name->name, NETBIOS_NAME_LEN, node_type,
+			  name->isgroup ? ISGROUP_YES : ISGROUP_NO,
+			  RRTYPE_NB, RRCLASS_IN,
+			  name->scope);
+  if (! namecard) {
+    namecard = name_srvc_B_find_name(name->name, (name->name)[NETBIOS_NAME_LEN -1],
+				     name->scope, node_type,
+				     name->isgroup ? ISGROUP_YES : ISGROUP_NO);
+  }
+
+  free(name->name);
+  destroy_nbnodename(name->scope);
+  free(name);
+
+  if (namecard) {
+    for (i=0; i<4; i++) {
+      if (namecard->addrs.recrd[i].node_type == node_type)
+	return namecard->addrs.recrd[i].addr->ip_addr;
+    }
+  }
+
   return 0;
 }
 

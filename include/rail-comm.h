@@ -129,6 +129,10 @@ int
 void *
   tunnel_stream_sockets(void *arg);
 
+uint32_t
+  rail_whatisaddrX(int rail_sckt,
+                   struct com_comm *command);
+
 uint64_t
   make_token();
 
