@@ -167,7 +167,8 @@ struct cache_namenode *add_name(struct cache_namenode *name,
       if ((cur_name->namelen == name->namelen) &&
 	  (0 == memcmp(cur_name->name, name->name,
 		       name->namelen)) &&
-	  (cur_name->isgroup & name->isgroup) &&
+	  (name->isgroup ? cur_name->isgroup :
+	                   (! cur_name->isgroup)) &&
 	  (cur_name->dns_type == name->dns_type) &&
 	  (cur_name->dns_class == name->dns_class)) {
 	if (cur_name != name) {
@@ -272,7 +273,8 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
     if ((cur_name->namelen == name->namelen) &&
 	(0 == memcmp(cur_name->name, name->name,
 		     name->namelen)) &&
-	(cur_name->isgroup & name->isgroup) &&
+	(name->isgroup ? cur_name->isgroup :
+	                 (! cur_name->isgroup)) &&
 	(cur_name->dns_type == name->dns_type) &&
 	(cur_name->dns_class == name->dns_class)) {
 
@@ -321,7 +323,8 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
     if ((cur_name->namelen == namecard->namelen) &&
 	(0 == memcmp(cur_name->name, namecard->name,
 		     namecard->namelen)) &&
-	(cur_name->isgroup & namecard->isgroup) &&
+	(namecard->isgroup ? cur_name->isgroup :
+	                     (! cur_name->isgroup)) &&
 	(cur_name->node_types & namecard->node_types) &&
 	(cur_name->dns_type == namecard->dns_type) &&
 	(cur_name->dns_class == namecard->dns_class)) {
@@ -358,7 +361,8 @@ struct cache_namenode *find_nblabel(void *label,
     if ((cur_name->namelen == labellen) &&
 	(0 == memcmp(cur_name->name, label,
 		     labellen)) &&
-	(cur_name->isgroup & isgroup) &&
+	(isgroup ? cur_name->isgroup :
+	           (! cur_name->isgroup)) &&
 	(cur_name->node_types & node_types) &&
 	(cur_name->dns_type == dns_type) &&
 	(cur_name->dns_class == dns_class)) {
