@@ -195,7 +195,7 @@ void *handle_rail(void *args) {
       command->len = 0;
       command->data = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       /* no check */
     }
     close(params.rail_sckt);
@@ -227,7 +227,7 @@ void *handle_rail(void *args) {
       }
       command->len = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
     }
     close(params.rail_sckt);
     destroy_nbnodename(scope);
@@ -240,7 +240,7 @@ void *handle_rail(void *args) {
 	command->len = 0;
 	command->data = 0;
 	fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-	send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+	send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       }
     }
     close(params.rail_sckt);
@@ -252,7 +252,7 @@ void *handle_rail(void *args) {
 				 &(nbworks_queue_storage[DTG_SRVC]))) {
       command->len = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       shutdown(params.rail_sckt, SHUT_RD);
     } else {
       close(params.rail_sckt);
@@ -264,7 +264,7 @@ void *handle_rail(void *args) {
 				 command)) {
       command->len = 0;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
     } else {
       close(params.rail_sckt);
     }
@@ -281,9 +281,9 @@ void *handle_rail(void *args) {
     if (ipv4) {
       command->len = 4;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       fill_32field(ipv4, buff);
-      send(params.rail_sckt, buff, 4, 0);
+      send(params.rail_sckt, buff, 4, MSG_NOSIGNAL);
     }
     close(params.rail_sckt);
     break;

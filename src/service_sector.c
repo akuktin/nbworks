@@ -1059,7 +1059,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 	    len = MAX_UDP_PACKET_LEN;
 	    sckts.master_writer(ptr, &len, udp_pckt);
 
-	    sendto(sckts.udp_sckt, udp_pckt, len, 0,
+	    sendto(sckts.udp_sckt, udp_pckt, len, MSG_NOSIGNAL,
 		   &(cur_trans->out->addr),
 		   sizeof(cur_trans->out->addr));
 
@@ -1084,7 +1084,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 	    len = MAX_UDP_PACKET_LEN;
 	    sckts.master_writer(ptr, &len, udp_pckt);
 
-	    sendto(sckts.udp_sckt, udp_pckt, len, 0,
+	    sendto(sckts.udp_sckt, udp_pckt, len, MSG_NOSIGNAL,
 		   &(cur_trans->out->addr),
 		   sizeof(cur_trans->out->addr));
 
@@ -1103,7 +1103,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 	  len = MAX_UDP_PACKET_LEN;
 	  sckts.master_writer(ptr, &len, udp_pckt);
 
-	  sendto(sckts.udp_sckt, udp_pckt, len, 0,
+	  sendto(sckts.udp_sckt, udp_pckt, len, MSG_NOSIGNAL,
 		 &(cur_trans->out->addr),
 		 sizeof(cur_trans->out->addr));
 

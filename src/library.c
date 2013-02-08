@@ -6,6 +6,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/un.h>
 #include <poll.h>
 
@@ -926,7 +928,7 @@ int lib_open_session(struct name_state *handle,
   struct ses_pckt_pyld_two_names *twins;
   struct sockaddr_in addr;
   int ses_sckt, retry_count;;
-  unsigned int lenof_pckt, wrotelenof_pckt;
+  unsigned int lenof_pckt, wrotelenof_pckt, ones;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char small_buff[SMALL_BUFF_LEN];
 
@@ -940,6 +942,7 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
+  ones = ONES;
   retry_count = 0;
 
   her = clone_nbnodename(dst);
@@ -1039,7 +1042,7 @@ int lib_open_session(struct name_state *handle,
                                    *herpckt_buff, *pckt,
 				   small_buff[] */
  try_to_connect:
-  ses_sckt = socket(AF_INET, SOCK_STREAM, 0);
+  ses_sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (ses_sckt == -1) {
     free(mypckt_buff);
     return -1;
@@ -1050,6 +1053,15 @@ int lib_open_session(struct name_state *handle,
     free(mypckt_buff);
     return -1;
   }
+  /* --------------------------------------------------------------- */
+  /* Looks like I will HAVE to implement some sort of errno,
+     because a failure here is not fatal, but requires special care. */
+  setsockopt(ses_sckt, SOL_SOCKET, SO_KEEPALIVE,
+	     &ones, sizeof(unsigned int));
+  ones = 75;
+  setsockopt(ses_sckt, IPPROTO_TCP, TCP_KEEPIDLE,
+	     &ones, sizeof(unsigned int));
+  /* --------------------------------------------------------------- */
 
   if (0 != connect(ses_sckt, &addr, sizeof(struct sockaddr_in))) {
     close(ses_sckt);
@@ -1058,17 +1070,27 @@ int lib_open_session(struct name_state *handle,
   }
 
   if (wrotelenof_pckt > send(ses_sckt, mypckt_buff, wrotelenof_pckt,
-			     MSG_DONTWAIT)) {
+			     (MSG_DONTWAIT | MSG_NOSIGNAL))) {
     close(ses_sckt);
-    free(mypckt_buff);
-    return -1;
+    if (retry_count < nbworks_max_ses_retarget_retries) {
+      retry_count++;
+      goto try_to_connect;
+    } else {
+      free(mypckt_buff);
+      return -1;
+    }
   }
 
   if (SES_HEADER_LEN > recv(ses_sckt, small_buff, SES_HEADER_LEN,
 			    MSG_WAITALL)) {
     close(ses_sckt);
-    free(mypckt_buff);
-    return -1;
+    if (retry_count < nbworks_max_ses_retarget_retries) {
+      retry_count++;
+      goto try_to_connect;
+    } else {
+      free(mypckt_buff);
+      return -1;
+    }
   }
 
   herpckt_buff = small_buff;
@@ -1143,5 +1165,5 @@ int lib_open_session(struct name_state *handle,
     break;
   }
 
-  
+  return -1;
 }
