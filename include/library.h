@@ -52,12 +52,22 @@ struct name_state {
   struct nbnodename_list *ses_listento;
   unsigned char ses_takes;  /* flag field */
   unsigned char ses_srv_stop;
+  struct nbworks_session *sesin_server;
+  struct nbworks_session *sesin_library;
 
   short lenof_scope; /* the amount of octets the encoded scope takes,
                       * incl. the terminating NULL in the packet */
   unsigned char label_type; /* the type octet of the name */
   unsigned char node_type;  /* flag field */
   struct name_state *next;
+};
+
+struct nbworks_session {
+  unsigned char keepalive;
+  int socket;
+  pthread_mutex_t mutex;
+  int (*mutexlock)(pthread_mutex_t *);
+  struct nbworks_session *next;
 };
 
 void

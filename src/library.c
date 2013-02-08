@@ -21,9 +21,6 @@
 #include "ses_srvc_pckt.h"
 #include "randomness.h"
 
-// temporary
-#include "service_sector.h"
-
 
 struct name_state *nbworks_allhandles;
 
@@ -31,9 +28,9 @@ struct name_state *nbworks_allhandles;
 void lib_init() {
   nbworks_allhandles = 0;
 
-  nbworks_libcntl.stop_dtg_srv = 0;
-
-  nbworks_max_ses_retarget_retries = 5; /*
+  nbworks_libcntl.stop_alldtg_srv = 0;
+  nbworks_libcntl.stop_allses_srv = 0;
+  nbworks_libcntl.max_ses_retarget_retries = 5; /*
 	      What do I know? Just choose a random number,
 	      it oughta work. I guess. */
 }
@@ -742,6 +739,11 @@ void *lib_dtgserver(void *arg) {
   else
     return 0;
 
+  if (! handle->dtg_listento) {
+    handle->dtg_srv_stop = TRUE;
+    return 0;
+  }
+
   pfd.fd = handle->dtg_srv_sckt;
   pfd.events = POLLIN;
 
@@ -750,7 +752,7 @@ void *lib_dtgserver(void *arg) {
   toshow = 0;
   take_dtg = FALSE;
 
-  while ((! nbworks_libcntl.stop_dtg_srv) ||
+  while ((! nbworks_libcntl.stop_alldtg_srv) ||
 	 (! handle->dtg_srv_stop)) {
     if ((0 <= poll(&pfd, 1, TP_100MS)) ||
 	(! (pfd.revents & POLLIN)) ||
@@ -913,6 +915,7 @@ void *lib_dtgserver(void *arg) {
   lib_destroy_fragbckbone(handle->dtg_frags);
   handle->dtg_frags = 0;
 
+  handle->dtg_srv_stop = TRUE;
   handle->in_server = 0;
 
   return 0;
@@ -1066,7 +1069,7 @@ int lib_open_session(struct name_state *handle,
 
   if (0 != connect(ses_sckt, &addr, sizeof(struct sockaddr_in))) {
     close(ses_sckt);
-    if (retry_count < nbworks_max_ses_retarget_retries) {
+    if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
       retry_count++;
       goto try_to_connect;
     } else {
@@ -1078,7 +1081,7 @@ int lib_open_session(struct name_state *handle,
   if (wrotelenof_pckt > send(ses_sckt, mypckt_buff, wrotelenof_pckt,
 			     (MSG_DONTWAIT | MSG_NOSIGNAL))) {
     close(ses_sckt);
-    if (retry_count < nbworks_max_ses_retarget_retries) {
+    if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
       retry_count++;
       goto try_to_connect;
     } else {
@@ -1090,7 +1093,7 @@ int lib_open_session(struct name_state *handle,
   if (SES_HEADER_LEN > recv(ses_sckt, small_buff, SES_HEADER_LEN,
 			    MSG_WAITALL)) {
     close(ses_sckt);
-    if (retry_count < nbworks_max_ses_retarget_retries) {
+    if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
       retry_count++;
       goto try_to_connect;
     } else {
@@ -1161,7 +1164,7 @@ int lib_open_session(struct name_state *handle,
   default:
     free(pckt);
     close(ses_sckt);
-    if (retry_count < nbworks_max_ses_retarget_retries) {
+    if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
       retry_count++;
       goto try_to_connect;
     } else {
@@ -1172,4 +1175,62 @@ int lib_open_session(struct name_state *handle,
   }
 
   return -1;
+}
+
+void *lib_ses_srv(void *arg) {
+  struct pollfd pfd;
+  struct name_state *handle;
+
+  if (arg)
+    handle = arg;
+  else
+    return 0;
+
+  if (! handle->ses_listento) {
+    handle->ses_srv_stop = TRUE;
+    return 0;
+  }
+
+  handle->sesin_server = handle->sesin_library = 0;
+
+  pfd.fd = handle->ses_srv_sckt;
+  pfd.events = POLLIN;
+
+  while ((! nbworks_libcntl.stop_allses_srv) ||
+	 (! handle->ses_srv_stop)) {
+    
+  }
+
+  close(handle->ses_srv_sckt);
+
+  destroy_nbnodename(handle->ses_listento);
+  handle->ses_listento = 0;
+
+  handle->ses_srv_stop = TRUE;
+  handle->sesin_server = 0;
+
+  return 0;
+}
+
+
+struct nbworks_session *lib_make_session(int socket,
+					 unsigned char keepalive) {
+  struct nbworks_session *result;
+
+  result = malloc(sizeof(struct nbworks_session));
+  if (! result) {
+    return 0;
+  }
+
+  if (0 != pthread_mutex_init(&(result->mutex), 0)) {
+    free(result);
+    return 0;
+  }
+  result->mutexlock = pthread_mutex_trylock;
+
+  result->keepalive = keepalive;
+  result->socket = socket;
+  result->next = 0;
+
+  return result;
 }
