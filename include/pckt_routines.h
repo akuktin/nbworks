@@ -6,7 +6,12 @@
 # include "name_srvc_pckt.h"
 
 # ifndef MAX_UDP_PACKET_LEN
-#  define MAX_UDP_PACKET_LEN 0xffff
+/* This is ment to capture ALL packets, regardless of anything.
+ * The number was originally 0xffff, but then I remembered that
+ * the UDP header, 8 octets wide, is also included in the length
+ * field but will never be sent by the kernel to the application.
+ * So, I shortened the macro. */
+#  define MAX_UDP_PACKET_LEN (0xffff - 8)
 # endif
 # define MAX_DNS_LABEL_LEN 0x3f
 

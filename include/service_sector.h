@@ -65,6 +65,7 @@ struct ss_queue_storage {
 
 
 struct ss_sckts {
+  unsigned char isbusy;
   int udp_sckt;
   int tcp_sckt;
   unsigned char branch; /* passthrough for ss_register_tid() */
@@ -76,22 +77,17 @@ struct ss_sckts {
 };
 
 struct newtid_params {
+  unsigned char isbusy;
   pthread_t thread_id;
   union trans_id id;
   struct ss_queue *trans;
 };
 
-struct dtg_srv_params {
-  pthread_t thread_id;
-  struct nbnodename_list *nbname;
-  struct ss_queue_storage *queue;
-  struct ss_queue_storage **all_queues;
-};
-
 struct ss_tcp_sckts {
+  unsigned char isbusy;
+  pthread_t thread_id;
   int sckt139;
   struct ses_srv_rails **servers;
-  pthread_t thread_id;
 };
 
 struct ses_srv_rails {

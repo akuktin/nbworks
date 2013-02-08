@@ -406,7 +406,7 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
 #define STATUS_DID_UNIQ   0x02
 void *name_srvc_B_handle_newtid(void *input) {
   struct timespec sleeptime;
-  struct newtid_params params;
+  struct newtid_params params, *release_lock;
   struct thread_node *last_will;
 
   struct name_srvc_packet *outpckt, *pckt;
@@ -435,6 +435,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 
   memcpy(&params, input, sizeof(struct newtid_params));
+  release_lock = input;
+  release_lock->isbusy = 0;
 
   if (params.thread_id)
     last_will = add_thread(params.thread_id);

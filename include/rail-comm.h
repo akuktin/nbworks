@@ -41,12 +41,6 @@ struct com_comm {
   void *data;
 };
 
-struct rail_params {
-  pthread_t thread_id;
-  int rail_sckt;
-  struct sockaddr_un *addr;
-};
-
 # define LEN_NAMEDT_ONWIREMIN ((NETBIOS_NAME_LEN+1)+1+4)
 struct rail_name_data {
   unsigned char *name; /* whole name, the entire NETBIOS_NAME_LEN */
@@ -64,10 +58,26 @@ struct rail_name_data {
 				      * the time it takes us to send the
 				      * data down the tunnel. */
 
+struct rail_params {
+  unsigned char isbusy;
+  pthread_t thread_id;
+  int rail_sckt;
+  struct sockaddr_un *addr;
+};
+
 struct stream_connector_args {
+  unsigned char isbusy;
   pthread_t thread_id;
   int sckt_lcl;
   int sckt_rmt;
+};
+
+struct dtg_srv_params {
+  unsigned char isbusy;
+  pthread_t thread_id;
+  struct nbnodename_list *nbname;
+  struct ss_queue_storage *queue;
+  struct ss_queue_storage **all_queues;
 };
 
 void

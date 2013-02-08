@@ -673,6 +673,7 @@ void *ss__port137(void *placeholder) {
   fill_16field(137, (unsigned char *)&(my_addr.sin_port));
   my_addr.sin_addr.s_addr = get_inaddr();
 
+  sckts.isbusy = 0xda;
   sckts.all_trans = &(nbworks_all_transactions[NAME_SRVC]);
   sckts.newtid_handler = &name_srvc_B_handle_newtid;
   sckts.pckt_dstr = &destroy_name_srvc_pckt;
@@ -758,6 +759,12 @@ void *ss__port137(void *placeholder) {
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
+
+  while (sckts.isbusy) {
+    /* busy-wait */
+  }
+  sckts.isbusy = 0xda;
+
   ret_val = pthread_create(&(thread[1]), 0,
 			   &ss__udp_recver, &sckts);
   if (ret_val) {
@@ -768,6 +775,11 @@ void *ss__port137(void *placeholder) {
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
+
+  while (sckts.isbusy) {
+    /* busy-wait */
+  }
+  sckts.isbusy = 0xda;
 
   for (i=0; i < 2/*XXX3*/; i++) {
     pthread_join(thread[i], 0);
@@ -791,6 +803,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
   fill_16field(138, (unsigned char *)&(my_addr.sin_port));
   my_addr.sin_addr.s_addr = get_inaddr();
 
+  sckts.isbusy = 0xda;
   sckts.all_trans = &(nbworks_all_transactions[DTG_SRVC]);
   sckts.newtid_handler = 0; /* FIXME */
   sckts.pckt_dstr = &destroy_dtg_srvc_recvpckt;
@@ -836,7 +849,11 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
-  /* This should work. Hopefully. */
+  while (sckts.isbusy) {
+    /* busy-wait */
+  }
+  sckts.isbusy = 0xda;
+
   sckts.pckt_dstr = &destroy_dtg_srvc_pckt;
 
   if (pthread_create(&(thread[1]), 0,
@@ -859,7 +876,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
 
 
 void *ss__udp_recver(void *sckts_ptr) {
-  struct ss_sckts *sckts;
+  struct ss_sckts sckts, *release_lock;
   struct sockaddr_in his_addr;
   struct ss_unif_pckt_list *new_pckt;
   struct ss_priv_trans *cur_trans;
@@ -877,8 +894,12 @@ void *ss__udp_recver(void *sckts_ptr) {
     return 0;
 
   newtid_queue = 0;
-  sckts = sckts_ptr;
-  polldata.fd = sckts->udp_sckt;
+
+  memcpy(&sckts, sckts_ptr, sizeof(struct ss_sckts));
+  release_lock = sckts_ptr;
+  release_lock->isbusy = 0;
+
+  polldata.fd = sckts.udp_sckt;
   polldata.events = (POLLIN | POLLPRI);
 
   while (! nbworks_all_port_cntl.all_stop) {
@@ -898,7 +919,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	*deleter = '\0';
 	deleter++;
       }
-      len = recvfrom(sckts->udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
+      len = recvfrom(sckts.udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
 		     /*MSG_DONTWAIT*/0, &his_addr, &addr_len);
       /* BUG: While testing, I have noticed that there appears to be
 	      a very strange behaviour regarding len.
@@ -924,14 +945,14 @@ void *ss__udp_recver(void *sckts_ptr) {
 
       new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
       /* NOTE: No check for failure. */
-      new_pckt->packet = sckts->master_reader(udp_pckt, len, &tid);
+      new_pckt->packet = sckts.master_reader(udp_pckt, len, &tid);
 
       if (new_pckt->packet) {
 	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
-	new_pckt->dstry = sckts->pckt_dstr;
+	new_pckt->dstry = sckts.pckt_dstr;
 	new_pckt->next = 0;
-	if (sckts->branch == DTG_SRVC)
-	  name_as_id = ((struct dtg_srvc_recvpckt *)new_pckt->packet)->dst;
+	if (sckts.branch == DTG_SRVC)
+	  name_as_id = dtg_srvc_get_srcnam_recvpckt(new_pckt->packet);
       } else {
 	/* TODO: errno signaling stuff */
 	/* BUT see third comment up! */
@@ -944,9 +965,9 @@ void *ss__udp_recver(void *sckts_ptr) {
 
 
       while (new_pckt) {
-	cur_trans = *(sckts->all_trans);
+	cur_trans = *(sckts.all_trans);
 	while (cur_trans) {
-	  if (((sckts->branch) == DTG_SRVC) ?             /* The problem with this scheme */
+	  if (((sckts.branch) == DTG_SRVC) ?             /* The problem with this scheme */
 	      (! cmp_nbnodename(cur_trans->id.name_scope, /* is that it is possible for a */
 				name_as_id)) :            /* torrent of datagram packets  */
 	      cur_trans->id.tid == tid) {                 /* to criple the daemon.        */
@@ -958,7 +979,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	    } else {
 	      /* ((cur_trans->status == nmtrst_indrop) ||
 		  (cur_trans->status == nmtrst_deregister)) */
-	      sckts->pckt_dstr(new_pckt->packet, 1, 1);
+	      sckts.pckt_dstr(new_pckt->packet, 1, 1);
 	      free(new_pckt);
 	      new_pckt = 0;
 	      break;
@@ -974,7 +995,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	     its existance. If datagram service, send a NOT-HERE error.
 	     MUSING: perhaps I could just drop the datagram and not send
 	             the error. */
-	  if ((sckts->branch) == DTG_SRVC) { /* There goes my terminally abstract code... */
+	  if ((sckts.branch) == DTG_SRVC) { /* There goes my terminally abstract code... */
 	    dtg_srvc_send_NOTHERE_error(new_pckt);
 
 	    free(new_pckt);
@@ -988,11 +1009,16 @@ void *ss__udp_recver(void *sckts_ptr) {
       /* Superfluous in datagram mode. */
       if (newtid_queue) {
 	/* Signaling the new queue. */
+	while (params.isbusy) {
+	  /* busy-wait */
+	}
+	params.isbusy = 0xda;
 	params.thread_id = 0;
 	params.trans = newtid_queue;
-	pthread_create(&(params.thread_id), 0,
-		       sckts->newtid_handler, &params);
-	/* No. Fucking. Comment. */
+	if (0 != pthread_create(&(params.thread_id), 0,
+				sckts.newtid_handler, &params)) {
+	  params.isbusy = 0;
+	}
 	newtid_queue = 0;
       }
     }
@@ -1002,7 +1028,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 }
 
 void *ss__udp_sender(void *sckts_ptr) {
-  struct ss_sckts *sckts;
+  struct ss_sckts sckts, *release_lock;
   struct ss_unif_pckt_list *for_del;
   struct ss_priv_trans *cur_trans, **last_trans, *for_del2;
   unsigned int len, i;
@@ -1012,16 +1038,15 @@ void *ss__udp_sender(void *sckts_ptr) {
   if (! sckts_ptr)
     return 0;
 
-  sckts = sckts_ptr;
+  memcpy(&sckts, sckts_ptr, sizeof(struct ss_sckts));
+  release_lock = sckts_ptr;
+  release_lock->isbusy = 0;
 
-  deleter = udp_pckt;
-  for (i=0; i < MAX_UDP_PACKET_LEN; i++) {
-    *deleter = '\0';
-  }
+  memset(udp_pckt, 0, MAX_UDP_PACKET_LEN);
 
   while (! nbworks_all_port_cntl.all_stop) {
-    cur_trans = *(sckts->all_trans);
-    last_trans = sckts->all_trans;
+    cur_trans = *(sckts.all_trans);
+    last_trans = sckts.all_trans;
     while (cur_trans) {
       /* Special treatment of deregistered transactions. */
       if (cur_trans->status == nmtrst_deregister) {
@@ -1031,19 +1056,15 @@ void *ss__udp_sender(void *sckts_ptr) {
 	  if (cur_trans->out->packet) {
 	    ptr = cur_trans->out->packet;
 	    len = MAX_UDP_PACKET_LEN;
-	    sckts->master_writer(ptr, &len, udp_pckt);
+	    sckts.master_writer(ptr, &len, udp_pckt);
 
-	    sendto(sckts->udp_sckt, udp_pckt, len, 0,
+	    sendto(sckts.udp_sckt, udp_pckt, len, 0,
 		   &(cur_trans->out->addr),
 		   sizeof(cur_trans->out->addr));
 
-	    deleter = udp_pckt;
-	    for (i=0; i<len; i++) {
-	      *deleter = '\0';
-	      deleter++;
-	    }
+	    memset(udp_pckt, 0, len);
 	    if (cur_trans->out->for_del)
-	      sckts->pckt_dstr(cur_trans->out->packet, 1, 1);
+	      sckts.pckt_dstr(cur_trans->out->packet, 1, 1);
 	  }
 
 	  for_del = cur_trans->out;
@@ -1060,19 +1081,15 @@ void *ss__udp_sender(void *sckts_ptr) {
 	  if (cur_trans->out->packet) {
 	    ptr = cur_trans->out->packet;
 	    len = MAX_UDP_PACKET_LEN;
-	    sckts->master_writer(ptr, &len, udp_pckt);
+	    sckts.master_writer(ptr, &len, udp_pckt);
 
-	    sendto(sckts->udp_sckt, udp_pckt, len, 0,
+	    sendto(sckts.udp_sckt, udp_pckt, len, 0,
 		   &(cur_trans->out->addr),
 		   sizeof(cur_trans->out->addr));
 
-	    deleter = udp_pckt;
-	    for (i=0; i<len; i++) {
-	      *deleter = '\0';
-	      deleter++;
-	    }
+	    memset(udp_pckt, 0, len);
 	    if (cur_trans->out->for_del)
-	      sckts->pckt_dstr(cur_trans->out->packet, 1, 1);
+	      sckts.pckt_dstr(cur_trans->out->packet, 1, 1);
 	  }
 
 	  for_del = cur_trans->out;
@@ -1083,19 +1100,15 @@ void *ss__udp_sender(void *sckts_ptr) {
 	if (cur_trans->out->packet) {
 	  ptr = cur_trans->out->packet;
 	  len = MAX_UDP_PACKET_LEN;
-	  sckts->master_writer(ptr, &len, udp_pckt);
+	  sckts.master_writer(ptr, &len, udp_pckt);
 
-	  sendto(sckts->udp_sckt, udp_pckt, len, 0,
+	  sendto(sckts.udp_sckt, udp_pckt, len, 0,
 		 &(cur_trans->out->addr),
 		 sizeof(cur_trans->out->addr));
 
-	  deleter = udp_pckt;
-	  for (i=0; i<len; i++) {
-	    *deleter = '\0';
-	    deleter++;
-	  }
+	  memset(udp_pckt, 0, len);
 	  if (cur_trans->out->for_del)
-	    sckts->pckt_dstr(cur_trans->out->packet, 1, 1);
+	    sckts.pckt_dstr(cur_trans->out->packet, 1, 1);
 	  cur_trans->out->packet = 0;
 	};
 
@@ -1166,10 +1179,15 @@ void *ss__port139(void *args) {
     if (new_sckt < 0) {
       continue;
     } else {
+      while (params.isbusy) {
+	/* busy-wait */
+      }
+      params.isbusy = 0xda;
       params.sckt139 = new_sckt;
       params.servers = &(nbworks_all_session_srvrs);
       if (0 != pthread_create(&(params.thread_id), 0,
 			      take_incoming_session, &params)) {
+	params.isbusy = 0;
 	close(new_sckt);
       }
     }
@@ -1180,7 +1198,7 @@ void *ss__port139(void *args) {
 }
 
 void *take_incoming_session(void *arg) {
-  struct ss_tcp_sckts params;
+  struct ss_tcp_sckts params, *release_lock;
   struct ses_srv_rails *servers;
   struct ses_srvc_packet *new_pckt;
   struct nbnodename_list *called_name;
@@ -1191,6 +1209,9 @@ void *take_incoming_session(void *arg) {
   unsigned char *walker, *big_buff;
 
   memcpy(&params, arg, sizeof(struct ss_tcp_sckts));
+  release_lock = arg;
+  release_lock->isbusy = 0;
+
   if (params.thread_id)
     last_will = add_thread(params.thread_id);
   else

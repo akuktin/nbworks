@@ -39,10 +39,7 @@ int open_rail() {
   int i, result;
   unsigned char *deleter;
 
-  deleter = (unsigned char *)&address;
-  for (i=0; i<sizeof(struct sockaddr_un); i++) {
-    *deleter = 0;
-  }
+  memset(&address, 0, sizeof(struct sockaddr_un));
 
   address.sun_family = AF_UNIX;
   memcpy(address.sun_path +1, NBWORKS_SCKT_NAME, NBWORKS_SCKT_NAMELEN);
@@ -74,14 +71,19 @@ int open_rail() {
 }
 
 void *poll_rail(void *args) {
-  struct rail_params params, new_params;
+  struct rail_params params, new_params, *release_lock;
   struct pollfd pfd;
   struct sockaddr_un *address;
   struct thread_node *last_will;
   socklen_t scktlen;
   int ret_val, new_sckt;
 
+  if (! args)
+    return 0;
+
   memcpy(&params, args, sizeof(struct rail_params));
+  release_lock = args;
+  release_lock->isbusy = 0;
 
   if (params.thread_id)
     last_will = add_thread(params.thread_id);
@@ -122,10 +124,16 @@ void *poll_rail(void *args) {
 	free(address);
       }
     } else {
+      while (new_params.isbusy) {
+	/* busy-wait */
+      }
+      new_params.isbusy = 0xda;
       new_params.rail_sckt = new_sckt;
       new_params.addr = address;
-      pthread_create(&(new_params.thread_id), 0,
-		     handle_rail, &new_params);
+      if (0 != pthread_create(&(new_params.thread_id), 0,
+			      handle_rail, &new_params)) {
+	new_params.isbusy = 0;
+      }
     }
   }
 }
@@ -133,14 +141,19 @@ void *poll_rail(void *args) {
 
 void *handle_rail(void *args) {
   struct nbnodename_list *scope;
-  struct rail_params params;
+  struct rail_params params, *release_lock;
   struct com_comm *command;
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
   uint32_t ipv4, i;
   unsigned char buff[LEN_COMM_ONWIRE], *name_ptr;
 
+  if (! args)
+    return 0;
+
   memcpy(&params, args, sizeof(struct rail_params));
+  release_lock = args;
+  release_lock->isbusy = 0;
 
   if (params.thread_id)
     last_will = add_thread(params.thread_id);
@@ -293,7 +306,8 @@ struct com_comm *read_railcommand(unsigned char *packet,
   struct com_comm *result;
   unsigned char *walker;
 
-  if ((packet + LEN_COMM_ONWIRE) > endof_pckt)
+  if ((! packet) ||
+      ((packet + LEN_COMM_ONWIRE) > endof_pckt))
     return 0;
 
   if (field)
@@ -613,7 +627,7 @@ int rail_add_dtg_server(int rail_sckt,
   struct cache_namenode *namecard;
   struct nbnodename_list *nbname;
   struct rail_list *new_rail;
-  struct dtg_srv_params *params;
+  struct dtg_srv_params params;
   time_t cur_time;
 
   new_rail = malloc(sizeof(struct rail_list));
@@ -670,8 +684,13 @@ int rail_add_dtg_server(int rail_sckt,
   if (trans) {
     free(trans);
 
-    params = malloc(sizeof(struct dtg_srv_params));
-    if (! params) {
+    params.isbusy = 0xda;
+    params.nbname = nbname;
+    params.queue = queue;
+    params.all_queues = queue_stor;
+
+    if (0 != pthread_create(&(params->thread_id), 0,
+			    dtg_server, params)) {
       ss_deregister_dtg_tid(nbname);
       ss__dstry_recv_queue(&(queue->queue));
       ss_del_queuestorage(nbname, DTG_SRVC, queue_stor);
@@ -681,20 +700,8 @@ int rail_add_dtg_server(int rail_sckt,
       return -1;
     }
 
-    params->nbname = nbname;
-    params->queue = queue;
-    params->all_queues = queue_stor;
-
-    if (0 != pthread_create(&(params->thread_id), 0,
-			    dtg_server, params)) {
-      ss_deregister_dtg_tid(nbname);
-      ss__dstry_recv_queue(&(queue->queue));
-      ss_del_queuestorage(nbname, DTG_SRVC, queue_stor);
-      destroy_nbnodename(nbname);
-      free(new_rail);
-      free(params);
-
-      return -1;
+    while (params.isbusy) {
+      /* busy-wait */
     }
   }
 
@@ -726,7 +733,9 @@ void *dtg_server(void *arg) {
   nbname = params->nbname;
   queue = params->queue;
   all_queues = params->all_queues;
-  free(params);
+  params->isbusy = 0;
+
+  memset(buff, 0, (MAX_UDP_PACKET_LEN+sizeof(uint32_t)));
 
   trans = &(queue->queue);
   pollfd.events = POLLOUT;
@@ -747,7 +756,7 @@ void *dtg_server(void *arg) {
 	  poll(&pollfd, 1, 0);
 	  if (pollfd.revents & POLLOUT)
 	    send(cur_rail->rail_sckt, buff, (pckt_len+sizeof(uint32_t)),
-		 MSG_DONTWAIT);
+		 (MSG_DONTWAIT | MSG_NOSIGNAL));
 	  else
 	    if (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
 	      *last_rail = cur_rail->next;
@@ -756,8 +765,11 @@ void *dtg_server(void *arg) {
 	      cur_rail = *last_rail;
 	      continue;
 	    }
-	  cur_rail = cur_rail->next;
+	  last_rail = &(cur_rail->next);
+	  cur_rail = *last_rail;
 	}
+
+	memset(buff, 0, (pckt_len+sizeof(uint32_t)));
 
 	destroy_dtg_srvc_pckt(pckt, 1, 1);
 
@@ -867,7 +879,7 @@ int rail_setup_session(int rail,
   struct ses_srv_sessions *session;
   struct ses_srvc_packet *pckt;
   struct com_comm *answer;
-  struct stream_connector_args *new_session;
+  struct stream_connector_args new_session;
   int out_sckt;
   unsigned char rail_buff[LEN_COMM_ONWIRE];
   unsigned char *walker;
@@ -951,21 +963,19 @@ int rail_setup_session(int rail,
   }
   /* The rail socket is now ready for operation. Establish a tunnel. */
 
-  new_session = malloc(sizeof(struct stream_connector_args));
-  if (! new_session) {
+  new_session.isbusy = 0xda;
+  new_session.sckt_lcl = rail;
+  new_session.sckt_rmt = out_sckt;
+
+  if (0 != pthread_create(&(new_session.thread_id), 0,
+			  tunnel_stream_sockets, &new_session)) {
     close(rail);
     close(out_sckt);
     return -1;
   }
 
-  new_session->sckt_lcl = rail;
-  new_session->sckt_rmt = out_sckt;
-
-  if (0 != pthread_create(&(new_session->thread_id), 0,
-			  tunnel_stream_sockets, new_session)) {
-    close(rail);
-    close(out_sckt);
-    return -1;
+  while (new_session.isbusy) {
+    /* busy-wait */
   }
 
   return TRUE;
@@ -987,7 +997,7 @@ void *tunnel_stream_sockets(void *arg) {
     last_will = add_thread(params->thread_id);
   else
     last_will = 0;
-  free(params);
+  params->isbusy = 0;
 
   trans_len = sent_len = 0;
   read_sckt = sckt_lcl;

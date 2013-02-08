@@ -71,6 +71,13 @@ inline struct nbnodename_list *dtg_srvc_extract_srcname(struct dtg_srvc_packet *
   }
 }
 
+inline struct nbnodename_list *dtg_srvc_get_srcnam_recvpckt(struct dtg_srvc_recvpckt *pckt) {
+  if (! pckt)
+    return 0;
+  else
+    return pckt->dst;
+}
+
 
 void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
   struct dtg_srvc_packet *packet;

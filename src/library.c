@@ -529,23 +529,23 @@ int lib_senddtg_138(struct name_state *handle,
 
   pckt->for_del = 0;
   pckt->type = 0;
-  //  pckt->flags = DTG_FIRST_FLAG; /* stub */
+  pckt->flags = DTG_FIRST_FLAG; /* stub */
   switch (handle->node_type) {
   case CACHE_NODEFLG_B:
-    pckt->flags = (DTG_FIRST_FLAG | DTG_NODE_TYPE_B);
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_B);
     command.node_type = 'B';
     break;
   case CACHE_NODEFLG_P:
-    pckt->flags = (DTG_FIRST_FLAG | DTG_NODE_TYPE_P);
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_P);
     command.node_type = 'P';
     break;
   case CACHE_NODEFLG_M:
-    pckt->flags = (DTG_FIRST_FLAG | DTG_NODE_TYPE_M);
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
     command.node_type = 'M';
     break;
   case CACHE_NODEFLG_H:
   default:
-    pckt->flags = (DTG_FIRST_FLAG | DTG_NODE_TYPE_M);
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
     command.node_type = 'H';
     break;
   }
@@ -831,4 +831,108 @@ void *lib_dtgserver(void *arg) {
   handle->in_server = 0;
 
   return 0;
+}
+
+
+int lib_open_session(struct name_state *handle,
+		     struct nbnodename_list *dst) {
+  struct com_comm command;
+  struct nbnodename_list *name_id, *her; /* To vary names a bit. */
+  struct ses_srvc_packet *pckt;
+  int lenof_pckt, wrotelenof_pckt;
+  unsigned char *mypckt_buff, *herpckt_buff;
+  unsigned char commandbuf[LEN_COMM_ONWIRE];
+
+  if (! (handle && dst)) {
+    /* TODO: errno signaling stuff */
+    return -1;
+  }
+  if ((! dst->name) ||
+      (dst->len < NETBIOS_NAME_LEN)) {
+    /* TODO: errno signaling stuff */
+    return -1;
+  }
+
+  name_id = clone_nbnodename(handle->name);
+  if (! name_id) {
+    /* TODO: errno signaling stuff */
+    return -1;
+  }
+  destroy_nbnodename(name_id->next_name);
+  name_id->next_name = clone_nbnodename(handle->scope);
+  if (! name_id->next_name) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(name_id);
+    return -1;
+  }
+
+  her = clone_nbnodename(dst);
+  if (! her) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(name_id);
+    return -1;
+  }
+  her->next_name = destroy_nbnodename(her->next_name);
+  her->next_name = clone_nbnodename(handle->scope);
+  if (! her->next_name) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
+    destroy_nbnodename(name_id);
+    return -1;
+  }
+
+  memset(command, 0, sizeof(struct com_comm));
+  command.command = rail_addr_ofX;
+
+  pckt = calloc(1, sizeof(struct ses_srvc_pckt));
+  if (! pckt) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
+    destroy_nbnodename(name_id);
+    return -1;
+  }
+  pckt->payload_t = two_names;
+  pckt->payload = malloc(sizeof(struct ses_pckt_pyld_two_names));
+  if (! pckt->payload) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
+    destroy_nbnodename(name_id);
+    return -1;
+  }
+
+  ((struct ses_pckt_pyld_two_names *)(pckt->payload))->called_name = her;
+  ((struct ses_pckt_pyld_two_names *)(pckt->payload))->called_name = name_id;
+
+  lenof_pckt = (2 * NETBIOS_CODED_NAME_LEN) +
+    (2 * handle->lenof_scope);
+
+  if (nbworks_do_align) {
+    /* Questions, questions: if I leave it like this, how
+     * many NetBIOS implementations are going to choke on it? */
+    /* Choking hazard: trailing octets behind the end of the last name. */
+    lenof_pckt = lenof_pckt + (2 * 4);
+  }
+
+  pckt->len = lenof_pckt;
+  pckt->type = SESSION_REQUEST;
+
+  mypckt_buff = malloc(SES_HEADER_LEN + lenof_pckt);
+  if (! mypckt_buff) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
+    destroy_nbnodename(name_id);
+    return -1;
+  }
+
+  wrotelenof_pckt = (lenof_pckt + SES_HEADER_LEN);
+  master_ses_srvc_pckt_writer(pckt, &wrotelenof_pckt, mypckt_buff);
+  if (wrotelenof_pckt < (lenof_pckt + SES_HEADER_LEN)) {
+    herpckt_buff = mypckt_buff + wrotelenof_pckt;
+    while (herpckt_buff < (mypckt_buff + (lenof_pckt + SES_HEADER_LEN))) {
+      *herpckt_buff = 0;
+    }
+  }
+  destroy_ses_srvc_pckt(pckt);
+
+  
 }

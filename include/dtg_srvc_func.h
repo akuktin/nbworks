@@ -12,6 +12,8 @@ inline struct nbnodename_list *
   dtg_srvc_extract_dstname(struct dtg_srvc_packet *pckt);
 inline struct nbnodename_list *
   dtg_srvc_extract_srcname(struct dtg_srvc_packet *pckt);
+inline struct nbnodename_list *
+  dtg_srvc_get_srcnam_recvpckt(struct dtg_srvc_recvpckt *pckt);
 
 void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt);
 
