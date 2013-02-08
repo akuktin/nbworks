@@ -1239,8 +1239,6 @@ void *lib_caretaker(void *arg) {
 
   while ((! nbworks_libcntl.stop_allses_srv) ||
 	 (! handle->kill_caretaker)) {
-    nanosleep(&(sleeptime), 0);
-
     poll(&pfd, 1, 0);
     if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
       close(handle->socket);
@@ -1253,10 +1251,12 @@ void *lib_caretaker(void *arg) {
       if (0 == pthread_mutex_lock(&(handle->mutex))) {
 	send(handle->socket, buff, 4, MSG_NOSIGNAL);
 	while (0 != pthread_mutex_unlock(&(handle->mutex))) {
-	  /* retry */
+	  /* retry */ /* Infinite loop danger! */
 	}
       }
     }
+
+    nanosleep(&(sleeptime), 0);
   }
 
   handle->kill_caretaker = TRUE;
