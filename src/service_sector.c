@@ -793,9 +793,9 @@ void *ss__port138(void *i_dont_actually_use_this) {
 
   sckts.all_trans = &(nbworks_all_transactions[DTG_SRVC]);
   sckts.newtid_handler = 0; /* FIXME */
-  sckts.pckt_dstr = &destroy_dtg_srvc_pckt;
+  sckts.pckt_dstr = &destroy_dtg_srvc_recvpckt;
   sckts.master_writer = &master_dtg_srvc_pckt_writer;
-  sckts.master_reader = &master_dtg_srvc_pckt_reader;
+  sckts.master_reader = &recving_dtg_srvc_pckt_reader;
   sckts.branch = DTG_SRVC;
   sckts.udp_sckt = socket(PF_INET, SOCK_DGRAM, 0);
 
@@ -835,6 +835,9 @@ void *ss__port138(void *i_dont_actually_use_this) {
     nbworks_all_port_cntl.all_stop = 4;
     return 0;
   }
+
+  /* This should work. Hopefully. */
+  sckts.pckt_dstr = &destroy_dtg_srvc_pckt;
 
   if (pthread_create(&(thread[1]), 0,
 		     &ss__udp_sender, &sckts)) {
@@ -928,15 +931,17 @@ void *ss__udp_recver(void *sckts_ptr) {
 	new_pckt->dstry = sckts->pckt_dstr;
 	new_pckt->next = 0;
 	if (sckts->branch == DTG_SRVC)
-	  name_as_id = dtg_srvc_extract_dstname(new_pckt->packet);
+	  name_as_id = ((struct dtg_srvc_recvpckt *)new_pckt->packet)->dst;
       } else {
 	/* TODO: errno signaling stuff */
 	/* BUT see third comment up! */
+
+	// FIXME: Handle datagram service error packets.
+
 	free(new_pckt);
 	new_pckt = 0;
       }
 
-      // FIXME: Handle datagram service error packets.
 
       while (new_pckt) {
 	cur_trans = *(sckts->all_trans);
