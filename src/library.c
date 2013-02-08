@@ -33,6 +33,7 @@ void lib_init() {
   nbworks_libcntl.max_ses_retarget_retries = 5; /*
 	      What do I know? Just choose a random number,
 	      it oughta work. I guess. */
+  nbworks_libcntl.keepalive_interval = 120; /* seconds */
 }
 
 
@@ -1213,6 +1214,56 @@ void *lib_ses_srv(void *arg) {
 }
 
 
+void *lib_caretaker(void *arg) {
+  struct nbworks_session *handle;
+  struct timespec sleeptime;
+  struct pollfd pfd;
+  time_t lastkeepalive, cur_time;
+  unsigned char buff[] = { SESSION_KEEP_ALIVE, 0, 0, 0 };
+
+  if (arg)
+    handle = arg;
+  else
+    return 0;
+
+  if (! handle->keepalive) {
+    handle->kill_caretaker = TRUE;
+    return 0;
+  }
+
+  sleeptime.tv_sec = 0;
+  sleeptime.tv_nsec = T_250MS;
+
+  pfd.fd = handle->socket;
+  pfd.events = POLLOUT;
+
+  while ((! nbworks_libcntl.stop_allses_srv) ||
+	 (! handle->kill_caretaker)) {
+    nanosleep(&(sleeptime), 0);
+
+    poll(&pfd, 1, 0);
+    if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
+      close(handle->socket);
+      break;
+    }
+
+    cur_time = time(0);
+    if (cur_time > (lastkeepalive + nbworks_libcntl.keepalive_interval)) {
+      lastkeepalive = cur_time;
+      if (0 == pthread_mutex_lock(&(handle->mutex))) {
+	send(handle->socket, buff, 4, MSG_NOSIGNAL);
+	while (0 != pthread_mutex_unlock(&(handle->mutex))) {
+	  /* retry */
+	}
+      }
+    }
+  }
+
+  handle->kill_caretaker = TRUE;
+
+  return 0;
+}
+
 struct nbworks_session *lib_make_session(int socket,
 					 unsigned char keepalive) {
   struct nbworks_session *result;
@@ -1228,6 +1279,7 @@ struct nbworks_session *lib_make_session(int socket,
   }
   result->mutexlock = pthread_mutex_trylock;
 
+  result->kill_caretaker = FALSE;
   result->keepalive = keepalive;
   result->socket = socket;
   result->next = 0;
