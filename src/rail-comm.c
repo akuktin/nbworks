@@ -55,7 +55,8 @@ int open_rail() {
     return -1;
   }
 
-  if (0 != bind(result, (struct sockaddr *)&address, sizeof(struct sockaddr_un))) {
+  if (0 != bind(result, (struct sockaddr *)&address,
+		sizeof(struct sockaddr_un))) {
     /* TODO: errno signaling stuff */
     close(result);
     return -1;
@@ -234,7 +235,8 @@ void *handle_rail(void *args) {
 
   case rail_send_dtg:
     if (find_namebytok(command->token, 0)) {
-      if (0 == rail_senddtg(params.rail_sckt, command, &(nbworks_queue_storage[DTG_SRVC]))) {
+      if (0 == rail_senddtg(params.rail_sckt, command,
+                            &(nbworks_queue_storage[DTG_SRVC]))) {
 	command->len = 0;
 	command->data = 0;
 	fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
@@ -277,11 +279,11 @@ void *handle_rail(void *args) {
     ipv4 = rail_whatisaddrX(params.rail_sckt,
 			    command);
     if (ipv4) {
-      command->len = sizeof(uint32_t);
+      command->len = 4;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, 0);
       fill_32field(ipv4, buff);
-      send(params.rail_sckt, buff, sizeof(uint32_t), 0);
+      send(params.rail_sckt, buff, 4, 0);
     }
     close(params.rail_sckt);
     break;

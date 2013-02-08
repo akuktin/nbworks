@@ -470,6 +470,83 @@ unsigned int lib_doeslistento(struct nbnodename_list *query,
 }
 
 
+uint32_t lib_whatisaddrX(struct nbnodename_list *X,
+			 unsigned int len) {
+  struct com_comm command;
+  uint32_t result;
+  int daemon_sckt;
+  unsigned char combuff[LEN_COMM_ONWIRE], *buff;
+
+  if ((! X) ||
+      (len < (1+NETBIOS_NAME_LEN+1)))
+    return 0;
+
+  memset(&command, 0, sizeof(struct com_comm));
+  command.command = rail_addr_ofX;
+  command.len = len;
+
+  fill_railcommand(&command, combuff, (combuff +LEN_COMM_ONWIRE));
+
+  buff = malloc(len);
+  if (! buff)
+    return 0;
+
+  if (buff == fill_all_DNS_labels(X, buff, (buff +len), 0)) {
+    free(buff);
+    return 0;
+  }
+
+  daemon_sckt = lib_daemon_socket();
+  if (daemon_sckt == -1) {
+    free(buff);
+    return 0;
+  }
+
+  if (LEN_COMM_ONWIRE > send(daemon_sckt, combuff,
+			     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+    close(daemon_sckt);
+    free(buff);
+    return 0;
+  }
+
+  if (len > send(daemon_sckt, buff, len, MSG_NOSIGNAL)) {
+    close(daemon_sckt);
+    free(buff);
+    return 0;
+  }
+
+  free(buff);
+
+  if (LEN_COMM_ONWIRE > recv(daemon_sckt, combuff,
+			     LEN_COMM_ONWIRE, MSG_WAITALL)) {
+    close(daemon_sckt);
+    return 0;
+  }
+
+  if (0 == read_railcommand(combuff, (combuff +LEN_COMM_ONWIRE),
+			    &command)) {
+    close(daemon_sckt);
+    return 0;
+  }
+
+  if ((command.command != rail_addr_ofX) ||
+      (command.len < 4)) {
+    close(daemon_sckt);
+    return 0;
+  }
+
+  if (4 > recv(daemon_sckt, combuff, 4, MSG_WAITALL)) {
+    close(daemon_sckt);
+    return 0;
+  }
+
+  read_32field(combuff, &result);
+
+  close(daemon_sckt);
+
+  return result;
+}
+
 int lib_daemon_socket() {
   struct sockaddr_un address;
   int daemon;
@@ -937,9 +1014,11 @@ int lib_open_session(struct name_state *handle,
     memset((mypckt_buff + wrotelenof_pckt), 0,
 	   ((lenof_pckt + SES_HEADER_LEN) - wrotelenof_pckt));
   }
-  destroy_ses_srvc_pckt(pckt);
 
+  destroy_ses_srvc_pckt(pckt);
   destroy_nbnodename(name_id);
+
+  /* Now I have allocated: her, mypckt_buff. */
 
   
 }
