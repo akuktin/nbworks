@@ -64,7 +64,7 @@ struct dtg_srvc_packet {
 struct dtg_srvc_recvpckt {
   struct nbnodename_list *dst;
   void *packetbuff;
-  int len;
+  uint32_t len;
 };
 
 

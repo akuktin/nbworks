@@ -340,6 +340,9 @@ unsigned char *fill_railcommand(struct com_comm *command,
 				unsigned char *endof_packet) {
   unsigned char *walker;
 
+  if (! (command && packet))
+    return packet;
+
   if ((packet + LEN_COMM_ONWIRE) > endof_packet) {
     /* TODO: errno signaling stuff */
     return packet;
@@ -363,6 +366,9 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
 					   unsigned char *endof_buff) {
   struct rail_name_data *result;
   unsigned char *walker;
+
+  if (! startof_buff)
+    return 0;
 
   if ((startof_buff + LEN_NAMEDT_ONWIREMIN) > endof_buff) {
     /* TODO: errno signaling stuff */
@@ -402,6 +408,9 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
 				   unsigned char *endof_buff) {
   unsigned char *walker;
 
+  if (! (data && startof_buff))
+    return startof_buff;
+
   if ((startof_buff + LEN_NAMEDT_ONWIREMIN) > endof_buff) {
     /* TODO: errno signaling stuff */
     return startof_buff;
@@ -422,6 +431,9 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   struct cache_namenode *cache_namecard;
   struct rail_name_data *namedata;
   unsigned char *data_buff;
+
+  if (! command)
+    return 0;
 
   /* WRONG FOR GROUPS!!! */
 
@@ -520,6 +532,9 @@ int rail_senddtg(int rail_sckt,
   unsigned short node_type;
   uint16_t tid;
   unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
+
+  if (! (command && queue_stor))
+    return -1;
 
   switch (command->node_type) {
   case 'H':
@@ -630,6 +645,9 @@ int rail_add_dtg_server(int rail_sckt,
   struct dtg_srv_params params;
   time_t cur_time;
 
+  if (! (command && queue_stor))
+    return -1;
+
   new_rail = malloc(sizeof(struct rail_list));
   if (! new_rail) {
     return -1;
@@ -716,11 +734,10 @@ void *dtg_server(void *arg) {
   struct ss_queue *trans;
   struct ss_queue_storage *queue;
   struct ss_queue_storage **all_queues;
-  struct dtg_srvc_packet *pckt;
+  struct dtg_srvc_recvpckt *pckt;
   struct rail_list *cur_rail, **last_rail;
   struct pollfd pollfd;
-  unsigned int pckt_len;
-  unsigned char buff[MAX_UDP_PACKET_LEN+sizeof(uint32_t)];
+  unsigned char buff[4];
 
   if (! arg)
     return 0;
@@ -735,8 +752,6 @@ void *dtg_server(void *arg) {
   all_queues = params->all_queues;
   params->isbusy = 0;
 
-  memset(buff, 0, (MAX_UDP_PACKET_LEN+sizeof(uint32_t)));
-
   trans = &(queue->queue);
   pollfd.events = POLLOUT;
 
@@ -744,20 +759,21 @@ void *dtg_server(void *arg) {
     while (438) {
       pckt = ss__recv_pckt(trans);
       if (pckt) {
-	pckt_len = MAX_UDP_PACKET_LEN;
-	master_dtg_srvc_pckt_writer(pckt, &pckt_len,
-				    (buff+sizeof(uint32_t)));
-	fill_32field(pckt_len, buff);
+	fill_32field(pckt->len, buff);
 
 	cur_rail = queue->rail;
 	last_rail = &(queue->rail);
 	while (cur_rail) {
 	  pollfd.fd = cur_rail->rail_sckt;
 	  poll(&pollfd, 1, 0);
-	  if (pollfd.revents & POLLOUT)
-	    send(cur_rail->rail_sckt, buff, (pckt_len+sizeof(uint32_t)),
-		 (MSG_DONTWAIT | MSG_NOSIGNAL));
-	  else
+
+	  if (pollfd.revents & POLLOUT) {
+	    if (4 == send(cur_rail->rail_sckt, buff, 4,
+			  (MSG_DONTWAIT | MSG_NOSIGNAL))) {
+	      send(cur_rail->rail_sckt, pckt->packetbuff, pckt->len,
+		   (MSG_DONTWAIT | MSG_NOSIGNAL));
+	    }
+	  } else {
 	    if (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
 	      *last_rail = cur_rail->next;
 	      close(cur_rail->rail_sckt);
@@ -765,13 +781,13 @@ void *dtg_server(void *arg) {
 	      cur_rail = *last_rail;
 	      continue;
 	    }
+	  }
+
 	  last_rail = &(cur_rail->next);
 	  cur_rail = *last_rail;
 	}
 
-	memset(buff, 0, (pckt_len+sizeof(uint32_t)));
-
-	destroy_dtg_srvc_pckt(pckt, 1, 1);
+	destroy_dtg_srvc_recvpckt(pckt, 1, 1);
 
 	if (! queue->rail)
 	  break;
@@ -818,6 +834,9 @@ int rail_add_ses_server(int rail_sckt,
 			struct com_comm *command) {
   struct nbnodename_list *name;
   unsigned char *buff, *walker;
+
+  if (! command)
+    return -1;
 
   buff = malloc(command->len);
   if (! buff)
@@ -989,6 +1008,9 @@ void *tunnel_stream_sockets(void *arg) {
   int sckt_lcl, sckt_rmt, read_sckt, write_sckt, l;
   int ret_val, i;
   unsigned char buf[DEFAULT_TUNNEL_LEN];
+
+  if (! arg)
+    return 0;
 
   params = arg;
   sckt_lcl = params->sckt_lcl;
