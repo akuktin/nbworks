@@ -30,6 +30,10 @@ void lib_init() {
   nbworks_allhandles = 0;
 
   nbworks_libcntl.stop_dtg_srv = 0;
+
+  nbworks_max_ses_retarget_retries = 5; /*
+	      What do I know? Just choose a random number,
+	      it oughta work. I guess. */
 }
 
 
@@ -913,16 +917,18 @@ void *lib_dtgserver(void *arg) {
 }
 
 
+#define SMALL_BUFF_LEN (SES_HEADER_LEN +4+2)
 int lib_open_session(struct name_state *handle,
 		     struct nbnodename_list *dst) {
   struct com_comm command;
   struct nbnodename_list *name_id, *her; /* To vary names a bit. */
   struct ses_srvc_packet *pckt;
   struct ses_pckt_pyld_two_names *twins;
-  uint32_t target_addr;
+  struct sockaddr_in addr;
+  int ses_sckt, retry_count;;
   unsigned int lenof_pckt, wrotelenof_pckt;
   unsigned char *mypckt_buff, *herpckt_buff;
-  unsigned char commandbuf[LEN_COMM_ONWIRE];
+  unsigned char small_buff[SMALL_BUFF_LEN];
 
   if (! (handle && dst)) {
     /* TODO: errno signaling stuff */
@@ -933,6 +939,8 @@ int lib_open_session(struct name_state *handle,
     /* TODO: errno signaling stuff */
     return -1;
   }
+
+  retry_count = 0;
 
   her = clone_nbnodename(dst);
   if (! her) {
@@ -947,10 +955,14 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
-  target_addr = lib_whatisaddrX(her, (1+ NETBIOS_NAME_LEN+ handle->lenof_scope));
-  if (! target_addr) {
+  addr.sin_addr.s_addr =
+    lib_whatisaddrX(her, (1+ NETBIOS_NAME_LEN+ handle->lenof_scope));
+  if (! addr.sin_addr.s_addr) {
     destroy_nbnodename(her);
+    return -1;
   }
+  addr.sin_family = AF_INET;
+  addr.sin_port = 139;
 
   name_id = clone_nbnodename(handle->name);
   if (! name_id) {
@@ -1006,25 +1018,130 @@ int lib_open_session(struct name_state *handle,
   mypckt_buff = malloc(SES_HEADER_LEN + lenof_pckt);
   if (! mypckt_buff) {
     /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
     destroy_nbnodename(name_id);
     return -1;
   }
 
   wrotelenof_pckt = (lenof_pckt + SES_HEADER_LEN);
+  /* NOTE: if alignment is performed, fill_ses_srvc_pckt_payload_data()
+   *       will leave up to three octets between the called name and the
+   *       calling name that are not NULLed out, as well as up to three
+   *       octets between the end of the calling name and the end of
+   *       packet. */
   master_ses_srvc_pckt_writer(pckt, &wrotelenof_pckt, mypckt_buff);
-  if (wrotelenof_pckt < (lenof_pckt + SES_HEADER_LEN)) {
-    /* NOTE: if alignment is performed, fill_ses_srvc_pckt_payload_data()
-     *       will leave up to three octets between the called name and the
-     *       calling name that are not NULLed out. */
-    memset((mypckt_buff + wrotelenof_pckt), 0,
-	   ((lenof_pckt + SES_HEADER_LEN) - wrotelenof_pckt));
-  }
 
   destroy_ses_srvc_pckt(pckt);
   destroy_nbnodename(name_id);
+  destroy_nbnodename(her);
 
-  /* Now I have allocated: her, mypckt_buff. */
+  /* Now I have allocated: mypckt_buff. */
+  /* Other that that, I will need: addr, wrotelenof_pckt,
+                                   *herpckt_buff, *pckt,
+				   small_buff[] */
+ try_to_connect:
+  ses_sckt = socket(AF_INET, SOCK_STREAM, 0);
+  if (ses_sckt == -1) {
+    free(mypckt_buff);
+    return -1;
+  }
+
+  if (0 != fcntl(ses_sckt, F_SETFL, O_NONBLOCK)) {
+    close(ses_sckt);
+    free(mypckt_buff);
+    return -1;
+  }
+
+  if (0 != connect(ses_sckt, &addr, sizeof(struct sockaddr_in))) {
+    close(ses_sckt);
+    free(mypckt_buff);
+    return -1;
+  }
+
+  if (wrotelenof_pckt > send(ses_sckt, mypckt_buff, wrotelenof_pckt,
+			     MSG_DONTWAIT)) {
+    close(ses_sckt);
+    free(mypckt_buff);
+    return -1;
+  }
+
+  if (SES_HEADER_LEN > recv(ses_sckt, small_buff, SES_HEADER_LEN,
+			    MSG_WAITALL)) {
+    close(ses_sckt);
+    free(mypckt_buff);
+    return -1;
+  }
+
+  herpckt_buff = small_buff;
+  pckt = read_ses_srvc_pckt_header(&herpckt_buff,
+				   (herpckt_buff + SES_HEADER_LEN));
+  if (! pckt) {
+    close(ses_sckt);
+    free(mypckt_buff);
+    return -1;
+  }
+
+  switch (pckt->type) {
+  case POS_SESSION_RESPONSE:
+    free(mypckt_buff);
+    while (pckt->len) {
+      if (pckt->len > SMALL_BUFF_LEN) {
+	if (SMALL_BUFF_LEN > recv(ses_sckt, herpckt_buff, SMALL_BUFF_LEN,
+				  MSG_WAITALL)) {
+	  close(ses_sckt);
+	  free(mypckt_buff);
+	  return -1;
+	}
+	pckt->len = pckt->len - SMALL_BUFF_LEN;
+      } else {
+	if (pckt->len > recv(ses_sckt, herpckt_buff, pckt->len,
+			     MSG_WAITALL)) {
+	  close(ses_sckt);
+	  free(mypckt_buff);
+	  return -1;
+	}
+	pckt->len = 0;
+      }
+    }
+    free(pckt);
+    return ses_sckt;
+    break;
+
+  case NEG_SESSION_RESPONSE:
+    free(mypckt_buff);
+    if (1 > recv(ses_sckt, herpckt_buff, 1, MSG_WAITALL)) {
+      close(ses_sckt);
+      free(mypckt_buff);
+      return -1;
+    }
+    free(pckt);
+    close(ses_sckt);
+    // session_error = *herpckt_buff;
+    return -1;
+    break;
+
+  case RETARGET_SESSION:
+    if ((4+2) > recv(ses_sckt, herpckt_buff, (4+2), MSG_WAITALL)) {
+      close(ses_sckt);
+      free(mypckt_buff);
+      return -1;
+    }
+    herpckt_buff = read_32field(herpckt_buff,
+				&(addr.sin_addr.s_addr));
+    herpckt_buff = read_16field(herpckt_buff,
+				&(addr.sin_port));
+    /* fall-through! */
+  default:
+    free(pckt);
+    close(ses_sckt);
+    if (retry_count < nbworks_max_ses_retarget_retries) {
+      retry_count++;
+      goto try_to_connect;
+    } else {
+      free(mypckt_buff);
+      return -1;
+    }
+    break;
+  }
 
   
 }
