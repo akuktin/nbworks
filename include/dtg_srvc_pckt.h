@@ -109,5 +109,9 @@ void
   destroy_dtg_srvc_pckt(void *packet,
                         unsigned int placeholder1,
                         unsigned int placeholder2);
+void
+  destroy_dtg_srvc_recvpckt(void *packet_ptr,
+                            unsigned int placeholder1,
+                            unsigned int placeholder2);
 
 #endif /* NBWORKS_DTGSRVCPCKT_H */

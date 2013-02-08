@@ -496,3 +496,20 @@ void destroy_dtg_srvc_pckt(void *packet_ptr,
 
   return;
 }
+
+void destroy_dtg_srvc_recvpckt(void *packet_ptr,
+			       unsigned int placeholder1,
+			       unsigned int placeholder2) {
+  struct dtg_srvc_recvpckt *pckt;
+
+  if (! packet_ptr)
+    return;
+
+  pckt = packet_ptr;
+
+  destroy_nbnodename(pckt->dst);
+  free(pckt->packetbuff);
+  free(pckt);
+
+  return;
+}
