@@ -377,6 +377,60 @@ void *partial_dtg_srvc_pckt_reader(void *packet,
   return (void *)result;
 }
 
+void *recving_dtg_srvc_pckt_reader(void *packet,
+				   int len,
+				   uint16_t *tid) {
+  struct dtg_srvc_recvpckt *result;
+  unsigned char *readhead;
+
+  if ((! packet) ||
+      (len < (DTG_HDR_LEN +2+2+1+1)))
+    return 0;
+
+  if (! ((*packet == DIR_UNIQ_DTG) ||
+	 (*packet == DIR_GRP_DTG) ||
+	 (*packet == BRDCST_DTG)))
+    return 0;
+
+  result = malloc(sizeof(struct dtg_srvc_recvpckt));
+  if (! result)
+    return 0;
+
+  readhead = packet;
+  readhead = readhead + (DTG_HDR_LEN +2+2);
+  if (! fastfrwd_all_DNS_labels(&readhead, (packet + len))) {
+    free(result);
+    return 0;
+  }
+
+  align(packet, readhead, 4);
+
+  result->dst = read_all_DNS_labels(&readhead, packet,
+				    (packet + len), 0);
+  if (! result->dst) {
+    free(result);
+    return 0;
+  }
+
+  result->packetbuff = malloc(len);
+  if (! result->packetbuff) {
+    destroy_nbnodename(result->dst);
+    free(result);
+    return 0;
+  }
+  memcpy(result->packetbuff, packet, len);
+
+  result->len = len;
+
+  if (tid) {
+    readhead = result->packetbuff;
+    readhead = readhead +1+1;
+    *tid = *((uint16_t *)readhead);
+  }
+
+  return result;
+}
+
 void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 				  unsigned int *pckt_len,
 				  void *packet_field) {

@@ -61,6 +61,12 @@ struct dtg_srvc_packet {
   unsigned char error_code;
 };
 
+struct dtg_srvc_recvpckt {
+  struct nbnodename_list *dst;
+  void *packetbuff;
+  int len;
+};
+
 
 struct dtg_srvc_packet *
   read_dtg_packet_header(unsigned char **master_packet_walker,
@@ -88,6 +94,10 @@ void *
                               uint16_t *tid);
 void *
   partial_dtg_srvc_pckt_reader(void *packet,
+                               int len,
+                               uint16_t *tid);
+void *
+  recving_dtg_srvc_pckt_reader(void *packet,
                                int len,
                                uint16_t *tid);
 void *
