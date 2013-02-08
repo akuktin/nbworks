@@ -1207,7 +1207,7 @@ void *take_incoming_session(void *arg) {
   struct ses_srv_sessions *session;
   struct thread_node *last_will;
   uint64_t token;
-  unsigned char buf[SES_HEADER_LEN];
+  unsigned char buf[SES_HEADER_LEN+1]; /* +1 is for the error code */
   unsigned char *walker, *big_buff;
 
   memcpy(&params, arg, sizeof(struct ss_tcp_sckts));
@@ -1239,15 +1239,19 @@ void *take_incoming_session(void *arg) {
   if (two_names != (new_pckt->payload_t =
 		    understand_ses_pckt_type(new_pckt->type))) {
     /* Sorry, wrong daemon. */
+
+    /* I should send an error packet. */
+
     close(params.sckt139);
     if (last_will)
       last_will->dead = TRUE;
     return 0;
   }
 
-  /* This can probably be made in a better way. */
   big_buff = malloc(new_pckt->len+SES_HEADER_LEN);
   if (! big_buff) {
+    /* I should send an error packet. */
+
     close(params.sckt139);
     if (last_will)
       last_will->dead = TRUE;
@@ -1256,8 +1260,10 @@ void *take_incoming_session(void *arg) {
 
   memcpy(big_buff, buf, SES_HEADER_LEN);
 
-  if (new_pckt->len > recv(params.sckt139, big_buff+SES_HEADER_LEN,
+  if (new_pckt->len > recv(params.sckt139, (big_buff+SES_HEADER_LEN),
 			   new_pckt->len, MSG_WAITALL)) {
+    /* I should send an error packet. */
+
     free(big_buff);
     close(params.sckt139);
     if (last_will)
@@ -1265,20 +1271,7 @@ void *take_incoming_session(void *arg) {
     return 0;
   }
 
-  walker = big_buff+SES_HEADER_LEN;
-
-  new_pckt->payload = read_ses_srvc_pckt_payload_data(new_pckt, &walker,
-						      big_buff, (big_buff+new_pckt->len));
-  if (! new_pckt->payload) {
-    destroy_ses_srvc_pckt(new_pckt);
-    free(big_buff);
-    close(params.sckt139);
-    if (last_will)
-      last_will->dead = TRUE;
-    return 0;
-  }
-
-  called_name = ((struct ses_pckt_pyld_two_names *)new_pckt->payload)->called_name;
+  called_name = ses_srvc_get_calledname(big_buff, (new_pckt->len+SES_HEADER_LEN));
   servers = *(params.servers);
   while (servers) {
     if (0 != cmp_nbnodename(called_name, servers->name))
@@ -1286,8 +1279,6 @@ void *take_incoming_session(void *arg) {
     else
       break;
   }
-
-  destroy_ses_srvc_pckt(new_pckt);
 
   if (servers) {
     token = make_token();
@@ -1300,7 +1291,7 @@ void *take_incoming_session(void *arg) {
     }
 
     if (! ((session = ss__add_session(token, params.sckt139, big_buff)) &&
-	   (0 < rail__send_ses_pending(servers->rail, token)))) {
+	   (0 <= rail__send_ses_pending(servers->rail, token)))) {
       if (session)
 	ss__del_session(token, FALSE);
       free(big_buff);
@@ -1310,12 +1301,16 @@ void *take_incoming_session(void *arg) {
       return 0;
     }
   } else {
+    /* Actally, here I should send an error packet. */
+
     free(big_buff);
     close(params.sckt139);
     if (last_will)
       last_will->dead = TRUE;
     return 0;
   }
+
+  destroy_ses_srvc_pckt(new_pckt);
 
   nanosleep(&(nbworks_ses_srv_cntrl.take_timeout), 0);
 

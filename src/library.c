@@ -932,12 +932,14 @@ int lib_open_session(struct name_state *handle,
   master_ses_srvc_pckt_writer(pckt, &wrotelenof_pckt, mypckt_buff);
   if (wrotelenof_pckt < (lenof_pckt + SES_HEADER_LEN)) {
     /* NOTE: if alignment is performed, fill_ses_srvc_pckt_payload_data()
-     *       will leave up to four octets between the called name and the
+     *       will leave up to three octets between the called name and the
      *       calling name that are not NULLed out. */
     memset((mypckt_buff + wrotelenof_pckt), 0,
 	   ((lenof_pckt + SES_HEADER_LEN) - wrotelenof_pckt));
   }
   destroy_ses_srvc_pckt(pckt);
+
+  destroy_nbnodename(name_id);
 
   
 }

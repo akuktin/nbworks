@@ -895,7 +895,7 @@ int rail__send_ses_pending(int rail,
 /* returns: >0 = success, 0 = failed, <0 = error */
 int rail_setup_session(int rail,
 		       uint64_t token) {
-  struct ses_srv_sessions *session;
+  struct ses_srv_sessions *session_ptr, session;
   struct ses_srvc_packet *pckt;
   struct com_comm *answer;
   struct stream_connector_args new_session;
@@ -903,33 +903,36 @@ int rail_setup_session(int rail,
   unsigned char rail_buff[LEN_COMM_ONWIRE];
   unsigned char *walker;
 
-  session = ss__take_session(token);
-  if (! session) {
+  session_ptr = ss__take_session(token);
+  if (! session_ptr) {
     close(rail);
     return 0;
   }
-  /* To prevent a use-after-free, session is freed by
+
+  memcpy(&session, session_ptr, sizeof(struct ses_srv_sessions));
+
+  /* To prevent a use-after-free, session_ptr is freed by
    * take_incoming_session() from the service sector. */
 
-  session->token = 0;
+  session_ptr->token = 0;
 
-  walker = session->first_buff;
+  walker = session.first_buff;
   pckt = read_ses_srvc_pckt_header(&walker, walker+SES_HEADER_LEN);
   pckt->payload = 0;
 
-  if ((pckt->len+SES_HEADER_LEN) > send(rail, session->first_buff,
+  if ((pckt->len+SES_HEADER_LEN) > send(rail, session.first_buff,
 					(pckt->len+SES_HEADER_LEN),
 					(MSG_NOSIGNAL | MSG_DONTWAIT))) {
     close(rail);
-    close(session->out_sckt);
-    free(session->first_buff);
-    session->first_buff = 0;
+    close(session.out_sckt);
+    free(session.first_buff);
+    session.first_buff = 0;
     free(pckt);
     return -1;
   } else {
-    out_sckt = session->out_sckt;
-    free(session->first_buff);
-    session->first_buff = 0;
+    out_sckt = session.out_sckt;
+    free(session.first_buff);
+    session.first_buff = 0;
     free(pckt);
   }
 
@@ -946,8 +949,8 @@ int rail_setup_session(int rail,
     return -1;
   }
 
-  if (answer->command != rail_stream_accept ||
-      answer->token != token) {
+  if ((answer->command != rail_stream_accept) ||
+      (answer->token != token)) {
     close(rail);
     close(out_sckt);
     free(answer);

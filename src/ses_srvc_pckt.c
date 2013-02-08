@@ -351,6 +351,20 @@ struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
   return result;
 }
 
+/* Call with whole packet, len is total len of whole packet. */
+struct nbnodename_list *ses_srvc_get_calledname(void *packet,
+						int len) {
+  unsigned char *walker;
+
+  if ((! packet) ||
+      (len < (2 + SES_HEADER_LEN)))
+    return 0;
+
+  walker = packet + SES_HEADER_LEN;
+
+  return read_all_DNS_labels(&walker, packet, (packet + len), 0);
+}
+
 void *master_ses_srvc_pckt_writer(void *packet_ptr,
 				  unsigned int *pckt_len,
 				  void *packet_field) {
