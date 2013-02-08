@@ -111,7 +111,7 @@ void *
 unsigned int
   lib_doeslistento(struct nbnodename_list *query,
                    struct nbnodename_list *answerlist);
- 
+
 uint32_t
   lib_whatisaddrX(struct nbnodename_list *X,
                   unsigned int len);

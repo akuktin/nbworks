@@ -919,6 +919,7 @@ int lib_open_session(struct name_state *handle,
   struct nbnodename_list *name_id, *her; /* To vary names a bit. */
   struct ses_srvc_packet *pckt;
   struct ses_pckt_pyld_two_names *twins;
+  uint32_t target_addr;
   unsigned int lenof_pckt, wrotelenof_pckt;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char commandbuf[LEN_COMM_ONWIRE];
@@ -933,28 +934,33 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
-  name_id = clone_nbnodename(handle->name);
-  if (! name_id) {
-    /* TODO: errno signaling stuff */
-    return -1;
-  }
-  destroy_nbnodename(name_id->next_name);
-  name_id->next_name = clone_nbnodename(handle->scope);
-  if (! name_id->next_name) {
-    /* TODO: errno signaling stuff */
-    destroy_nbnodename(name_id);
-    return -1;
-  }
-
   her = clone_nbnodename(dst);
   if (! her) {
     /* TODO: errno signaling stuff */
-    destroy_nbnodename(name_id);
     return -1;
   }
   destroy_nbnodename(her->next_name);
   her->next_name = clone_nbnodename(handle->scope);
   if (! her->next_name) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
+    return -1;
+  }
+
+  target_addr = lib_whatisaddrX(her, (1+ NETBIOS_NAME_LEN+ handle->lenof_scope));
+  if (! target_addr) {
+    destroy_nbnodename(her);
+  }
+
+  name_id = clone_nbnodename(handle->name);
+  if (! name_id) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
+    return -1;
+  }
+  destroy_nbnodename(name_id->next_name);
+  name_id->next_name = clone_nbnodename(handle->scope);
+  if (! name_id->next_name) {
     /* TODO: errno signaling stuff */
     destroy_nbnodename(her);
     destroy_nbnodename(name_id);
