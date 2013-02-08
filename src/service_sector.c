@@ -1032,8 +1032,8 @@ void *ss__udp_sender(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
   struct ss_unif_pckt_list *for_del;
   struct ss_priv_trans *cur_trans, **last_trans, *for_del2;
-  unsigned int len, i;
-  unsigned char *deleter, udp_pckt[MAX_UDP_PACKET_LEN];
+  unsigned int len;
+  unsigned char udp_pckt[MAX_UDP_PACKET_LEN];
   void *ptr;
 
   if (! sckts_ptr)

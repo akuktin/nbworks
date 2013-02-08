@@ -393,7 +393,7 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
 	destroy_namecard(new_name);
       }
     } else {
-      free(addrlist);
+      free(addrlst);
     }
   }
 

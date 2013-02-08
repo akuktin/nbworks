@@ -381,32 +381,34 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
 				   int len,
 				   uint16_t *tid) {
   struct dtg_srvc_recvpckt *result;
-  unsigned char *readhead;
+  unsigned char *readhead, *startof_pckt;
 
   if ((! packet) ||
       (len < (DTG_HDR_LEN +2+2+1+1)))
     return 0;
 
-  if (! ((*packet == DIR_UNIQ_DTG) ||
-	 (*packet == DIR_GRP_DTG) ||
-	 (*packet == BRDCST_DTG)))
+  startof_pckt = packet;
+
+  if (! ((*startof_pckt == DIR_UNIQ_DTG) ||
+	 (*startof_pckt == DIR_GRP_DTG) ||
+	 (*startof_pckt == BRDCST_DTG)))
     return 0;
 
   result = malloc(sizeof(struct dtg_srvc_recvpckt));
   if (! result)
     return 0;
 
-  readhead = packet;
+  readhead = startof_pckt;
   readhead = readhead + (DTG_HDR_LEN +2+2);
   if (! fastfrwd_all_DNS_labels(&readhead, (packet + len))) {
     free(result);
     return 0;
   }
 
-  align(packet, readhead, 4);
+  align(startof_pckt, readhead, 4);
 
   result->dst = read_all_DNS_labels(&readhead, packet,
-				    (packet + len), 0);
+				    (startof_pckt + len), 0);
   if (! result->dst) {
     free(result);
     return 0;

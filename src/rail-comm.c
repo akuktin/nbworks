@@ -36,8 +36,7 @@ void init_rail() {
 
 int open_rail() {
   struct sockaddr_un address;
-  int i, result;
-  unsigned char *deleter;
+  int result;
 
   memset(&address, 0, sizeof(struct sockaddr_un));
 
@@ -690,8 +689,8 @@ int rail_add_dtg_server(int rail_sckt,
     params.queue = queue;
     params.all_queues = queue_stor;
 
-    if (0 != pthread_create(&(params->thread_id), 0,
-			    dtg_server, params)) {
+    if (0 != pthread_create(&(params.thread_id), 0,
+			    dtg_server, &params)) {
       ss_deregister_dtg_tid(nbname);
       ss__dstry_recv_queue(&(queue->queue));
       ss_del_queuestorage(nbname, DTG_SRVC, queue_stor);
@@ -1170,16 +1169,16 @@ uint32_t rail_whatisaddrX(int rail_sckt,
     return 0;
 
   switch (command->node_type) {
-  case H:
+  case 'H':
     node_type = CACHE_NODEFLG_H;
     break;
-  case M:
+  case 'M':
     node_type = CACHE_NODEFLG_M;
     break;
-  case P:
+  case 'P':
     node_type = CACHE_NODEFLG_P;
     break;
-  case B:
+  case 'B':
   default:
     node_type = CACHE_NODEFLG_B;
     break;

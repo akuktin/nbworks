@@ -16,6 +16,7 @@
 #include "rail-comm.h"
 #include "dtg_srvc_pckt.h"
 #include "dtg_srvc_cnst.h"
+#include "ses_srvc_pckt.h"
 #include "randomness.h"
 
 // temporary
@@ -839,7 +840,7 @@ int lib_open_session(struct name_state *handle,
   struct com_comm command;
   struct nbnodename_list *name_id, *her; /* To vary names a bit. */
   struct ses_srvc_packet *pckt;
-  int lenof_pckt, wrotelenof_pckt;
+  unsigned int lenof_pckt, wrotelenof_pckt;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char commandbuf[LEN_COMM_ONWIRE];
 
@@ -872,7 +873,7 @@ int lib_open_session(struct name_state *handle,
     destroy_nbnodename(name_id);
     return -1;
   }
-  her->next_name = destroy_nbnodename(her->next_name);
+  destroy_nbnodename(her->next_name);
   her->next_name = clone_nbnodename(handle->scope);
   if (! her->next_name) {
     /* TODO: errno signaling stuff */
@@ -881,10 +882,10 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
-  memset(command, 0, sizeof(struct com_comm));
+  memset(&command, 0, sizeof(struct com_comm));
   command.command = rail_addr_ofX;
 
-  pckt = calloc(1, sizeof(struct ses_srvc_pckt));
+  pckt = calloc(1, sizeof(struct ses_srvc_packet));
   if (! pckt) {
     /* TODO: errno signaling stuff */
     destroy_nbnodename(her);
