@@ -84,6 +84,7 @@ void *poll_rail(void *args) {
   memcpy(&params, args, sizeof(struct rail_params));
   release_lock = args;
   release_lock->isbusy = 0;
+  new_params.isbusy = 0;
 
   if (params.thread_id)
     last_will = add_thread(params.thread_id);

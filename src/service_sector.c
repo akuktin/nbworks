@@ -901,6 +901,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 
   polldata.fd = sckts.udp_sckt;
   polldata.events = (POLLIN | POLLPRI);
+  params.isbusy = 0;
 
   while (! nbworks_all_port_cntl.all_stop) {
     ret_val = poll(&polldata, 1, nbworks_all_port_cntl.poll_timeout);
@@ -1137,6 +1138,7 @@ void *ss__port139(void *args) {
   /* VAXism below */
   fill_16field(139, (unsigned char *)&(port_addr.sin_port));
   port_addr.sin_addr.s_addr = get_inaddr();
+  params.isbusy = 0;
 
   sckt139 = socket(PF_INET, SOCK_STREAM, 0);
   if (sckt139 < 0) {
