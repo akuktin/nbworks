@@ -1050,6 +1050,7 @@ int lib_open_session(struct name_state *handle,
 
   if (0 != fcntl(ses_sckt, F_SETFL, O_NONBLOCK)) {
     close(ses_sckt);
+    /* This also may not be a fatal error. */
     free(mypckt_buff);
     return -1;
   }
@@ -1065,8 +1066,13 @@ int lib_open_session(struct name_state *handle,
 
   if (0 != connect(ses_sckt, &addr, sizeof(struct sockaddr_in))) {
     close(ses_sckt);
-    free(mypckt_buff);
-    return -1;
+    if (retry_count < nbworks_max_ses_retarget_retries) {
+      retry_count++;
+      goto try_to_connect;
+    } else {
+      free(mypckt_buff);
+      return -1;
+    }
   }
 
   if (wrotelenof_pckt > send(ses_sckt, mypckt_buff, wrotelenof_pckt,
@@ -1132,7 +1138,7 @@ int lib_open_session(struct name_state *handle,
     free(mypckt_buff);
     if (1 > recv(ses_sckt, herpckt_buff, 1, MSG_WAITALL)) {
       close(ses_sckt);
-      free(mypckt_buff);
+      free(pckt);
       return -1;
     }
     free(pckt);
