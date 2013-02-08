@@ -122,7 +122,7 @@ int lib_start_dtg_srv(struct name_state *handle,
 }
 
 
-void lib_destroy_frag(struct dtg_frag *flesh) {
+void lib_destroy_frags(struct dtg_frag *flesh) {
   struct dtg_frag *deed;
 
   while (flesh) {
@@ -138,7 +138,7 @@ void lib_destroy_frag(struct dtg_frag *flesh) {
 void lib_destroy_fragbckbone(struct dtg_frag_bckbone *bone) {
   /* A most curious site: a stackless function. */
   destroy_nbnodename(bone->src);
-  lib_destroy_frag(bone->frags);
+  lib_destroy_frags(bone->frags);
   free(bone);
 }
 
@@ -360,9 +360,9 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
 	   * is a full time job. */
 	  if (sorted) {
 	    sorted->next = frags;
-	    lib_destroy_frag(master);
+	    lib_destroy_frags(master);
 	  } else {
-	    lib_destroy_frag(frags);
+	    lib_destroy_frags(frags);
 	  }
 	  return 0;
 	}
@@ -383,9 +383,9 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
       /* IP has lost a fragment or two. */
       if (sorted) {
 	sorted->next = frags;
-	lib_destroy_frag(master);
+	lib_destroy_frags(master);
       } else {
-	lib_destroy_frag(frags);
+	lib_destroy_frags(frags);
       }
       return 0;
     } else
@@ -442,9 +442,10 @@ void *lib_assemble_frags(struct dtg_frag *frags,
 }
 
 
-/* returns: 0 = YES, listens to, !0 = NO, doesn't listen to */
-int lib_doeslistento(struct nbnodename_list *query,
-		     struct nbnodename_list *answerlist) {
+/* returns: TRUE (AKA 1) = YES, listens to,
+            FALSE (AKA 0) = NO, doesn't listen to */
+unsigned int lib_doeslistento(struct nbnodename_list *query,
+			      struct nbnodename_list *answerlist) {
   int labellen;
   unsigned char *label;
 
@@ -650,7 +651,7 @@ void *lib_dtgserver(void *arg) {
   struct dtg_srvc_packet *dtg;
   struct dtg_pckt_pyld_normal *nrml_pyld;
   uint32_t len;
-  unsigned char lenbuf[sizeof(uint32_t)];
+  unsigned char lenbuf[4];
   unsigned char *new_pckt, take_dtg;
 
   if (arg)
@@ -679,8 +680,8 @@ void *lib_dtgserver(void *arg) {
 	continue;
     }
 
-    if (sizeof(uint32_t) > recv(handle->dtg_srv_sckt, lenbuf,
-				sizeof(uint32_t), MSG_WAITALL)) {
+    if (4 > recv(handle->dtg_srv_sckt, lenbuf, 4,
+		 MSG_WAITALL)) {
       break;
     }
 
@@ -692,6 +693,7 @@ void *lib_dtgserver(void *arg) {
     }
 
     if (len > recv(handle->dtg_srv_sckt, new_pckt, len, MSG_WAITALL)) {
+      free(new_pckt);
       break;
     }
 
@@ -711,10 +713,8 @@ void *lib_dtgserver(void *arg) {
 	  if (handle->dtg_takes & HANDLE_TAKES_ALLBRDCST) {
 	    take_dtg = TRUE;
 	  } else {
-	    if (0 == lib_doeslistento(nrml_pyld->src_name,
-				      handle->dtg_listento)) {
-	      take_dtg = TRUE;
-	    }
+	    take_dtg = lib_doeslistento(nrml_pyld->src_name,
+					handle->dtg_listento);
 	  }
 	  break;
 
@@ -724,10 +724,8 @@ void *lib_dtgserver(void *arg) {
 	  if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
 	    take_dtg = TRUE;
 	  } else {
-	    if (0 == lib_doeslistento(nrml_pyld->src_name,
-				      handle->dtg_listento)) {
-	      take_dtg = TRUE;
-	    }
+	    take_dtg = lib_doeslistento(nrml_pyld->src_name,
+					handle->dtg_listento);
 	  }
 	  break;
 
@@ -789,6 +787,9 @@ void *lib_dtgserver(void *arg) {
 					    &(handle->dtg_frags));
 	    if (fragbone) {
 	      /* A spooky statement. */
+	      /* Question: what if the compiler does not update the second
+	       * argument to lib_assemble_frags() after calling
+	       * lib_order_frags(), hmmm? */
 	      toshow->data =
 		lib_assemble_frags(lib_order_frags(fragbone->frags,
 						   &(toshow->len)),
@@ -840,6 +841,7 @@ int lib_open_session(struct name_state *handle,
   struct com_comm command;
   struct nbnodename_list *name_id, *her; /* To vary names a bit. */
   struct ses_srvc_packet *pckt;
+  struct ses_pckt_pyld_two_names *twins;
   unsigned int lenof_pckt, wrotelenof_pckt;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char commandbuf[LEN_COMM_ONWIRE];
@@ -901,8 +903,9 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
-  ((struct ses_pckt_pyld_two_names *)(pckt->payload))->called_name = her;
-  ((struct ses_pckt_pyld_two_names *)(pckt->payload))->called_name = name_id;
+  twins = pckt->payload;
+  twins->called_name = her;
+  twins->calling_name = name_id;
 
   lenof_pckt = (2 * NETBIOS_CODED_NAME_LEN) +
     (2 * handle->lenof_scope);

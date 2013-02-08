@@ -70,7 +70,7 @@ int
                     struct nbnodename_list *listento);
 
 void
-  lib_destroy_frag(struct dtg_frag *flesh);
+  lib_destroy_frags(struct dtg_frag *flesh);
 void
   lib_destroy_fragbckbone(struct dtg_frag_bckbone *bone);
 struct dtg_frag_bckbone *
@@ -106,8 +106,9 @@ void *
   lib_assemble_frags(struct dtg_frag *frags,
                      uint32_t len);
 
-/* returns: 0 = YES, listens to, !0 = NO, doesn't listen to */
-int
+/* returns: TRUE (AKA 1) = YES, listens to,
+            FALSE (AKA 0) = NO, doesn't listen to */
+unsigned int
   lib_doeslistento(struct nbnodename_list *query,
                    struct nbnodename_list *answerlist);
 
