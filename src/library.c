@@ -907,7 +907,7 @@ int lib_open_session(struct name_state *handle,
   twins->called_name = her;
   twins->calling_name = name_id;
 
-  lenof_pckt = (2 * NETBIOS_CODED_NAME_LEN) +
+  lenof_pckt = (2 * (1+ NETBIOS_CODED_NAME_LEN)) +
     (2 * handle->lenof_scope);
 
   if (nbworks_do_align) {
@@ -931,10 +931,11 @@ int lib_open_session(struct name_state *handle,
   wrotelenof_pckt = (lenof_pckt + SES_HEADER_LEN);
   master_ses_srvc_pckt_writer(pckt, &wrotelenof_pckt, mypckt_buff);
   if (wrotelenof_pckt < (lenof_pckt + SES_HEADER_LEN)) {
-    herpckt_buff = mypckt_buff + wrotelenof_pckt;
-    while (herpckt_buff < (mypckt_buff + (lenof_pckt + SES_HEADER_LEN))) {
-      *herpckt_buff = 0;
-    }
+    /* NOTE: if alignment is performed, fill_ses_srvc_pckt_payload_data()
+     *       will leave up to four octets between the called name and the
+     *       calling name that are not NULLed out. */
+    memset((mypckt_buff + wrotelenof_pckt), 0,
+	   ((lenof_pckt + SES_HEADER_LEN) - wrotelenof_pckt));
   }
   destroy_ses_srvc_pckt(pckt);
 
