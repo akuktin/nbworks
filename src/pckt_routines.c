@@ -526,7 +526,7 @@ unsigned char *fastfrwd_all_DNS_labels(unsigned char **start_and_end_of_walk,
     if (walker >= endof_pckt)
       return 0;
   }
-      
+
   walker = walker + step + 1;
 
   *start_and_end_of_walk = walker;
