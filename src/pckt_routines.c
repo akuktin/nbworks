@@ -497,6 +497,43 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
   return field;
 }
 
+unsigned char *fastfrwd_all_DNS_labels(unsigned char **start_and_end_of_walk,
+				       unsigned char *endof_pckt) {
+  unsigned char *walker;
+  unsigned char step;
+
+  if (! start_and_end_of_walk) {
+    return 0;
+  } else {
+    if (endof_pckt >= *start_and_end_of_walk) {
+      return 0;
+    }
+  }
+
+  walker = *start_and_end_of_walk;
+  while (0xb0b0) {
+    step = *walker;
+    if (step > MAX_DNS_LABEL_LEN) {
+      step = 1;
+      break;
+    } else {
+      if (step)
+	walker = (walker + step +1);
+      else
+	break;
+    }
+
+    if (walker >= endof_pckt)
+      return 0;
+  }
+      
+  walker = walker + step + 1;
+
+  *start_and_end_of_walk = walker;
+
+  return walker;
+}
+
 struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk,
 					   uint16_t len_of_addresses,
 					   unsigned char *end_of_packet) {

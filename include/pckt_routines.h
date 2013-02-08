@@ -8,6 +8,7 @@
 # ifndef MAX_UDP_PACKET_LEN
 #  define MAX_UDP_PACKET_LEN 0xffff
 # endif
+# define MAX_DNS_LABEL_LEN 0x3f
 
 struct state__readDNSlabels {
   struct nbnodename_list *first_label, *cur_label;
@@ -42,6 +43,9 @@ unsigned char *
                       unsigned char *field,
                       unsigned char *endof_pckt,
                       struct nbnodename_list **state);
+unsigned char *
+  fastfrwd_all_DNS_labels(unsigned char **start_and_end_of_walk,
+                          unsigned char *endof_pckt);
 struct nbaddress_list *
   read_nbaddress_list(unsigned char **start_and_end_of_walk,
                       uint16_t len_of_addresses,
