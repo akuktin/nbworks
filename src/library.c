@@ -397,7 +397,7 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
     } else
       size_todate = size_todate + offered_len;
 
-    if (best_offer) {
+    if (best_offer && bef_remv) {
       *bef_remv = best_offer->next;
       if (sorted) {
 	sorted->next = best_offer;
@@ -406,6 +406,14 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
 	master = best_offer;
 	sorted = master;
       }
+    } else {
+      if (sorted) {
+	sorted->next = frags;
+	lib_destroy_frags(master);
+      } else {
+	lib_destroy_frags(frags);
+      }
+      return 0;
     }
   }
 
