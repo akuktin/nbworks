@@ -99,7 +99,7 @@ int nbworks_dtgpoll(struct nbworks_pollfd *handles,
     free(trgt);
     return ret_val;
   }
-    
+
   if (timeout < 0) {
     while (0xce0) {
 
