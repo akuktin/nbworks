@@ -70,6 +70,30 @@ int open_rail() {
   }
 }
 
+/* returns: !0 = success, 0 = error */
+unsigned int rail_flushrail(uint32_t leng,
+			    int rail) {
+  unsigned char bucket[0xff];
+
+  while (leng) {
+    if (leng > 0xff) {
+      if (0xff > recv(rail, bucket, 0xff, MSG_WAITALL)) {
+	return FALSE;
+      } else {
+	leng = leng - 0xff;
+      }
+    } else {
+      if (leng > recv(rail, bucket, leng, MSG_WAITALL)) {
+	return FALSE;
+      } else {
+	return TRUE;
+      }
+    }
+  }
+
+  return TRUE;
+}
+
 void *poll_rail(void *args) {
   struct rail_params params, new_params, *release_lock;
   struct pollfd pfd;
@@ -143,7 +167,7 @@ void *poll_rail(void *args) {
 void *handle_rail(void *args) {
   struct nbnodename_list *scope;
   struct rail_params params, *release_lock;
-  struct com_comm *command;
+  struct com_comm command;
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
   uint32_t ipv4, i;
@@ -179,9 +203,7 @@ void *handle_rail(void *args) {
     return 0;
   }
 
-  command = read_railcommand(buff, (buff+LEN_COMM_ONWIRE), 0);
-  if (! command) {
-    /* TODO: error handling */
+  if (! read_railcommand(buff, (buff+LEN_COMM_ONWIRE), &command)){
     close(params.rail_sckt);
     free(params.addr);
     if (last_will)
@@ -189,14 +211,14 @@ void *handle_rail(void *args) {
     return 0;
   }
 
-  switch (command->command) {
+  switch (command.command) {
   case rail_regname:
-    cache_namecard = do_rail_regname(params.rail_sckt, command);
+    cache_namecard = do_rail_regname(params.rail_sckt, &command);
     if (cache_namecard) {
-      command->token = cache_namecard->token;
-      command->len = 0;
-      command->data = 0;
-      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      command.token = cache_namecard->token;
+      command.len = 0;
+      command.data = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       /* no check */
     }
@@ -204,7 +226,7 @@ void *handle_rail(void *args) {
     break;
 
   case rail_delname:
-    cache_namecard = find_namebytok(command->token, &scope);
+    cache_namecard = find_namebytok(command.token, &scope);
     if (cache_namecard) {
       for (i=0; i<4; i++) {
 	if (cache_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
@@ -228,8 +250,8 @@ void *handle_rail(void *args) {
 	} else {
 	  cache_namecard->timeof_death = 0;
 	}
-	command->len = 0;
-	fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+	command.len = 0;
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       }
     }
@@ -238,12 +260,12 @@ void *handle_rail(void *args) {
     break;
 
   case rail_send_dtg:
-    if (find_namebytok(command->token, 0)) {
-      if (0 == rail_senddtg(params.rail_sckt, command,
+    if (find_namebytok(command.token, 0)) {
+      if (0 == rail_senddtg(params.rail_sckt, &command,
                             &(nbworks_queue_storage[DTG_SRVC]))) {
-	command->len = 0;
-	command->data = 0;
-	fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+	command.len = 0;
+	command.data = 0;
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       }
     }
@@ -252,10 +274,10 @@ void *handle_rail(void *args) {
 
   case rail_dtg_sckt:
     if (0 == rail_add_dtg_server(params.rail_sckt,
-				 command,
+				 &command,
 				 &(nbworks_queue_storage[DTG_SRVC]))) {
-      command->len = 0;
-      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      command.len = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       shutdown(params.rail_sckt, SHUT_RD);
     } else {
@@ -265,9 +287,9 @@ void *handle_rail(void *args) {
 
   case rail_stream_sckt:
     if (0 == rail_add_ses_server(params.rail_sckt,
-				 command)) {
-      command->len = 0;
-      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+				 &command)) {
+      command.len = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
     } else {
       close(params.rail_sckt);
@@ -276,15 +298,15 @@ void *handle_rail(void *args) {
 
   case rail_stream_take:
     rail_setup_session(params.rail_sckt,
-		       command->token);
+		       command.token);
     break;
 
   case rail_addr_ofX:
     ipv4 = rail_whatisaddrX(params.rail_sckt,
-			    command);
+			    &command);
     if (ipv4) {
-      command->len = 4;
-      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      command.len = 4;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       fill_32field(ipv4, buff);
       send(params.rail_sckt, buff, 4, MSG_NOSIGNAL);
@@ -298,7 +320,6 @@ void *handle_rail(void *args) {
     break;
   }
 
-  free(command);
   free(params.addr);
   if (last_will)
     last_will->dead = TRUE;
@@ -682,6 +703,8 @@ int rail_add_dtg_server(int rail_sckt,
   nbname->name = encode_nbnodename(namecard->name, 0);
   nbname->len = NETBIOS_CODED_NAME_LEN;
 
+  if (command->len)
+    rail_flushrail(command->len, rail_sckt);
   tid.name_scope = nbname;
 
   trans = ss_register_dtg_tid(&tid);
@@ -845,36 +868,38 @@ void *dtg_server(void *arg) {
 /* returns: 0=success, >0=fail, <0=error */
 int rail_add_ses_server(int rail_sckt,
 			struct com_comm *command) {
-  struct nbnodename_list *name;
-  unsigned char *buff, *walker;
+  struct nbnodename_list *nbname;
+  struct cache_namenode *namecard;
+  time_t cur_time;
 
   if (! command)
     return -1;
 
-  buff = malloc(command->len);
-  if (! buff)
+  nbname = malloc(sizeof(struct nbnodename_list));
+  if (! nbname) {
     return -1;
+  }
 
-  walker = buff;
+  cur_time = time(0);
 
-  if (command->len > recv(rail_sckt, buff, command->len, MSG_WAITALL)) {
-    free(buff);
+  namecard = find_namebytok(command->token, &(nbname->next_name));
+  if ((! namecard) ||
+      (namecard->timeof_death <= cur_time) ||
+      (namecard->isinconflict)) {
     return 1;
   }
 
-  name = read_all_DNS_labels(&walker, buff, (buff + command->len), 0);
-  if (! name) {
-    free(buff);
-    return 1;
-  }
+  nbname->name = encode_nbnodename(namecard->name, 0);
+  nbname->len = NETBIOS_CODED_NAME_LEN;
 
-  free(buff);
+  if (command->len)
+    rail_flushrail(command->len, rail_sckt);
 
-  if (ss__add_sessrv(name, rail_sckt)) {
-    destroy_nbnodename(name);
+  if (ss__add_sessrv(nbname, rail_sckt)) {
+    destroy_nbnodename(nbname);
     return 0;
   } else {
-    destroy_nbnodename(name);
+    destroy_nbnodename(nbname);
     return 1;
   }
 }
@@ -910,10 +935,11 @@ int rail_setup_session(int rail,
 		       uint64_t token) {
   struct ses_srv_sessions *session_ptr, session;
   struct ses_srvc_packet *pckt;
-  struct com_comm *answer;
+  struct com_comm answer;
   struct stream_connector_args new_session;
   int out_sckt;
   unsigned char rail_buff[LEN_COMM_ONWIRE];
+  unsigned char err[] = { NEG_SESSION_RESPONSE, 0, 0, 1, SES_ERR_UNSPEC };
   unsigned char *walker;
 
   session_ptr = ss__take_session(token);
@@ -931,67 +957,65 @@ int rail_setup_session(int rail,
 
   walker = session.first_buff;
   pckt = read_ses_srvc_pckt_header(&walker, walker+SES_HEADER_LEN);
-  pckt->payload = 0;
+  if (! pckt) {
+    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+
+    close(rail);
+    close(session.out_sckt);
+    free(session.first_buff);
+    return -1;
+  }
 
   if ((pckt->len+SES_HEADER_LEN) > send(rail, session.first_buff,
 					(pckt->len+SES_HEADER_LEN),
 					(MSG_NOSIGNAL | MSG_DONTWAIT))) {
+    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+
     close(rail);
     close(session.out_sckt);
     free(session.first_buff);
-    session.first_buff = 0;
     free(pckt);
     return -1;
   } else {
     out_sckt = session.out_sckt;
     free(session.first_buff);
-    session.first_buff = 0;
     free(pckt);
   }
 
   if (LEN_COMM_ONWIRE > recv(rail, rail_buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
+    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+
     close(rail);
     close(out_sckt);
     return 0;
   }
 
-  answer = read_railcommand(rail_buff, (rail_buff+LEN_COMM_ONWIRE), 0);
-  if (! answer) {
+  if (! read_railcommand(rail_buff, (rail_buff+LEN_COMM_ONWIRE), &answer)) {
+    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+
     close(rail);
     close(out_sckt);
     return -1;
   }
 
-  if ((answer->command != rail_stream_accept) ||
-      (answer->token != token)) {
+  if ((answer.command != rail_stream_accept) ||
+      (answer.token != token)) {
+    if (answer.command == rail_stream_error) {
+      err[4] = answer.node_type;
+    }
+    send(out_sckt, err, 5, MSG_NOSIGNAL);
+
     close(rail);
     close(out_sckt);
-    free(answer);
     return -1;
   } else {
-    while (answer->len) {
-      if (answer->len > LEN_COMM_ONWIRE) {
-	if (LEN_COMM_ONWIRE > recv(rail, rail_buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
-	  close(rail);
-	  close(out_sckt);
-	  free(answer);
-	  return -1;
-	}
-	answer->len = answer->len - LEN_COMM_ONWIRE;
-      } else {
-	if (answer->len > recv(rail, rail_buff, answer->len, MSG_WAITALL)) {
-	  close(rail);
-	  close(out_sckt);
-	  free(answer);
-	  return -1;
-	}
-	answer->len = 0;
-      }
-    }
-    free(answer);
+    if (answer.len)
+      rail_flushrail(answer.len, rail);
   }
 
   if (0 != fcntl(rail, F_SETFL, O_NONBLOCK)) {
+    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+
     close(rail);
     close(out_sckt);
     return -1;
@@ -1004,6 +1028,8 @@ int rail_setup_session(int rail,
 
   if (0 != pthread_create(&(new_session.thread_id), 0,
 			  tunnel_stream_sockets, &new_session)) {
+    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+
     close(rail);
     close(out_sckt);
     return -1;

@@ -30,6 +30,10 @@ void lib_init() {
 
   nbworks_libcntl.stop_alldtg_srv = 0;
   nbworks_libcntl.stop_allses_srv = 0;
+
+  nbworks_libcntl.dtg_srv_polltimeout = TP_100MS;
+  nbworks_libcntl.ses_srv_polltimeout = TP_100MS;
+
   nbworks_libcntl.max_ses_retarget_retries = 5; /*
 	      What do I know? Just choose a random number,
 	      it oughta work. I guess. */
@@ -42,7 +46,6 @@ int lib_start_dtg_srv(struct name_state *handle,
 		      unsigned char takes_field,
 		      struct nbnodename_list *listento) {
   struct com_comm command;
-  uint32_t len;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
 
@@ -88,22 +91,8 @@ int lib_start_dtg_srv(struct name_state *handle,
     return -1;
   }
 
-  len = command.len;
-  while (len) {
-    if (len > LEN_COMM_ONWIRE) {
-      if (LEN_COMM_ONWIRE > recv(daemon, buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
-	close(daemon);
-	return -1;
-      } else
-	len = len - LEN_COMM_ONWIRE;
-    } else {
-      if (len > recv(daemon, buff, len, MSG_WAITALL)) {
-	close(daemon);
-	return -1;
-      } else
-	len = 0;
-    }
-  }
+  if (command.len)
+    rail_flushrail(command.len, daemon);
 
   handle->dtg_listento = clone_nbnodename(listento);
   handle->dtg_takes = takes_field;
@@ -766,13 +755,9 @@ void *lib_dtgserver(void *arg) {
 
   while ((! nbworks_libcntl.stop_alldtg_srv) ||
 	 (! handle->dtg_srv_stop)) {
-    if ((0 <= poll(&pfd, 1, TP_100MS)) ||
-	(! (pfd.revents & POLLIN)) ||
-	(pfd.revents & (POLLHUP | POLLERR | POLLNVAL))) {
-      if (pfd.revents & (POLLHUP | POLLNVAL)) {
-	close(handle->dtg_srv_sckt);
-	handle->dtg_srv_sckt = 0;
-	return 0;
+    if (0 <= poll(&pfd, 1, nbworks_libcntl.dtg_srv_polltimeout)) {
+      if (pfd.revents & (POLLHUP | POLLNVAL | POLLERR)) {
+	break;
       } else
 	continue;
     }
@@ -865,8 +850,12 @@ void *lib_dtgserver(void *arg) {
 
 	if (! (dtg->flags & DTG_MORE_FLAG)) {
 	  toshow = malloc(sizeof(struct packet_cooked));
-	  if (! toshow)
+	  if (! toshow) {
+	    destroy_dtg_srvc_pckt(dtg, 1, 1);
+	    lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
+				&(handle->dtg_frags));
 	    continue;
+	  }
 
 	  if (dtg->flags & DTG_FIRST_FLAG) {
 	    toshow->data = nrml_pyld->payload;
@@ -1193,6 +1182,14 @@ int lib_open_session(struct name_state *handle,
 void *lib_ses_srv(void *arg) {
   struct pollfd pfd;
   struct name_state *handle;
+  struct nbnodename_list *caller;
+  struct nbworks_session *new_ses;
+  struct ses_srvc_packet *pckt;
+  struct com_comm command;
+  int new_sckt;
+  unsigned char ok[] = { POS_SESSION_RESPONSE, 0, 0, 0 };
+  unsigned char combuff[LEN_COMM_ONWIRE];
+  unsigned char *buff, *walker;
 
   if (arg)
     handle = arg;
@@ -1211,7 +1208,165 @@ void *lib_ses_srv(void *arg) {
 
   while ((! nbworks_libcntl.stop_allses_srv) ||
 	 (! handle->ses_srv_stop)) {
-    
+    if (0 <= poll(&pfd, 1, nbworks_libcntl.ses_srv_polltimeout)) {
+      if (pfd.revents & (POLLHUP | POLLNVAL | POLLERR)) {
+	break;
+      } else
+	continue;
+    }
+
+    if (LEN_COMM_ONWIRE > recv(handle->ses_srv_sckt, combuff,
+			       LEN_COMM_ONWIRE, MSG_WAITALL)) {
+      break;
+    }
+
+    if (0 == read_railcommand(combuff, (combuff +LEN_COMM_ONWIRE),
+			      &command)) {
+      break;
+    }
+
+    if (! (command.command == rail_stream_pending)) {
+      /* Daemon mixed something up, big time. */
+      break;
+    }
+
+    if (command.len)
+      rail_flushrail(command.len, handle->ses_srv_sckt);
+
+    command.command = rail_stream_take;
+    command.len = 0;
+
+    if (! fill_railcommand(&command, combuff, (combuff +LEN_COMM_ONWIRE))) {
+      break;
+    }
+
+    new_sckt = lib_daemon_socket();
+    if (new_sckt == -1) {
+      break;
+    }
+
+    if (LEN_COMM_ONWIRE > send(new_sckt, combuff, LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+      close(new_sckt);
+      break;
+    }
+
+    if (SES_HEADER_LEN > recv(new_sckt, combuff, SES_HEADER_LEN, MSG_WAITALL)) {
+      close(new_sckt);
+      continue;
+    }
+
+    if (combuff[0] != SESSION_REQUEST) {
+      command.command = rail_stream_error;
+      command.command = 0;
+      command.node_type = SES_ERR_UNSPEC;
+
+      if (! fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE))) {
+	close(new_sckt);
+	break;
+      }
+
+      if (LEN_COMM_ONWIRE > send(new_sckt, combuff, LEN_COMM_ONWIRE,
+				 MSG_NOSIGNAL)) {
+	close(new_sckt);
+	break;
+      }
+
+      close(new_sckt);
+      continue;
+    }
+
+    walker = combuff;
+    pckt = read_ses_srvc_pckt_header(&walker, (walker+SES_HEADER_LEN));
+    if (! pckt) {
+      close(new_sckt);
+      break;
+    }
+
+    buff = malloc(pckt->len + SES_HEADER_LEN);
+    if (! buff) {
+      free(pckt);
+      close(new_sckt);
+      break;
+    }
+
+    if (pckt->len > recv(new_sckt, (buff +SES_HEADER_LEN), pckt->len,
+			 MSG_WAITALL)) {
+      free(pckt);
+      free(buff);
+      close(new_sckt);
+      break;
+    }
+
+    caller = ses_srvc_get_callingname(buff, pckt->len);
+    free(buff);
+    free(pckt);
+
+    if (! (handle->ses_takes & HANDLE_TAKES_ALL)) {
+      if (! (lib_doeslistento(caller, handle->ses_listento) &&
+	     caller)) {
+	destroy_nbnodename(caller);
+	command.command = rail_stream_error;
+	command.command = 0;
+	command.node_type = SES_ERR_NOTLISCALLING;
+
+	if (! fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE))) {
+	  close(new_sckt);
+	  break;
+	}
+
+	if (LEN_COMM_ONWIRE > send(new_sckt, combuff, LEN_COMM_ONWIRE,
+				   MSG_NOSIGNAL)) {
+	  close(new_sckt);
+	  break;
+	}
+
+	close(new_sckt);
+	continue;
+      }
+    }
+
+    if (0 != fcntl(new_sckt, F_SETFL, O_NONBLOCK)) {
+      destroy_nbnodename(caller);
+      close(new_sckt);
+      break;
+    }
+
+    command.command = rail_stream_accept;
+    command.len = 0;
+
+    if (! fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE))) {
+      destroy_nbnodename(caller);
+      close(new_sckt);
+      break;
+    }
+
+    if (LEN_COMM_ONWIRE > send(new_sckt, combuff, LEN_COMM_ONWIRE,
+			       MSG_NOSIGNAL)) {
+      destroy_nbnodename(caller);
+      close(new_sckt);
+      break;
+    }
+
+    new_ses = lib_make_session(new_sckt, caller, FALSE);
+    destroy_nbnodename(caller);
+    if (! new_ses) {
+      close(new_sckt);
+      break;
+    }
+
+    if (4 > send(new_sckt, ok, 4, MSG_NOSIGNAL)) {
+      destroy_nbnodename(caller);
+      close(new_sckt);
+      break;
+    }
+
+    if (handle->sesin_server) {
+      handle->sesin_server->next = new_ses;
+      handle->sesin_server = new_ses;
+    } else {
+      handle->sesin_server = new_ses;
+      handle->sesin_library = new_ses;
+    }
   }
 
   close(handle->ses_srv_sckt);
@@ -1279,8 +1434,12 @@ void *lib_caretaker(void *arg) {
 }
 
 struct nbworks_session *lib_make_session(int socket,
+					 struct nbnodename_list *caller,
 					 unsigned char keepalive) {
   struct nbworks_session *result;
+
+  if (!caller)
+    return 0;
 
   result = malloc(sizeof(struct nbworks_session));
   if (! result) {
@@ -1293,6 +1452,7 @@ struct nbworks_session *lib_make_session(int socket,
   }
   result->mutexlock = pthread_mutex_trylock;
 
+  result->caller = clone_nbnodename(caller);
   result->kill_caretaker = FALSE;
   result->keepalive = keepalive;
   result->socket = socket;

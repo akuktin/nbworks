@@ -365,6 +365,28 @@ struct nbnodename_list *ses_srvc_get_calledname(void *packet,
   return read_all_DNS_labels(&walker, packet, (packet + len), 0);
 }
 
+/* Call with whole packet, len is total len of whole packet. */
+struct nbnodename_list *ses_srvc_get_callingname(void *packet_ptr,
+						 int len) {
+  unsigned char *packet;
+  unsigned char *walker;
+
+  if ((! packet_ptr) ||
+      (len < (2 + SES_HEADER_LEN))) {
+    return 0;
+  } else {
+    packet = packet_ptr;
+  }
+
+  walker = packet + SES_HEADER_LEN;
+
+  fastfrwd_all_DNS_labels(&walker, packet+len);
+
+  align(packet, walker, 4);
+
+  return read_all_DNS_labels(&walker, packet, (packet + len), 0);
+}
+
 void *master_ses_srvc_pckt_writer(void *packet_ptr,
 				  unsigned int *pckt_len,
 				  void *packet_field) {

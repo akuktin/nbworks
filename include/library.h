@@ -63,6 +63,7 @@ struct name_state {
 };
 
 struct nbworks_session {
+  struct nbnodename_list *caller;
   unsigned char kill_caretaker;
   unsigned char keepalive;
   int socket;
@@ -149,5 +150,18 @@ void
 
 void *
   lib_dtgserver(void *arg);
+
+int
+  lib_open_session(struct name_state *handle,
+                   struct nbnodename_list *dst);
+void *
+  lib_ses_srv(void *arg);
+
+void *
+  lib_caretaker(void *arg);
+struct nbworks_session *
+  lib_make_session(int socket,
+                   struct nbnodename_list *caller,
+                   unsigned char keepalive);
 
 #endif /* NBWORKS_LIBRARY_H */

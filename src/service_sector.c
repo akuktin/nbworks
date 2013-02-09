@@ -967,7 +967,7 @@ void *ss__udp_recver(void *sckts_ptr) {
       while (new_pckt) {
 	cur_trans = *(sckts.all_trans);
 	while (cur_trans) {
-	  if (((sckts.branch) == DTG_SRVC) ?             /* The problem with this scheme */
+	  if (((sckts.branch) == DTG_SRVC) ?              /* The problem with this scheme */
 	      (! cmp_nbnodename(cur_trans->id.name_scope, /* is that it is possible for a */
 				name_as_id)) :            /* torrent of datagram packets  */
 	      cur_trans->id.tid == tid) {                 /* to criple the daemon.        */
@@ -1207,6 +1207,7 @@ void *take_incoming_session(void *arg) {
   struct thread_node *last_will;
   uint64_t token;
   unsigned char buf[SES_HEADER_LEN+1]; /* +1 is for the error code */
+  unsigned char err[] = { NEG_SESSION_RESPONSE, 0, 0, 1, SES_ERR_NOCALLED };
   unsigned char *walker, *big_buff;
 
   memcpy(&params, arg, sizeof(struct ss_tcp_sckts));
@@ -1220,15 +1221,31 @@ void *take_incoming_session(void *arg) {
 
   if (SES_HEADER_LEN > recv(params.sckt139, buf,
 			    SES_HEADER_LEN, MSG_WAITALL)) {
+    err[4] = SES_ERR_UNSPEC;
+    send(params.sckt139, err, 5, MSG_NOSIGNAL);
+
     close(params.sckt139);
     if (last_will)
       last_will->dead = 0xda; /* My favourite line. */
     return 0;
   }
 
+  if (buf[0] != SESSION_REQUEST) {
+    err[4] = SES_ERR_UNSPEC;
+    send(params.sckt139, err, 5, MSG_NOSIGNAL);
+
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+  }
+
   walker = buf;
   new_pckt = read_ses_srvc_pckt_header(&walker, buf+SES_HEADER_LEN);
   if (! new_pckt) {
+    err[4] = SES_ERR_UNSPEC;
+    send(params.sckt139, err, 5, MSG_NOSIGNAL);
+
     close(params.sckt139);
     if (last_will)
       last_will->dead = TRUE;
@@ -1238,8 +1255,8 @@ void *take_incoming_session(void *arg) {
   if (two_names != (new_pckt->payload_t =
 		    understand_ses_pckt_type(new_pckt->type))) {
     /* Sorry, wrong daemon. */
-
-    /* I should send an error packet. */
+    err[4] = SES_ERR_UNSPEC;
+    send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
     if (last_will)
@@ -1249,7 +1266,8 @@ void *take_incoming_session(void *arg) {
 
   big_buff = malloc(new_pckt->len+SES_HEADER_LEN);
   if (! big_buff) {
-    /* I should send an error packet. */
+    err[4] = SES_ERR_UNSPEC;
+    send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
     if (last_will)
@@ -1261,7 +1279,8 @@ void *take_incoming_session(void *arg) {
 
   if (new_pckt->len > recv(params.sckt139, (big_buff+SES_HEADER_LEN),
 			   new_pckt->len, MSG_WAITALL)) {
-    /* I should send an error packet. */
+    err[4] = SES_ERR_UNSPEC;
+    send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     free(big_buff);
     close(params.sckt139);
@@ -1271,6 +1290,17 @@ void *take_incoming_session(void *arg) {
   }
 
   called_name = ses_srvc_get_calledname(big_buff, (new_pckt->len+SES_HEADER_LEN));
+  if (! called_name) {
+    err[4] = SES_ERR_UNSPEC;
+    send(params.sckt139, err, 5, MSG_NOSIGNAL);
+
+    free(big_buff);
+    close(params.sckt139);
+    if (last_will)
+      last_will->dead = TRUE;
+    return 0;
+  }
+
   servers = *(params.servers);
   while (servers) {
     if (0 != cmp_nbnodename(called_name, servers->name))
@@ -1282,6 +1312,9 @@ void *take_incoming_session(void *arg) {
   if (servers) {
     token = make_token();
     if (0 != fcntl(params.sckt139, F_SETFL, O_NONBLOCK)) {
+      err[4] = SES_ERR_UNSPEC;
+      send(params.sckt139, err, 5, MSG_NOSIGNAL);
+
       free(big_buff);
       close(params.sckt139);
       if (last_will)
@@ -1293,6 +1326,10 @@ void *take_incoming_session(void *arg) {
 	   (0 <= rail__send_ses_pending(servers->rail, token)))) {
       if (session)
 	ss__del_session(token, FALSE);
+
+      err[4] = SES_ERR_UNSPEC;
+      send(params.sckt139, err, 5, MSG_NOSIGNAL);
+
       free(big_buff);
       close(params.sckt139);
       if (last_will)
@@ -1300,7 +1337,7 @@ void *take_incoming_session(void *arg) {
       return 0;
     }
   } else {
-    /* Actally, here I should send an error packet. */
+    send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     free(big_buff);
     close(params.sckt139);

@@ -4,6 +4,10 @@
 struct {
   unsigned char stop_alldtg_srv;
   unsigned char stop_allses_srv;
+
+  int dtg_srv_polltimeout;
+  int ses_srv_polltimeout;
+
   int max_ses_retarget_retries;
   time_t keepalive_interval;
 } nbworks_libcntl;

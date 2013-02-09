@@ -10,6 +10,12 @@
 # define RETARGET_SESSION     0x84
 # define SESSION_KEEP_ALIVE   0x85
 
+# define SES_ERR_NOTLISCALLED  0x80 /* not listening on called name */
+# define SES_ERR_NOTLISCALLING 0x81 /* not listening for calling name */
+# define SES_ERR_NOCALLED      0x82 /* called name not present */
+# define SES_ERR_NORES         0x83 /* called name present, no resources */
+# define SES_ERR_UNSPEC        0x8f /* unspecified error */
+
 # define SES_HEADER_LEN 4
 
 enum ses_packet_payload_t {
@@ -69,6 +75,10 @@ struct ses_srvc_packet *
 struct nbnodename_list *
   ses_srvc_get_calledname(void *packet,
                           int len);
+/* Call with whole packet, len is total len of whole packet. */
+struct nbnodename_list *
+  ses_srvc_get_callingname(void *packet,
+                           int len);
 void *
   master_ses_srvc_pckt_writer(void *packet_ptr,
                               unsigned int *pckt_len,

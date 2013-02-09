@@ -24,6 +24,7 @@ enum rail_commands {
   rail_stream_pending, /* inform library there is a new session request */
   rail_stream_take,    /* library requests forwarding the session request */
   rail_stream_accept,  /* library accepts the new session */
+  rail_stream_error,   /* library wants us to send an error and disconnect */
 
   rail_send_dtg,       /* library wants to send a datagram with port 138 */
   rail_dtg_sckt,       /* library informs the daemon it wants to be a server */
@@ -85,6 +86,10 @@ void
 
 int
   open_rail();
+/* returns: >=0 = success, <0 = error */
+unsigned int
+  rail_flushrail(uint32_t len,
+                 int rail);
 void *
   poll_rail(void *args);
 
