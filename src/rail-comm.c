@@ -168,6 +168,8 @@ void *handle_rail(void *args) {
     return 0;
   }
 
+  ipv4 = 0;
+
   if (LEN_COMM_ONWIRE > recv(params.rail_sckt, buff,
 			     LEN_COMM_ONWIRE, MSG_WAITALL)) {
     close(params.rail_sckt);
@@ -209,25 +211,27 @@ void *handle_rail(void *args) {
 	  ipv4 = cache_namecard->addrs.recrd[i].addr->ip_addr;
       }
 
-      name_ptr = cache_namecard->name;
-      name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			       scope, ipv4, cache_namecard->isgroup);
+      if (i<4) {
+	name_ptr = cache_namecard->name;
+	name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
+				 scope, ipv4, cache_namecard->isgroup);
 
-      if (cache_namecard->isgroup) {
-	cache_namecard->token = 0;
-	for (i=0; i<4; i++) {
-	  if (cache_namecard->addrs.recrd[i].addr)
-	    break;
-	}
-	if (i > 3) {
+	if (cache_namecard->isgroup) {
+	  cache_namecard->token = 0;
+	  for (i=0; i<4; i++) {
+	    if (cache_namecard->addrs.recrd[i].addr)
+	      break;
+	  }
+	  if (i > 3) {
+	    cache_namecard->timeof_death = 0;
+	  }
+	} else {
 	  cache_namecard->timeof_death = 0;
 	}
-      } else {
-	cache_namecard->timeof_death = 0;
+	command->len = 0;
+	fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+	send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       }
-      command->len = 0;
-      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
     }
     close(params.rail_sckt);
     destroy_nbnodename(scope);
@@ -530,9 +534,9 @@ int rail_senddtg(int rail_sckt,
   struct cache_namenode *namecard;
   struct ss_queue_storage *trans;
   struct sockaddr_in dst_addr;
+  union trans_id tid;
   int isgroup, i;
   unsigned short node_type;
-  uint16_t tid;
   unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! (command && queue_stor))
@@ -570,7 +574,7 @@ int rail_senddtg(int rail_sckt,
     return 9008;
   }
 
-  pckt = partial_dtg_srvc_pckt_reader(buff, command->len, &tid);
+  pckt = partial_dtg_srvc_pckt_reader(buff, command->len, 0);
   if (! pckt) {
     /* TODO: errno signaling stuff */
     free(buff);
@@ -601,13 +605,14 @@ int rail_senddtg(int rail_sckt,
 	if (namecard->addrs.recrd[i].node_type == node_type)
 	  break;
       }
-      if (i<4) { /* paranoid */
-	trans = ss_find_queuestorage(normal_pyld->src_name, DTG_SRVC, *queue_stor);
+      if (i<4) {
+	tid.name_scope = normal_pyld->src_name;
+	trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
 	if (! trans) {
 	  do {
-	    ss_add_queuestorage(ss_register_dtg_tid(normal_pyld->src_name), normal_pyld->src_name,
+	    ss_add_queuestorage(ss_register_dtg_tid(&tid), &tid,
 				DTG_SRVC, queue_stor);
-	    trans = ss_find_queuestorage(normal_pyld->src_name, DTG_SRVC, *queue_stor);
+	    trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
 	  } while (! trans);
 	  if (trans->last_active < ZEROONES)
 	    trans->last_active = time(0);
@@ -645,6 +650,7 @@ int rail_add_dtg_server(int rail_sckt,
   struct nbnodename_list *nbname;
   struct rail_list *new_rail;
   struct dtg_srv_params params;
+  union trans_id tid;
   time_t cur_time;
 
   if (! (command && queue_stor))
@@ -676,19 +682,21 @@ int rail_add_dtg_server(int rail_sckt,
   nbname->name = encode_nbnodename(namecard->name, 0);
   nbname->len = NETBIOS_CODED_NAME_LEN;
 
-  trans = ss_register_dtg_tid(nbname);
+  tid.name_scope = nbname;
+
+  trans = ss_register_dtg_tid(&tid);
   if (! trans) {
     /* This can only mean there is already
        a registered queue with this name. */
-    queue = ss_find_queuestorage(nbname, DTG_SRVC, *queue_stor);
+    queue = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
   } else {
-    queue = ss_add_queuestorage(trans, nbname, DTG_SRVC, queue_stor);
+    queue = ss_add_queuestorage(trans, &tid, DTG_SRVC, queue_stor);
   }
 
   if (! queue) {
     /* Dafuq!?! */
     if (trans) {
-      ss_deregister_dtg_tid(nbname);
+      ss_deregister_dtg_tid(&tid);
       ss__dstry_recv_queue(trans);
       free(trans);
     }
@@ -711,9 +719,9 @@ int rail_add_dtg_server(int rail_sckt,
 
     if (0 != pthread_create(&(params.thread_id), 0,
 			    dtg_server, &params)) {
-      ss_deregister_dtg_tid(nbname);
+      ss_deregister_dtg_tid(&tid);
       ss__dstry_recv_queue(&(queue->queue));
-      ss_del_queuestorage(nbname, DTG_SRVC, queue_stor);
+      ss_del_queuestorage(&tid, DTG_SRVC, queue_stor);
       destroy_nbnodename(nbname);
       free(new_rail);
 
@@ -739,6 +747,7 @@ void *dtg_server(void *arg) {
   struct dtg_srvc_recvpckt *pckt;
   struct rail_list *cur_rail, **last_rail;
   struct pollfd pollfd;
+  union trans_id tid;
   unsigned char buff[4];
 
   if (! arg)
@@ -820,9 +829,11 @@ void *dtg_server(void *arg) {
     nanosleep(&(nbworks_dtg_srv_cntrl.dtg_srv_sleeptime), 0);
   }
 
-  ss_deregister_dtg_tid(nbname);
+  tid.name_scope = nbname;
+
+  ss_deregister_dtg_tid(&tid);
   ss__dstry_recv_queue(&(queue->queue));
-  ss_del_queuestorage(nbname, DTG_SRVC, all_queues);
+  ss_del_queuestorage(&tid, DTG_SRVC, all_queues);
   destroy_nbnodename(nbname);
 
   if (last_will)

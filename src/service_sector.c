@@ -63,15 +63,14 @@ void init_service_sector() {
   nbworks_ses_srv_cntrl.take_timeout.tv_nsec = T_500MS;
 }
 
-struct ss_queue *ss_register_tid(void *arg_ptr,
+struct ss_queue *ss_register_tid(union trans_id *arg,
 				 unsigned char branch) {
   struct ss_queue *result;
   struct ss_priv_trans *cur_trans, *my_trans;
-  union trans_id *arg;
   uint16_t tid;
 
-  /* POSSIBLE_BUG: this might break */
-  arg = arg_ptr;
+  if (! arg)
+    return 0;
 
   result = malloc(sizeof(struct ss_queue));
   if (! result) {
@@ -152,17 +151,16 @@ struct ss_queue *ss_register_tid(void *arg_ptr,
   }
 }
 
-void ss_deregister_tid(void *arg_ptr,
+void ss_deregister_tid(union trans_id *arg,
 		       unsigned char branch) {
   struct ss_priv_trans *cur_trans;
-  union trans_id *arg;
   uint16_t tid;
+
+  if (! arg)
+    return;
 
   if (! nbworks_all_transactions[branch])
     return;
-
-  /* POSSIBLE_BUG: this might break */
-  arg = arg_ptr;
 
   cur_trans = nbworks_all_transactions[branch];
 
@@ -186,17 +184,16 @@ void ss_deregister_tid(void *arg_ptr,
 
 
 struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
-					     void *arg_ptr,
+					     union trans_id *arg,
 					     unsigned char branch,
 					     struct ss_queue_storage **queue_stor) {
   struct ss_queue_storage *result, *cur_stor, **last_stor;
-  union trans_id *arg;
   uint16_t tid;
 
-  if (! queue)
+  if (! (queue && arg && queue_stor))
     return 0;
 
-  arg = arg_ptr;
+  tid = 0;
 
   result = malloc(sizeof(struct ss_queue_storage));
   if (! result) {
@@ -244,15 +241,15 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
   }
 }
 
-void ss_del_queuestorage(void *arg_ptr,
+void ss_del_queuestorage(union trans_id *arg,
 			 unsigned char branch,
 			 struct ss_queue_storage **queue_stor) {
   struct ss_queue_storage *cur_stor, **last_stor;
   struct rail_list *for_del2, *for_del2prim;
-  union trans_id *arg;
   uint16_t tid;
 
-  arg = arg_ptr;
+  if (! (arg && queue_stor))
+    return;
 
   cur_stor = *queue_stor;
   last_stor = queue_stor;
@@ -282,14 +279,14 @@ void ss_del_queuestorage(void *arg_ptr,
   return;
 }
 
-struct ss_queue_storage *ss_find_queuestorage(void *arg_ptr,
+struct ss_queue_storage *ss_find_queuestorage(union trans_id *arg,
 					      unsigned char branch,
 					      struct ss_queue_storage *queue_stor) {
   struct ss_queue_storage *cur_stor;
-  union trans_id *arg;
   uint16_t tid;
 
-  arg = arg_ptr;
+  if (! arg)
+    return 0;
 
   cur_stor = queue_stor;
 
@@ -310,16 +307,16 @@ struct ss_queue_storage *ss_find_queuestorage(void *arg_ptr,
 }
 
 
-void ss_set_inputdrop_tid(void *trans_id,
+void ss_set_inputdrop_tid(union trans_id *arg,
 			  unsigned char branch) {
   struct ss_priv_trans *cur_trans;
-  union trans_id *arg;
   uint16_t tid;
+
+  if (! arg)
+    return;
 
   if (! nbworks_all_transactions[branch])
     return;
-
-  arg = trans_id;
 
   cur_trans = nbworks_all_transactions[branch];
 
@@ -340,16 +337,16 @@ void ss_set_inputdrop_tid(void *trans_id,
   return;
 }
 
-void ss_set_normalstate_tid(void *trans_id,
+void ss_set_normalstate_tid(union trans_id *arg,
 			    unsigned char branch) {
   struct ss_priv_trans *cur_trans;
-  union trans_id *arg;
   uint16_t tid;
+
+  if (! arg)
+    return;
 
   if (! nbworks_all_transactions[branch])
     return;
-
-  arg = trans_id;
 
   cur_trans = nbworks_all_transactions[branch];
 
@@ -899,6 +896,8 @@ void *ss__udp_recver(void *sckts_ptr) {
   release_lock = sckts_ptr;
   release_lock->isbusy = 0;
 
+  name_as_id = 0;
+
   polldata.fd = sckts.udp_sckt;
   polldata.events = (POLLIN | POLLPRI);
   params.isbusy = 0;
@@ -1002,8 +1001,8 @@ void *ss__udp_recver(void *sckts_ptr) {
 	    free(new_pckt);
 	    break;
 	  } else {
-	    newtid_queue = ss_register_name_tid(&tid);
 	    params.id.tid = tid;
+	    newtid_queue = ss_register_name_tid(&(params.id));
 	  }
 	}
       }

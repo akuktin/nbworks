@@ -40,7 +40,7 @@ int name_srvc_B_add_name(unsigned char *name,
   struct name_srvc_packet *pckt, *outside_pckt;
   struct name_srvc_resource_lst *res;
   int result, i;
-  uint16_t tid;
+  union trans_id tid;
 
   result = 0;
   /* TODO: change this to a global setting. */
@@ -59,7 +59,7 @@ int name_srvc_B_add_name(unsigned char *name,
     return -1;
   }
 
-  tid = make_weakrandom();
+  tid.tid = make_weakrandom();
 
   trans = ss_register_name_tid(&tid);
   if (! trans) {
@@ -68,7 +68,7 @@ int name_srvc_B_add_name(unsigned char *name,
     return -1;
   }
 
-  pckt->header->transaction_id = tid;
+  pckt->header->transaction_id = tid.tid;
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
   pckt->header->nm_flags = FLG_B;
   /* Do not ask for recursion, because
@@ -143,7 +143,7 @@ int name_srvc_B_release_name(unsigned char *name,
   struct name_srvc_packet *pckt;
   struct sockaddr_in addr;
   int i;
-  uint16_t tid;
+  union trans_id tid;
 
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
@@ -161,7 +161,7 @@ int name_srvc_B_release_name(unsigned char *name,
     return -1;
   }
 
-  tid = make_weakrandom();
+  tid.tid = make_weakrandom();
 
   trans = ss_register_name_tid(&tid);
   if (! trans) {
@@ -174,7 +174,7 @@ int name_srvc_B_release_name(unsigned char *name,
   ss_set_inputdrop_name_tid(&tid);
   ss__dstry_recv_queue(trans);
 
-  pckt->header->transaction_id = tid;
+  pckt->header->transaction_id = tid.tid;
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_RELEASE;
   pckt->header->nm_flags = FLG_B;
 
@@ -205,7 +205,7 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
   struct name_srvc_packet *pckt, *outside_pckt;
   struct name_srvc_resource_lst *result, *walker;
   int i;
-  uint16_t tid;
+  union trans_id tid;
 
   walker = result = 0;
   /* TODO: change this to a global setting. */
@@ -223,7 +223,7 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
     return 0;
   }
 
-  tid = make_weakrandom();
+  tid.tid = make_weakrandom();
 
   trans = ss_register_name_tid(&tid);
   if (! trans) {
@@ -232,7 +232,7 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
     return 0;
   }
 
-  pckt->header->transaction_id = tid;
+  pckt->header->transaction_id = tid.tid;
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
   pckt->header->nm_flags = FLG_B;
 
@@ -450,7 +450,7 @@ void *name_srvc_B_handle_newtid(void *input) {
   label[NETBIOS_NAME_LEN] = '\0';
   decoded_name[NETBIOS_NAME_LEN] = '\0';
 
-  ss_set_inputdrop_name_tid(&(params.id.tid));
+  ss_set_inputdrop_name_tid(&(params.id));
   last_outpckt = 0;
   waited = 0;
 
@@ -463,7 +463,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	/* No packet. */
 	if (waited) {
 	  /* Wait time passed. */
-	  ss_deregister_name_tid(&(params.id.tid));
+	  ss_deregister_name_tid(&(params.id));
 	  ss__dstry_recv_queue(params.trans);
 	  free(params.trans);
 	  if (last_will)
@@ -471,9 +471,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 	  return 0;
 	} else {
 	  waited = 1;
-	  ss_set_normalstate_name_tid(&(params.id.tid));
+	  ss_set_normalstate_name_tid(&(params.id));
 	  nanosleep(&sleeptime, 0);
-	  ss_set_inputdrop_name_tid(&(params.id.tid));
+	  ss_set_inputdrop_name_tid(&(params.id));
 	}
       } else {
 	if (last_outpckt)
@@ -571,17 +571,19 @@ void *name_srvc_B_handle_newtid(void *input) {
 		      in_addr = 0;
 		  }
 
-		  pckt = name_srvc_make_name_reg_small(label, label_type,
-						       res->res->name->next_name,
-						       (cache_namecard->timeof_death
+		  if (i<4) {
+		    pckt = name_srvc_make_name_reg_small(label, label_type,
+							 res->res->name->next_name,
+							 (cache_namecard->timeof_death
 							  - cur_time),
-						       in_addr, ISGROUP_NO,
-						       cache_namecard->addrs.recrd[i].node_type);
-		  pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
-		  pckt->header->nm_flags = FLG_AA;
-		  pckt->header->rcode = RCODE_CFT_ERR;
-		  pckt->for_del = 1;
-		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+							 in_addr, ISGROUP_NO,
+							 cache_namecard->addrs.recrd[i].node_type);
+		    pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
+		    pckt->header->nm_flags = FLG_AA;
+		    pckt->header->rcode = RCODE_CFT_ERR;
+		    pckt->for_del = 1;
+		    ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
+		  }
 
 		  break;
 		} else

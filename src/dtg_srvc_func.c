@@ -82,7 +82,7 @@ inline struct nbnodename_list *dtg_srvc_get_srcnam_recvpckt(struct dtg_srvc_recv
 void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
   struct dtg_srvc_packet *packet;
   struct dtg_pckt_pyld_normal *normal_pyld;
-  struct nbnodename_list *tid;
+  union trans_id tid;
   struct ss_queue *trans;
 
   packet = pckt->packet;
@@ -93,18 +93,17 @@ void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
       normal_pyld = packet->payload;
 
       destroy_nbnodename(normal_pyld->src_name);
-      tid = normal_pyld->dst_name;
+      tid.name_scope = normal_pyld->dst_name;
       normal_pyld->dst_name = 0;
       if (normal_pyld->do_del_pyldpyld)
 	free(normal_pyld->payload);
       else
 	free(normal_pyld->pyldpyld_delptr);
       free(normal_pyld);
-    } else
-      if (packet->payload_t == nbnodename)
-	destroy_nbnodename(packet->payload);
-      else
-	free(packet->payload);
+    } else {
+      destroy_dtg_srvc_pckt(packet, 1, 1);
+      return;
+    }
 
     packet->for_del = TRUE;
     packet->payload = 0;
@@ -120,15 +119,15 @@ void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
     packet->flags = (packet->flags & DTG_NODE_TYPE_MASK) | DTG_FIRST_FLAG;
 
     /* This is inefficient. TODO: think of a better way. */
-    trans = ss_register_dtg_tid(tid);
+    trans = ss_register_dtg_tid(&tid);
     if (trans) {
       ss_dtg_send_pckt(packet, &(pckt->addr), trans);
-      ss_deregister_tid(tid, DTG_SRVC);
+      ss_deregister_tid(&tid, DTG_SRVC);
       ss__dstry_recv_queue(trans);
 
       free(trans);
     }
-    destroy_nbnodename(tid);
+    destroy_nbnodename(tid.name_scope);
   } else {
     destroy_dtg_srvc_pckt(packet, 1, 1);
   }

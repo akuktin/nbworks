@@ -331,6 +331,8 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
     last = &(frags);
     remove = *last;
 
+    best_offer = 0;
+    bef_remv = 0;
     offer = ONES;
     offered_len = ONES;
 
@@ -395,15 +397,16 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
     } else
       size_todate = size_todate + offered_len;
 
-    *bef_remv = best_offer->next;
-    if (sorted) {
-      sorted->next = best_offer;
-      sorted = sorted->next;
-    } else {
-      master = best_offer;
-      sorted = master;
+    if (best_offer) {
+      *bef_remv = best_offer->next;
+      if (sorted) {
+	sorted->next = best_offer;
+	sorted = sorted->next;
+      } else {
+	master = best_offer;
+	sorted = master;
+      }
     }
-
   }
 
   sorted->next = 0;
@@ -932,7 +935,8 @@ int lib_open_session(struct name_state *handle,
   struct ses_pckt_pyld_two_names *twins;
   struct sockaddr_in addr;
   int ses_sckt, retry_count;;
-  unsigned int lenof_pckt, wrotelenof_pckt, ones;
+  unsigned int lenof_pckt, wrotelenof_pckt;
+  unsigned int ones;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char small_buff[SMALL_BUFF_LEN];
 
@@ -1236,6 +1240,8 @@ void *lib_caretaker(void *arg) {
 
   pfd.fd = handle->socket;
   pfd.events = POLLOUT;
+
+  lastkeepalive = time(0);
 
   while ((! nbworks_libcntl.stop_allses_srv) ||
 	 (! handle->kill_caretaker)) {

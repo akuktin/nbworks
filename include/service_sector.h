@@ -106,34 +106,32 @@ struct ses_srv_sessions {
 struct ss_queue_storage *nbworks_queue_storage[2];
 
 void init_service_sector();
-# define UNION__TRANS_ID void
 struct ss_queue *
-  ss_register_tid(UNION__TRANS_ID *trans_id,
+  ss_register_tid(union trans_id *trans_id,
                   unsigned char branch);
 void
-  ss_deregister_tid(UNION__TRANS_ID *trans_id,
+  ss_deregister_tid(union trans_id *trans_id,
                     unsigned char branch);
 struct ss_queue_storage *
   ss_add_queuestorage(struct ss_queue *queue,
-                      UNION__TRANS_ID *trans_id,
+                      union trans_id *trans_id,
                       unsigned char branch,
                       struct ss_queue_storage **queue_stor);
 void
-  ss_del_queuestorage(UNION__TRANS_ID *trans_id,
+  ss_del_queuestorage(union trans_id *trans_id,
                       unsigned char branch,
                       struct ss_queue_storage **queue_stor);
 struct ss_queue_storage *
-  ss_find_queuestorage(UNION__TRANS_ID *trans_id,
+  ss_find_queuestorage(union trans_id *trans_id,
                        unsigned char branch,
                        struct ss_queue_storage *queue_stor);
 
 void
-  ss_set_inputdrop_tid(UNION__TRANS_ID *trans_id,
+  ss_set_inputdrop_tid(union trans_id *trans_id,
                        unsigned char branch);
 void
-  ss_set_normalstate_tid(UNION__TRANS_ID *trans_id,
+  ss_set_normalstate_tid(union trans_id *trans_id,
                          unsigned char branch);
-# undef UNION__TRANS_ID
 
 inline int
   ss_name_send_pckt(struct name_srvc_packet *pckt,
