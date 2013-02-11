@@ -956,7 +956,7 @@ int rail_setup_session(int rail,
   session_ptr->token = 0;
 
   walker = session.first_buff;
-  pckt = read_ses_srvc_pckt_header(&walker, walker+SES_HEADER_LEN);
+  pckt = read_ses_srvc_pckt_header(&walker, walker+SES_HEADER_LEN, 0);
   if (! pckt) {
     send(session.out_sckt, err, 5, MSG_NOSIGNAL);
 

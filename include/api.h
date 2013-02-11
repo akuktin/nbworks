@@ -21,4 +21,11 @@ ssize_t
                size_t len,
                int flags);
 
+ssize_t
+  nbworks_recv(unsigned char service,
+               struct nbworks_session *ses,
+               void **buff,
+               size_t len,
+               int callflags);
+
 #endif /* NBWORKS_API_H */

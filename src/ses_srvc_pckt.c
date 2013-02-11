@@ -10,7 +10,8 @@
 #include "ses_srvc_pckt.h"
 
 struct ses_srvc_packet *read_ses_srvc_pckt_header(unsigned char **master_packet_walker,
-					          unsigned char *end_of_packet) {
+					          unsigned char *end_of_packet,
+						  struct ses_srvc_packet *field) {
   struct ses_srvc_packet *packet;
   unsigned char *walker;
 
@@ -23,10 +24,14 @@ struct ses_srvc_packet *read_ses_srvc_pckt_header(unsigned char **master_packet_
     return 0;
   }
 
-  packet = malloc(sizeof(struct ses_srvc_packet));
-  if (! packet) {
-    /* TODO: errno signaling stuff */
-    return 0;
+  if (field) {
+    packet = field;
+  } else {
+    packet = malloc(sizeof(struct ses_srvc_packet));
+    if (! packet) {
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
   }
   packet->for_del = 0;
   walker = *master_packet_walker;
@@ -339,7 +344,7 @@ struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
   walker = startof_pckt;
   endof_pckt = startof_pckt + len;
 
-  result = read_ses_srvc_pckt_header(&walker, endof_pckt);
+  result = read_ses_srvc_pckt_header(&walker, endof_pckt, 0);
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;

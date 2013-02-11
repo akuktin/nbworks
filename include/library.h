@@ -75,6 +75,7 @@ struct nbworks_session {
   unsigned char kill_caretaker;
   unsigned char keepalive;
   int socket;
+  size_t len_left;
   pthread_mutex_t mutex;
   pthread_t caretaker_tid;
   int (*mutexlock)(pthread_mutex_t *);
@@ -172,5 +173,9 @@ struct nbworks_session *
                    struct nbnodename_list *caller,
                    struct name_state *handle,
                    unsigned char keepalive);
+
+ssize_t
+  lib_flushsckt(int socket,
+                ssize_t len);
 
 #endif /* NBWORKS_LIBRARY_H */

@@ -39,7 +39,7 @@ int nbworks_poll(unsigned char service,
 
     trgt = malloc(numof_pfd * sizeof(struct cooked_packet *));
     if (! trgt) {
-      nbworks_errno = errno;
+      nbworks_errno = ENOMEM;
       for (i=0; i<numof_pfd; i++) {
 	handles[i].revents = POLLERR;
       }
@@ -125,7 +125,7 @@ int nbworks_poll(unsigned char service,
   case SES_SRVC:
     pfd = malloc(numof_pfd * sizeof(struct pollfd));
     if (! pfd) {
-      nbworks_errno = errno;
+      nbworks_errno = ENOMEM;
       for (i=0; i<numof_pfd; i++) {
 	handles[i].revents = POLLERR;
       }
@@ -215,7 +215,7 @@ ssize_t nbworks_send(unsigned char service,
       pckt.len = SES_MAXLEN;
       if (pcktbuff == fill_ses_packet_header(&pckt, pcktbuff,
 					     (pcktbuff + SES_HEADER_LEN))) {
-	nbworks_errno = 255; /* FIXME */
+	nbworks_errno = ZEROONES; /* FIXME */
 	return -1;
       }
 
@@ -254,7 +254,7 @@ ssize_t nbworks_send(unsigned char service,
     pckt.len = len;
     if (pcktbuff == fill_ses_packet_header(&pckt, pcktbuff,
 					   (pcktbuff + SES_HEADER_LEN))) {
-      nbworks_errno = 255; /* FIXME */
+      nbworks_errno = ZEROONES; /* FIXME */
       return -1;
     }
 
@@ -286,6 +286,151 @@ ssize_t nbworks_send(unsigned char service,
 
     return sent;
 
+  default:
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+}
+
+
+ssize_t nbworks_recv(unsigned char service,
+		     struct nbworks_session *ses,
+		     void **buff,
+		     size_t len,
+		     int callflags) {
+  struct ses_srvc_packet hdr;
+  ssize_t recved, notrecved, ret_val;
+  ssize_t len_left;
+  int flags;
+  unsigned char hdrbuff[SES_HEADER_LEN], *walker;
+
+  if ((! (ses && buff)) ||
+      (len < 0) ||
+      (len >= (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
+    nbworks_errno = EINVAL;
+    return -1;
+  } else {
+    nbworks_errno = 0;
+    recved = 0;
+    /* Turn off MSG_EOR in the flags we send to the socket. */
+    flags = callflags & (ONES ^ MSG_EOR);
+  }
+
+  switch (service) {
+  case DTG_SRVC:
+    nbworks_errno = ENOSYS;
+    return -1;
+
+  case SES_SRVC:
+    if (! *buff) {
+      *buff = malloc(len);
+      if (! *buff) {
+	nbworks_errno = ENOMEM;
+	return -1;
+      }
+    }
+
+    notrecved = len;
+    len_left = ses->len_left;
+
+    while (notrecved) {
+      if (len_left) {
+	if (ses->len_left >= notrecved) {
+	  ses->len_left = ses->len_left - notrecved;
+	  len_left = notrecved;
+	} /* else
+	     len_left is already filled before the master while loop. */
+
+	do {
+	  ret_val = recv(ses->socket, (*buff + (len - notrecved)),
+			 len_left, flags);
+
+	  if (ret_val <= 0) {
+	    if (((errno == EAGAIN) ||
+		 (errno == EWOULDBLOCK)) &&
+		(recved)) {
+	      return recved;
+	    } else {
+	      nbworks_errno = errno;
+	      if (ret_val == 0)
+		return recved;
+	      else
+		return -1;
+	    }
+	  }
+	  notrecved = notrecved - ret_val;
+	  recved = recved + ret_val;
+
+	} while (len_left);
+
+	if ((callflags & MSG_EOR) ||
+	    (! notrecved))
+	  return recved;
+
+      }
+
+      ret_val = recv(ses->socket, hdrbuff, SES_HEADER_LEN,
+		     ((flags & (ONES ^ MSG_DONTWAIT)) | MSG_WAITALL));
+      if (ret_val < SES_HEADER_LEN) {
+	if (ret_val == 0) {
+	  return recved;
+	} else {
+	  nbworks_errno = EREMOTEIO;
+	  return -1;
+	}
+      }
+      walker = hdrbuff;
+      if (0 == read_ses_srvc_pckt_header(&walker, (hdrbuff + SES_HEADER_LEN),
+					 &hdr)) {
+	nbworks_errno = EREMOTEIO;
+	return -1;
+      }
+
+      if (hdr.type != SESSION_MESSAGE) {
+	if (hdr.len) {
+	  ret_val = lib_flushsckt(ses->socket, hdr.len);
+	  if (ret_val <= 0) {
+	    /* nbworks_errno is set */
+	    return ret_val;
+	  }
+	}
+	continue;
+      }
+      if (hdr.len > notrecved) {
+	ses->len_left = hdr.len - notrecved;
+	len_left = notrecved;
+      } else {
+	len_left = hdr.len;
+      }
+      while (len_left) {
+	ret_val = recv(ses->socket, (*buff + (len - notrecved)),
+		       len_left, flags);
+	if (ret_val <= 0) {
+	  if (((errno == EAGAIN) ||
+	       (errno == EWOULDBLOCK)) &&
+	      (recved)) {
+	    return recved;
+	  } else {
+	    nbworks_errno = errno;
+	    if (ret_val == 0)
+	      return recved;
+	    else
+	      return -1;
+	  }
+	}
+
+	len_left = len_left - ret_val;
+	notrecved = notrecved - ret_val;
+	recved = recved + ret_val;
+      }
+
+      if (callflags & MSG_EOR)
+	return recved;
+
+    }
+
+    return recved;
+    
   default:
     nbworks_errno = EINVAL;
     return -1;

@@ -52,7 +52,8 @@ struct ses_srvc_packet {
 
 struct ses_srvc_packet *
   read_ses_srvc_pckt_header(unsigned char **master_packet_walker,
-                            unsigned char *end_of_packet);
+                            unsigned char *end_of_packet,
+                            struct ses_srvc_packet *field);
 unsigned char *
   fill_ses_packet_header(struct ses_srvc_packet *content,
                          unsigned char *field,

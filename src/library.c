@@ -1106,7 +1106,7 @@ int lib_open_session(struct name_state *handle,
 
   herpckt_buff = small_buff;
   pckt = read_ses_srvc_pckt_header(&herpckt_buff,
-				   (herpckt_buff + SES_HEADER_LEN));
+				   (herpckt_buff + SES_HEADER_LEN), 0);
   if (! pckt) {
     close(ses_sckt);
     free(mypckt_buff);
@@ -1276,7 +1276,7 @@ void *lib_ses_srv(void *arg) {
     }
 
     walker = combuff;
-    pckt = read_ses_srvc_pckt_header(&walker, (walker+SES_HEADER_LEN));
+    pckt = read_ses_srvc_pckt_header(&walker, (walker+SES_HEADER_LEN), 0);
     if (! pckt) {
       close(new_sckt);
       break;
@@ -1458,7 +1458,45 @@ struct nbworks_session *lib_make_session(int socket,
   result->kill_caretaker = FALSE;
   result->keepalive = keepalive;
   result->socket = socket;
+  result->len_left = 0;
   result->next = 0;
 
   return result;
+}
+
+
+ssize_t lib_flushsckt(int socket,
+		      ssize_t len) {
+  ssize_t ret_val, count;
+  unsigned char buff[0xff];
+
+  if (len <= 0) {
+    nbworks_errno = EINVAL;
+    return -1;
+  } else {
+    nbworks_errno = 0;
+    count = 0;
+  }
+
+  while (len > 0xff) {
+    ret_val = recv(socket, buff, 0xff, 0);
+    if (ret_val <= 0) {
+      nbworks_errno = errno;
+      return ret_val;
+    }
+    len = len - ret_val;
+    count = count + ret_val;
+  }
+
+  while (len > 0) {
+    ret_val = recv(socket, buff, len, 0);
+    if (ret_val <= 0) {
+      nbworks_errno = errno;
+      return ret_val;
+    }
+    len = len - ret_val;
+    count = count + ret_val;
+  }
+
+  return count;
 }

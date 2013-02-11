@@ -1241,7 +1241,7 @@ void *take_incoming_session(void *arg) {
   }
 
   walker = buf;
-  new_pckt = read_ses_srvc_pckt_header(&walker, buf+SES_HEADER_LEN);
+  new_pckt = read_ses_srvc_pckt_header(&walker, buf+SES_HEADER_LEN, 0);
   if (! new_pckt) {
     err[4] = SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
