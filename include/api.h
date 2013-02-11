@@ -19,4 +19,11 @@ int
                   int numof_dtgs,
                   int timeout);
 
+ssize_t
+  nbworks_send(unsigned char service,
+               void *handle,
+               void *buff,
+               size_t len,
+               int flags);
+
 #endif /* NBWORKS_API_H */

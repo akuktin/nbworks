@@ -4,12 +4,15 @@
 #include <time.h>
 #include <poll.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "nodename.h"
 #include "api.h"
 #include "library_control.h"
 #include "library.h"
 #include "pckt_routines.h"
+#include "ses_srvc_pckt.h"
 
 
 int nbworks_sespoll(struct nbworks_pollfd *sessions,
@@ -151,4 +154,124 @@ int nbworks_dtgpoll(struct nbworks_pollfd *handles,
   free(trgt);
 
   return ret_val;
+}
+
+
+ssize_t nbworks_send(unsigned char service,
+		     void *handle,
+		     void *buff,
+		     size_t len,
+		     int flags) {
+  struct nbworks_session *ses;
+  struct ses_srvc_packet pckt;
+  ssize_t ret_val, sent, notsent;
+  unsigned char pcktbuff[SES_HEADER_LEN];
+
+  /* Fun fact: since ssize_t is signed, and size_t is not,
+   *           ssize_t has one bit less than size_t.
+   *           The implication of this is that it is possible
+   *           for an application to request sending of a
+   *           larger number of octets than we can report back
+   *           as being sent.
+   *           max(ssize_t) < max(size_t) */
+
+  if ((! (handle && buff)) ||
+      (len < 0) ||
+      (len > (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
+    nbworks_errno = EARGS;
+    return -1;
+  } else {
+    nbworks_errno = 0;
+    sent = 0;
+  }
+
+  switch (service) {
+  case DTG_SRVC:
+    return 0;
+
+  case SES_SRVC:
+    ses = handle;
+
+    pckt.type = SESSION_MESSAGE;
+    pckt.flags = 0;
+
+    while (len > SES_MAXLEN) {
+      pckt.len = SES_MAXLEN;
+      if (pcktbuff == fill_ses_packet_header(&pckt, pcktbuff,
+					     (pcktbuff + SES_HEADER_LEN))) {
+	nbworks_errno = 255; /* FIXME */
+	return -1;
+      }
+
+      notsent = SES_HEADER_LEN;
+      while (notsent) {
+	ret_val = send(ses->socket, (pcktbuff + (SES_HEADER_LEN - notsent)),
+		       SES_HEADER_LEN, flags);
+	if (ret_val < 0) {
+	  nbworks_errno = errno;
+	  return ret_val;
+	} else {
+	  notsent = notsent - ret_val;
+	}
+      }
+
+      notsent = SES_MAXLEN;
+      while (notsent) {
+	ret_val = send(ses->socket, (buff + (SES_MAXLEN - notsent)),
+		       notsent, flags);
+	if (ret_val < 0) {
+	  nbworks_errno = errno;
+	  return ret_val;
+	} else {
+	  notsent = notsent - ret_val;
+	}
+      }
+
+      sent = sent + SES_MAXLEN;
+      buff = buff + SES_MAXLEN;
+      len = len - SES_MAXLEN;
+    }
+
+    if (len == 0)
+      return sent;
+
+    pckt.len = len;
+    if (pcktbuff == fill_ses_packet_header(&pckt, pcktbuff,
+					   (pcktbuff + SES_HEADER_LEN))) {
+      nbworks_errno = 255;
+      return -1;
+    }
+
+    notsent = SES_HEADER_LEN;
+    while (notsent) {
+      ret_val = send(ses->socket, (pcktbuff + (SES_HEADER_LEN - notsent)),
+		     SES_HEADER_LEN, flags);
+      if (ret_val < 0) {
+	nbworks_errno = errno;
+	return ret_val;
+      } else {
+	notsent = notsent - ret_val;
+      }
+    }
+
+    notsent = len;
+    while (notsent) {
+      ret_val = send(ses->socket, (buff + (len - notsent)),
+		     notsent, flags);
+      if (ret_val < 0) {
+	nbworks_errno = errno;
+	return ret_val;
+      } else {
+	notsent = notsent - ret_val;
+      }
+    }
+
+    sent = sent + len;
+
+    return sent;
+
+  default:
+    nbworks_errno = EARGS;
+    return -1;
+  }
 }

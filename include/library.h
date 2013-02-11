@@ -73,6 +73,11 @@ struct nbworks_session {
   struct nbworks_session *next;
 };
 
+union nbworks_handle {
+  struct name_state *dtg;
+  struct nbworks_session *ses;
+};
+
 void
   lib_init();
 

@@ -66,5 +66,10 @@ unsigned char nbworks_do_align;
                                       ((incr- ((ptr-base) %incr)) %incr) : 0)
 # define align(base, ptr, incr) (ptr + align_incr(base, ptr, incr))
 
+# define NAME_SRVC 1
+# define DTG_SRVC  0
+# define SES_SRVC  2
+
+# define EARGS 253
 
 #endif /* NBWORKS_CONSTDEF_H */

@@ -17,6 +17,7 @@
 # define SES_ERR_UNSPEC        0x8f /* unspecified error */
 
 # define SES_HEADER_LEN 4
+# define SES_MAXLEN 0x1ffff
 
 enum ses_packet_payload_t {
   unknown_ses = 0,

@@ -11,9 +11,6 @@
 # include "name_srvc_pckt.h"
 # include "dtg_srvc_pckt.h"
 
-# define NAME_SRVC 1
-# define DTG_SRVC  0
-
 
 enum trans_status {
   nmtrst_normal = 0,
