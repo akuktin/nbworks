@@ -215,17 +215,26 @@ ssize_t nbworks_send(unsigned char service,
       pckt.len = SES_MAXLEN;
       if (pcktbuff == fill_ses_packet_header(&pckt, pcktbuff,
 					     (pcktbuff + SES_HEADER_LEN))) {
-	nbworks_errno = ZEROONES; /* FIXME */
-	return -1;
+	if (sent)
+	  return sent;
+	else {
+	  nbworks_errno = ZEROONES; /* FIXME */
+	  return -1;
+	}
       }
 
       notsent = SES_HEADER_LEN;
       while (notsent) {
 	ret_val = send(ses->socket, (pcktbuff + (SES_HEADER_LEN - notsent)),
-		       SES_HEADER_LEN, flags);
-	if (ret_val < 0) {
-	  nbworks_errno = errno;
-	  return ret_val;
+		       notsent, (flags & (ONES ^ MSG_DONTWAIT)));
+	if (ret_val <= 0) {
+	  if (ret_val == 0) {
+	    nbworks_errno = EREMOTEIO;
+	    return -1;
+	  } else {
+	    nbworks_errno = errno;
+	    return ret_val;
+	  }
 	} else {
 	  notsent = notsent - ret_val;
 	}
@@ -234,10 +243,17 @@ ssize_t nbworks_send(unsigned char service,
       notsent = SES_MAXLEN;
       while (notsent) {
 	ret_val = send(ses->socket, (buff + (SES_MAXLEN - notsent)),
-		       notsent, flags);
-	if (ret_val < 0) {
-	  nbworks_errno = errno;
-	  return ret_val;
+		       notsent, (flags & (ONES ^ MSG_DONTWAIT)));
+	if (ret_val <= 0) {
+	  if (ret_val == 0) {
+	    /* So, basically, wonce you commit to a packet, you HAVE to send
+	     * the whole thing because failure to do so would desync the stream. */
+	    nbworks_errno = EREMOTEIO;
+	    return -1;
+	  } else {
+	    nbworks_errno = errno;
+	    return ret_val;
+	  }
 	} else {
 	  notsent = notsent - ret_val;
 	}
@@ -254,17 +270,26 @@ ssize_t nbworks_send(unsigned char service,
     pckt.len = len;
     if (pcktbuff == fill_ses_packet_header(&pckt, pcktbuff,
 					   (pcktbuff + SES_HEADER_LEN))) {
-      nbworks_errno = ZEROONES; /* FIXME */
-      return -1;
+      if (sent)
+	return sent;
+      else {
+	nbworks_errno = ZEROONES; /* FIXME */
+	return -1;
+      }
     }
 
     notsent = SES_HEADER_LEN;
     while (notsent) {
       ret_val = send(ses->socket, (pcktbuff + (SES_HEADER_LEN - notsent)),
-		     SES_HEADER_LEN, flags);
-      if (ret_val < 0) {
-	nbworks_errno = errno;
-	return ret_val;
+		     notsent, (flags & (ONES ^ MSG_DONTWAIT)));
+      if (ret_val <= 0) {
+	if (ret_val == 0) {
+	  nbworks_errno = EREMOTEIO;
+	  return -1;
+	} else {
+	  nbworks_errno = errno;
+	  return ret_val;
+	}
       } else {
 	notsent = notsent - ret_val;
       }
@@ -273,10 +298,17 @@ ssize_t nbworks_send(unsigned char service,
     notsent = len;
     while (notsent) {
       ret_val = send(ses->socket, (buff + (len - notsent)),
-		     notsent, flags);
-      if (ret_val < 0) {
-	nbworks_errno = errno;
-	return ret_val;
+		     notsent, (flags & (ONES ^ MSG_DONTWAIT)));
+      if (ret_val <= 0) {
+	if (ret_val == 0) {
+	  /* So, basically, wonce you commit to a packet, you HAVE to send
+	   * the whole thing because failure to do so would desync the stream. */
+	  nbworks_errno = EREMOTEIO;
+	  return -1;
+	} else {
+	  nbworks_errno = errno;
+	  return ret_val;
+	}
       } else {
 	notsent = notsent - ret_val;
       }
@@ -430,7 +462,7 @@ ssize_t nbworks_recv(unsigned char service,
     }
 
     return recved;
-    
+
   default:
     nbworks_errno = EINVAL;
     return -1;
