@@ -1,6 +1,7 @@
 #include "c_lang_extensions.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <poll.h>
 #include <errno.h>
@@ -159,9 +160,10 @@ ssize_t nbworks_send(unsigned char service,
 		     struct nbworks_session *ses,
 		     void *buff,
 		     size_t len,
-		     int flags) {
+		     int callflags) {
   struct ses_srvc_packet pckt;
   ssize_t ret_val, sent, notsent;
+  int flags;
   unsigned char pcktbuff[SES_HEADER_LEN];
 
   /* Fun fact: since ssize_t is signed, and size_t is not,
@@ -173,13 +175,16 @@ ssize_t nbworks_send(unsigned char service,
    *           max(ssize_t) < max(size_t) */
 
   if ((! (ses && buff)) ||
-      (len < 0) ||
+      (len <= 0) ||
       (len >= (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
     nbworks_errno = EINVAL;
     return -1;
   } else {
     nbworks_errno = 0;
     sent = 0;
+
+    /* Turn off MSG_EOR in the flags we send to the socket. */
+    flags = callflags & (ONES ^ MSG_EOR);
   }
 
   switch (service) {
@@ -187,6 +192,11 @@ ssize_t nbworks_send(unsigned char service,
     /* FEATURE_REQUEST: for now, we only support sending
                         via the multiplexing daemon */
     /* FEATURE_REQUEST: need to implement sender datagram fragmentation. */
+    if (! ses->handle) {
+      nbworks_errno = EINVAL;
+      return -1;
+    }
+
     if (len > DTG_MAXLEN) {
       nbworks_errno = EMSGSIZE;
       return -1;
@@ -260,8 +270,13 @@ ssize_t nbworks_send(unsigned char service,
       }
 
       sent = sent + SES_MAXLEN;
-      buff = buff + SES_MAXLEN;
-      len = len - SES_MAXLEN;
+
+      if (callflags & MSG_EOR) {
+	return sent;
+      } else {
+	buff = buff + SES_MAXLEN;
+	len = len - SES_MAXLEN;
+      }
     }
 
     if (len == 0)
@@ -330,6 +345,7 @@ ssize_t nbworks_recv(unsigned char service,
 		     void **buff,
 		     size_t len,
 		     int callflags) {
+  struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
   ssize_t recved, notrecved, ret_val;
   ssize_t len_left;
@@ -337,21 +353,68 @@ ssize_t nbworks_recv(unsigned char service,
   unsigned char hdrbuff[SES_HEADER_LEN], *walker;
 
   if ((! (ses && buff)) ||
-      (len < 0) ||
+      (len <= 0) ||
       (len >= (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
     nbworks_errno = EINVAL;
     return -1;
   } else {
     nbworks_errno = 0;
     recved = 0;
-    /* Turn off MSG_EOR in the flags we send to the socket. */
-    flags = callflags & (ONES ^ MSG_EOR);
   }
 
   switch (service) {
   case DTG_SRVC:
-    nbworks_errno = ENOSYS;
-    return -1;
+    if (! ses->handle) {
+      nbworks_errno = EINVAL;
+      return -1;
+    } else {
+      ret_val = 0;
+    }
+
+    while (! ret_val) {
+      if (ses->handle->in_library) {
+	in_lib = ses->handle->in_library;
+	if (in_lib->data) {
+	  if (*buff) {
+	    if (len >= in_lib->len)
+	      ret_val = len;
+	    else
+	      ret_val = in_lib->len;
+
+	    memcpy(*buff, in_lib->data, len);
+	    free(in_lib->data);
+
+	  } else {
+	    ret_val = in_lib->len;
+
+	    if (ret_val)
+	      *buff = in_lib->data;
+	    else
+	      free(in_lib->data);
+	  }
+	  in_lib->data = 0;
+	}
+
+	if (in_lib->src) {
+	  destroy_nbnodename(in_lib->src);
+	  in_lib->src = 0;
+	}
+	if (in_lib->next) {
+	  ses->handle->in_library = in_lib->next;
+	  free(in_lib);
+	} else {
+	  if ((callflags & MSG_DONTWAIT) ||
+	      (ses->nonblocking))
+	    break;
+	}
+      } else {
+	if ((callflags & MSG_DONTWAIT) ||
+	    (ses->nonblocking))
+	  break;
+      }
+    }
+
+    return ret_val;
 
   case SES_SRVC:
     if (! *buff) {
@@ -361,6 +424,9 @@ ssize_t nbworks_recv(unsigned char service,
 	return -1;
       }
     }
+
+    /* Turn off MSG_EOR in the flags we send to the socket. */
+    flags = callflags & (ONES ^ MSG_EOR);
 
     notrecved = len;
     len_left = ses->len_left;

@@ -74,6 +74,7 @@ struct nbworks_session {
   struct name_state *handle;    /* pointer back to the whole name_handle */
   unsigned char kill_caretaker;
   unsigned char keepalive;
+  unsigned char nonblocking;
   int socket;
   size_t len_left;
   pthread_mutex_t mutex;
