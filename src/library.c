@@ -1459,6 +1459,7 @@ struct nbworks_session *lib_make_session(int socket,
   result->keepalive = keepalive;
   result->socket = socket;
   result->len_left = 0;
+  result->nonblocking = TRUE; /* AKA non-blocking */
   result->next = 0;
 
   return result;
