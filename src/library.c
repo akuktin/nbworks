@@ -10,6 +10,7 @@
 #include <netinet/tcp.h>
 #include <sys/un.h>
 #include <poll.h>
+#include <errno.h>
 
 #include "nodename.h"
 #include "library_control.h"
@@ -562,18 +563,18 @@ int lib_daemon_socket() {
 
   daemon = socket(PF_UNIX, SOCK_STREAM, 0);
   if (daemon < 0) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = errno;
     return -1;
   }
 
   if (0 != fcntl(daemon, F_SETFL, O_NONBLOCK)) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = errno;
     close(daemon);
     return -1;
   }
 
   if (0 != connect(daemon, &address, sizeof(struct sockaddr_un))) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = errno;
     close(daemon);
     return -1;
   }
@@ -583,13 +584,13 @@ int lib_daemon_socket() {
 
 
 /* returns: <0 = error, 0 or >0 = something was sent */
-int lib_senddtg_138(struct name_state *handle,
-		    unsigned char *recepient,
-		    unsigned char recepient_type,
-		    void *data,
-		    unsigned int len,
-		    unsigned char isgroup,
-		    unsigned char isbroadcast) {
+ssize_t lib_senddtg_138(struct name_state *handle,
+			unsigned char *recepient,
+			unsigned char recepient_type,
+			void *data,
+			size_t len,
+			unsigned char isgroup,
+			unsigned char isbroadcast) {
   struct dtg_srvc_packet *pckt;
   struct com_comm command;
   int daemon_sckt;
@@ -598,15 +599,14 @@ int lib_senddtg_138(struct name_state *handle,
   void *readypacket;
 
   if ((! (handle && recepient)) ||
-      (len > 0xff00)) { /* A bit shorter because I have not yet
-			   implemented a start-stop datagram writer. */
-    /* FIXME: errno signaling stuff */
+      (len > DTG_MAXLEN)) {
+    nbworks_errno = EINVAL;
     return -1;
   }
 
   pckt = malloc(sizeof(struct dtg_srvc_packet));
   if (! pckt) {
-    /* FIXME: errno signaling stuff */
+    nbworks_errno = errno;
     return -1;
   }
 
@@ -642,7 +642,7 @@ int lib_senddtg_138(struct name_state *handle,
 					    recepient, recepient_type, handle->scope,
 					    data, len, 0);
   if (! pckt->payload) {
-    /* FIXME: errno signaling stuff */
+    nbworks_errno = ZEROONES; /* FIXME */
     free(pckt);
     return -1;
   }
@@ -654,14 +654,14 @@ int lib_senddtg_138(struct name_state *handle,
 
   readypacket = master_dtg_srvc_pckt_writer(pckt, &pckt_len, 0);
   if (! readypacket) {
-    /* FIXME: errno signaling stuff */
+    nbworks_errno = ZEROONES; /* FIXME */
     destroy_dtg_srvc_pckt(pckt, 1, 1);
     return -1;
   }
 
   daemon_sckt = lib_daemon_socket();
   if (daemon_sckt == -1) {
-    /* FIXME: errno signaling stuff */
+    nbworks_errno = ZEROONES; /* FIXME */
     free(readypacket);
     destroy_dtg_srvc_pckt(pckt, 1, 1);
     return -1;
@@ -677,7 +677,7 @@ int lib_senddtg_138(struct name_state *handle,
 
   if (LEN_COMM_ONWIRE > send(daemon_sckt, readycommand, LEN_COMM_ONWIRE,
 			     MSG_NOSIGNAL)) {
-    /* FIXME: errno signaling stuff */
+    nbworks_errno = errno;
     close(daemon_sckt);
     free(readypacket);
     destroy_dtg_srvc_pckt(pckt, 1, 1);
@@ -685,7 +685,7 @@ int lib_senddtg_138(struct name_state *handle,
   }
 
   if (pckt_len > send(daemon_sckt, readypacket, pckt_len, MSG_NOSIGNAL)) {
-    /* FIXME: errno signaling stuff */
+    nbworks_errno = errno;
     close(daemon_sckt);
     free(readypacket);
     destroy_dtg_srvc_pckt(pckt, 1, 1);
@@ -694,7 +694,7 @@ int lib_senddtg_138(struct name_state *handle,
 
   if (LEN_COMM_ONWIRE > recv(daemon_sckt, readycommand, LEN_COMM_ONWIRE,
 			     MSG_WAITALL)) {
-    /* FIXME: errno signaling stuff */
+    nbworks_errno = ZEROONES; /* FIXME */
     close(daemon_sckt);
     free(readypacket);
     destroy_dtg_srvc_pckt(pckt, 1, 1);
@@ -1347,7 +1347,7 @@ void *lib_ses_srv(void *arg) {
       break;
     }
 
-    new_ses = lib_make_session(new_sckt, caller, FALSE);
+    new_ses = lib_make_session(new_sckt, caller, handle, FALSE);
     destroy_nbnodename(caller);
     if (! new_ses) {
       close(new_sckt);
@@ -1435,6 +1435,7 @@ void *lib_caretaker(void *arg) {
 
 struct nbworks_session *lib_make_session(int socket,
 					 struct nbnodename_list *caller,
+					 struct name_state *handle,
 					 unsigned char keepalive) {
   struct nbworks_session *result;
 
@@ -1452,7 +1453,8 @@ struct nbworks_session *lib_make_session(int socket,
   }
   result->mutexlock = pthread_mutex_trylock;
 
-  result->caller = clone_nbnodename(caller);
+  result->peer = clone_nbnodename(caller);
+  result->handle = handle;
   result->kill_caretaker = FALSE;
   result->keepalive = keepalive;
   result->socket = socket;

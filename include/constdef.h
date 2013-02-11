@@ -60,6 +60,7 @@
 #  undef align
 # endif
 
+int nbworks_errno;
 unsigned char nbworks_do_align;
 
 # define align_incr(base, ptr, incr) (nbworks_do_align ? \
@@ -70,6 +71,6 @@ unsigned char nbworks_do_align;
 # define DTG_SRVC  0
 # define SES_SRVC  2
 
-# define EARGS 253
+# define MSG_BRDCAST MSG_PROXY /* Trying hard to be portable. */
 
 #endif /* NBWORKS_CONSTDEF_H */

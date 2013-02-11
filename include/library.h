@@ -34,10 +34,12 @@ struct dtg_frag_bckbone {
 };
 
 struct name_state {
+/* identification */
   uint64_t token;
   struct nbnodename_list *name;
   struct nbnodename_list *scope;
 
+/* datagram server */
   pthread_t dtg_srv_tid;
   int dtg_srv_sckt;
   struct nbnodename_list *dtg_listento;
@@ -47,6 +49,7 @@ struct name_state {
   struct packet_cooked *in_server;
   struct packet_cooked *in_library;
 
+/* session taker server */
   pthread_t ses_srv_tid;
   int ses_srv_sckt;
   struct nbnodename_list *ses_listento;
@@ -55,15 +58,20 @@ struct name_state {
   struct nbworks_session *sesin_server;
   struct nbworks_session *sesin_library;
 
+/* metadata for the name and scope */
   short lenof_scope; /* the amount of octets the encoded scope takes,
                       * incl. the terminating NULL in the packet */
   unsigned char label_type; /* the type octet of the name */
   unsigned char node_type;  /* flag field */
+  unsigned char isgroup;
+
+/* maybe we will daysie-chain them */
   struct name_state *next;
 };
 
 struct nbworks_session {
-  struct nbnodename_list *caller;
+  struct nbnodename_list *peer; /* name + scope */
+  struct name_state *handle;    /* pointer back to the whole name_handle */
   unsigned char kill_caretaker;
   unsigned char keepalive;
   int socket;
@@ -136,19 +144,14 @@ uint32_t
 int
   lib_daemon_socket();
 
-int
+ssize_t
   lib_senddtg_138(struct name_state *handle,
                   unsigned char *recepient,
                   unsigned char recepient_type,
                   void *data,
-                  unsigned int len,
+                  size_t len,
                   unsigned char isgroup,
                   unsigned char isbroadcast);
-
-int
-  lib_recvdtg(struct name_state *handle,
-              void *buff,
-              int lenof_buff);
 
 void
   lib_dstry_packets(struct packet_cooked *forkill);
@@ -167,6 +170,7 @@ void *
 struct nbworks_session *
   lib_make_session(int socket,
                    struct nbnodename_list *caller,
+                   struct name_state *handle,
                    unsigned char keepalive);
 
 #endif /* NBWORKS_LIBRARY_H */
