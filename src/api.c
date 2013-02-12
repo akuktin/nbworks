@@ -157,11 +157,13 @@ int nbworks_poll(unsigned char service,
 }
 
 
-ssize_t nbworks_send(unsigned char service,
-		     struct nbworks_session *ses,
-		     void *buff,
-		     size_t len,
-		     int callflags) {
+ssize_t nbworks_sendto(unsigned char service,
+		       struct nbworks_session *ses,
+		       void *buff,
+		       size_t len,
+		       int callflags,
+		       struct nbnodename_list *dst) {
+  struct nbnodename_list *peer;
   struct ses_srvc_packet pckt;
   ssize_t ret_val, sent, notsent;
   int flags;
@@ -203,13 +205,18 @@ ssize_t nbworks_send(unsigned char service,
       return -1;
     }
 
-    if (! ses->peer) {
-      nbworks_errno = ENOTCONN;
-      return -1;
-    }
+    if (dst)
+      peer = dst;
+    else
+      if (ses->peer) {
+	peer = ses->peer;
+      } else {
+	nbworks_errno = ENOTCONN;
+	return -1;
+      }
 
-    ret_val = lib_senddtg_138(ses->handle, ses->peer->name,
-			      (ses->peer->name)[NETBIOS_NAME_LEN-1],
+    ret_val = lib_senddtg_138(ses->handle, peer->name,
+			      (peer->name)[NETBIOS_NAME_LEN-1],
 			      buff, len, ses->handle->isgroup,
 			      ((flags & MSG_BRDCAST) ? ISGROUP_YES : ISGROUP_NO));
     if (ret_val < len) {
@@ -372,11 +379,12 @@ ssize_t nbworks_send(unsigned char service,
 }
 
 
-ssize_t nbworks_recv(unsigned char service,
-		     struct nbworks_session *ses,
-		     void **buff,
-		     size_t len,
-		     int callflags) {
+ssize_t nbworks_recvfrom(unsigned char service,
+			 struct nbworks_session *ses,
+			 void **buff,
+			 size_t len,
+			 int callflags,
+			 struct nbnodename_list **src) {
   struct timespec sleeptime;
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
@@ -439,7 +447,10 @@ ssize_t nbworks_recv(unsigned char service,
 	}
 
 	if (in_lib->src) {
-	  destroy_nbnodename(in_lib->src);
+	  if (src)
+	    *src = in_lib->src;
+	  else
+	    destroy_nbnodename(in_lib->src);
 	  in_lib->src = 0;
 	}
 	if (in_lib->next) {
