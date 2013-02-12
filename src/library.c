@@ -1385,6 +1385,7 @@ void *lib_caretaker(void *arg) {
   struct nbworks_session *handle;
   struct timespec sleeptime;
   struct pollfd pfd;
+  ssize_t ret_val, sent;
   time_t lastkeepalive, cur_time;
   unsigned char buff[] = { SESSION_KEEP_ALIVE, 0, 0, 0 };
 
@@ -1423,7 +1424,24 @@ void *lib_caretaker(void *arg) {
 	  return 0;
 	}
       }
-      send(handle->socket, buff, 4, MSG_NOSIGNAL);
+      sent = 0;
+      while (sent < 4) {
+	ret_val = send(handle->socket, (buff +(4-sent)), (4-sent), MSG_NOSIGNAL);
+	if (ret_val < 0) {
+	  if ((errno != EAGAIN) ||
+	      (errno != EWOULDBLOCK)) {
+	    close(handle->socket);
+	    handle->kill_caretaker = TRUE;
+	    return 0;
+	  } else
+	    break;
+	} else {
+	  if (ret_val) {
+	    sent = sent + ret_val;
+	  } else
+	    break;
+	}
+      }
       if (0 != pthread_mutex_unlock(&(handle->mutex))) {
 	/* This is a fatal error. If the mutex can not be unlocked,
 	 * then the socket is useless. Therefore, close it and apologize. */
