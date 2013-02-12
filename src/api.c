@@ -1,5 +1,6 @@
 #include "c_lang_extensions.h"
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -512,6 +513,19 @@ ssize_t nbworks_recv(unsigned char service,
       }
 
       if (hdr.type != SESSION_MESSAGE) {
+	/* MAYBE: implement (transparent?) mid-session retargeting. */
+	if (! ((hdr.type == SESSION_KEEP_ALIVE) ||
+	       (hdr.type == POS_SESSION_RESPONSE))) {
+	  close(ses->socket);
+	  ses->kill_caretaker = TRUE;
+	  pthread_mutex_unlock(&(ses->mutex));
+	  nbworks_errno = EPROTO;
+	  if (recved) {
+	    return recved;
+	  } else {
+	    return -1;
+	  }
+	}
 	if (hdr.len) {
 	  ret_val = lib_flushsckt(ses->socket, hdr.len);
 	  if (ret_val <= 0) {
