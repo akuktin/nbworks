@@ -1509,20 +1509,38 @@ ssize_t lib_flushsckt(int socket,
   }
 
   while (len > 0xff) {
-    ret_val = recv(socket, buff, 0xff, 0);
+    ret_val = recv(socket, buff, 0xff, flags);
     if (ret_val <= 0) {
-      nbworks_errno = errno;
-      return ret_val;
+      if (ret_val == 0) {
+	return 0;
+      } else {
+	if ((errno == EAGAIN) ||
+	    (errno == EWOULDBLOCK)) {
+	  continue;
+	} else {
+	  nbworks_errno = errno;
+	  return ret_val;
+	}
+      }
     }
     len = len - ret_val;
     count = count + ret_val;
   }
 
   while (len > 0) {
-    ret_val = recv(socket, buff, len, 0);
+    ret_val = recv(socket, buff, len, flags);
     if (ret_val <= 0) {
-      nbworks_errno = errno;
-      return ret_val;
+      if (ret_val == 0) {
+	return 0;
+      } else {
+	if ((errno == EAGAIN) ||
+	    (errno == EWOULDBLOCK)) {
+	  continue;
+	} else {
+	  nbworks_errno = errno;
+	  return ret_val;
+	}
+      }
     }
     len = len - ret_val;
     count = count + ret_val;

@@ -488,7 +488,7 @@ ssize_t nbworks_recv(unsigned char service,
 	    free(ses->oob_tmpstor);
 	    ses->oob_tmpstor = 0;
 	  }
-	  
+
 	  notrecved = notrecved - len_left;
 	  len_left = 0;
 	} else {
