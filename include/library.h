@@ -79,7 +79,6 @@ struct nbworks_session {
   size_t len_left;
   pthread_mutex_t mutex;
   pthread_t caretaker_tid;
-  int (*mutexlock)(pthread_mutex_t *);
   struct nbworks_session *next;
 };
 

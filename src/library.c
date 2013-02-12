@@ -1417,11 +1417,19 @@ void *lib_caretaker(void *arg) {
     cur_time = time(0);
     if (cur_time > (lastkeepalive + nbworks_libcntl.keepalive_interval)) {
       lastkeepalive = cur_time;
-      if (0 == pthread_mutex_lock(&(handle->mutex))) {
-	send(handle->socket, buff, 4, MSG_NOSIGNAL);
-	while (0 != pthread_mutex_unlock(&(handle->mutex))) {
-	  /* retry */ /* Infinite loop danger! */
+      while (pthread_mutex_trylock(&(handle->mutex))) {
+	if (errno != EBUSY) {
+	  handle->kill_caretaker = TRUE;
+	  return 0;
 	}
+      }
+      send(handle->socket, buff, 4, MSG_NOSIGNAL);
+      if (0 != pthread_mutex_unlock(&(handle->mutex))) {
+	/* This is a fatal error. If the mutex can not be unlocked,
+	 * then the socket is useless. Therefore, close it and apologize. */
+	close(handle->socket);
+	/* apologize(); */
+	break;
       }
     }
 
@@ -1451,7 +1459,6 @@ struct nbworks_session *lib_make_session(int socket,
     free(result);
     return 0;
   }
-  result->mutexlock = pthread_mutex_trylock;
 
   result->peer = clone_nbnodename(caller);
   result->handle = handle;

@@ -221,10 +221,28 @@ ssize_t nbworks_send(unsigned char service,
     pckt.type = SESSION_MESSAGE;
     pckt.flags = 0;
 
+    if ((ses->nonblocking) ||
+	(flags & MSG_DONTWAIT)) {
+      if (0 != pthread_mutex_trylock(&(ses->mutex))) {
+	if (errno == EBUSY) {
+	  nbworks_errno = EAGAIN;
+	  return -1;
+	} else {
+	  nbworks_errno = errno;
+	  return -1;
+	}
+      }
+    } else {
+      if (0 != pthread_mutex_lock(&(ses->mutex))) {
+	nbworks_errno = errno;
+	return -1;
+      }
+    }
     while (len > SES_MAXLEN) {
       pckt.len = SES_MAXLEN;
       if (pcktbuff == fill_ses_packet_header(&pckt, pcktbuff,
 					     (pcktbuff + SES_HEADER_LEN))) {
+	pthread_mutex_unlock(&(ses->mutex));
 	if (sent)
 	  return sent;
 	else {
@@ -238,6 +256,7 @@ ssize_t nbworks_send(unsigned char service,
 	ret_val = send(ses->socket, (pcktbuff + (SES_HEADER_LEN - notsent)),
 		       notsent, (flags & (ONES ^ MSG_DONTWAIT)));
 	if (ret_val <= 0) {
+	  pthread_mutex_unlock(&(ses->mutex));
 	  if (ret_val == 0) {
 	    nbworks_errno = EREMOTEIO;
 	    return -1;
@@ -255,6 +274,7 @@ ssize_t nbworks_send(unsigned char service,
 	ret_val = send(ses->socket, (buff + (SES_MAXLEN - notsent)),
 		       notsent, (flags & (ONES ^ MSG_DONTWAIT)));
 	if (ret_val <= 0) {
+	  pthread_mutex_unlock(&(ses->mutex));
 	  if (ret_val == 0) {
 	    /* So, basically, wonce you commit to a packet, you HAVE to send
 	     * the whole thing because failure to do so would desync the stream. */
@@ -272,6 +292,7 @@ ssize_t nbworks_send(unsigned char service,
       sent = sent + SES_MAXLEN;
 
       if (callflags & MSG_EOR) {
+	pthread_mutex_unlock(&(ses->mutex));
 	return sent;
       } else {
 	buff = buff + SES_MAXLEN;
@@ -279,12 +300,15 @@ ssize_t nbworks_send(unsigned char service,
       }
     }
 
-    if (len == 0)
+    if (len == 0) {
+      pthread_mutex_unlock(&(ses->mutex));
       return sent;
+    }
 
     pckt.len = len;
     if (pcktbuff == fill_ses_packet_header(&pckt, pcktbuff,
 					   (pcktbuff + SES_HEADER_LEN))) {
+      pthread_mutex_unlock(&(ses->mutex));
       if (sent)
 	return sent;
       else {
@@ -298,6 +322,7 @@ ssize_t nbworks_send(unsigned char service,
       ret_val = send(ses->socket, (pcktbuff + (SES_HEADER_LEN - notsent)),
 		     notsent, (flags & (ONES ^ MSG_DONTWAIT)));
       if (ret_val <= 0) {
+	pthread_mutex_unlock(&(ses->mutex));
 	if (ret_val == 0) {
 	  nbworks_errno = EREMOTEIO;
 	  return -1;
@@ -315,6 +340,7 @@ ssize_t nbworks_send(unsigned char service,
       ret_val = send(ses->socket, (buff + (len - notsent)),
 		     notsent, (flags & (ONES ^ MSG_DONTWAIT)));
       if (ret_val <= 0) {
+	pthread_mutex_unlock(&(ses->mutex));
 	if (ret_val == 0) {
 	  /* So, basically, wonce you commit to a packet, you HAVE to send
 	   * the whole thing because failure to do so would desync the stream. */
@@ -329,6 +355,7 @@ ssize_t nbworks_send(unsigned char service,
       }
     }
 
+    pthread_mutex_unlock(&(ses->mutex));
     sent = sent + len;
 
     return sent;
@@ -359,7 +386,6 @@ ssize_t nbworks_recv(unsigned char service,
     return -1;
   } else {
     nbworks_errno = 0;
-    recved = 0;
   }
 
   switch (service) {
@@ -428,6 +454,7 @@ ssize_t nbworks_recv(unsigned char service,
     /* Turn off MSG_EOR in the flags we send to the socket. */
     flags = callflags & (ONES ^ MSG_EOR);
 
+    recved = 0;
     notrecved = len;
     len_left = ses->len_left;
 
