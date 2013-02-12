@@ -413,7 +413,7 @@ ssize_t nbworks_recv(unsigned char service,
 	in_lib = ses->handle->in_library;
 	if (in_lib->data) {
 	  if (*buff) {
-	    if (len >= in_lib->len) {
+	    if (len < in_lib->len) {
 	      if (callflags & MSG_TRUNC) {
 		ret_val = in_lib->len;
 	      } else {
