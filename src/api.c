@@ -376,7 +376,7 @@ ssize_t nbworks_recv(unsigned char service,
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
   ssize_t recved, notrecved, ret_val;
-  ssize_t len_left;
+  size_t *hndllen_left, len_left;
   int flags;
   unsigned char hdrbuff[SES_HEADER_LEN], *walker;
 
@@ -457,12 +457,17 @@ ssize_t nbworks_recv(unsigned char service,
 
     recved = 0;
     notrecved = len;
-    len_left = ses->len_left;
+    if (flags & MSG_OOB) {
+      hndllen_left = &(ses->ooblen_left);
+    } else {
+      hndllen_left = &(ses->len_left);
+    }
+    len_left = *hndllen_left;
 
     while (notrecved) {
       if (len_left) {
-	if (ses->len_left >= notrecved) {
-	  ses->len_left = ses->len_left - notrecved;
+	if (*hndllen_left >= notrecved) {
+	  *hndllen_left = *hndllen_left - notrecved;
 	  len_left = notrecved;
 	} /* else
 	     len_left is already filled before the master while loop. */
@@ -536,7 +541,7 @@ ssize_t nbworks_recv(unsigned char service,
 	continue;
       }
       if (hdr.len > notrecved) {
-	ses->len_left = hdr.len - notrecved;
+	*hndllen_left = hdr.len - notrecved;
 	len_left = notrecved;
       } else {
 	len_left = hdr.len;

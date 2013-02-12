@@ -77,6 +77,7 @@ struct nbworks_session {
   unsigned char nonblocking;    /* TRUE by default */
   int socket;
   size_t len_left;
+  size_t ooblen_left;
   pthread_mutex_t mutex;
   pthread_t caretaker_tid;
   struct nbworks_session *next;
