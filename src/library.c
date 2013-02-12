@@ -1331,13 +1331,9 @@ int lib_open_session(struct name_state *handle,
     destroy_nbnodename(name_id);
     return -1;
   }
+  memset(mypckt_buff, 0, (SES_HEADER_LEN + lenof_pckt));
 
   wrotelenof_pckt = (lenof_pckt + SES_HEADER_LEN);
-  /* NOTE: if alignment is performed, fill_ses_srvc_pckt_payload_data()
-   *       will leave up to three octets between the called name and the
-   *       calling name that are not NULLed out, as well as up to three
-   *       octets between the end of the calling name and the end of
-   *       packet. */
   master_ses_srvc_pckt_writer(pckt, &wrotelenof_pckt, mypckt_buff);
 
   destroy_ses_srvc_pckt(pckt);
