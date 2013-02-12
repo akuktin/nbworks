@@ -185,7 +185,7 @@ ssize_t nbworks_send(unsigned char service,
     sent = 0;
 
     /* Turn off MSG_EOR in the flags we send to the socket. */
-    flags = callflags & (ONES ^ MSG_EOR);
+    flags = callflags & (ONES ^ (MSG_EOR | MSG_DONTROUTE));
   }
 
   switch (service) {
@@ -226,7 +226,11 @@ ssize_t nbworks_send(unsigned char service,
 	(flags & MSG_DONTWAIT)) {
       if (0 != pthread_mutex_trylock(&(ses->mutex))) {
 	if (errno == EBUSY) {
-	  nbworks_errno = EAGAIN;
+	  if ((flags & MSG_DONTWAIT) ||
+	      (ses->nonblocking))
+	    nbworks_errno = EAGAIN;
+	  else
+	    nbworks_errno = EBUSY;
 	  return -1;
 	} else {
 	  nbworks_errno = errno;
@@ -247,7 +251,7 @@ ssize_t nbworks_send(unsigned char service,
 	if (sent)
 	  return sent;
 	else {
-	  nbworks_errno = ZEROONES; /* FIXME */
+	  nbworks_errno = ENOBUFS;
 	  return -1;
 	}
       }
@@ -313,7 +317,7 @@ ssize_t nbworks_send(unsigned char service,
       if (sent)
 	return sent;
       else {
-	nbworks_errno = ZEROONES; /* FIXME */
+	nbworks_errno = ENOBUFS;
 	return -1;
       }
     }
@@ -373,6 +377,7 @@ ssize_t nbworks_recv(unsigned char service,
 		     void **buff,
 		     size_t len,
 		     int callflags) {
+  struct timespec sleeptime;
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
   ssize_t recved, notrecved, ret_val, torecv;
@@ -387,6 +392,9 @@ ssize_t nbworks_recv(unsigned char service,
     return -1;
   } else {
     nbworks_errno = 0;
+
+    /* Turn off some flags. */
+    flags = callflags & (ONES ^ (MSG_EOR | MSG_PEEK | MSG_ERRQUEUE));
   }
 
   switch (service) {
@@ -396,6 +404,8 @@ ssize_t nbworks_recv(unsigned char service,
       return -1;
     } else {
       ret_val = 0;
+      sleeptime.tv_sec = 0;
+      sleeptime.tv_nsec = T_50MS;
     }
 
     while (! ret_val) {
@@ -403,10 +413,16 @@ ssize_t nbworks_recv(unsigned char service,
 	in_lib = ses->handle->in_library;
 	if (in_lib->data) {
 	  if (*buff) {
-	    if (len >= in_lib->len)
-	      ret_val = len;
-	    else
+	    if (len >= in_lib->len) {
+	      if (callflags & MSG_TRUNC) {
+		ret_val = in_lib->len;
+	      } else {
+		ret_val = len;
+	      }
+	    } else {
 	      ret_val = in_lib->len;
+	      len = ret_val;
+	    }
 
 	    memcpy(*buff, in_lib->data, len);
 	    free(in_lib->data);
@@ -431,13 +447,21 @@ ssize_t nbworks_recv(unsigned char service,
 	  free(in_lib);
 	} else {
 	  if ((callflags & MSG_DONTWAIT) ||
-	      (ses->nonblocking))
+	      (ses->nonblocking)) {
+	    nbworks_errno = EAGAIN;
+	    ret_val = -1;
 	    break;
+	  } else
+	    nanosleep(&sleeptime, 0);
 	}
       } else {
 	if ((callflags & MSG_DONTWAIT) ||
-	    (ses->nonblocking))
+	    (ses->nonblocking)) {
+	  nbworks_errno = EAGAIN;
+	  ret_val = -1;
 	  break;
+	} else
+	  nanosleep(&sleeptime, 0);
       }
     }
 
@@ -451,9 +475,6 @@ ssize_t nbworks_recv(unsigned char service,
 	return -1;
       }
     }
-
-    /* Turn off MSG_EOR in the flags we send to the socket. */
-    flags = callflags & (ONES ^ MSG_EOR);
 
     recved = 0;
     notrecved = len;
