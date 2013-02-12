@@ -42,6 +42,39 @@ void lib_init() {
 }
 
 
+int lib_daemon_socket() {
+  struct sockaddr_un address;
+  int daemon;
+
+  memset(&address, 0, sizeof(struct sockaddr_un));
+
+  address.sun_family = AF_UNIX;
+  memcpy(address.sun_path +1, NBWORKS_SCKT_NAME, NBWORKS_SCKT_NAMELEN);
+
+  daemon = socket(PF_UNIX, SOCK_STREAM, 0);
+  if (daemon < 0) {
+    nbworks_errno = errno;
+    return -1;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  if (0 != fcntl(daemon, F_SETFL, O_NONBLOCK)) {
+    nbworks_errno = errno;
+    close(daemon);
+    return -1;
+  }
+
+  if (0 != connect(daemon, &address, sizeof(struct sockaddr_un))) {
+    nbworks_errno = errno;
+    close(daemon);
+    return -1;
+  }
+
+  return daemon;
+}
+
+
 struct name_state *lib_regname(unsigned char *name,
 			       unsigned char name_type,
 			       struct nbnodename_list *scope,
@@ -203,6 +236,87 @@ struct name_state *lib_regname(unsigned char *name,
   result->isgroup = isgroup ? ISGROUP_YES : ISGROUP_NO;
 
   return result;
+}
+
+/* returns: >0 = success, 0 = fail, <0 = error */
+int lib_delname(struct name_state *handle) {
+  struct timespec sleeptime;
+  struct com_comm command;
+  int daemon;
+  unsigned char combuff[LEN_COMM_ONWIRE];
+
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  daemon = lib_daemon_socket();
+  if (daemon < 0) {
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (handle->dtg_srv_tid) {
+    handle->dtg_srv_stop = TRUE;
+
+    sleeptime.tv_nsec = (nbworks_libcntl.dtg_srv_polltimeout * T_1MS) + T_12MS;
+    if (sleeptime.tv_nsec > 999999999) {
+      sleeptime.tv_sec = 1;
+      sleeptime.tv_nsec = sleeptime.tv_nsec - 999999999;
+    } else {
+      sleeptime.tv_sec = 0;
+    }
+
+    pthread_join(handle->dtg_srv_tid, 0);
+  }
+
+  if (handle->ses_srv_tid) {
+    handle->ses_srv_stop = TRUE;
+
+    sleeptime.tv_nsec = (nbworks_libcntl.ses_srv_polltimeout * T_1MS) + T_12MS;
+    if (sleeptime.tv_nsec > 999999999) {
+      sleeptime.tv_sec = 1;
+      sleeptime.tv_nsec = sleeptime.tv_nsec - 999999999;
+    } else {
+      sleeptime.tv_sec = 0;
+    }
+
+    pthread_join(handle->ses_srv_tid, 0);
+  }
+
+  destroy_nbnodename(handle->name);
+  if (handle->scope)
+    destroy_nbnodename(handle->scope);
+
+  if (handle->dtg_listento)
+    destroy_nbnodename(handle->dtg_listento);
+  if (handle->dtg_frags)
+    lib_destroy_fragbckbone(handle->dtg_frags);
+  if (handle->in_library)
+    lib_dstry_packets(handle->in_library);
+
+  if (handle->ses_listento)
+    destroy_nbnodename(handle->ses_listento);
+  if (handle->sesin_library)
+    lib_dstry_sesslist(handle->sesin_library);
+
+  memset(&command, 0, sizeof(struct com_comm));
+
+  command.command = rail_delname;
+  command.token = handle->token;
+
+  free(handle); /* Bye-bye. */
+
+  fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE));
+  send(daemon, combuff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
+  /* Now, you may be thinking that some lossage may occur, and that it
+   * can mess up our day something fierce. In effect, that can not happen.
+   * The quiet loss of the name is something NetBIOS is designed to handle.
+   * The only problem we may encounter is that the daemon keeps thinking
+   * it still has a name and therefore keeps defending it. */
+  close(daemon);
+
+  return TRUE;
 }
 
 
@@ -863,38 +977,6 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
   close(daemon_sckt);
 
   return result;
-}
-
-int lib_daemon_socket() {
-  struct sockaddr_un address;
-  int daemon;
-
-  memset(&address, 0, sizeof(struct sockaddr_un));
-
-  address.sun_family = AF_UNIX;
-  memcpy(address.sun_path +1, NBWORKS_SCKT_NAME, NBWORKS_SCKT_NAMELEN);
-
-  daemon = socket(PF_UNIX, SOCK_STREAM, 0);
-  if (daemon < 0) {
-    nbworks_errno = errno;
-    return -1;
-  } else {
-    nbworks_errno = 0;
-  }
-
-  if (0 != fcntl(daemon, F_SETFL, O_NONBLOCK)) {
-    nbworks_errno = errno;
-    close(daemon);
-    return -1;
-  }
-
-  if (0 != connect(daemon, &address, sizeof(struct sockaddr_un))) {
-    nbworks_errno = errno;
-    close(daemon);
-    return -1;
-  }
-
-  return daemon;
 }
 
 

@@ -93,6 +93,9 @@ union nbworks_handle {
 void
   lib_init();
 
+int
+  lib_daemon_socket();
+
 struct name_state *
   lib_regname(unsigned char *name,
               unsigned char name_type,
@@ -100,6 +103,9 @@ struct name_state *
               unsigned char isgroup,
               unsigned char node_type, /* only one type */
               uint32_t ttl);
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  lib_delname(struct name_state *handle);
 
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
@@ -161,8 +167,6 @@ unsigned int
 uint32_t
   lib_whatisaddrX(struct nbnodename_list *X,
                   unsigned int len);
-int
-  lib_daemon_socket();
 
 ssize_t
   lib_senddtg_138(struct name_state *handle,
