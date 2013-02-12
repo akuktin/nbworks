@@ -98,6 +98,14 @@ int
   lib_start_dtg_srv(struct name_state *handle,
                     unsigned char takes_field,
                     struct nbnodename_list *listento);
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  lib_start_ses_srv(struct name_state *handle,
+                    unsigned char takes_field,
+                    struct nbnodename_list *listento);
+
+void
+  lib_dstry_packets(struct packet_cooked *forkill);
 
 void
   lib_destroy_frags(struct dtg_frag *flesh);
@@ -157,9 +165,6 @@ ssize_t
                   unsigned char isgroup,
                   unsigned char isbroadcast);
 
-void
-  lib_dstry_packets(struct packet_cooked *forkill);
-
 void *
   lib_dtgserver(void *arg);
 
@@ -176,6 +181,10 @@ struct nbworks_session *
                    struct nbnodename_list *caller,
                    struct name_state *handle,
                    unsigned char keepalive);
+void
+  lib_dstry_sesslist(struct nbworks_session *ses);
+void
+  lib_dstry_session(struct nbworks_session *ses);
 
 ssize_t
   lib_flushsckt(int socket,

@@ -46,18 +46,38 @@ void lib_init() {
 int lib_start_dtg_srv(struct name_state *handle,
 		      unsigned char takes_field,
 		      struct nbnodename_list *listento) {
+  struct timespec sleeptime;
   struct com_comm command;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
 
   if (! handle) {
-    /* FIXME: errno signaling stuff */
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  if (! handle->token) {
+    nbworks_errno = EPERM;
+    return 0;
+  }
+
+  if (! (listento || takes_field)) {
+    nbworks_errno = EINVAL;
     return -1;
   }
 
   if (handle->dtg_srv_tid) {
-    /* FIXME: errno signaling stuff */
-    return 0;
+    handle->dtg_srv_stop = TRUE;
+
+    sleeptime.tv_nsec = (nbworks_libcntl.dtg_srv_polltimeout * T_1MS) + T_12MS;
+    if (sleeptime.tv_nsec > 999999999) {
+      sleeptime.tv_sec = 1;
+      sleeptime.tv_nsec = sleeptime.tv_nsec - 999999999;
+    } else {
+      sleeptime.tv_sec = 0;
+    }
+
+    pthread_join(handle->dtg_srv_tid, 0);
   }
 
   daemon = lib_daemon_socket();
@@ -95,24 +115,149 @@ int lib_start_dtg_srv(struct name_state *handle,
   if (command.len)
     rail_flushrail(command.len, daemon);
 
+  handle->dtg_srv_sckt = daemon;
+
+  if (handle->dtg_listento)
+    destroy_nbnodename(handle->dtg_listento);
   handle->dtg_listento = clone_nbnodename(listento);
   handle->dtg_takes = takes_field;
   handle->dtg_srv_stop = FALSE;
+  if (handle->dtg_frags)
+    lib_destroy_fragbckbone(handle->dtg_frags);
   handle->dtg_frags = 0;
   handle->in_server = 0;
+  if (handle->in_library)
+    lib_dstry_packets(handle->in_library);
   handle->in_library = 0;
-
-  handle->dtg_srv_sckt = daemon;
 
   if (0 != pthread_create(&(handle->dtg_srv_tid), 0,
 			  lib_dtgserver, handle)) {
+    nbworks_errno = errno;
+    handle->dtg_srv_tid = 0;
+
     close(daemon);
     destroy_nbnodename(handle->dtg_listento);
     handle->dtg_listento = 0;
+
+    handle->in_library = 0;
+
     return -1;
   }
 
   return 1;
+}
+
+/* returns: >0 = success, 0 = fail, <0 = error */
+int lib_start_ses_srv(struct name_state *handle,
+		      unsigned char takes_field,
+		      struct nbnodename_list *listento) {
+  struct timespec sleeptime;
+  struct com_comm command;
+  int daemon;
+  unsigned char buff[LEN_COMM_ONWIRE];
+
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  if (! handle->token) {
+    nbworks_errno = EPERM;
+    return 0;
+  }
+
+  if (! (listento || takes_field)) {
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  if (handle->ses_srv_tid) {
+    handle->ses_srv_stop = TRUE;
+
+    sleeptime.tv_nsec = (nbworks_libcntl.ses_srv_polltimeout * T_1MS) + T_12MS;
+    if (sleeptime.tv_nsec > 999999999) {
+      sleeptime.tv_sec = 1;
+      sleeptime.tv_nsec = sleeptime.tv_nsec - 999999999;
+    } else {
+      sleeptime.tv_sec = 0;
+    }
+
+    pthread_join(handle->ses_srv_tid, 0);
+  }
+
+  daemon = lib_daemon_socket();
+  if (daemon < 0) {
+    return -1;
+  }
+
+  memset(&command, 0, sizeof(struct com_comm));
+  command.command = rail_stream_sckt;
+  command.token = handle->token;
+
+  fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+
+  if (LEN_COMM_ONWIRE > send(daemon, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+    close(daemon);
+    return -1;
+  }
+
+  if (LEN_COMM_ONWIRE > recv(daemon, buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
+    close(daemon);
+    return 0;
+  }
+
+  if (0 == read_railcommand(buff, (buff + LEN_COMM_ONWIRE), &command)) {
+    close(daemon);
+    return -1;
+  }
+
+  if (!((command.command == rail_stream_sckt) &&
+	(command.token == handle->token))) {
+    close(daemon);
+    return -1;
+  }
+
+  if (command.len)
+    rail_flushrail(command.len, daemon);
+
+  handle->ses_srv_sckt = daemon;
+
+  handle->ses_listento = clone_nbnodename(listento);
+  handle->ses_takes = takes_field;
+  if (handle->sesin_library)
+    lib_dstry_sesslist(handle->sesin_library);
+
+  if (0 != pthread_create(&(handle->ses_srv_tid), 0,
+			  lib_ses_srv, handle)) {
+    nbworks_errno = errno;
+    close(daemon);
+
+    destroy_nbnodename(handle->ses_listento);
+    handle->ses_listento = 0;
+
+    handle->sesin_library = 0;
+
+    handle->ses_srv_tid = 0;
+
+    return -1;
+  }
+
+  return TRUE;
+}
+
+
+void lib_dstry_packets(struct packet_cooked *forkill) {
+  struct packet_cooked *fordel;
+
+  while (forkill) {
+    fordel = forkill->next;
+    free(forkill->data);
+    destroy_nbnodename(forkill->src);
+    free(forkill);
+    forkill = fordel;
+  }
+
+  return;
 }
 
 
@@ -709,21 +854,6 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 }
 
 
-void lib_dstry_packets(struct packet_cooked *forkill) {
-  struct packet_cooked *fordel;
-
-  while (forkill) {
-    fordel = forkill->next;
-    free(forkill->data);
-    destroy_nbnodename(forkill->src);
-    free(forkill);
-    forkill = fordel;
-  }
-
-  return;
-}
-
-
 void *lib_dtgserver(void *arg) {
   struct name_state *handle;
   struct pollfd pfd;
@@ -740,7 +870,7 @@ void *lib_dtgserver(void *arg) {
   else
     return 0;
 
-  if (! handle->dtg_listento) {
+  if (! (handle->dtg_listento || handle->dtg_takes)) {
     handle->dtg_srv_stop = TRUE;
     return 0;
   }
@@ -1178,6 +1308,7 @@ int lib_open_session(struct name_state *handle,
 
   return -1;
 }
+#undef SMALL_BUFF_LEN
 
 void *lib_ses_srv(void *arg) {
   struct pollfd pfd;
@@ -1196,7 +1327,7 @@ void *lib_ses_srv(void *arg) {
   else
     return 0;
 
-  if (! handle->ses_listento) {
+  if (! (handle->ses_listento || handle->ses_takes)) {
     handle->ses_srv_stop = TRUE;
     return 0;
   }
@@ -1418,11 +1549,9 @@ void *lib_caretaker(void *arg) {
     cur_time = time(0);
     if (cur_time > (lastkeepalive + nbworks_libcntl.keepalive_interval)) {
       lastkeepalive = cur_time;
-      while (pthread_mutex_trylock(&(handle->mutex))) {
-	if (errno != EBUSY) {
-	  handle->kill_caretaker = TRUE;
-	  return 0;
-	}
+      if (0 != pthread_mutex_lock(&(handle->mutex))) {
+	handle->kill_caretaker = TRUE;
+	return 0;
       }
       sent = 0;
       while (sent < 4) {
@@ -1473,24 +1602,74 @@ struct nbworks_session *lib_make_session(int socket,
     return 0;
   }
 
-  if (0 != pthread_mutex_init(&(result->mutex), 0)) {
-    free(result);
-    return 0;
-  }
-
   result->peer = clone_nbnodename(caller);
   result->handle = handle;
   result->kill_caretaker = FALSE;
   result->keepalive = keepalive;
+  result->nonblocking = TRUE; /* AKA non-blocking */
   result->socket = socket;
   result->len_left = 0;
   result->ooblen_left = 0;
   result->ooblen_offset = 0;
   result->oob_tmpstor = 0;
-  result->nonblocking = TRUE; /* AKA non-blocking */
+  if (0 != pthread_mutex_init(&(result->mutex), 0)) {
+    free(result);
+    return 0;
+  }
+  result->caretaker_tid = 0;
   result->next = 0;
 
   return result;
+}
+
+void lib_dstry_sesslist(struct nbworks_session *ses) {
+  struct nbworks_session *next;
+
+  while (ses) {
+    close(ses->socket);
+
+    if (ses->caretaker_tid) {
+      ses->kill_caretaker = TRUE;
+
+      pthread_join(ses->caretaker_tid, 0);
+    }
+
+    pthread_mutex_destroy(&(ses->mutex));
+
+    if (ses->peer)
+      destroy_nbnodename(ses->peer);
+    if (ses->oob_tmpstor)
+      free(ses->oob_tmpstor);
+
+    next = ses->next;
+    free(ses);
+    ses = next;
+  }
+
+  return;
+}
+
+void lib_dstry_session(struct nbworks_session *ses) {
+  if (! ses)
+    return;
+
+  close(ses->socket);
+
+  if (ses->caretaker_tid) {
+    ses->kill_caretaker = TRUE;
+
+    pthread_join(ses->caretaker_tid, 0);
+  }
+
+  pthread_mutex_destroy(&(ses->mutex));
+
+  if (ses->peer)
+    destroy_nbnodename(ses->peer);
+  if (ses->oob_tmpstor)
+    free(ses->oob_tmpstor);
+  free(ses);
+
+  return;
 }
 
 
