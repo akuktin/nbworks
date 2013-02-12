@@ -233,11 +233,7 @@ ssize_t nbworks_sendto(unsigned char service,
 	(flags & MSG_DONTWAIT)) {
       if (0 != pthread_mutex_trylock(&(ses->mutex))) {
 	if (errno == EBUSY) {
-	  if ((flags & MSG_DONTWAIT) ||
-	      (ses->nonblocking))
-	    nbworks_errno = EAGAIN;
-	  else
-	    nbworks_errno = EBUSY;
+	  nbworks_errno = EAGAIN;
 	  return -1;
 	} else {
 	  nbworks_errno = errno;
@@ -266,13 +262,17 @@ ssize_t nbworks_sendto(unsigned char service,
       notsent = SES_HEADER_LEN;
       while (notsent) {
 	ret_val = send(ses->socket, (pcktbuff + (SES_HEADER_LEN - notsent)),
-		       notsent, (flags & (ONES ^ MSG_DONTWAIT)));
+		       notsent, flags);
 	if (ret_val <= 0) {
 	  pthread_mutex_unlock(&(ses->mutex));
 	  if (ret_val == 0) {
-	    nbworks_errno = EREMOTEIO;
-	    return -1;
+	    return sent;
 	  } else {
+	    if ((errno == EAGAIN) ||
+		(errno == EWOULDBLOCK)) {
+	      if (sent)
+		return sent;
+	    }
 	    nbworks_errno = errno;
 	    return ret_val;
 	  }
@@ -286,13 +286,21 @@ ssize_t nbworks_sendto(unsigned char service,
 	ret_val = send(ses->socket, (buff + (SES_MAXLEN - notsent)),
 		       notsent, (flags & (ONES ^ MSG_DONTWAIT)));
 	if (ret_val <= 0) {
-	  pthread_mutex_unlock(&(ses->mutex));
+	  /* So, basically, once you commit to a packet, you HAVE to send
+	   * the whole thing because failure to do so would desync the stream. */
+
 	  if (ret_val == 0) {
-	    /* So, basically, wonce you commit to a packet, you HAVE to send
-	     * the whole thing because failure to do so would desync the stream. */
+	    pthread_mutex_unlock(&(ses->mutex));
+
 	    nbworks_errno = EREMOTEIO;
 	    return -1;
 	  } else {
+	    if ((errno == EAGAIN) ||
+		(errno == EWOULDBLOCK)) {
+	      continue;
+	    }
+	    pthread_mutex_unlock(&(ses->mutex));
+
 	    nbworks_errno = errno;
 	    return ret_val;
 	  }
@@ -332,13 +340,17 @@ ssize_t nbworks_sendto(unsigned char service,
     notsent = SES_HEADER_LEN;
     while (notsent) {
       ret_val = send(ses->socket, (pcktbuff + (SES_HEADER_LEN - notsent)),
-		     notsent, (flags & (ONES ^ MSG_DONTWAIT)));
+		     notsent, flags);
       if (ret_val <= 0) {
 	pthread_mutex_unlock(&(ses->mutex));
 	if (ret_val == 0) {
-	  nbworks_errno = EREMOTEIO;
-	  return -1;
+	  return sent;
 	} else {
+	  if ((errno == EAGAIN) ||
+	      (errno == EWOULDBLOCK)) {
+	    if (sent)
+	      return sent;
+	  }
 	  nbworks_errno = errno;
 	  return ret_val;
 	}
@@ -352,13 +364,21 @@ ssize_t nbworks_sendto(unsigned char service,
       ret_val = send(ses->socket, (buff + (len - notsent)),
 		     notsent, (flags & (ONES ^ MSG_DONTWAIT)));
       if (ret_val <= 0) {
-	pthread_mutex_unlock(&(ses->mutex));
+	/* So, basically, once you commit to a packet, you HAVE to send
+	 * the whole thing because failure to do so would desync the stream. */
+
 	if (ret_val == 0) {
-	  /* So, basically, wonce you commit to a packet, you HAVE to send
-	   * the whole thing because failure to do so would desync the stream. */
+	  pthread_mutex_unlock(&(ses->mutex));
+
 	  nbworks_errno = EREMOTEIO;
 	  return -1;
 	} else {
+	  if ((errno == EAGAIN) ||
+	      (errno == EWOULDBLOCK)) {
+	    continue;
+	  }
+	  pthread_mutex_unlock(&(ses->mutex));
+
 	  nbworks_errno = errno;
 	  return ret_val;
 	}
