@@ -1031,7 +1031,7 @@ void *ss__udp_sender(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
   struct ss_unif_pckt_list *for_del;
   struct ss_priv_trans *cur_trans, **last_trans, *for_del2;
-  unsigned int len;
+  unsigned int len, prev_len;
   unsigned char udp_pckt[MAX_UDP_PACKET_LEN];
   void *ptr;
 
@@ -1043,6 +1043,7 @@ void *ss__udp_sender(void *sckts_ptr) {
   release_lock->isbusy = 0;
 
   memset(udp_pckt, 0, MAX_UDP_PACKET_LEN);
+  prev_len = 0;
 
   while (! nbworks_all_port_cntl.all_stop) {
     cur_trans = *(sckts.all_trans);
@@ -1057,12 +1058,15 @@ void *ss__udp_sender(void *sckts_ptr) {
 	    ptr = cur_trans->out->packet;
 	    len = MAX_UDP_PACKET_LEN;
 	    sckts.master_writer(ptr, &len, udp_pckt);
+	    if (prev_len > len) {
+	      memset((udp_pckt + prev_len), 0, (prev_len - len));
+	    }
+	    prev_len = len;
 
 	    sendto(sckts.udp_sckt, udp_pckt, len, MSG_NOSIGNAL,
 		   &(cur_trans->out->addr),
 		   sizeof(cur_trans->out->addr));
 
-	    memset(udp_pckt, 0, len);
 	    if (cur_trans->out->for_del)
 	      sckts.pckt_dstr(cur_trans->out->packet, 1, 1);
 	  }
@@ -1082,12 +1086,15 @@ void *ss__udp_sender(void *sckts_ptr) {
 	    ptr = cur_trans->out->packet;
 	    len = MAX_UDP_PACKET_LEN;
 	    sckts.master_writer(ptr, &len, udp_pckt);
+	    if (prev_len > len) {
+	      memset((udp_pckt + prev_len), 0, (prev_len - len));
+	    }
+	    prev_len = len;
 
 	    sendto(sckts.udp_sckt, udp_pckt, len, MSG_NOSIGNAL,
 		   &(cur_trans->out->addr),
 		   sizeof(cur_trans->out->addr));
 
-	    memset(udp_pckt, 0, len);
 	    if (cur_trans->out->for_del)
 	      sckts.pckt_dstr(cur_trans->out->packet, 1, 1);
 	  }
@@ -1101,12 +1108,15 @@ void *ss__udp_sender(void *sckts_ptr) {
 	  ptr = cur_trans->out->packet;
 	  len = MAX_UDP_PACKET_LEN;
 	  sckts.master_writer(ptr, &len, udp_pckt);
+	  if (prev_len > len) {
+	    memset((udp_pckt + prev_len), 0, (prev_len - len));
+	  }
+	  prev_len = len;
 
 	  sendto(sckts.udp_sckt, udp_pckt, len, MSG_NOSIGNAL,
 		 &(cur_trans->out->addr),
 		 sizeof(cur_trans->out->addr));
 
-	  memset(udp_pckt, 0, len);
 	  if (cur_trans->out->for_del)
 	    sckts.pckt_dstr(cur_trans->out->packet, 1, 1);
 	  cur_trans->out->packet = 0;
