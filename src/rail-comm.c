@@ -509,9 +509,15 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 				    namedata->scope,
 				    command->addr.sin_addr.s_addr,
 				    namedata->isgroup, namedata->ttl)) {
-	add_scope(namedata->scope, cache_namecard);
-	add_name(cache_namecard, namedata->scope);
-	/* FIXME: I won't really bother with error detection at this time. */
+	if (! (add_scope(namedata->scope, cache_namecard) ||
+	       add_name(cache_namecard, namedata->scope))) {
+	  free(data_buff);
+	  destroy_namecard(cache_namecard);
+	  free(namedata->name);
+	  destroy_nbnodename(namedata->scope);
+	  free(namedata);
+	  return 0;
+	}
 
 	cache_namecard->addrs.recrd[0].node_type = CACHE_NODEFLG_B;
 	cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));

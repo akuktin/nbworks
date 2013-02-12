@@ -93,6 +93,14 @@ union nbworks_handle {
 void
   lib_init();
 
+struct name_state *
+  lib_regname(unsigned char *name,
+              unsigned char name_type,
+              struct nbnodename_list *scope,
+              unsigned char isgroup,
+              unsigned char node_type, /* only one type */
+              uint32_t ttl);
+
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   lib_start_dtg_srv(struct name_state *handle,

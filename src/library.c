@@ -42,6 +42,170 @@ void lib_init() {
 }
 
 
+struct name_state *lib_regname(unsigned char *name,
+			       unsigned char name_type,
+			       struct nbnodename_list *scope,
+			       unsigned char isgroup,
+			       unsigned char node_type, /* only one type */
+			       uint32_t ttl) {
+  struct name_state *result;
+  struct com_comm command;
+  struct rail_name_data namedt;
+  int daemon;
+  unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff;
+
+  if (! name) {
+    nbworks_errno = EINVAL;
+    return 0;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  memset(&command, 0, sizeof(struct com_comm));
+  command.command = rail_regname;
+  switch (node_type) {
+  case CACHE_NODEFLG_B:
+    command.node_type = 'B';
+    break;
+
+  case CACHE_NODEFLG_P:
+    command.node_type = 'P';
+    break;
+
+  case CACHE_NODEFLG_M:
+    command.node_type = 'M';
+    break;
+
+  case CACHE_NODEFLG_H:
+    command.node_type = 'H';
+    break;
+
+  default:
+    nbworks_errno = EINVAL;
+    return 0;
+  }
+
+  command.len = (LEN_NAMEDT_ONWIREMIN -1) + nbnodenamelen(scope);
+  namedt.name = name;
+  namedt.name_type = name_type;
+  namedt.scope = scope;
+  namedt.isgroup = isgroup ? ISGROUP_YES : ISGROUP_NO;
+  namedt.ttl = ttl;
+
+  fill_railcommand(&command, commbuff, (commbuff + LEN_COMM_ONWIRE));
+  namedtbuff = malloc(command.len);
+  if (! namedtbuff) {
+    nbworks_errno = ENOBUFS;
+    return 0;
+  }
+  fill_rail_name_data(&namedt, namedtbuff, (namedtbuff + command.len));
+
+  result = malloc(sizeof(struct name_state));
+  if (! result) {
+    free(namedtbuff);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+  memset(result, 0, sizeof(struct name_state));
+  result->name = malloc(sizeof(struct nbnodename_list));
+  if (! result->name) {
+    free(result);
+    free(namedtbuff);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+  result->name->name = malloc(NETBIOS_NAME_LEN);
+  if (! result->name->name) {
+    free(result->name);
+    free(result);
+    free(namedtbuff);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+
+  result->scope = clone_nbnodename(scope);
+  if (! result->scope) {
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    free(namedtbuff);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+
+  daemon = lib_daemon_socket();
+  if (daemon < 0) {
+    destroy_nbnodename(result->scope);
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    free(namedtbuff);
+    nbworks_errno = ECONNREFUSED;
+    return 0;
+  }
+
+  if (LEN_COMM_ONWIRE > send(daemon, &commbuff, LEN_COMM_ONWIRE,
+			     MSG_NOSIGNAL)) {
+    close(daemon);
+    destroy_nbnodename(result->scope);
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    free(namedtbuff);
+    nbworks_errno = errno;
+    return 0;
+  }
+  if (command.len > send(daemon, namedtbuff, command.len,
+			 MSG_NOSIGNAL)) {
+    close(daemon);
+    destroy_nbnodename(result->scope);
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    free(namedtbuff);
+    nbworks_errno = errno;
+    return 0;
+  }
+
+  free(namedtbuff);
+
+  if (LEN_COMM_ONWIRE > recv(daemon, &commbuff, LEN_COMM_ONWIRE,
+			     MSG_WAITALL)) {
+    close(daemon);
+    destroy_nbnodename(result->scope);
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    nbworks_errno = EPERM;
+    return 0;
+  }
+  close(daemon);
+  read_railcommand(commbuff, (commbuff + LEN_COMM_ONWIRE), &command);
+
+  if ((command.command != rail_regname) ||
+      (command.token < 2)) {
+    destroy_nbnodename(result->scope);
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    nbworks_errno = EPERM;
+    return 0;
+  }
+
+  result->token = command.token;
+  result->name->next_name = 0;
+  result->name->len = NETBIOS_NAME_LEN;
+  memcpy(result->name->name, name, NETBIOS_NAME_LEN);
+
+  result->lenof_scope = nbnodenamelen(scope);
+  result->label_type = name_type;
+  result->node_type = node_type;
+  result->isgroup = isgroup ? ISGROUP_YES : ISGROUP_NO;
+
+  return result;
+}
+
+
 /* returns: >0 = success, 0 = fail, <0 = error */
 int lib_start_dtg_srv(struct name_state *handle,
 		      unsigned char takes_field,
