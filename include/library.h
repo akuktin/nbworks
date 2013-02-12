@@ -78,6 +78,8 @@ struct nbworks_session {
   int socket;
   size_t len_left;
   size_t ooblen_left;
+  size_t ooblen_offset;
+  void *oob_tmpstor;
   pthread_mutex_t mutex;
   pthread_t caretaker_tid;
   struct nbworks_session *next;
@@ -177,6 +179,7 @@ struct nbworks_session *
 
 ssize_t
   lib_flushsckt(int socket,
-                ssize_t len);
+                ssize_t len,
+                int flags);
 
 #endif /* NBWORKS_LIBRARY_H */

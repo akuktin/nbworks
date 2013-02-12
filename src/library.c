@@ -1485,6 +1485,8 @@ struct nbworks_session *lib_make_session(int socket,
   result->socket = socket;
   result->len_left = 0;
   result->ooblen_left = 0;
+  result->ooblen_offset = 0;
+  result->oob_tmpstor = 0;
   result->nonblocking = TRUE; /* AKA non-blocking */
   result->next = 0;
 
@@ -1493,7 +1495,8 @@ struct nbworks_session *lib_make_session(int socket,
 
 
 ssize_t lib_flushsckt(int socket,
-		      ssize_t len) {
+		      ssize_t len,
+		      int flags) {
   ssize_t ret_val, count;
   unsigned char buff[0xff];
 

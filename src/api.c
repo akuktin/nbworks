@@ -375,7 +375,7 @@ ssize_t nbworks_recv(unsigned char service,
 		     int callflags) {
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
-  ssize_t recved, notrecved, ret_val;
+  ssize_t recved, notrecved, ret_val, torecv;
   size_t *hndllen_left, len_left;
   int flags;
   unsigned char hdrbuff[SES_HEADER_LEN], *walker;
@@ -472,27 +472,48 @@ ssize_t nbworks_recv(unsigned char service,
 	} /* else
 	     len_left is already filled before the master while loop. */
 
-	do {
-	  ret_val = recv(ses->socket, (*buff + (len - notrecved)),
-			 len_left, flags);
-
-	  if (ret_val <= 0) {
-	    if (((errno == EAGAIN) ||
-		 (errno == EWOULDBLOCK)) &&
-		(recved)) {
-	      return recved;
-	    } else {
-	      nbworks_errno = errno;
-	      if (ret_val == 0)
-		return recved;
-	      else
-		return -1;
-	    }
+	if (flags & MSG_OOB) {
+	  if (! ses->oob_tmpstor) {
+	    nbworks_errno = ENOBUFS;
+	    return -1;
 	  }
-	  notrecved = notrecved - ret_val;
-	  recved = recved + ret_val;
 
-	} while (len_left);
+	  memcpy(*buff, (ses->oob_tmpstor + ses->ooblen_offset), len_left);
+
+	  if (*hndllen_left) {
+	    ses->ooblen_offset = ses->ooblen_offset + len_left;
+	  } else {
+	    ses->ooblen_offset = 0;
+
+	    free(ses->oob_tmpstor);
+	    ses->oob_tmpstor = 0;
+	  }
+	  
+	  notrecved = notrecved - len_left;
+	  len_left = 0;
+	} else {
+	  do {
+	    ret_val = recv(ses->socket, (*buff + (len - notrecved)),
+			   len_left, flags);
+
+	    if (ret_val <= 0) {
+	      if (((errno == EAGAIN) ||
+		   (errno == EWOULDBLOCK)) &&
+		  (recved)) {
+		return recved;
+	      } else {
+		nbworks_errno = errno;
+		if (ret_val == 0)
+		  return recved;
+		else
+		  return -1;
+	      }
+	    }
+	    notrecved = notrecved - ret_val;
+	    recved = recved + ret_val;
+
+	  } while (len_left);
+	}
 
 	if ((callflags & MSG_EOR) ||
 	    (! notrecved))
@@ -532,7 +553,7 @@ ssize_t nbworks_recv(unsigned char service,
 	  }
 	}
 	if (hdr.len) {
-	  ret_val = lib_flushsckt(ses->socket, hdr.len);
+	  ret_val = lib_flushsckt(ses->socket, hdr.len, flags);
 	  if (ret_val <= 0) {
 	    /* nbworks_errno is set */
 	    return ret_val;
@@ -566,6 +587,43 @@ ssize_t nbworks_recv(unsigned char service,
 	len_left = len_left - ret_val;
 	notrecved = notrecved - ret_val;
 	recved = recved + ret_val;
+      }
+
+      if ((flags & MSG_OOB) &&
+	  (*hndllen_left)) {
+	len_left = *hndllen_left;
+	torecv = len_left;
+
+	ses->oob_tmpstor = malloc(len_left);
+	if (! ses->oob_tmpstor) {
+	  /* Emergency! The stream is about to get desynced. */
+	  nbworks_errno = ENOBUFS;
+	  /* I was going to make it return recved here, but then I remembered
+	   * one of UNIX rules: when failing, fail as loud as possible and as
+	   * soon as possible. */
+	  return -1;
+	}
+	ses->ooblen_offset = 0;
+
+	while (len_left) {
+	  ret_val = recv(ses->socket, (ses->oob_tmpstor +(torecv - len_left)),
+			 len_left, flags);
+	  if (ret_val <= 0) {
+	    if ((errno == EAGAIN) ||
+		(errno == EWOULDBLOCK)) {
+	      continue;
+	    } else {
+	      nbworks_errno = errno;
+	      if (ret_val == 0)
+		return recved;
+	      else
+		return -1;
+	    }
+	  }
+
+	  len_left = len_left - ret_val;
+	  torecv = torecv - ret_val;
+	}
       }
 
       if (callflags & MSG_EOR)
