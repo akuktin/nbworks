@@ -54,6 +54,8 @@ int lib_start_dtg_srv(struct name_state *handle,
   if (! handle) {
     nbworks_errno = EINVAL;
     return -1;
+  } else {
+    nbworks_errno = 0;
   }
 
   if (! handle->token) {
@@ -159,6 +161,8 @@ int lib_start_ses_srv(struct name_state *handle,
   if (! handle) {
     nbworks_errno = EINVAL;
     return -1;
+  } else {
+    nbworks_errno = 0;
   }
 
   if (! handle->token) {
@@ -710,6 +714,8 @@ int lib_daemon_socket() {
   if (daemon < 0) {
     nbworks_errno = errno;
     return -1;
+  } else {
+    nbworks_errno = 0;
   }
 
   if (0 != fcntl(daemon, F_SETFL, O_NONBLOCK)) {
@@ -747,6 +753,8 @@ ssize_t lib_senddtg_138(struct name_state *handle,
       (len > DTG_MAXLEN)) {
     nbworks_errno = EINVAL;
     return -1;
+  } else {
+    nbworks_errno = 0;
   }
 
   pckt = malloc(sizeof(struct dtg_srvc_packet));
@@ -1620,6 +1628,50 @@ struct nbworks_session *lib_make_session(int socket,
   result->next = 0;
 
   return result;
+}
+
+struct nbworks_session *lib_take_session(struct name_state *handle) {
+  struct nbworks_session *result, *clone;
+
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return 0;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  if (handle->sesin_library) {
+    result = handle->sesin_library;
+
+    if (result->keepalive) {
+      if (0 != pthread_create(&(result->caretaker_tid), 0,
+			      lib_caretaker, handle)) {
+	result->caretaker_tid = 0;
+      }
+    }
+
+    if (result->next) {
+      handle->sesin_library = result->next;
+      result->next = 0;
+
+      return result;
+    } else {
+      clone = malloc(sizeof(struct name_state));
+      if (! clone) {
+	nbworks_errno = ENOBUFS;
+	return 0;
+      }
+
+      memcpy(clone, result, sizeof(struct name_state));
+
+      result->peer = 0;
+      pthread_mutex_init(&(clone->mutex), 0);
+
+      return clone;
+    }
+  } else {
+    return 0;
+  }
 }
 
 void lib_dstry_sesslist(struct nbworks_session *ses) {
