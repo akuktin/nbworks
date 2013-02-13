@@ -1854,6 +1854,8 @@ struct nbworks_session *lib_make_session(int socket,
 
   result->peer = clone_nbnodename(caller);
   result->handle = handle;
+  result->cancel_send = 0;
+  result->cancel_recv = 0;
   result->kill_caretaker = FALSE;
   result->keepalive = keepalive;
   result->nonblocking = TRUE; /* AKA non-blocking */

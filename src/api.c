@@ -279,6 +279,13 @@ ssize_t nbworks_sendto(unsigned char service,
 	} else {
 	  notsent = notsent - ret_val;
 	}
+
+	if (ses->cancel_send) {
+	  ses->cancel_send = 0;
+	  close(ses->socket);
+	  nbworks_errno = ECANCELED;
+	  return -1;
+	}
       }
 
       notsent = SES_MAXLEN;
@@ -297,7 +304,13 @@ ssize_t nbworks_sendto(unsigned char service,
 	  } else {
 	    if ((errno == EAGAIN) ||
 		(errno == EWOULDBLOCK)) {
-	      continue;
+	      if (ses->cancel_send) {
+		ses->cancel_send = 0;
+		close(ses->socket);
+		nbworks_errno = ECANCELED;
+		return -1;
+	      } else
+		continue;
 	    }
 	    pthread_mutex_unlock(&(ses->mutex));
 
@@ -306,6 +319,13 @@ ssize_t nbworks_sendto(unsigned char service,
 	  }
 	} else {
 	  notsent = notsent - ret_val;
+	}
+
+	if (ses->cancel_send) {
+	  ses->cancel_send = 0;
+	  close(ses->socket);
+	  nbworks_errno = ECANCELED;
+	  return -1;
 	}
       }
 
@@ -357,6 +377,13 @@ ssize_t nbworks_sendto(unsigned char service,
       } else {
 	notsent = notsent - ret_val;
       }
+
+      if (ses->cancel_send) {
+	ses->cancel_send = 0;
+	close(ses->socket);
+	nbworks_errno = ECANCELED;
+	return -1;
+      }
     }
 
     notsent = len;
@@ -375,7 +402,13 @@ ssize_t nbworks_sendto(unsigned char service,
 	} else {
 	  if ((errno == EAGAIN) ||
 	      (errno == EWOULDBLOCK)) {
-	    continue;
+	    if (ses->cancel_send) {
+	      ses->cancel_send = 0;
+	      close(ses->socket);
+	      nbworks_errno = ECANCELED;
+	      return -1;
+	    } else
+	      continue;
 	  }
 	  pthread_mutex_unlock(&(ses->mutex));
 
@@ -384,6 +417,13 @@ ssize_t nbworks_sendto(unsigned char service,
 	}
       } else {
 	notsent = notsent - ret_val;
+      }
+
+      if (ses->cancel_send) {
+	ses->cancel_send = 0;
+	close(ses->socket);
+	nbworks_errno = ECANCELED;
+	return -1;
       }
     }
 
@@ -564,6 +604,13 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    notrecved = notrecved - ret_val;
 	    recved = recved + ret_val;
 
+
+	    if (ses->cancel_recv) {
+	      ses->cancel_recv = 0;
+	      close(ses->socket);
+	      nbworks_errno = ECANCELED;
+	      return -1;
+	    }
 	  } while (len_left);
 	}
 
@@ -611,7 +658,13 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    return ret_val;
 	  }
 	}
-	continue;
+	if (ses->cancel_recv) {
+	  ses->cancel_recv = 0;
+	  close(ses->socket);
+	  nbworks_errno = ECANCELED;
+	  return -1;
+	} else
+	  continue;
       }
       if (hdr.len > notrecved) {
 	*hndllen_left = hdr.len - notrecved;
@@ -639,6 +692,13 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	len_left = len_left - ret_val;
 	notrecved = notrecved - ret_val;
 	recved = recved + ret_val;
+
+	if (ses->cancel_recv) {
+	  ses->cancel_recv = 0;
+	  close(ses->socket);
+	  nbworks_errno = ECANCELED;
+	  return -1;
+	}
       }
 
       if ((flags & MSG_OOB) &&
@@ -663,7 +723,13 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  if (ret_val <= 0) {
 	    if ((errno == EAGAIN) ||
 		(errno == EWOULDBLOCK)) {
-	      continue;
+	      if (ses->cancel_recv) {
+		ses->cancel_recv = 0;
+		close(ses->socket);
+		nbworks_errno = ECANCELED;
+		return -1;
+	      } else
+		continue;
 	    } else {
 	      nbworks_errno = errno;
 	      if (ret_val == 0)
@@ -675,6 +741,13 @@ ssize_t nbworks_recvfrom(unsigned char service,
 
 	  len_left = len_left - ret_val;
 	  torecv = torecv - ret_val;
+
+	  if (ses->cancel_recv) {
+	    ses->cancel_recv = 0;
+	    close(ses->socket);
+	    nbworks_errno = ECANCELED;
+	    return -1;
+	  }
 	}
       }
 

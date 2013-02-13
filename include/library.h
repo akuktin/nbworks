@@ -72,6 +72,8 @@ struct name_state {
 struct nbworks_session {
   struct nbnodename_list *peer; /* name + scope */
   struct name_state *handle;    /* pointer back to the whole name_handle */
+  unsigned char cancel_send;
+  unsigned char cancel_recv;
   unsigned char kill_caretaker;
   unsigned char keepalive;
   unsigned char nonblocking;    /* TRUE by default */
