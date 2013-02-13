@@ -923,7 +923,6 @@ void *ss__udp_recver(void *sckts_ptr) {
 		     /*MSG_DONTWAIT*/0, &his_addr, &addr_len);
       /* BUG: While testing, I have noticed that there appears to be
 	      a very strange behaviour regarding len.
-	      * the below line used to read (len < 0) *
 	      Sometimes, the below test passes (indicating len is either
 	      0 or positive), but if you read it after the if block,
 	      it is -1! This behaviour dissapears if the socket is blocking
@@ -933,6 +932,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	      The other explanation is that GCC fucks things up (again).
 
               perror() displays "Resource temporarily unavailable" */
+      /* the below line used to read (len < 0) */
       if (len <= 0) {
 	if (errno == EAGAIN ||
 	    errno == EWOULDBLOCK) {

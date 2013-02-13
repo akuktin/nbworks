@@ -132,7 +132,7 @@ int name_srvc_B_add_name(unsigned char *name,
   return result;
 }
 
-/* return: 0=success, >0=fail, -1=error */
+/* return: 0=success, >0=fail, <0=error */
 int name_srvc_B_release_name(unsigned char *name,
 			     unsigned char name_type,
 			     struct nbnodename_list *scope,
@@ -285,6 +285,16 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
 	}
       }
 
+      /* Temporary fix to prevent reading more that one packet,
+       * which could lead us to have duplicate addresses; not
+       * a problem per se, but I don't want to implement yet
+       * another complicated (and somewhat brittle) list walker,
+       * this one for removing the duplicates. */
+      if (result) {
+	walker->next = 0;
+	break;
+      }
+
       destroy_name_srvc_pckt(outside_pckt, 1, 1);
     }
 
@@ -311,9 +321,10 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
 					     int isgroup) {
   struct name_srvc_resource_lst *res, *cur_res;
   struct nbaddress_list *list;//, *cmpnd_lst;
-  struct ipv4_addr_list *addrlst;
+  struct ipv4_addr_list *addrlst, *frstaddrlst;
   struct cache_namenode *new_name;
   time_t curtime;
+  uint32_t ttl;
   uint16_t target_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
@@ -345,33 +356,55 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
   if (! res)
     return 0;
   else {
+    frstaddrlst = addrlst = 0;
+    ttl = 0;
     cur_res = res;
     do {
       if (cur_res->res->rdata_t == nb_address_list) {
 	list = cur_res->res->rdata;
 	while (list) {
 	  if (list->there_is_an_address &&
-	      (list->flags == target_flags))       /* WRONG FOR GROUPS!!! */
-	    break;
+	      (list->flags == target_flags)) {
+	    if (! frstaddrlst) {
+	      frstaddrlst = malloc(sizeof(struct ipv4_addr_list));
+	      if (! frstaddrlst) {
+		/* TODO: errno signaling stuff */
+		destroy_name_srvc_res_lst(res, TRUE, TRUE);
+		return 0;
+	      }
+	      addrlst = frstaddrlst;
+	    } else {
+	      addrlst->next = malloc(sizeof(struct ipv4_addr_list));
+	      if (! addrlst->next) {
+		/* TODO: errno signaling stuff */
+		while (frstaddrlst) {
+		  addrlst = frstaddrlst->next;
+		  free(frstaddrlst);
+		  frstaddrlst = addrlst;
+		}
+		destroy_name_srvc_res_lst(res, TRUE, TRUE);
+		return 0;
+	      }
+	      addrlst = addrlst->next;
+	    }
+
+	    addrlst->ip_addr = list->address;
+	  }
 	  list = list->next_address;
 	}
+	if (addrlst) {
+	  addrlst->next = 0;
+	  /* The below will lose quite a bit of information,
+	   * but I am in no mood to make YET ANOTHER LIST. */
+	  if (cur_res->res->ttl > ttl)
+	    ttl = cur_res->res->ttl;
+	}
       }
-      if (list)
-	break;
       cur_res = cur_res->next;
     } while (cur_res);
   }
 
-  if (list) {
-    addrlst = malloc(sizeof(struct ipv4_addr_list));
-    if (! addrlst) {
-      /* TODO: errno signaling stuff */
-      destroy_name_srvc_res_lst(res, TRUE, TRUE);
-      return 0;
-    }
-    addrlst->ip_addr = list->address;   /* Again, WRONG FOR GROUPS !!! */
-    addrlst->next = 0;
-
+  if (frstaddrlst) {
     new_name = alloc_namecard(decode_nbnodename(cur_res->res->name->name,
                                                 decoded_name),
 			      NETBIOS_NAME_LEN,
@@ -379,13 +412,15 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
 			      cur_res->res->rrtype, cur_res->res->rrclass);
     if (new_name) {
       new_name->addrs.recrd[0].node_type = nodetype;
-      new_name->addrs.recrd[0].addr = addrlst;
+      new_name->addrs.recrd[0].addr = frstaddrlst;
 
       if (add_scope(scope, new_name) ||
 	  add_name(new_name, scope)) {
 	curtime = time(0);
 	new_name->endof_conflict_chance = curtime + CONFLICT_TTL;
-	new_name->timeof_death = curtime + cur_res->res->ttl;
+	/* Fun fact: the below can overflow. No,
+	 * I'm not gonna make a test for that. */
+	new_name->timeof_death = curtime + ttl;
 
 	destroy_name_srvc_res_lst(res, TRUE, TRUE);
 	return new_name;
@@ -393,7 +428,11 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
 	destroy_namecard(new_name);
       }
     } else {
-      free(addrlst);
+      while (frstaddrlst) {
+	addrlst = frstaddrlst->next;
+	free(frstaddrlst);
+	frstaddrlst = addrlst;
+      }
     }
   }
 
@@ -745,7 +784,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  else
 		    flags = NBADDRLST_GROUP_NO;
 		  for (i=0; i<4; i++) {
-		    if (cache_namecard->addrs.recrd[i].node_type) {
+		    if (cache_namecard->addrs.recrd[i].addr) {
 		      switch (cache_namecard->addrs.recrd[i].node_type) {
 		      case CACHE_NODEFLG_H:
 			flags = flags | NBADDRLST_NODET_H;
@@ -916,7 +955,13 @@ void *name_srvc_B_handle_newtid(void *input) {
 	       * Attempt at mitigation: verify the following matches:
 	       * 1. sender IP
 	       * 2. sender IP listed in the rdata of the res
-	       * 3. sender IP is listed in my cache (this may be a problem)
+	       * 3. sender IP is listed in my cache
+	       *          (Therefore, I will only ever delete or mark as
+	       *           conflicting a group name if a member of the
+	       *           group is the one doing the talking. Conversely,
+	       *           only the owner of the unique name will be
+	       *           listened to.) (In this, node types are not
+	       *           taken into account.)
 	       */
 	      if (cache_namecard || cache_namecard_b) {
 		memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
@@ -937,6 +982,14 @@ void *name_srvc_B_handle_newtid(void *input) {
 		      nbaddr_list = nbaddr_list->next_address;
 		  }
 
+		  /* Note to self: this is here because RFC 1002 requires that
+		   * this be sent regardless of whether the name is group name
+		   * or unique name. */
+		  /* Problem: generally, if I ask for a group name, all members of
+		   * the group will respond. It may also take them some time to do
+		   * so. Thus, this code may get triggered in such an innocent case.
+		   * If the sending node has its conflict timer running, said node
+		   * could experience various problems. */
 		  pckt = name_srvc_make_name_reg_small(label, label_type,
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_YES,
@@ -948,6 +1001,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
 
+		  /* Verify that the name in question previously had
+		   * the IP address in question listed as it's member. */
 		  if ((nbaddr_list) &&
 		      (nbaddr_list->flags & NBADDRLST_GROUP_MASK)) {
 		    for (i=0; i<4; i++) {
@@ -998,6 +1053,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 
 		  ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
 
+		  /* Verify that the name in question previously had
+		   * the IP address in question listed as it's owner. */
 		  if (nbaddr_list)
 		    for (i=0; i<4; i++) {
 		      ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
@@ -1016,8 +1073,10 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  if (ipv4_addr_list) {
 		    if (! cache_namecard->token)
 		      cache_namecard->timeof_death = 0;
-		    else
+		    else {
+		      /* Impossible. */
 		      cache_namecard->isinconflict = 1;
+		    }
 		  }
 		}
 	      }
@@ -1139,6 +1198,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	      if (cache_namecard)
 		if (! cache_namecard->token)
 		  cache_namecard->timeof_death = 0; /* WRONG!!!!! */
+	      /* remove_membrs_frmlst(); */
 	    }
 	    if (status & STATUS_DID_UNIQ) {
 	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
@@ -1213,6 +1273,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 		      cache_namecard->timeof_death = ZEROONES; /* infinity */
 		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
+		    /* Delete the reference to the the address
+		     * lists so they do not get freed.*/
 		    for (i=0; i<4; i++) {
 		      addr_bigblock->ysgrp.recrd[i].addr = 0;
 		    }
@@ -1235,14 +1297,16 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    addr_bigblock->ysgrp.recrd[i].addr);
 			} else {
 			  if (cache_namecard->addrs.recrd[j].node_type == 0) {
-			    cache_namecard->node_types = cache_namecard->node_types |
-			      addr_bigblock->ysgrp.recrd[i].node_type;
-
 			    cache_namecard->addrs.recrd[j].node_type =
 			      addr_bigblock->ysgrp.recrd[i].node_type;
 			    cache_namecard->addrs.recrd[j].addr =
 			      addr_bigblock->ysgrp.recrd[i].addr;
+			    /* Delete the reference to the address
+			     * list so it does not get freed.*/
 			    addr_bigblock->ysgrp.recrd[i].addr = 0;
+
+			    cache_namecard->node_types = cache_namecard->node_types |
+			      addr_bigblock->ysgrp.recrd[i].node_type;
 
 			    break;
 			  }
@@ -1281,6 +1345,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 		      cache_namecard->timeof_death = ZEROONES; /* infinity */
 		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
+		    /* Delete the reference to the the address
+		     * lists so they do not get freed.*/
 		    for (i=0; i<4; i++) {
 		      addr_bigblock->nogrp.recrd[i].addr = 0;
 		    }
@@ -1303,14 +1369,16 @@ void *name_srvc_B_handle_newtid(void *input) {
 					      addr_bigblock->nogrp.recrd[i].addr);
 			  } else {
 			    if (cache_namecard->addrs.recrd[j].node_type == 0) {
-			      cache_namecard->node_types = cache_namecard->node_types |
-				addr_bigblock->nogrp.recrd[i].node_type;
-
 			      cache_namecard->addrs.recrd[j].node_type =
 				addr_bigblock->nogrp.recrd[i].node_type;
 			      cache_namecard->addrs.recrd[j].addr =
 				addr_bigblock->nogrp.recrd[i].addr;
+			      /* Delete the reference to the address
+			       * list so it does not get freed.*/
 			      addr_bigblock->nogrp.recrd[i].addr = 0;
+
+			      cache_namecard->node_types = cache_namecard->node_types |
+				addr_bigblock->nogrp.recrd[i].node_type;
 
 			      break;
 			    }

@@ -631,6 +631,7 @@ int rail_senddtg(int rail_sckt,
 				       node_type,
 				       isgroup);
     if (namecard) {
+      /* FIXME: sending to another name on the same host */
       if (pckt->type == BRDCST_DTG) {
 	dst_addr.sin_addr.s_addr = INADDR_BROADCAST;
 
@@ -1251,6 +1252,8 @@ void *tunnel_stream_sockets(void *arg) {
 
 
 /* WRONG FOR GROUPS! */
+/* Except not really - this is only used by the session
+   service which never uses more than one address. */
 uint32_t rail_whatisaddrX(int rail_sckt,
 			  struct com_comm *command) {
   struct cache_namenode *namecard;
