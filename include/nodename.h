@@ -11,6 +11,8 @@
 # define NODENAMEFLG_CNF 0x0800  /* Name is in conflict. */
 # define NODENAMEFLG_DRG 0x1000  /* Name is being deleted. */
 
+# define JOKER_NAME_CODED "CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
 struct nbnodename_list {
   unsigned char *name;
   unsigned char len; /* Not int because the field is

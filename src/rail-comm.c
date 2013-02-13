@@ -620,6 +620,15 @@ int rail_senddtg(int rail_sckt,
     normal_pyld->pyldpyld_delptr = buff;
     buff = 0;
 
+    if (0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name)) {
+      dst_addr.sin_addr.s_addr = INADDR_BROADCAST;
+
+      pckt->for_del = TRUE;
+      ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
+
+      break;
+    }
+
     namecard = find_nblabel(decode_nbnodename(normal_pyld->dst_name->name,
 					      decoded_name),
 			    NETBIOS_NAME_LEN, node_type, isgroup,
