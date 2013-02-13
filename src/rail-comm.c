@@ -556,11 +556,12 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 int rail_senddtg(int rail_sckt,
 		 struct com_comm *command,
 		 struct ss_queue_storage **queue_stor) {
+  struct sockaddr_in dst_addr;
   struct dtg_srvc_packet *pckt;
   struct dtg_pckt_pyld_normal *normal_pyld;
   struct cache_namenode *namecard;
   struct ss_queue_storage *trans;
-  struct sockaddr_in dst_addr;
+  struct ipv4_addr_list *group_addrs;
   union trans_id tid;
   int isgroup, i;
   unsigned short node_type;
@@ -610,6 +611,8 @@ int rail_senddtg(int rail_sckt,
 
   if (pckt->type == DIR_GRP_DTG)
     isgroup = ISGROUP_YES;
+  else
+    isgroup = ISGROUP_NO;
 
   switch (pckt->payload_t) {
   case normal:
@@ -628,11 +631,20 @@ int rail_senddtg(int rail_sckt,
 				       node_type,
 				       isgroup);
     if (namecard) {
+      if (pckt->type == BRDCST_DTG) {
+	dst_addr.sin_addr.s_addr = INADDR_BROADCAST;
+
+	pckt->for_del = TRUE;
+	ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
+
+	break;
+      }
       for (i=0; i<4; i++) {
 	if (namecard->addrs.recrd[i].node_type == node_type)
 	  break;
       }
-      if (i<4) {
+      if ((i < 4) &&
+	  (namecard->addrs.recrd[i].addr)) {
 	tid.name_scope = normal_pyld->src_name;
 	trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
 	if (! trans) {
@@ -645,10 +657,22 @@ int rail_senddtg(int rail_sckt,
 	    trans->last_active = time(0);
 	}
 
-	dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
-	pckt->for_del = 1;
+	if (namecard->isgroup) {
+	  group_addrs = namecard->addrs.recrd[i].addr;
+	  while (group_addrs->next) {
+	    dst_addr.sin_addr.s_addr = group_addrs->ip_addr;
 
-	ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));   /* WRONG FOR GROUPS!!! */
+	    ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
+
+	    group_addrs = group_addrs->next;
+	  }
+	  dst_addr.sin_addr.s_addr = group_addrs->ip_addr;
+	} else {
+	  dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
+	}
+
+	pckt->for_del = TRUE;
+	ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
 
 	pckt = 0;
       }
