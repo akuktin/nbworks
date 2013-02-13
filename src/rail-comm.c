@@ -580,6 +580,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     }
     break;
   }
+#undef cleanup
 }
 
 /* returns: 0 = success, >0 = fail, <0 = error */
