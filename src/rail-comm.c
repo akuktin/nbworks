@@ -226,35 +226,34 @@ void *handle_rail(void *args) {
     break;
 
   case rail_delname:
+    /* Currently, this code does not remove my IPv4 address from
+     * the cache. */
     cache_namecard = find_namebytok(command.token, &scope);
+
     if (cache_namecard) {
-      for (i=0; i<4; i++) {
-	if (cache_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
-	  ipv4 = cache_namecard->addrs.recrd[i].addr->ip_addr;
-      }
+      name_ptr = cache_namecard->name;
+      name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
+			       scope, my_ipv4_address(),
+			       cache_namecard->isgroup);
 
-      if (i<4) {
-	name_ptr = cache_namecard->name;
-	name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-				 scope, ipv4, cache_namecard->isgroup);
-
-	if (cache_namecard->isgroup) {
-	  cache_namecard->token = 0;
-	  for (i=0; i<4; i++) {
-	    if (cache_namecard->addrs.recrd[i].addr)
-	      break;
-	  }
-	  if (i > 3) {
-	    cache_namecard->timeof_death = 0;
-	  }
-	} else {
+      if (cache_namecard->isgroup) {
+	cache_namecard->token = 0;
+	for (i=0; i<4; i++) {
+	  if (cache_namecard->addrs.recrd[i].addr)
+	    break;
+	}
+	if (i > 3) {
 	  cache_namecard->timeof_death = 0;
 	}
-	command.len = 0;
-	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-	send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
+      } else {
+	cache_namecard->timeof_death = 0;
       }
+
+      command.len = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
     }
+
     close(params.rail_sckt);
     destroy_nbnodename(scope);
     break;
@@ -502,58 +501,58 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       cleanup;
       return 0;
     }
-    if (find_name(cache_namecard, namedata->scope)) {
+    grp_namecard = find_name(cache_namecard, namedata->scope);
+    if (grp_namecard) {
       destroy_namecard(cache_namecard);
+
+      if (namedata->isgroup) {
+	/* Tell the world (actually optional for B nodes). */
+	if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
+				      namedata->scope,
+				      my_ipv4_address(),
+				      namedata->isgroup, namedata->ttl)) {
+	  grp_namecard->timeof_death = time(0) + namedata->ttl;
+
+	  for (i=0; i<4; i++) {
+	    if (grp_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
+	      break;
+	  }
+	  if (i<4) {
+	    new_addr = malloc(sizeof(struct ipv4_addr_list));
+	    if (! new_addr) {
+	      return 0;
+	    }
+	    new_addr->ip_addr = my_ipv4_address();
+	    new_addr->next = 0;
+
+	    while (0xd0) {
+	      last_addr = &(grp_namecard->addrs.recrd[i].addr);
+	      cur_addr = *last_addr;
+
+	      while (cur_addr) {
+		if (cur_addr == new_addr)
+		  return grp_namecard;
+
+		last_addr = &(cur_addr->next);
+		cur_addr = *last_addr;
+	      }
+
+	      *last_addr = new_addr;
+	    }
+	  }
+	}
+      }
+
       cleanup;
       return 0;
     } else {
       if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
 				    namedata->scope,
-				    command->addr.sin_addr.s_addr,
+				    my_ipv4_address(),
 				    namedata->isgroup, namedata->ttl)) {
 	if (! (add_scope(namedata->scope, cache_namecard) ||
 	       add_name(cache_namecard, namedata->scope))) {
-	  if (namedata->isgroup) {
-	    grp_namecard = find_name(cache_namecard, namedata->scope);
-	    destroy_namecard(cache_namecard);
-	    if (! grp_namecard) {
-	      cleanup;
-	      return 0;
-	    }
-
-	    grp_namecard->timeof_death = time(0) + namedata->ttl;
-
-	    for (i=0; i<4; i++) {
-	      if (grp_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
-		break;
-	    }
-	    if (i<4) {
-	      cleanup;
-	      new_addr = malloc(sizeof(struct ipv4_addr_list));
-	      if (! new_addr) {
-		return 0;
-	      }
-	      new_addr->ip_addr = my_ipv4_address();
-	      new_addr->next = 0;
-
-	      while (0xd0) {
-		last_addr = &(grp_namecard->addrs.recrd[i].addr);
-		cur_addr = *last_addr;
-
-		while (cur_addr) {
-		  if (cur_addr == new_addr)
-		    return grp_namecard;
-
-		  last_addr = &(cur_addr->next);
-		  cur_addr = *last_addr;
-		}
-
-		*last_addr = new_addr;
-	      }
-	    }
-	  } else {
-	    destroy_namecard(cache_namecard);
-	  }
+	  destroy_namecard(cache_namecard);
 	  cleanup;
 	  return 0;
 	}
