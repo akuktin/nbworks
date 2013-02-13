@@ -1196,9 +1196,12 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    res->res->rrclass,
 					    res->res->name->next_name);
 	      if (cache_namecard)
-		if (! cache_namecard->token)
+
 		  cache_namecard->timeof_death = 0; /* WRONG!!!!! */
-	      /* remove_membrs_frmlst(); */
+	      /* The below (commented out) function must make an
+	       * exception for my IP address, lest someone make me
+	       * think I am not a member of my own group. */
+	      /* int remove_membrs_frmlst(nbaddr_list, cache_namecard, my_ipv4_address); */
 	    }
 	    if (status & STATUS_DID_UNIQ) {
 	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,

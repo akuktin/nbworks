@@ -530,7 +530,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	  free(namedata);
 	  return 0;
 	}
-	cache_namecard->addrs.recrd[0].addr->ip_addr = command->addr.sin_addr.s_addr;
+	cache_namecard->addrs.recrd[0].addr->ip_addr = my_ipv4_address();
 	cache_namecard->timeof_death = time(0) + namedata->ttl;
 
 	free(data_buff);
@@ -620,7 +620,8 @@ int rail_senddtg(int rail_sckt,
     normal_pyld->pyldpyld_delptr = buff;
     buff = 0;
 
-    if (0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name)) {
+    if (0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name,
+		    NETBIOS_CODED_NAME_LEN)) {
       dst_addr.sin_addr.s_addr = INADDR_BROADCAST;
 
       pckt->for_del = TRUE;
