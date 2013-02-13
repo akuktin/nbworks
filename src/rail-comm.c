@@ -740,7 +740,7 @@ int rail_add_dtg_server(int rail_sckt,
   struct ss_queue_storage *queue;
   struct cache_namenode *namecard;
   struct nbnodename_list *nbname;
-  struct rail_list *new_rail;
+  struct rail_list *new_rail, *cur_rail, **last_rail;
   struct dtg_srv_params params;
   union trans_id tid;
   time_t cur_time;
@@ -799,8 +799,25 @@ int rail_add_dtg_server(int rail_sckt,
     return 1;
   }
 
-  new_rail->next = queue->rail;
-  queue->rail = new_rail;
+  while (0x101) { /* Not really 101. */
+    last_rail = &(queue->rail);
+    cur_rail = *last_rail;
+
+    while (cur_rail) {
+      if (cur_rail == new_rail) {
+	last_rail = 0;
+	break;
+      } else {
+	last_rail = &(cur_rail->next);
+	cur_rail = *last_rail;
+      }
+    }
+
+    if (last_rail)
+      *last_rail = new_rail;
+    else
+      break;
+  }
 
   queue->last_active = ZEROONES;
   if (trans) {
@@ -860,6 +877,12 @@ void *dtg_server(void *arg) {
   trans = &(queue->queue);
   pollfd.events = POLLOUT;
 
+#define do_close_rail          \
+  *last_rail = cur_rail->next; \
+  close(cur_rail->rail_sckt);  \
+  free(cur_rail);              \
+  cur_rail = *last_rail;
+
   while (! nbworks_dtg_srv_cntrl.all_stop) {
     while (438) {
       pckt = ss__recv_pckt(trans);
@@ -875,15 +898,19 @@ void *dtg_server(void *arg) {
 	  if (pollfd.revents & POLLOUT) {
 	    if (4 == send(cur_rail->rail_sckt, buff, 4,
 			  (MSG_DONTWAIT | MSG_NOSIGNAL))) {
-	      send(cur_rail->rail_sckt, pckt->packetbuff, pckt->len,
-		   (MSG_DONTWAIT | MSG_NOSIGNAL));
+	      if (pckt->len > send(cur_rail->rail_sckt,
+				   pckt->packetbuff, pckt->len,
+				   (MSG_DONTWAIT | MSG_NOSIGNAL))) {
+		do_close_rail;
+		continue;
+	      }
+	    } else {
+	      do_close_rail;
+	      continue;
 	    }
 	  } else {
 	    if (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
-	      *last_rail = cur_rail->next;
-	      close(cur_rail->rail_sckt);
-	      free(cur_rail);
-	      cur_rail = *last_rail;
+	      do_close_rail;
 	      continue;
 	    }
 	  }
@@ -907,10 +934,7 @@ void *dtg_server(void *arg) {
       pollfd.fd = cur_rail->rail_sckt;
       poll(&pollfd, 1, 0);
       if (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
-	*last_rail = cur_rail->next;
-	close(cur_rail->rail_sckt);
-	free(cur_rail);
-	cur_rail = *last_rail;
+	do_close_rail;
       } else {
 	last_rail = &(cur_rail->next);
 	cur_rail = *last_rail;
@@ -922,6 +946,7 @@ void *dtg_server(void *arg) {
 
     nanosleep(&(nbworks_dtg_srv_cntrl.dtg_srv_sleeptime), 0);
   }
+#undef do_close_rail
 
   tid.name_scope = nbname;
 

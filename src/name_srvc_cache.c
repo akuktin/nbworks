@@ -507,7 +507,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
    * Objectivelly, the reason for the existance of this ABORTION of a function
    * is the fact that I have made a switch statement the master worker. A switch
    * statemet moves the complexity away from the data and into text. And that is
-   * the reason this function exists.
+   * the reason this function exists. And sucks.
    *
    * TODO: NOTETOSELF: Think of a better way of doing this.
    *
