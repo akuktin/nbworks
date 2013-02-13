@@ -455,8 +455,10 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
 
 struct cache_namenode *do_rail_regname(int rail_sckt,
 				       struct com_comm *command) {
-  struct cache_namenode *cache_namecard;
+  struct cache_namenode *cache_namecard, *grp_namecard;
   struct rail_name_data *namedata;
+  struct ipv4_addr_list *new_addr, *cur_addr, **last_addr;
+  int i;
   unsigned char *data_buff;
 
   if (! command)
@@ -483,6 +485,12 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     return 0;
   }
 
+#define cleanup                        \
+  free(data_buff);                     \
+  free(namedata->name);                \
+  destroy_nbnodename(namedata->scope); \
+  free(namedata);
+
   switch (command->node_type) {
   case 'B':
   default:
@@ -491,18 +499,12 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 				    namedata->isgroup, QTYPE_NB, QCLASS_IN);
     if (! cache_namecard) {
       /* TODO: error handling */
-      free(data_buff);
-      free(namedata->name);
-      destroy_nbnodename(namedata->scope);
-      free(namedata);
+      cleanup;
       return 0;
     }
     if (find_name(cache_namecard, namedata->scope)) {
-      free(data_buff);
       destroy_namecard(cache_namecard);
-      free(namedata->name);
-      destroy_nbnodename(namedata->scope);
-      free(namedata);
+      cleanup;
       return 0;
     } else {
       if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
@@ -511,11 +513,48 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 				    namedata->isgroup, namedata->ttl)) {
 	if (! (add_scope(namedata->scope, cache_namecard) ||
 	       add_name(cache_namecard, namedata->scope))) {
-	  free(data_buff);
-	  destroy_namecard(cache_namecard);
-	  free(namedata->name);
-	  destroy_nbnodename(namedata->scope);
-	  free(namedata);
+	  if (namedata->isgroup) {
+	    grp_namecard = find_name(cache_namecard, namedata->scope);
+	    destroy_namecard(cache_namecard);
+	    if (! grp_namecard) {
+	      cleanup;
+	      return 0;
+	    }
+
+	    grp_namecard->timeof_death = time(0) + namedata->ttl;
+
+	    for (i=0; i<4; i++) {
+	      if (grp_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
+		break;
+	    }
+	    if (i<4) {
+	      cleanup;
+	      new_addr = malloc(sizeof(struct ipv4_addr_list));
+	      if (! new_addr) {
+		return 0;
+	      }
+	      new_addr->ip_addr = my_ipv4_address();
+	      new_addr->next = 0;
+
+	      while (0xd0) {
+		last_addr = &(grp_namecard->addrs.recrd[i].addr);
+		cur_addr = *last_addr;
+
+		while (cur_addr) {
+		  if (cur_addr == new_addr)
+		    return grp_namecard;
+
+		  last_addr = &(cur_addr->next);
+		  cur_addr = *last_addr;
+		}
+
+		*last_addr = new_addr;
+	      }
+	    }
+	  } else {
+	    destroy_namecard(cache_namecard);
+	  }
+	  cleanup;
 	  return 0;
 	}
 
@@ -523,28 +562,19 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));
 	if (! cache_namecard->addrs.recrd[0].addr) {
 	  /* TODO: error handling */
-	  free(data_buff);
 	  cache_namecard->timeof_death = 0;
-	  free(namedata->name);
-	  destroy_nbnodename(namedata->scope);
-	  free(namedata);
+	  cleanup;
 	  return 0;
 	}
 	cache_namecard->addrs.recrd[0].addr->ip_addr = my_ipv4_address();
 	cache_namecard->timeof_death = time(0) + namedata->ttl;
 
-	free(data_buff);
-	free(namedata->name);
-	destroy_nbnodename(namedata->scope);
-	free(namedata);
+	cleanup;
 	return cache_namecard;
       } else {
 	/* TODO: error handling */
-	free(data_buff);
 	destroy_namecard(cache_namecard);
-	free(namedata->name);
-	destroy_nbnodename(namedata->scope);
-	free(namedata);
+	cleanup;
 	return 0;
       }
     }
