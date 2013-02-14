@@ -3,6 +3,7 @@
 
 struct thread_cache {
   pthread_t thread_joiner_tid;
+  pthread_t poll_rail_tid;
   pthread_t prune_scopes_tid;
   pthread_t ss__port137_tid;
 };
