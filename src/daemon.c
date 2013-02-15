@@ -66,7 +66,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
     return 0;
   }
 
-  if (0 != pthread_create(&(result->poll_rail_tid), 0,
+  if (0 != pthread_create(&(railparams.thread_id), 0,
 			  poll_rail, &railparams)) {
     pthread_cancel(result->thread_joiner_tid);
     pthread_cancel(result->prune_scopes_tid);

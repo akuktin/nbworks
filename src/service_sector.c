@@ -919,6 +919,9 @@ void *ss__udp_recver(void *sckts_ptr) {
 	*deleter = '\0';
 	deleter++;
       }
+      if (0 >= poll(&polldata, 1, 0))
+	break;
+
       len = recvfrom(sckts.udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
 		     /*MSG_DONTWAIT*/0, &his_addr, &addr_len);
       /* BUG: While testing, I have noticed that there appears to be
@@ -963,7 +966,6 @@ void *ss__udp_recver(void *sckts_ptr) {
 	new_pckt = 0;
       }
 
-
       while (new_pckt) {
 	cur_trans = *(sckts.all_trans);
 	while (cur_trans) {
@@ -975,6 +977,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	      cur_trans->in->next = new_pckt;
 	      cur_trans->in = new_pckt;
 	      new_pckt = 0;
+
 	      break;
 	    } else {
 	      /* ((cur_trans->status == nmtrst_indrop) ||
@@ -1410,6 +1413,6 @@ uint32_t get_inaddr() {
 
 uint32_t my_ipv4_address() {
   // FIXME: stub
-  //        192.168.1.2/24
-  return 0x0201a8c0;
+  //        192.168.1.3/24
+  return 0x0301a8c0;
 }
