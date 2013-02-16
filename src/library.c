@@ -58,13 +58,13 @@ int lib_daemon_socket() {
   } else {
     nbworks_errno = 0;
   }
-
+/*
   if (0 != fcntl(daemon, F_SETFL, O_NONBLOCK)) {
     nbworks_errno = errno;
     close(daemon);
     return -1;
   }
-
+*/
   if (0 != connect(daemon, &address, sizeof(struct sockaddr_un))) {
     nbworks_errno = errno;
     close(daemon);
@@ -155,9 +155,11 @@ struct name_state *lib_regname(unsigned char *name,
     nbworks_errno = ENOMEM;
     return 0;
   }
+  memcpy(result->name->name, name, NETBIOS_NAME_LEN);
 
   result->scope = clone_nbnodename(scope);
-  if (! result->scope) {
+  if ((! result->scope) &&
+      scope) {
     free(result->name->name);
     free(result->name);
     free(result);
@@ -1433,22 +1435,6 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
-  if (0 != fcntl(ses_sckt, F_SETFL, O_NONBLOCK)) {
-    close(ses_sckt);
-    /* This also may not be a fatal error. */
-    free(mypckt_buff);
-    return -1;
-  }
-  /* --------------------------------------------------------------- */
-  /* Looks like I will HAVE to implement some sort of errno,
-     because a failure here is not fatal, but requires special care. */
-  setsockopt(ses_sckt, SOL_SOCKET, SO_KEEPALIVE,
-	     &ones, sizeof(unsigned int));
-  ones = 75;
-  setsockopt(ses_sckt, IPPROTO_TCP, TCP_KEEPIDLE,
-	     &ones, sizeof(unsigned int));
-  /* --------------------------------------------------------------- */
-
   if (0 != connect(ses_sckt, &addr, sizeof(struct sockaddr_in))) {
     close(ses_sckt);
     if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
@@ -1501,7 +1487,6 @@ int lib_open_session(struct name_state *handle,
 	if (SMALL_BUFF_LEN > recv(ses_sckt, herpckt_buff, SMALL_BUFF_LEN,
 				  MSG_WAITALL)) {
 	  close(ses_sckt);
-	  free(mypckt_buff);
 	  return -1;
 	}
 	pckt->len = pckt->len - SMALL_BUFF_LEN;
@@ -1509,13 +1494,28 @@ int lib_open_session(struct name_state *handle,
 	if (pckt->len > recv(ses_sckt, herpckt_buff, pckt->len,
 			     MSG_WAITALL)) {
 	  close(ses_sckt);
-	  free(mypckt_buff);
 	  return -1;
 	}
 	pckt->len = 0;
       }
     }
     free(pckt);
+
+    if (0 != fcntl(ses_sckt, F_SETFL, O_NONBLOCK)) {
+      close(ses_sckt);
+      /* This also may not be a fatal error. */
+      return -1;
+    }
+    /* --------------------------------------------------------------- */
+    /* Looks like I will HAVE to implement some sort of errno,
+       because a failure here is not fatal, but requires special care. */
+    setsockopt(ses_sckt, SOL_SOCKET, SO_KEEPALIVE,
+	       &ones, sizeof(unsigned int));
+    ones = 75;
+    setsockopt(ses_sckt, IPPROTO_TCP, TCP_KEEPIDLE,
+	       &ones, sizeof(unsigned int));
+    /* --------------------------------------------------------------- */
+
     return ses_sckt;
     break;
 

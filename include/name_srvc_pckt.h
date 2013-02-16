@@ -39,7 +39,7 @@
 /* nm_flag */
 # define FLG_B  0x01 /* Packet is broadcast. */
 # define FLG_RA 0x08 /* Recursion available. */
-# define FLG_RD 0x10 /* Recursion desirable. */
+# define FLG_RD 0x10 /* Recursion desired. */
 # define FLG_TC 0x20 /* Truncated. */
 # define FLG_AA 0x40 /* Authoritative answer. */
 
