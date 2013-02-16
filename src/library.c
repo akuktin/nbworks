@@ -912,27 +912,35 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
   unsigned char combuff[LEN_COMM_ONWIRE], *buff;
 
   if ((! X) ||
-      (len < (1+NETBIOS_NAME_LEN+1)))
+      (len < (1+NETBIOS_NAME_LEN+1))) {
+    nbworks_errno = 265;//EINVAL;
     return 0;
+  } else {
+    nbworks_errno = 0;
+  }
 
   memset(&command, 0, sizeof(struct com_comm));
-  command.command = rail_addr_ofX;
+  command.command = rail_addr_ofXuniq;
   command.len = len;
 
   fill_railcommand(&command, combuff, (combuff +LEN_COMM_ONWIRE));
 
   buff = malloc(len);
-  if (! buff)
+  if (! buff) {
+    nbworks_errno = 264;//ENOBUFS;
     return 0;
+  }
 
   if (buff == fill_all_DNS_labels(X, buff, (buff +len), 0)) {
     free(buff);
+    nbworks_errno = 263;//ENOBUFS;
     return 0;
   }
 
   daemon_sckt = lib_daemon_socket();
   if (daemon_sckt == -1) {
     free(buff);
+    nbworks_errno = 262;//EPIPE;
     return 0;
   }
 
@@ -940,12 +948,14 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
 			     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
     close(daemon_sckt);
     free(buff);
+    nbworks_errno = 261;//EPIPE;
     return 0;
   }
 
   if (len > send(daemon_sckt, buff, len, MSG_NOSIGNAL)) {
     close(daemon_sckt);
     free(buff);
+    nbworks_errno = 260;//EPIPE;
     return 0;
   }
 
@@ -960,24 +970,27 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
   if (0 == read_railcommand(combuff, (combuff +LEN_COMM_ONWIRE),
 			    &command)) {
     close(daemon_sckt);
+    nbworks_errno = 258;//ENOBUFS;
     return 0;
   }
 
-  if ((command.command != rail_addr_ofX) ||
+  if ((command.command != rail_addr_ofXuniq) ||
       (command.len < 4)) {
     close(daemon_sckt);
+    nbworks_errno = 257;//EPIPE; /* What do I put here? */
     return 0;
   }
 
   if (4 > recv(daemon_sckt, combuff, 4, MSG_WAITALL)) {
     close(daemon_sckt);
+    nbworks_errno = 256;//EPIPE;
     return 0;
   }
 
   read_32field(combuff, &result);
 
   close(daemon_sckt);
-
+  nbworks_errno = 1000;
   return result;
 }
 
@@ -1374,7 +1387,7 @@ int lib_open_session(struct name_state *handle,
   }
 
   memset(&command, 0, sizeof(struct com_comm));
-  command.command = rail_addr_ofX;
+  command.command = rail_addr_ofXuniq;
 
   pckt = calloc(1, sizeof(struct ses_srvc_packet));
   if (! pckt) {

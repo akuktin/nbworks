@@ -29,7 +29,8 @@ enum rail_commands {
   rail_send_dtg,       /* library wants to send a datagram with port 138 */
   rail_dtg_sckt,       /* library informs the daemon it wants to be a server */
 
-  rail_addr_ofX        /* what is the address of X? */
+  rail_addr_ofXuniq,   /* what is the address of X (unique)? */
+  rail_addr_ofXgroup   /* what is the address of X (group)? */
 };
 
 # define LEN_COMM_ONWIRE (1+8+(2+4)+1+4)

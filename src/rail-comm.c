@@ -300,7 +300,8 @@ void *handle_rail(void *args) {
 		       command.token);
     break;
 
-  case rail_addr_ofX:
+  case rail_addr_ofXuniq:
+  case rail_addr_ofXgroup:
     ipv4 = rail_whatisaddrX(params.rail_sckt,
 			    &command);
     if (ipv4) {
@@ -1322,10 +1323,10 @@ void *tunnel_stream_sockets(void *arg) {
 uint32_t rail_whatisaddrX(int rail_sckt,
 			  struct com_comm *command) {
   struct cache_namenode *namecard;
-  struct rail_name_data *name;
+  struct nbnodename_list *name;
   int i;
   unsigned char node_type;
-  unsigned char *buff;
+  unsigned char *buff, *walker;
 
   if (! command)
     return 0;
@@ -1355,25 +1356,27 @@ uint32_t rail_whatisaddrX(int rail_sckt,
     return 0;
   }
 
-  name = read_rail_name_data(buff, buff + command->len);
+  walker = buff;
+  name = read_all_DNS_labels(&walker, buff, buff + command->len, 0);
   free(buff);
   if (! name) {
     return 0;
   }
 
   namecard = find_nblabel(name->name, NETBIOS_NAME_LEN, node_type,
-			  name->isgroup ? ISGROUP_YES : ISGROUP_NO,
+			  (command->command == rail_addr_ofXgroup) ?
+			    ISGROUP_YES : ISGROUP_NO,
 			  RRTYPE_NB, RRCLASS_IN,
-			  name->scope);
+			  name->next_name);
+
   if (! namecard) {
     namecard = name_srvc_B_find_name(name->name, (name->name)[NETBIOS_NAME_LEN -1],
-				     name->scope, node_type,
-				     name->isgroup ? ISGROUP_YES : ISGROUP_NO);
+				     name->next_name, node_type,
+				     (command->command == rail_addr_ofXgroup) ?
+				       ISGROUP_YES : ISGROUP_NO);
   }
 
-  free(name->name);
-  destroy_nbnodename(name->scope);
-  free(name);
+  destroy_nbnodename(name);
 
   if (namecard) {
     for (i=0; i<4; i++) {
