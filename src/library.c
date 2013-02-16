@@ -913,7 +913,7 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
 
   if ((! X) ||
       (len < (1+NETBIOS_NAME_LEN+1))) {
-    nbworks_errno = 265;//EINVAL;
+    nbworks_errno = EINVAL;
     return 0;
   } else {
     nbworks_errno = 0;
@@ -927,20 +927,20 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
 
   buff = malloc(len);
   if (! buff) {
-    nbworks_errno = 264;//ENOBUFS;
+    nbworks_errno = ENOBUFS;
     return 0;
   }
 
   if (buff == fill_all_DNS_labels(X, buff, (buff +len), 0)) {
     free(buff);
-    nbworks_errno = 263;//ENOBUFS;
+    nbworks_errno = ENOBUFS;
     return 0;
   }
 
   daemon_sckt = lib_daemon_socket();
   if (daemon_sckt == -1) {
     free(buff);
-    nbworks_errno = 262;//EPIPE;
+    nbworks_errno = EPIPE;
     return 0;
   }
 
@@ -948,14 +948,14 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
 			     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
     close(daemon_sckt);
     free(buff);
-    nbworks_errno = 261;//EPIPE;
+    nbworks_errno = EPIPE;
     return 0;
   }
 
   if (len > send(daemon_sckt, buff, len, MSG_NOSIGNAL)) {
     close(daemon_sckt);
     free(buff);
-    nbworks_errno = 260;//EPIPE;
+    nbworks_errno = EPIPE;
     return 0;
   }
 
@@ -964,33 +964,34 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
   if (LEN_COMM_ONWIRE > recv(daemon_sckt, combuff,
 			     LEN_COMM_ONWIRE, MSG_WAITALL)) {
     close(daemon_sckt);
+    /* No error, genuine failure to resolve. */
     return 0;
   }
 
   if (0 == read_railcommand(combuff, (combuff +LEN_COMM_ONWIRE),
 			    &command)) {
     close(daemon_sckt);
-    nbworks_errno = 258;//ENOBUFS;
+    nbworks_errno = ENOBUFS;
     return 0;
   }
 
   if ((command.command != rail_addr_ofXuniq) ||
       (command.len < 4)) {
     close(daemon_sckt);
-    nbworks_errno = 257;//EPIPE; /* What do I put here? */
+    nbworks_errno = EPIPE; /* What do I put here? */
     return 0;
   }
 
   if (4 > recv(daemon_sckt, combuff, 4, MSG_WAITALL)) {
     close(daemon_sckt);
-    nbworks_errno = 256;//EPIPE;
+    nbworks_errno = EPIPE;
     return 0;
   }
 
   read_32field(combuff, &result);
 
   close(daemon_sckt);
-  nbworks_errno = 1000;
+
   return result;
 }
 
