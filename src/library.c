@@ -1008,7 +1008,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 			unsigned char recepient_type,
 			void *data,
 			size_t len,
-			unsigned char group_flg, /* BUG: this is ignored */
+			unsigned char group_flg,
 			unsigned char isbroadcast) {
   struct dtg_srvc_packet *pckt;
   struct com_comm command;
@@ -1038,7 +1038,10 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   }
 
   pckt->for_del = 0;
-  pckt->type = 0;
+  /* Yes, but what if I want to send a broadcast datagram to a group name? */
+  pckt->type = (isbroadcast) ? BRDCST_DTG :
+                               ((group_flg & ISGROUP_YES) ? DIR_GRP_DTG :
+                                                            DIR_UNIQ_DTG);
   pckt->flags = DTG_FIRST_FLAG; /* stub */
   switch (handle->node_type) {
   case CACHE_NODEFLG_B:
@@ -1055,7 +1058,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     break;
   case CACHE_NODEFLG_H:
   default:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_H);
     command.node_type = 'H';
     break;
   }

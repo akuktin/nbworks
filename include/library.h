@@ -176,7 +176,7 @@ ssize_t
                   unsigned char recepient_type,
                   void *data,
                   size_t len,
-                  unsigned char group_flg, /* BUG: this is ignored */
+                  unsigned char group_flg,
                   unsigned char isbroadcast);
 
 void *
