@@ -878,7 +878,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
   return (void *)ONES;
 }
 
-#include <stdio.h>
+
 void *ss__udp_recver(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
   struct sockaddr_in his_addr, discard_addr;
@@ -959,7 +959,7 @@ void *ss__udp_recver(void *sckts_ptr) {
       }
 
       if (his_addr.sin_addr.s_addr == discard_addr.sin_addr.s_addr) {
-      	continue;
+	continue;
       }
 
       new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
