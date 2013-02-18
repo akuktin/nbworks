@@ -78,7 +78,7 @@ int lib_daemon_socket() {
 struct name_state *lib_regname(unsigned char *name,
 			       unsigned char name_type,
 			       struct nbnodename_list *scope,
-			       unsigned char isgroup,
+			       unsigned char group_flg,
 			       unsigned char node_type, /* only one type */
 			       uint32_t ttl) {
   struct name_state *result;
@@ -87,7 +87,13 @@ struct name_state *lib_regname(unsigned char *name,
   int daemon;
   unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff;
 
-  if (! name) {
+  if ((! name) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0))))) {
     nbworks_errno = EINVAL;
     return 0;
   } else {
@@ -122,7 +128,7 @@ struct name_state *lib_regname(unsigned char *name,
   namedt.name = name;
   namedt.name_type = name_type;
   namedt.scope = scope;
-  namedt.isgroup = isgroup ? ISGROUP_YES : ISGROUP_NO;
+  namedt.group_flg = group_flg;
   namedt.ttl = ttl;
 
   fill_railcommand(&command, commbuff, (commbuff + LEN_COMM_ONWIRE));
@@ -235,7 +241,7 @@ struct name_state *lib_regname(unsigned char *name,
   result->lenof_scope = nbnodenamelen(scope);
   result->label_type = name_type;
   result->node_type = node_type;
-  result->isgroup = isgroup ? ISGROUP_YES : ISGROUP_NO;
+  result->group_flg = group_flg;
 
   return result;
 }
@@ -1002,7 +1008,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 			unsigned char recepient_type,
 			void *data,
 			size_t len,
-			unsigned char isgroup,
+			unsigned char group_flg, /* BUG: this is ignored */
 			unsigned char isbroadcast) {
   struct dtg_srvc_packet *pckt;
   struct com_comm command;
@@ -1012,7 +1018,13 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   void *readypacket;
 
   if ((! (handle && recepient)) ||
-      (len > DTG_MAXLEN)) {
+      (len > DTG_MAXLEN) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0))))) {
     nbworks_errno = EINVAL;
     return -1;
   } else {

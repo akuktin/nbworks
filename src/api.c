@@ -217,7 +217,7 @@ ssize_t nbworks_sendto(unsigned char service,
 
     ret_val = lib_senddtg_138(ses->handle, peer->name,
 			      (peer->name)[NETBIOS_NAME_LEN-1],
-			      buff, len, ses->handle->isgroup,
+			      buff, len, ses->handle->group_flg,
 			      ((flags & MSG_BRDCAST) ? ISGROUP_YES : ISGROUP_NO));
     if (ret_val < len) {
       /* nbworks_errno is already set */

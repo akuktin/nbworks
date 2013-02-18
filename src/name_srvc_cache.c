@@ -167,8 +167,7 @@ struct cache_namenode *add_name(struct cache_namenode *name,
       if ((cur_name->namelen == name->namelen) &&
 	  (0 == memcmp(cur_name->name, name->name,
 		       name->namelen)) &&
-	  (name->isgroup ? cur_name->isgroup :
-	                   (! cur_name->isgroup)) &&
+	  (cur_name->group_flg & name->group_flg) &&
 	  (cur_name->dns_type == name->dns_type) &&
 	  (cur_name->dns_class == name->dns_class)) {
 	if (cur_name != name) {
@@ -192,7 +191,7 @@ struct cache_namenode *add_nblabel(void *label,
 				   unsigned char labellen,
 				   unsigned short node_types,
 				   uint64_t token,
-				   int isgroup,
+				   unsigned char group_flg,
 				   uint16_t dns_type,
 				   uint16_t dns_class,
 				   struct addrlst_grpblock *addrblock,
@@ -200,7 +199,13 @@ struct cache_namenode *add_nblabel(void *label,
   struct cache_namenode *result;
   int i;
 
-  if (! label)
+  if ((! label) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
     return 0;
 
   result = calloc(1, sizeof(struct cache_namenode));
@@ -224,7 +229,7 @@ struct cache_namenode *add_nblabel(void *label,
   result->node_types = node_types;
   result->isinconflict = FALSE;
   result->token = token;
-  result->isgroup = isgroup;
+  result->group_flg = group_flg;
   result->dns_type = dns_type;
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
@@ -273,8 +278,7 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
     if ((cur_name->namelen == name->namelen) &&
 	(0 == memcmp(cur_name->name, name->name,
 		     name->namelen)) &&
-	(name->isgroup ? cur_name->isgroup :
-	                 (! cur_name->isgroup)) &&
+	(cur_name->group_flg & name->group_flg) &&
 	(cur_name->dns_type == name->dns_type) &&
 	(cur_name->dns_class == name->dns_class)) {
 
@@ -323,8 +327,7 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
     if ((cur_name->namelen == namecard->namelen) &&
 	(0 == memcmp(cur_name->name, namecard->name,
 		     namecard->namelen)) &&
-	(namecard->isgroup ? cur_name->isgroup :
-	                     (! cur_name->isgroup)) &&
+	(cur_name->group_flg & namecard->group_flg) &&
 	(cur_name->node_types & namecard->node_types) &&
 	(cur_name->dns_type == namecard->dns_type) &&
 	(cur_name->dns_class == namecard->dns_class)) {
@@ -340,7 +343,7 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
 struct cache_namenode *find_nblabel(void *label,
 				    unsigned char labellen,
 				    unsigned short node_types,
-				    int isgroup,
+				    unsigned char group_flg,
 				    uint16_t dns_type,
 				    uint16_t dns_class,
 				    struct nbnodename_list *scope) {
@@ -361,8 +364,7 @@ struct cache_namenode *find_nblabel(void *label,
     if ((cur_name->namelen == labellen) &&
 	(0 == memcmp(cur_name->name, label,
 		     labellen)) &&
-	(isgroup ? cur_name->isgroup :
-	           (! cur_name->isgroup)) &&
+	(cur_name->group_flg & group_flg) &&
 	(cur_name->node_types & node_types) &&
 	(cur_name->dns_type == dns_type) &&
 	(cur_name->dns_class == dns_class)) {
@@ -405,12 +407,18 @@ struct cache_namenode *alloc_namecard(void *label,
 				      unsigned char labellen,
 				      unsigned short node_types,
 				      uint64_t token,
-				      int isgroup,
+				      unsigned char group_flg,
 				      uint16_t dns_type,
 				      uint16_t dns_class) {
   struct cache_namenode *result;
 
-  if (! label)
+  if ((! label) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
     return 0;
 
   result = calloc(1, sizeof(struct cache_namenode));
@@ -431,7 +439,7 @@ struct cache_namenode *alloc_namecard(void *label,
   result->node_types = node_types;
   result->isinconflict = FALSE;
   result->token = token;
-  result->isgroup = isgroup;
+  result->group_flg = group_flg;
   result->dns_type = dns_type;
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */

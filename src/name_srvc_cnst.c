@@ -20,11 +20,20 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
 						     struct nbnodename_list *scope,
 						     uint32_t ttl,
 						     uint32_t in_address,
-						     int isgroup,
+						     unsigned char group_flg,
 						     unsigned char node_type) {
   struct name_srvc_packet *result;
   struct nbnodename_list *complete_name;
   struct nbaddress_list *addr;
+
+  if ((! name) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+    return 0;
 
   complete_name = malloc(sizeof(struct nbnodename_list));
   if (! complete_name) {
@@ -50,7 +59,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   addr->next_address = 0;
   addr->there_is_an_address = TRUE;
   addr->address = in_address;
-  if (isgroup) {
+  if (group_flg & ISGROUP_YES) {
     addr->flags = NBADDRLST_GROUP_YES;
   } else {
     addr->flags = NBADDRLST_GROUP_NO;
@@ -124,11 +133,20 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
 						       struct nbnodename_list *scope,
 						       uint32_t ttl,
 						       uint32_t in_address,
-						       int isgroup,
+						       unsigned char group_flg,
 						       unsigned char node_type) {
   struct name_srvc_packet *result;
   struct nbnodename_list *complete_name;
   struct nbaddress_list *addr;
+
+  if ((! name) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+    return 0;
 
   complete_name = malloc(sizeof(struct nbnodename_list));
   if (! complete_name) {
@@ -154,7 +172,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
   addr->next_address = 0;
   addr->there_is_an_address = 1;
   addr->address = in_address;
-  if (isgroup) {
+  if (group_flg & ISGROUP_YES) {
     addr->flags = NBADDRLST_GROUP_YES;
   } else {
     addr->flags = NBADDRLST_GROUP_NO;

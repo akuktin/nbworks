@@ -234,9 +234,9 @@ void *handle_rail(void *args) {
       name_ptr = cache_namecard->name;
       name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
 			       scope, my_ipv4_address(),
-			       cache_namecard->isgroup);
+			       cache_namecard->group_flg);
 
-      if (cache_namecard->isgroup) {
+      if (cache_namecard->group_flg & ISGROUP_YES) {
 	cache_namecard->token = 0;
 	for (i=0; i<4; i++) {
 	  if (cache_namecard->addrs.recrd[i].addr)
@@ -423,7 +423,7 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
 
   result->scope = read_all_DNS_labels(&walker, walker, endof_buff, 0);
 
-  result->isgroup = *walker;
+  result->group_flg = *walker;
   walker++;
   read_32field(walker, &(result->ttl));
 
@@ -445,7 +445,7 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
 
   walker = mempcpy(startof_buff, data->name, NETBIOS_NAME_LEN);
   walker = fill_all_DNS_labels(data->scope, walker, endof_buff, 0);
-  *walker = data->isgroup;
+  *walker = data->group_flg;
   walker++;
   walker = fill_32field(data->ttl, walker);
 
@@ -463,8 +463,6 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 
   if (! command)
     return 0;
-
-  /* WRONG FOR GROUPS!!! */
 
   data_buff = malloc(command->len);
   if (! data_buff) {
@@ -496,7 +494,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   default:
     cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
 				    CACHE_NODEFLG_B, make_token(),
-				    namedata->isgroup, QTYPE_NB, QCLASS_IN);
+				    namedata->group_flg, QTYPE_NB, QCLASS_IN);
     if (! cache_namecard) {
       /* TODO: error handling */
       cleanup;
@@ -506,12 +504,12 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     if (grp_namecard) {
       destroy_namecard(cache_namecard);
 
-      if (namedata->isgroup) {
+      if (command->command == rail_addr_ofXgroup) {
 	/* Tell the world (actually optional for B nodes). */
 	if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
 				      namedata->scope,
 				      my_ipv4_address(),
-				      namedata->isgroup, namedata->ttl)) {
+				      namedata->group_flg, namedata->ttl)) {
 	  grp_namecard->timeof_death = time(0) + namedata->ttl;
 
 	  for (i=0; i<4; i++) {
@@ -550,7 +548,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
 				    namedata->scope,
 				    my_ipv4_address(),
-				    namedata->isgroup, namedata->ttl)) {
+				    namedata->group_flg, namedata->ttl)) {
 	if (! (add_scope(namedata->scope, cache_namecard) ||
 	       add_name(cache_namecard, namedata->scope))) {
 	  destroy_namecard(cache_namecard);
@@ -594,8 +592,8 @@ int rail_senddtg(int rail_sckt,
   struct ss_queue_storage *trans;
   struct ipv4_addr_list *group_addrs;
   union trans_id tid;
-  int isgroup, i;
-  unsigned short node_type;
+  int i;
+  unsigned short node_type, group_flg;
   unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! (command && queue_stor))
@@ -641,9 +639,9 @@ int rail_senddtg(int rail_sckt,
   }
 
   if (pckt->type == DIR_GRP_DTG)
-    isgroup = ISGROUP_YES;
+    group_flg = ISGROUP_YES;
   else
-    isgroup = ISGROUP_NO;
+    group_flg = ISGROUP_NO;
 
   switch (pckt->payload_t) {
   case normal:
@@ -663,14 +661,14 @@ int rail_senddtg(int rail_sckt,
 
     namecard = find_nblabel(decode_nbnodename(normal_pyld->dst_name->name,
 					      decoded_name),
-			    NETBIOS_NAME_LEN, node_type, isgroup,
+			    NETBIOS_NAME_LEN, node_type, group_flg,
 			    QTYPE_NB, QCLASS_IN, normal_pyld->dst_name->next_name);
     if (! namecard)
       namecard = name_srvc_B_find_name(decoded_name,
 				       decoded_name[NETBIOS_NAME_LEN-1],
 				       normal_pyld->dst_name->next_name,
 				       node_type,
-				       isgroup);
+				       group_flg);
     if (namecard) {
       /* FIXME: sending to another name on the same host */
       if (pckt->type == BRDCST_DTG) {
@@ -699,7 +697,7 @@ int rail_senddtg(int rail_sckt,
 	    trans->last_active = time(0);
 	}
 
-	if (namecard->isgroup) {
+	if (namecard->group_flg & ISGROUP_YES) {
 	  group_addrs = namecard->addrs.recrd[i].addr;
 	  while (group_addrs->next) {
 	    dst_addr.sin_addr.s_addr = group_addrs->ip_addr;

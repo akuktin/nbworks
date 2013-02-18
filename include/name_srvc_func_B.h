@@ -8,7 +8,7 @@ int
                        unsigned char name_type,
                        struct nbnodename_list *scope,
                        uint32_t my_ip_address,
-                       int isgroup,
+                       unsigned char group_flg,
                        uint32_t ttl);
 /* return: 0=success, >0=fail, -1=error */
 int
@@ -16,7 +16,7 @@ int
                            unsigned char name_type,
                            struct nbnodename_list *scope,
                            uint32_t my_ip_address,
-                           int isgroup);
+                           unsigned char group_flg);
 struct name_srvc_resource_lst *
   name_srvc_B_callout_name(unsigned char *name,
                            unsigned char name_type,
@@ -26,7 +26,7 @@ struct cache_namenode *
                         unsigned char name_type,
                         struct nbnodename_list *scope,
                         unsigned short nodetype, /* Only one node type! */
-                        int isgroup);
+                        unsigned char group_flg);
 void *
   name_srvc_B_handle_newtid(void *input);
 

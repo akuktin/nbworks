@@ -68,7 +68,7 @@ struct cache_namenode {
   unsigned char isinconflict;
   uint64_t token; /* 0 if name not mine, 1 if name in
                      process of being registered */
-  int isgroup;
+  unsigned char group_flg;
   uint16_t dns_type;
   uint16_t dns_class;
   time_t timeof_death;
@@ -96,7 +96,7 @@ struct cache_namenode *
               unsigned char labellen,
               unsigned short node_types,
               uint64_t token,
-              int isgroup,
+              unsigned char group_flg,
               uint16_t dns_type,
               uint16_t dns_class,
               struct addrlst_grpblock *addrblock,
@@ -112,7 +112,7 @@ struct cache_namenode *
   find_nblabel(void *label,
                unsigned char labellen,
                unsigned short node_types,
-               int isgroup,
+               unsigned char group_flg,
                uint16_t dns_type,
                uint16_t dns_class,
                struct nbnodename_list *scope);
@@ -125,7 +125,7 @@ struct cache_namenode *
                  unsigned char labellen,
                  unsigned short node_types,
                  uint64_t token,
-                 int isgroup,
+                 unsigned char group_flg,
                  uint16_t dns_type,
                  uint16_t dns_class);
 void

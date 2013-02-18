@@ -6,7 +6,7 @@
 # include "nodename.h"
 
 # define ISGROUP_YES   1
-# define ISGROUP_NO    0
+# define ISGROUP_NO    2
 
 
 # define QTYPE_NB      0x0020

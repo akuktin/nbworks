@@ -63,7 +63,7 @@ struct name_state {
                       * incl. the terminating NULL in the packet */
   unsigned char label_type; /* the type octet of the name */
   unsigned char node_type;  /* flag field */
-  unsigned char isgroup;
+  unsigned char group_flg;
 
 /* maybe we will daysie-chain them */
   struct name_state *next;
@@ -102,7 +102,7 @@ struct name_state *
   lib_regname(unsigned char *name,
               unsigned char name_type,
               struct nbnodename_list *scope,
-              unsigned char isgroup,
+              unsigned char group_flg,
               unsigned char node_type, /* only one type */
               uint32_t ttl);
 /* returns: >0 = success, 0 = fail, <0 = error */
@@ -176,7 +176,7 @@ ssize_t
                   unsigned char recepient_type,
                   void *data,
                   size_t len,
-                  unsigned char isgroup,
+                  unsigned char group_flg, /* BUG: this is ignored */
                   unsigned char isbroadcast);
 
 void *

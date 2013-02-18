@@ -32,7 +32,7 @@ int name_srvc_B_add_name(unsigned char *name,
 			 unsigned char name_type,
 			 struct nbnodename_list *scope,
 			 uint32_t my_ip_address,
-			 int isgroup,
+			 unsigned char group_flg,
 			 uint32_t ttl) {
   struct timespec sleeptime;
   struct sockaddr_in addr;
@@ -42,6 +42,15 @@ int name_srvc_B_add_name(unsigned char *name,
   int result, i;
   union trans_id tid;
 
+  if ((! name) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+    return -1;
+
   result = 0;
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
@@ -50,10 +59,10 @@ int name_srvc_B_add_name(unsigned char *name,
   addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
-  addr.sin_addr.s_addr = INADDR_BROADCAST;
+  addr.sin_addr.s_addr = get_inaddr();
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, ttl,
-				     my_ip_address, isgroup, CACHE_NODEFLG_B);
+				     my_ip_address, group_flg, CACHE_NODEFLG_B);
   if (! pckt) {
     /* TODO: errno signaling stuff */
     return -1;
@@ -137,13 +146,22 @@ int name_srvc_B_release_name(unsigned char *name,
 			     unsigned char name_type,
 			     struct nbnodename_list *scope,
 			     uint32_t my_ip_address,
-			     int isgroup) {
+			     unsigned char group_flg) {
   struct timespec sleeptime;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt;
   struct sockaddr_in addr;
   int i;
   union trans_id tid;
+
+  if ((! name) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+    return -1;
 
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
@@ -155,7 +173,7 @@ int name_srvc_B_release_name(unsigned char *name,
   addr.sin_addr.s_addr = INADDR_BROADCAST;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
-				     my_ip_address, isgroup, CACHE_NODEFLG_B);
+				     my_ip_address, group_flg, CACHE_NODEFLG_B);
   if (! pckt) {
     /* TODO: errno signaling stuff */
     return -1;
@@ -318,7 +336,7 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
 					     unsigned char name_type,
 					     struct nbnodename_list *scope,
 					     unsigned short nodetype, /* Only one node type! */
-					     int isgroup) {
+					     unsigned char group_flg) {
   struct name_srvc_resource_lst *res, *cur_res;
   struct nbaddress_list *list;//, *cmpnd_lst;
   struct ipv4_addr_list *addrlst, *frstaddrlst;
@@ -328,9 +346,18 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
   uint16_t target_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
+  if ((! name) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+    return 0;
+
   decoded_name[NETBIOS_NAME_LEN] = '\0';
 
-  if (isgroup)
+  if (group_flg & ISGROUP_YES)
     target_flags = NBADDRLST_GROUP_YES;
   else
     target_flags = NBADDRLST_GROUP_NO;
@@ -408,7 +435,7 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
     new_name = alloc_namecard(decode_nbnodename(cur_res->res->name->name,
                                                 decoded_name),
 			      NETBIOS_NAME_LEN,
-			      nodetype, 0, isgroup,
+			      nodetype, 0, group_flg,
 			      cur_res->res->rrtype, cur_res->res->rrclass);
     if (new_name) {
       new_name->addrs.recrd[0].node_type = nodetype;
@@ -699,7 +726,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 			names_list->nbnodename->len = NETBIOS_CODED_NAME_LEN;
 			names_list->nbnodename->next_name = 0;
 
-			if (cache_namecard_b->isgroup)
+			if (cache_namecard_b->group_flg & ISGROUP_YES)
 			  names_list->name_flags = NBADDRLST_GROUP_YES;
 			else
 			  names_list->name_flags = NBADDRLST_GROUP_NO;
@@ -757,7 +784,6 @@ void *name_srvc_B_handle_newtid(void *input) {
 					    qstn->qstn->qtype,
 					    qstn->qstn->qclass,
 					    qstn->qstn->name->next_name);
-
 	      if (cache_namecard)
 		if ((cache_namecard->token) &&
 		    (cache_namecard->timeof_death > cur_time) &&
@@ -779,7 +805,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  res->res->rrclass = cache_namecard->dns_class;
 		  res->res->ttl = (cache_namecard->timeof_death - cur_time);
 
-		  if (cache_namecard->isgroup)
+		  if (cache_namecard->group_flg & ISGROUP_YES)
 		    flags = NBADDRLST_GROUP_YES;
 		  else
 		    flags = NBADDRLST_GROUP_NO;

@@ -1414,5 +1414,6 @@ uint32_t get_inaddr() {
 uint32_t my_ipv4_address() {
   // FIXME: stub
   //        192.168.1.3/24
-  return 0x0301a8c0;
+  /*  return 0x0301a8c0;*/
+  return 0xc0a80103;
 }
