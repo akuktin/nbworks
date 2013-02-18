@@ -668,7 +668,14 @@ void *ss__port137(void *placeholder) {
   my_addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(my_addr.sin_port));
-  my_addr.sin_addr.s_addr = get_inaddr();
+  /* The use of INADDR_ANY macro in the below line has a positive effect
+   * in that it will enable me to listen to any and all traffic. However,
+   * it also has a bad effect on hosts with multiple interfaces (that is,
+   * multiple IP addresses assigned to it). These hosts may sometimes send
+   * packets which list an address different that the address listed in
+   * the packet itself. My own algorithms, and presumably other too, will
+   * discard and ignore the content of such packets. */
+  my_addr.sin_addr.s_addr = INADDR_ANY;
 
   sckts.isbusy = 0xda;
   sckts.all_trans = &(nbworks_all_transactions[NAME_SRVC]);
@@ -871,10 +878,10 @@ void *ss__port138(void *i_dont_actually_use_this) {
   return (void *)ONES;
 }
 
-
+#include <stdio.h>
 void *ss__udp_recver(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
-  struct sockaddr_in his_addr;
+  struct sockaddr_in his_addr, discard_addr;
   struct ss_unif_pckt_list *new_pckt;
   struct ss_priv_trans *cur_trans;
   struct ss_queue *newtid_queue;
@@ -897,6 +904,11 @@ void *ss__udp_recver(void *sckts_ptr) {
   release_lock->isbusy = 0;
 
   name_as_id = 0;
+
+  discard_addr.sin_family = AF_INET;
+  /* VAXism below. */
+  fill_16field(137, (unsigned char *)&(discard_addr.sin_port));
+  discard_addr.sin_addr.s_addr = my_ipv4_address();
 
   polldata.fd = sckts.udp_sckt;
   polldata.events = (POLLIN | POLLPRI);
@@ -944,6 +956,10 @@ void *ss__udp_recver(void *sckts_ptr) {
 	  /* TODO: error handling */
 	  break;
 	}
+      }
+
+      if (his_addr.sin_addr.s_addr == discard_addr.sin_addr.s_addr) {
+      	continue;
       }
 
       new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
@@ -1000,7 +1016,6 @@ void *ss__udp_recver(void *sckts_ptr) {
 	             the error. */
 	  if ((sckts.branch) == DTG_SRVC) { /* There goes my terminally abstract code... */
 	    dtg_srvc_send_NOTHERE_error(new_pckt);
-
 	    free(new_pckt);
 	    break;
 	  } else {

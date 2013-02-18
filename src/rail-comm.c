@@ -651,7 +651,7 @@ int rail_senddtg(int rail_sckt,
 
     if (0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name,
 		    NETBIOS_CODED_NAME_LEN)) {
-      dst_addr.sin_addr.s_addr = INADDR_BROADCAST;
+      dst_addr.sin_addr.s_addr = get_inaddr();
 
       pckt->for_del = TRUE;
       ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
@@ -672,7 +672,7 @@ int rail_senddtg(int rail_sckt,
     if (namecard) {
       /* FIXME: sending to another name on the same host */
       if (pckt->type == BRDCST_DTG) {
-	dst_addr.sin_addr.s_addr = INADDR_BROADCAST;
+	dst_addr.sin_addr.s_addr = get_inaddr();
 
 	pckt->for_del = TRUE;
 	ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));

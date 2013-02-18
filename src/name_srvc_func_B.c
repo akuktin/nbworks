@@ -170,7 +170,7 @@ int name_srvc_B_release_name(unsigned char *name,
   addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
-  addr.sin_addr.s_addr = INADDR_BROADCAST;
+  addr.sin_addr.s_addr = get_inaddr();
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
 				     my_ip_address, group_flg, CACHE_NODEFLG_B);
@@ -233,7 +233,7 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
   addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
-  addr.sin_addr.s_addr = 0xff01a8c0; //INADDR_BROADCAST;
+  addr.sin_addr.s_addr = get_inaddr();
 
   pckt = name_srvc_make_name_qry_req(name, name_type, scope);
   if (! pckt) {
@@ -270,7 +270,7 @@ struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
       if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
 					    OPCODE_QUERY)) &&
 	  (outside_pckt->header->nm_flags & FLG_AA) &&
-	  (outside_pckt->header->rcode != 0)) {
+	  (outside_pckt->header->rcode == 0)) {
 	/* POSITIVE NAME QUERY RESPONSE */
 	res = outside_pckt->answers;
 	last_res = &(outside_pckt->answers);
@@ -432,11 +432,11 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
   }
 
   if (frstaddrlst) {
-    new_name = alloc_namecard(decode_nbnodename(cur_res->res->name->name,
+    new_name = alloc_namecard(decode_nbnodename(res->res->name->name,
                                                 decoded_name),
 			      NETBIOS_NAME_LEN,
 			      nodetype, 0, group_flg,
-			      cur_res->res->rrtype, cur_res->res->rrclass);
+			      res->res->rrtype, res->res->rrclass);
     if (new_name) {
       new_name->addrs.recrd[0].node_type = nodetype;
       new_name->addrs.recrd[0].addr = frstaddrlst;
