@@ -1058,7 +1058,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     break;
   case CACHE_NODEFLG_H:
   default:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_H);
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
     command.node_type = 'H';
     break;
   }
