@@ -644,6 +644,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 							  - cur_time),
 							 in_addr, ISGROUP_NO,
 							 cache_namecard->addrs.recrd[i].node_type);
+		    pckt->header->transaction_id = params.id.tid;
 		    pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
 		    pckt->header->nm_flags = FLG_AA;
 		    pckt->header->rcode = RCODE_CFT_ERR;
@@ -875,6 +876,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	/* no check */
 	pckt->answers = answer_lst;
 
+	pckt->header->transaction_id = params.id.tid;
 	pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
 	pckt->header->nm_flags = FLG_AA;
 	pckt->header->rcode = 0;
@@ -1020,6 +1022,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_YES,
 						       cache_namecard->addrs.recrd[0].node_type);
+		  pckt->header->transaction_id = params.id.tid;
 		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
 		  pckt->header->rcode = RCODE_CFT_ERR;
@@ -1072,6 +1075,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 						       res->res->name->next_name,
 						       0, 0, ISGROUP_NO,
 						       cache_namecard->addrs.recrd[0].node_type);
+		  pckt->header->transaction_id = params.id.tid;
 		  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 		  pckt->header->nm_flags = FLG_AA;
 		  pckt->header->rcode = RCODE_CFT_ERR;
