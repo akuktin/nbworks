@@ -1001,6 +1001,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	      sckts.pckt_dstr(new_pckt->packet, 1, 1);
 	      free(new_pckt);
 	      new_pckt = 0;
+
 	      break;
 	    }
 	  } else {
@@ -1428,7 +1429,6 @@ uint32_t get_inaddr() {
 
 uint32_t my_ipv4_address() {
   // FIXME: stub
-  //        192.168.1.3/24
-  /*  return 0x0301a8c0;*/
-  return 0xc0a80103;
+  //        192.168.1.2/24
+  return 0xc0a80102;
 }

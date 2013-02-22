@@ -698,7 +698,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
   }
 
   if (ipv4_addr_list_grpB_frst) {
-    result->node_types = result->node_types & CACHE_NODEGRPFLG_B;
+    result->node_types = result->node_types | CACHE_NODEGRPFLG_B;
     for (i=0; i<4; i++) {
       if (! result->ysgrp.recrd[i].node_type) {
 	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_B; /* not a typo */
@@ -708,7 +708,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
     }
   }
   if (ipv4_addr_list_grpP_frst) {
-    result->node_types = result->node_types & CACHE_NODEGRPFLG_P;
+    result->node_types = result->node_types | CACHE_NODEGRPFLG_P;
     for (i=0; i<4; i++) {
       if (! result->ysgrp.recrd[i].node_type) {
 	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_P; /* not a typo */
@@ -718,7 +718,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
     }
   }
   if (ipv4_addr_list_grpM_frst) {
-    result->node_types = result->node_types & CACHE_NODEGRPFLG_M;
+    result->node_types = result->node_types | CACHE_NODEGRPFLG_M;
     for (i=0; i<4; i++) {
       if (! result->ysgrp.recrd[i].node_type) {
 	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_M; /* not a typo */
@@ -728,7 +728,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
     }
   }
   if (ipv4_addr_list_grpH_frst) {
-    result->node_types = result->node_types & CACHE_NODEGRPFLG_H;
+    result->node_types = result->node_types | CACHE_NODEGRPFLG_H;
     for (i=0; i<4; i++) {
       if (! result->ysgrp.recrd[i].node_type) {
 	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_H; /* not a typo */
@@ -739,7 +739,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
   }
 
   if (ipv4_addr_listB_frst) {
-    result->node_types = result->node_types & CACHE_NODEFLG_B;
+    result->node_types = result->node_types | CACHE_NODEFLG_B;
     for (i=0; i<4; i++) {
       if (! result->nogrp.recrd[i].node_type) {
 	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_B;
@@ -749,7 +749,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
     }
   }
   if (ipv4_addr_listP_frst) {
-    result->node_types = result->node_types & CACHE_NODEFLG_P;
+    result->node_types = result->node_types | CACHE_NODEFLG_P;
     for (i=0; i<4; i++) {
       if (! result->nogrp.recrd[i].node_type) {
 	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_P;
@@ -759,7 +759,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
     }
   }
   if (ipv4_addr_listM_frst) {
-    result->node_types = result->node_types & CACHE_NODEFLG_M;
+    result->node_types = result->node_types | CACHE_NODEFLG_M;
     for (i=0; i<4; i++) {
       if (! result->nogrp.recrd[i].node_type) {
 	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_M;
@@ -769,7 +769,7 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
     }
   }
   if (ipv4_addr_listH_frst) {
-    result->node_types = result->node_types & CACHE_NODEFLG_H;
+    result->node_types = result->node_types | CACHE_NODEFLG_H;
     for (i=0; i<4; i++) {
       if (! result->nogrp.recrd[i].node_type) {
 	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_H;

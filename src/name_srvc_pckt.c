@@ -213,6 +213,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   if ((walker + 5 * sizeof(uint16_t)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
+
     struct nbnodename_list *names_list;
     while (resource->name) {
       names_list = resource->name->next_name;
@@ -827,7 +828,7 @@ void *master_name_srvc_pckt_reader(void *packet,
   i = result->header->numof_additional_recs;
   if (i) {
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
-    if (! cur_res->next) {
+    if (! cur_res) {
       /* TODO: errno signaling stuff */
       destroy_name_srvc_pckt(result, 1, 1);
       return 0;

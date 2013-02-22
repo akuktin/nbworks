@@ -228,6 +228,7 @@ void *handle_rail(void *args) {
   case rail_delname:
     /* Currently, this code does not remove my IPv4 address from
      * the cache. */
+    /* WRONG FOR GROUPS!!! */
     cache_namecard = find_namebytok(command.token, &scope);
 
     if (cache_namecard) {
@@ -460,6 +461,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   struct ipv4_addr_list *new_addr, *cur_addr, **last_addr;
   int i;
   unsigned char *data_buff;
+
+  /* WRONG FOR GROUPS!!! */
 
   if (! command)
     return 0;

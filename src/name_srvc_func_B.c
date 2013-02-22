@@ -516,11 +516,12 @@ void *name_srvc_B_handle_newtid(void *input) {
   label[NETBIOS_NAME_LEN] = '\0';
   decoded_name[NETBIOS_NAME_LEN] = '\0';
 
-  ss_set_inputdrop_name_tid(&(params.id));
   last_outpckt = 0;
   waited = 0;
 
   while (0xceca) /* Also known as sesa. */ {
+
+    ss_set_inputdrop_name_tid(&(params.id));
 
     do {
       outside_pckt = ss__recv_entry(params.trans);
@@ -548,6 +549,8 @@ void *name_srvc_B_handle_newtid(void *input) {
       }
 
     } while (! outside_pckt->packet);
+
+    ss_set_normalstate_name_tid(&(params.id));
 
     outpckt = outside_pckt->packet;
 
@@ -630,11 +633,13 @@ void *name_srvc_B_handle_newtid(void *input) {
 		  memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
 		  label_type = label[NETBIOS_NAME_LEN-1];
 		  label[NETBIOS_NAME_LEN-1] = '\0';
+
+		  in_addr = 0;
 		  for (i=0; i<4; i++) {
-		    if (cache_namecard->addrs.recrd[i].addr)
+		    if (cache_namecard->addrs.recrd[i].addr) {
 		      in_addr = cache_namecard->addrs.recrd[i].addr->ip_addr;
-		    else
-		      in_addr = 0;
+		      break;
+		    }
 		  }
 
 		  if (i<4) {
@@ -645,7 +650,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 							 in_addr, ISGROUP_NO,
 							 cache_namecard->addrs.recrd[i].node_type);
 		    pckt->header->transaction_id = params.id.tid;
-		    pckt->header->opcode = (OPCODE_RESPONSE & OPCODE_REGISTRATION);
+		    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 		    pckt->header->nm_flags = FLG_AA;
 		    pckt->header->rcode = RCODE_CFT_ERR;
 		    pckt->for_del = 1;
@@ -1188,7 +1193,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 
     // NAME RELEASE REQUEST
 
-    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
 				     OPCODE_RELEASE)) &&
 	(outpckt->header->rcode == 0)) {
 
@@ -1378,7 +1383,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 		      cache_namecard->timeof_death = ZEROONES; /* infinity */
 		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-		    /* Delete the reference to the the address
+		    /* Delete the reference to the address
 		     * lists so they do not get freed.*/
 		    for (i=0; i<4; i++) {
 		      addr_bigblock->nogrp.recrd[i].addr = 0;
