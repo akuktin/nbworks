@@ -594,6 +594,7 @@ int rail_senddtg(int rail_sckt,
   struct cache_namenode *namecard;
   struct ss_queue_storage *trans;
   struct ipv4_addr_list *group_addrs;
+  struct ss_queue *queue;
   union trans_id tid;
   int i;
   unsigned short node_type, group_flg;
@@ -652,12 +653,34 @@ int rail_senddtg(int rail_sckt,
     normal_pyld->pyldpyld_delptr = buff;
     buff = 0;
 
-    if (0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name,
-		    NETBIOS_CODED_NAME_LEN)) {
+    tid.name_scope = normal_pyld->src_name;
+    //    tid.name_scope = clone_nbnodename(normal_pyld->src_name);
+    //    decode_nbnodename(tid.name_scope->name, decoded_name);
+    //    memcpy(tid.name_scope->name, decoded_name, NETBIOS_NAME_LEN);
+
+    trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
+    if (! trans) {
+      printf("nije nasao queue_stor\n");
+
+      queue = ss_register_dtg_tid(&tid);
+      trans = ss_add_queuestorage(queue, &tid, DTG_SRVC, queue_stor);
+
+      free(queue);
+    }
+    if (trans->last_active < ZEROONES)
+      trans->last_active = time(0);
+
+
+    if ((pckt->type == BRDCST_DTG) ||
+	(0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name,
+		     NETBIOS_CODED_NAME_LEN))) {
+
       dst_addr.sin_addr.s_addr = get_inaddr();
 
       pckt->for_del = TRUE;
       ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
+
+      pckt = 0;
 
       break;
     }
@@ -670,36 +693,15 @@ int rail_senddtg(int rail_sckt,
       namecard = name_srvc_B_find_name(decoded_name,
 				       decoded_name[NETBIOS_NAME_LEN-1],
 				       normal_pyld->dst_name->next_name,
-				       node_type,
-				       group_flg);
+				       node_type, group_flg);
     if (namecard) {
       /* FIXME: sending to another name on the same host */
-      if (pckt->type == BRDCST_DTG) {
-	dst_addr.sin_addr.s_addr = get_inaddr();
-
-	pckt->for_del = TRUE;
-	ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
-
-	break;
-      }
       for (i=0; i<4; i++) {
 	if (namecard->addrs.recrd[i].node_type == node_type)
 	  break;
       }
       if ((i < 4) &&
 	  (namecard->addrs.recrd[i].addr)) {
-	tid.name_scope = normal_pyld->src_name;
-	trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
-	if (! trans) {
-	  do {
-	    ss_add_queuestorage(ss_register_dtg_tid(&tid), &tid,
-				DTG_SRVC, queue_stor);
-	    trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
-	  } while (! trans);
-	  if (trans->last_active < ZEROONES)
-	    trans->last_active = time(0);
-	}
-
 	if (namecard->group_flg & ISGROUP_YES) {
 	  group_addrs = namecard->addrs.recrd[i].addr;
 	  while (group_addrs->next) {

@@ -102,6 +102,16 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
     return 0;
   }
 
+  /* BUG: This line can cause a VERY bizzare failure, when I am receiving a packet that I
+   *      have sent to a broadcast address udp__recver() is listening to, if udp__recver()
+   *      does not filter out the packets from my IP address.
+   *      Failure manifests by the malloc failing, either by segfaulting or by glibc
+   *      detecting the corruption of the heap (?) and killing the application (multiplexing
+   *      daemon).
+   *      The only possible cause of failure on my end that I can think of is a buffer overflow
+   *      somewhere. */
+  /* After checking all instances of memset(), memcpy() and mempcpy(), and fixing a bunch of
+   * errors, I can still not make the bug go away. */
   question = malloc(sizeof(struct name_srvc_question));
   if (! question) {
     /* TODO: errno signaling stuff */

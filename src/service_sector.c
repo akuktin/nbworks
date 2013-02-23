@@ -419,9 +419,11 @@ inline int ss_dtg_send_pckt(struct dtg_srvc_packet *pckt,
 
       trans->outgoing->next = trans_pckt;
       trans->outgoing = trans_pckt;
+
+      return 1;
     };
 
-  return 1;
+  return -1;
 }
 
 inline void *ss__recv_pckt(struct ss_queue *trans) {
@@ -805,7 +807,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
   my_addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(138, (unsigned char *)&(my_addr.sin_port));
-  my_addr.sin_addr.s_addr = get_inaddr();
+  my_addr.sin_addr.s_addr = INADDR_ANY;
 
   sckts.isbusy = 0xda;
   sckts.all_trans = &(nbworks_all_transactions[DTG_SRVC]);
@@ -908,7 +910,9 @@ void *ss__udp_recver(void *sckts_ptr) {
   discard_addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(discard_addr.sin_port));
-  discard_addr.sin_addr.s_addr = my_ipv4_address();
+  fill_32field(my_ipv4_address(),
+  	       (unsigned char *)&(discard_addr.sin_addr.s_addr));
+  //  discard_addr.sin_addr.s_addr = my_ipv4_address();
 
   polldata.fd = sckts.udp_sckt;
   polldata.events = (POLLIN | POLLPRI);

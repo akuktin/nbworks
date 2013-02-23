@@ -161,6 +161,8 @@ struct name_state *lib_regname(unsigned char *name,
     nbworks_errno = ENOMEM;
     return 0;
   }
+  result->name->next_name = 0;
+  result->name->len = NETBIOS_NAME_LEN;
   memcpy(result->name->name, name, NETBIOS_NAME_LEN);
 
   result->scope = clone_nbnodename(scope);
@@ -234,9 +236,6 @@ struct name_state *lib_regname(unsigned char *name,
   }
 
   result->token = command.token;
-  result->name->next_name = 0;
-  result->name->len = NETBIOS_NAME_LEN;
-  memcpy(result->name->name, name, NETBIOS_NAME_LEN);
 
   result->lenof_scope = nbnodenamelen(scope);
   result->label_type = name_type;
@@ -873,6 +872,11 @@ void *lib_assemble_frags(struct dtg_frag *frags,
 
   done = 0;
   while (frags) {
+    if (done + frags->len > len) {
+      /* OUT_OF_BOUNDS */
+      free(result);
+      return 0;
+    }
     memcpy((result + done), frags->data, frags->len);
     done = done + len;
     frags = frags->next;
@@ -1873,15 +1877,15 @@ struct nbworks_session *lib_make_session(int socket,
 					 unsigned char keepalive) {
   struct nbworks_session *result;
 
-  if (!caller)
-    return 0;
-
   result = malloc(sizeof(struct nbworks_session));
   if (! result) {
     return 0;
   }
 
-  result->peer = clone_nbnodename(caller);
+  if (caller)
+    result->peer = clone_nbnodename(caller);
+  else
+    result->peer = 0;
   result->handle = handle;
   result->cancel_send = 0;
   result->cancel_recv = 0;
@@ -1929,13 +1933,13 @@ struct nbworks_session *lib_take_session(struct name_state *handle) {
 
       return result;
     } else {
-      clone = malloc(sizeof(struct name_state));
+      clone = malloc(sizeof(struct nbworks_session));
       if (! clone) {
 	nbworks_errno = ENOBUFS;
 	return 0;
       }
 
-      memcpy(clone, result, sizeof(struct name_state));
+      memcpy(clone, result, sizeof(struct nbworks_session));
 
       result->peer = 0;
       pthread_mutex_init(&(clone->mutex), 0);

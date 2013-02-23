@@ -141,7 +141,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     if (! normal_pckt->dst_name) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      free(normal_pckt->src_name);
+      destroy_nbnodename(normal_pckt->src_name);
       free(normal_pckt);
       return 0;
     }
@@ -150,11 +150,11 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
        and instead focus on the PACKET_OFFSET field. */
 
     walker = align(remember_walker, walker, 4);
-    if ((walker + normal_pckt->len) >= end_of_packet) {
+    if ((walker + normal_pckt->len) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      free(normal_pckt->src_name);
-      free(normal_pckt->dst_name);
+      destroy_nbnodename(normal_pckt->src_name);
+      destroy_nbnodename(normal_pckt->dst_name);
       free(normal_pckt);
       return 0;
     }
@@ -165,8 +165,8 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       normal_pckt->payload = malloc(normal_pckt->len);
       if (! normal_pckt->payload) {
 	/* TODO: errno signaling stuff */
-	free(normal_pckt->src_name);
-	free(normal_pckt->dst_name);
+	destroy_nbnodename(normal_pckt->src_name);
+	destroy_nbnodename(normal_pckt->dst_name);
 	free(normal_pckt);
 	return 0;
       }
@@ -175,6 +175,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     } else {
       normal_pckt->do_del_pyldpyld = FALSE;
       normal_pckt->payload = walker;
+      normal_pckt->pyldpyld_delptr = 0;
       walker = walker + normal_pckt->len;
     }
 
