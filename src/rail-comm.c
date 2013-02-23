@@ -654,9 +654,6 @@ int rail_senddtg(int rail_sckt,
     buff = 0;
 
     tid.name_scope = normal_pyld->src_name;
-    //    tid.name_scope = clone_nbnodename(normal_pyld->src_name);
-    //    decode_nbnodename(tid.name_scope->name, decoded_name);
-    //    memcpy(tid.name_scope->name, decoded_name, NETBIOS_NAME_LEN);
 
     trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
     if (! trans) {

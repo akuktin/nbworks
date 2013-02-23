@@ -911,8 +911,7 @@ void *ss__udp_recver(void *sckts_ptr) {
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(discard_addr.sin_port));
   fill_32field(my_ipv4_address(),
-  	       (unsigned char *)&(discard_addr.sin_addr.s_addr));
-  //  discard_addr.sin_addr.s_addr = my_ipv4_address();
+	       (unsigned char *)&(discard_addr.sin_addr.s_addr));
 
   polldata.fd = sckts.udp_sckt;
   polldata.events = (POLLIN | POLLPRI);
