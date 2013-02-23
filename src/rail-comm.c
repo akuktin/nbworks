@@ -657,8 +657,6 @@ int rail_senddtg(int rail_sckt,
 
     trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
     if (! trans) {
-      printf("nije nasao queue_stor\n");
-
       queue = ss_register_dtg_tid(&tid);
       trans = ss_add_queuestorage(queue, &tid, DTG_SRVC, queue_stor);
 
