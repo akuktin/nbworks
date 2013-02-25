@@ -505,7 +505,7 @@ unsigned char *fastfrwd_all_DNS_labels(unsigned char **start_and_end_of_walk,
   if (! start_and_end_of_walk) {
     return 0;
   } else {
-    if (endof_pckt >= *start_and_end_of_walk) {
+    if (*start_and_end_of_walk >= endof_pckt) {
       return 0;
     }
   }
