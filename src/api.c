@@ -521,7 +521,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    break;
 	  if ((flags & MSG_DONTWAIT) ||
 	      (ses->nonblocking)) {
-	    nbworks_errno = 2000;//EAGAIN;
+	    nbworks_errno = EAGAIN;
 	    ret_val = -1;
 	    break;
 	  } else
@@ -530,7 +530,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       } else {
 	if ((flags & MSG_DONTWAIT) ||
 	    (ses->nonblocking)) {
-	  nbworks_errno = 2001;//EAGAIN;
+	  nbworks_errno = EAGAIN;
 	  ret_val = -1;
 	  break;
 	} else
