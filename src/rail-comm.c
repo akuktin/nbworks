@@ -706,9 +706,14 @@ int rail_senddtg(int rail_sckt,
 
 	    group_addrs = group_addrs->next;
 	  }
-	  dst_addr.sin_addr.s_addr = group_addrs->ip_addr;
+
+	  /* VAXism below */
+	  fill_32field(group_addrs->ip_addr,
+		       (unsigned char *)&(dst_addr.sin_addr.s_addr));
 	} else {
-	  dst_addr.sin_addr.s_addr = namecard->addrs.recrd[i].addr->ip_addr;
+	  /* VAXism below */
+	  fill_32field(namecard->addrs.recrd[i].addr->ip_addr,
+		       (unsigned char *)&(dst_addr.sin_addr.s_addr));
 	}
 
 	pckt->for_del = TRUE;
@@ -752,6 +757,7 @@ int rail_add_dtg_server(int rail_sckt,
     return -1;
   }
   new_rail->rail_sckt = rail_sckt;
+  new_rail->next = 0;
 
   nbname = malloc(sizeof(struct nbnodename_list));
   if (! nbname) {
@@ -897,12 +903,15 @@ void *dtg_server(void *arg) {
 	  if (pollfd.revents & POLLOUT) {
 	    if (4 == send(cur_rail->rail_sckt, buff, 4,
 			  (MSG_DONTWAIT | MSG_NOSIGNAL))) {
+
 	      if (pckt->len > send(cur_rail->rail_sckt,
 				   pckt->packetbuff, pckt->len,
 				   (MSG_DONTWAIT | MSG_NOSIGNAL))) {
+
 		do_close_rail;
 		continue;
 	      }
+
 	    } else {
 	      do_close_rail;
 	      continue;

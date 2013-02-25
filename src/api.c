@@ -185,7 +185,6 @@ ssize_t nbworks_sendto(unsigned char service,
   } else {
     nbworks_errno = 0;
     sent = 0;
-
     /* Turn off MSG_EOR in the flags we send to the socket. */
     flags = callflags & (ONES ^ (MSG_EOR | MSG_DONTROUTE));
   }
@@ -218,7 +217,7 @@ ssize_t nbworks_sendto(unsigned char service,
     ret_val = lib_senddtg_138(ses->handle, peer->name,
 			      (peer->name)[NETBIOS_NAME_LEN-1],
 			      buff, len, ses->handle->group_flg,
-			      ((flags & MSG_BRDCAST) ? ISGROUP_YES : ISGROUP_NO));
+			      (flags & MSG_BRDCAST));
     if (ret_val < len) {
       /* nbworks_errno is already set */
       return -1;
@@ -460,6 +459,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
     return -1;
   } else {
     nbworks_errno = 0;
+    ret_val = 0;
 
     /* Turn off some flags. */
     flags = callflags & (ONES ^ (MSG_EOR | MSG_PEEK | MSG_ERRQUEUE));
@@ -482,7 +482,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	if (in_lib->data) {
 	  if (*buff) {
 	    if (len < in_lib->len) {
-	      if (callflags & MSG_TRUNC) {
+	      if (flags & MSG_TRUNC) {
 		ret_val = in_lib->len;
 	      } else {
 		ret_val = len;
@@ -517,18 +517,20 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  ses->handle->in_library = in_lib->next;
 	  free(in_lib);
 	} else {
-	  if ((callflags & MSG_DONTWAIT) ||
+	  if (ret_val)
+	    break;
+	  if ((flags & MSG_DONTWAIT) ||
 	      (ses->nonblocking)) {
-	    nbworks_errno = EAGAIN;
+	    nbworks_errno = 2000;//EAGAIN;
 	    ret_val = -1;
 	    break;
 	  } else
 	    nanosleep(&sleeptime, 0);
 	}
       } else {
-	if ((callflags & MSG_DONTWAIT) ||
+	if ((flags & MSG_DONTWAIT) ||
 	    (ses->nonblocking)) {
-	  nbworks_errno = EAGAIN;
+	  nbworks_errno = 2001;//EAGAIN;
 	  ret_val = -1;
 	  break;
 	} else

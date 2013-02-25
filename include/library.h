@@ -177,7 +177,7 @@ ssize_t
                   void *data,
                   size_t len,
                   unsigned char group_flg,
-                  unsigned char isbroadcast);
+                  int isbroadcast);
 
 void *
   lib_dtgserver(void *arg);

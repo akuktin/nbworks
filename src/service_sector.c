@@ -1019,8 +1019,11 @@ void *ss__udp_recver(void *sckts_ptr) {
 	     MUSING: perhaps I could just drop the datagram and not send
 	             the error. */
 	  if ((sckts.branch) == DTG_SRVC) { /* There goes my terminally abstract code... */
-	    dtg_srvc_send_NOTHERE_error(new_pckt);
+	    //	FIXME    dtg_srvc_send_NOTHERE_error(new_pckt);
+	    sckts.pckt_dstr(new_pckt->packet, 1, 1);
 	    free(new_pckt);
+	    new_pckt = 0;
+
 	    break;
 	  } else {
 	    params.id.tid = tid;

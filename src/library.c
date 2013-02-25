@@ -426,8 +426,6 @@ int lib_start_dtg_srv(struct name_state *handle,
     destroy_nbnodename(handle->dtg_listento);
     handle->dtg_listento = 0;
 
-    handle->in_library = 0;
-
     return -1;
   }
 
@@ -565,9 +563,14 @@ void lib_destroy_frags(struct dtg_frag *flesh) {
 
 void lib_destroy_fragbckbone(struct dtg_frag_bckbone *bone) {
   /* A most curious site: a stackless function. */
-  destroy_nbnodename(bone->src);
-  lib_destroy_frags(bone->frags);
-  free(bone);
+
+  if (bone) {
+    destroy_nbnodename(bone->src);
+    lib_destroy_frags(bone->frags);
+    free(bone);
+  }
+
+  return;
 }
 
 struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
@@ -1013,7 +1016,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 			void *data,
 			size_t len,
 			unsigned char group_flg,
-			unsigned char isbroadcast) {
+			int isbroadcast) {
   struct dtg_srvc_packet *pckt;
   struct com_comm command;
   int daemon_sckt;
@@ -1037,7 +1040,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 
   pckt = malloc(sizeof(struct dtg_srvc_packet));
   if (! pckt) {
-    nbworks_errno = errno;
+    nbworks_errno = ENOBUFS;
     return -1;
   }
 
@@ -1101,9 +1104,9 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     return -1;
   }
 
+  memset(&(command), 0, sizeof(struct com_comm));
   command.command = rail_send_dtg;
   command.token = handle->token;
-  memset(&(command.addr), 0, sizeof(struct sockaddr_in));
   command.len = pckt_len;
   command.data = readypacket;
 
@@ -1144,14 +1147,15 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 
 
 void *lib_dtgserver(void *arg) {
-  struct name_state *handle;
   struct pollfd pfd;
+  struct name_state *handle;
   struct dtg_frag_bckbone *fragbone;
   struct packet_cooked *toshow;
   struct dtg_srvc_packet *dtg;
   struct dtg_pckt_pyld_normal *nrml_pyld;
+  struct nbnodename_list decoded_nbnodename;
   uint32_t len;
-  unsigned char lenbuf[4];
+  unsigned char lenbuf[4], decoded_name[NETBIOS_NAME_LEN];
   unsigned char *new_pckt, take_dtg;
 
   if (arg)
@@ -1169,16 +1173,19 @@ void *lib_dtgserver(void *arg) {
 
   handle->in_server = handle->in_library = 0;
 
+  decoded_nbnodename.name = decoded_name;
+  decoded_nbnodename.len = NETBIOS_NAME_LEN;
+  decoded_nbnodename.next_name = 0;
   toshow = 0;
   take_dtg = FALSE;
 
-  while ((! nbworks_libcntl.stop_alldtg_srv) ||
+  while ((! nbworks_libcntl.stop_alldtg_srv) &&
 	 (! handle->dtg_srv_stop)) {
-    if (0 <= poll(&pfd, 1, nbworks_libcntl.dtg_srv_polltimeout)) {
+    if (0 >= poll(&pfd, 1, nbworks_libcntl.dtg_srv_polltimeout)) {
       if (pfd.revents & (POLLHUP | POLLNVAL | POLLERR)) {
 	break;
       } else
-	continue;
+        continue;
     }
 
     if (4 > recv(handle->dtg_srv_sckt, lenbuf, 4,
@@ -1201,11 +1208,21 @@ void *lib_dtgserver(void *arg) {
     dtg = master_dtg_srvc_pckt_reader(new_pckt, len, 0);
     free(new_pckt);
     if (! dtg) {
-      break;
+      /* Actually, this is not strictly a fatal error. */
+      continue;
     }
 
     if (dtg->payload_t == normal) {
       nrml_pyld = dtg->payload;
+      if (nrml_pyld->src_name) {
+	if (nrml_pyld->src_name->len != NETBIOS_CODED_NAME_LEN) {
+	  /* Theoretically, I should send a SOURCE NAME BAD FORMAT error message to the sender. */
+	  destroy_dtg_srvc_pckt(dtg, 1, 1);
+	  continue;
+	} else {
+	  decode_nbnodename(nrml_pyld->src_name->name, decoded_nbnodename.name);
+	}
+      }
       if (handle->dtg_takes == HANDLE_TAKES_ALL)
 	take_dtg = TRUE;
       else {
@@ -1214,7 +1231,7 @@ void *lib_dtgserver(void *arg) {
 	  if (handle->dtg_takes & HANDLE_TAKES_ALLBRDCST) {
 	    take_dtg = TRUE;
 	  } else {
-	    take_dtg = lib_doeslistento(nrml_pyld->src_name,
+	    take_dtg = lib_doeslistento(&decoded_nbnodename,
 					handle->dtg_listento);
 	  }
 	  break;
@@ -1225,7 +1242,7 @@ void *lib_dtgserver(void *arg) {
 	  if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
 	    take_dtg = TRUE;
 	  } else {
-	    take_dtg = lib_doeslistento(nrml_pyld->src_name,
+	    take_dtg = lib_doeslistento(&decoded_nbnodename,
 					handle->dtg_listento);
 	  }
 	  break;
