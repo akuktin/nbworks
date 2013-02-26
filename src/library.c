@@ -1944,29 +1944,22 @@ struct nbworks_session *lib_take_session(struct name_state *handle) {
   if (handle->sesin_library) {
     result = handle->sesin_library;
 
-    if (! result->peer) {
+    if ((! result->peer) ||
+	(result->socket < 0)) {
       if (result->next) {
 	handle->sesin_library = result->next;
 	lib_dstry_session(result);
 
 	return lib_take_session(handle);
       } else {
+	nbworks_errno = EAGAIN;
 	return 0;
-      }
-    }
-
-    if (result->keepalive) {
-      if (0 != pthread_create(&(result->caretaker_tid), 0,
-			      lib_caretaker, handle)) {
-	result->caretaker_tid = 0;
       }
     }
 
     if (result->next) {
       handle->sesin_library = result->next;
       result->next = 0;
-
-      return result;
     } else {
       clone = malloc(sizeof(struct nbworks_session));
       if (! clone) {
@@ -1981,8 +1974,17 @@ struct nbworks_session *lib_take_session(struct name_state *handle) {
 
       pthread_mutex_init(&(clone->mutex), 0);
 
-      return clone;
+      result = clone;
     }
+
+    if (result->keepalive) {
+      if (0 != pthread_create(&(result->caretaker_tid), 0,
+			      lib_caretaker, handle)) {
+	result->caretaker_tid = 0;
+      }
+    }
+
+    return result;
   } else {
     return 0;
   }
