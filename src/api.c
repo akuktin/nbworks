@@ -23,7 +23,7 @@ int nbworks_poll(unsigned char service,
 		 int timeout) {
   struct pollfd *pfd;
   struct timespec sleeptime;
-  struct packet_cooked **trgt;
+  struct packet_cooked *trgt;
   int i, count, ret_val;
 
   if ((! handles) ||
@@ -39,35 +39,34 @@ int nbworks_poll(unsigned char service,
     sleeptime.tv_sec = 0;
     sleeptime.tv_nsec = T_12MS;
 
-    trgt = malloc(numof_pfd * sizeof(struct cooked_packet *));
-    if (! trgt) {
-      nbworks_errno = ENOMEM;
-      for (i=0; i<numof_pfd; i++) {
-	handles[i].revents = POLLERR;
-      }
-      return -1;
-    }
-
     ret_val = 0;
     for (i=0; i<numof_pfd; i++) {
-      trgt[i] = handles[i].handle->in_library;
-      if (trgt[i]) {
-	trgt[i] = (trgt[i])->next;
-      }
-      if (trgt[i]) {
+      trgt = handles[i].handle->in_library;
+
+      /* If trgt[i].data is non-NULL, then this particular packet
+       * has an unread payload and we do not need to check for the
+       * presence of other packets. However, it is possible the packet
+       * was read, thus making trgt[i].data equal NULL, but a new
+       * packet has arrived. In this case, move trgt[i] down the list,
+       * then evaluate it. The maneuvre is done for it's side effect,
+       * changing the contents of trgt[i]. The same thing can also be
+       * done without the comma, but this is way sexier, IMHO. :)
+       * One other thing: I am not using the "logical or" operator because
+       * I want to exercise total control over memory contents.
+       * After all - that is the reason I use C and not PHP. */
+      if ((trgt->data) ? trgt :
+	  ((trgt = trgt->next), trgt)) {
 	ret_val++;
-	if (handles[i].events & POLLIN) {
-	  handles[i].revents = (POLLIN | POLLOUT);
-	} else {
-	  handles[i].revents = POLLOUT;
-	}
+
+	/* Do not report a POLLIN event if the application has not
+	 * asked for it. */
+	handles[i].revents = ((handles[i].events & POLLIN) | POLLOUT);
       } else {
 	handles[i].revents = POLLOUT;
       }
     }
 
     if (ret_val) {
-      free(trgt);
       return ret_val;
     }
 
@@ -75,10 +74,16 @@ int nbworks_poll(unsigned char service,
       while (0xce0) {
 
 	for (i=0; i<numof_pfd; i++) {
-	  if (trgt[i]) {
+	  trgt = handles[i].handle->in_library;
+
+	  /* Same as above. */
+	  if ((trgt->data) ? trgt :
+	      ((trgt = trgt->next), trgt)) {
 	    ret_val++;
-	    if (handles[i].events & POLLIN)
-	      handles[i].revents |= POLLIN;
+
+	    handles[i].revents = ((handles[i].events & POLLIN) | POLLOUT);
+	  } else {
+	    handles[i].revents = POLLOUT;
 	  }
 	}
 
@@ -90,7 +95,6 @@ int nbworks_poll(unsigned char service,
 	  for (i=0; i<numof_pfd; i++) {
 	    handles[i].revents = POLLERR;
 	  }
-	  free(trgt);
 	  return -1;
 	}
       }
@@ -98,10 +102,16 @@ int nbworks_poll(unsigned char service,
       for (count = timeout / 12; count >= 0; count--) {
 
 	for (i=0; i<numof_pfd; i++) {
-	  if (trgt[i]) {
+	  trgt = handles[i].handle->in_library;
+
+	  /* Same as above. */
+	  if ((trgt->data) ? trgt :
+	      ((trgt = trgt->next), trgt)) {
 	    ret_val++;
-	    if (handles[i].events & POLLIN)
-	      handles[i].revents |= POLLIN;
+
+	    handles[i].revents = ((handles[i].events & POLLIN) | POLLOUT);
+	  } else {
+	    handles[i].revents = POLLOUT;
 	  }
 	}
 
@@ -113,13 +123,10 @@ int nbworks_poll(unsigned char service,
 	  for (i=0; i<numof_pfd; i++) {
 	    handles[i].revents = POLLERR;
 	  }
-	  free(trgt);
 	  return -1;
 	}
       }
     }
-
-    free(trgt);
 
     return ret_val;
 
@@ -127,7 +134,7 @@ int nbworks_poll(unsigned char service,
   case SES_SRVC:
     pfd = malloc(numof_pfd * sizeof(struct pollfd));
     if (! pfd) {
-      nbworks_errno = ENOMEM;
+      nbworks_errno = ENOBUFS;
       for (i=0; i<numof_pfd; i++) {
 	handles[i].revents = POLLERR;
       }
@@ -476,7 +483,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       sleeptime.tv_nsec = T_50MS;
     }
 
-    while (! ret_val) {
+    do {
       if (ses->handle->in_library) {
 	in_lib = ses->handle->in_library;
 	if (in_lib->data) {
@@ -536,7 +543,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	} else
 	  nanosleep(&sleeptime, 0);
       }
-    }
+    } while (! ret_val);
 
     return ret_val;
 
@@ -617,9 +624,14 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	}
 
 	if ((callflags & MSG_EOR) ||
-	    (! notrecved))
-	  return recved;
-
+	    (! notrecved)) {
+	  if (recved)
+	    return recved;
+	  else {
+	    nbworks_errno = EAGAIN;
+	    return -1;
+	  }
+	}
       }
 
       ret_val = recv(ses->socket, hdrbuff, SES_HEADER_LEN,
@@ -753,8 +765,14 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	}
       }
 
-      if (callflags & MSG_EOR)
-	return recved;
+      if (callflags & MSG_EOR) {
+	if (recved)
+	  return recved;
+	else {
+	  nbworks_errno = EAGAIN;
+	  return -1;
+	}
+      }
 
     }
 

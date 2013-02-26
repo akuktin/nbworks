@@ -153,7 +153,7 @@ struct name_state *lib_regname(unsigned char *name,
     nbworks_errno = ENOMEM;
     return 0;
   }
-  result->name->name = malloc(NETBIOS_NAME_LEN);
+  result->name->name = malloc(NETBIOS_NAME_LEN+1);
   if (! result->name->name) {
     free(result->name);
     free(result);
@@ -436,7 +436,6 @@ int lib_start_dtg_srv(struct name_state *handle,
 int lib_start_ses_srv(struct name_state *handle,
 		      unsigned char takes_field,
 		      struct nbnodename_list *listento) {
-  struct timespec sleeptime;
   struct com_comm command;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
@@ -460,14 +459,6 @@ int lib_start_ses_srv(struct name_state *handle,
 
   if (handle->ses_srv_tid) {
     handle->ses_srv_stop = TRUE;
-
-    sleeptime.tv_nsec = (nbworks_libcntl.ses_srv_polltimeout * T_1MS) + T_12MS;
-    if (sleeptime.tv_nsec > 999999999) {
-      sleeptime.tv_sec = 1;
-      sleeptime.tv_nsec = sleeptime.tv_nsec - 999999999;
-    } else {
-      sleeptime.tv_sec = 0;
-    }
 
     pthread_join(handle->ses_srv_tid, 0);
   }
@@ -1155,7 +1146,7 @@ void *lib_dtgserver(void *arg) {
   struct dtg_pckt_pyld_normal *nrml_pyld;
   struct nbnodename_list decoded_nbnodename;
   uint32_t len;
-  unsigned char lenbuf[4], decoded_name[NETBIOS_NAME_LEN];
+  unsigned char lenbuf[4], decoded_name[NETBIOS_NAME_LEN+1];
   unsigned char *new_pckt, take_dtg;
 
   if (arg)
@@ -1364,7 +1355,7 @@ int lib_open_session(struct name_state *handle,
 		     struct nbnodename_list *dst) {
   struct com_comm command;
   struct nbnodename_list *name_id, *her; /* To vary names a bit. */
-  struct ses_srvc_packet *pckt;
+  struct ses_srvc_packet pckt;
   struct ses_pckt_pyld_two_names *twins;
   struct sockaddr_in addr;
   int ses_sckt, retry_count;;
@@ -1372,6 +1363,7 @@ int lib_open_session(struct name_state *handle,
   unsigned int ones;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char small_buff[SMALL_BUFF_LEN];
+  unsigned char *decoded_name;
 
   if (! (handle && dst)) {
     /* TODO: errno signaling stuff */
@@ -1393,20 +1385,33 @@ int lib_open_session(struct name_state *handle,
   }
   destroy_nbnodename(her->next_name);
   her->next_name = clone_nbnodename(handle->scope);
-  if (! her->next_name) {
+  if ((! her->next_name) && handle->scope) {
     /* TODO: errno signaling stuff */
     destroy_nbnodename(her);
     return -1;
   }
 
-  addr.sin_addr.s_addr =
-    lib_whatisaddrX(her, (1+ NETBIOS_NAME_LEN+ handle->lenof_scope));
+
+  fill_32field(lib_whatisaddrX(her, (1+ NETBIOS_NAME_LEN+ handle->lenof_scope)),
+               (unsigned char *)&(addr.sin_addr.s_addr));
   if (! addr.sin_addr.s_addr) {
     destroy_nbnodename(her);
     return -1;
   }
   addr.sin_family = AF_INET;
-  addr.sin_port = 139;
+  /* VAXism below */
+  fill_16field(139, (unsigned char *)&(addr.sin_port));
+
+  decoded_name = her->name;
+  her->name = encode_nbnodename(decoded_name, 0);
+  free(decoded_name);
+  if (! her->name) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
+    return -1;
+  }
+  her->len = NETBIOS_CODED_NAME_LEN;
+
 
   name_id = clone_nbnodename(handle->name);
   if (! name_id) {
@@ -1416,33 +1421,38 @@ int lib_open_session(struct name_state *handle,
   }
   destroy_nbnodename(name_id->next_name);
   name_id->next_name = clone_nbnodename(handle->scope);
-  if (! name_id->next_name) {
+  if ((! name_id->next_name) && handle->scope) {
     /* TODO: errno signaling stuff */
     destroy_nbnodename(her);
     destroy_nbnodename(name_id);
     return -1;
   }
+  decoded_name = name_id->name;
+  name_id->name = encode_nbnodename(decoded_name, 0);
+  free(decoded_name);
+  if (! name_id->name) {
+    /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
+    destroy_nbnodename(name_id);
+    return -1;
+  }
+  name_id->len = NETBIOS_CODED_NAME_LEN;
+
 
   memset(&command, 0, sizeof(struct com_comm));
   command.command = rail_addr_ofXuniq;
 
-  pckt = calloc(1, sizeof(struct ses_srvc_packet));
-  if (! pckt) {
-    /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
-    destroy_nbnodename(name_id);
-    return -1;
-  }
-  pckt->payload_t = two_names;
-  pckt->payload = malloc(sizeof(struct ses_pckt_pyld_two_names));
-  if (! pckt->payload) {
+  memset(&pckt, 0, sizeof(struct ses_srvc_packet));
+  pckt.payload_t = two_names;
+  pckt.payload = malloc(sizeof(struct ses_pckt_pyld_two_names));
+  if (! pckt.payload) {
     /* TODO: errno signaling stuff */
     destroy_nbnodename(her);
     destroy_nbnodename(name_id);
     return -1;
   }
 
-  twins = pckt->payload;
+  twins = pckt.payload;
   twins->called_name = her;
   twins->calling_name = name_id;
 
@@ -1456,27 +1466,26 @@ int lib_open_session(struct name_state *handle,
     lenof_pckt = lenof_pckt + (2 * 4);
   }
 
-  pckt->len = lenof_pckt;
-  pckt->type = SESSION_REQUEST;
+  pckt.len = lenof_pckt;
+  pckt.type = SESSION_REQUEST;
 
-  mypckt_buff = malloc(SES_HEADER_LEN + lenof_pckt);
+  wrotelenof_pckt = (lenof_pckt + SES_HEADER_LEN);
+
+  mypckt_buff = malloc(wrotelenof_pckt);
   if (! mypckt_buff) {
     /* TODO: errno signaling stuff */
     destroy_nbnodename(name_id);
     return -1;
   }
-  memset(mypckt_buff, 0, (SES_HEADER_LEN + lenof_pckt));
+  memset(mypckt_buff, 0, wrotelenof_pckt);
 
-  wrotelenof_pckt = (lenof_pckt + SES_HEADER_LEN);
-  master_ses_srvc_pckt_writer(pckt, &wrotelenof_pckt, mypckt_buff);
+  master_ses_srvc_pckt_writer(&pckt, &wrotelenof_pckt, mypckt_buff);
 
-  destroy_ses_srvc_pckt(pckt);
-  destroy_nbnodename(name_id);
-  destroy_nbnodename(her);
+  destroy_ses_srvc_pcktpyld(&pckt);
 
   /* Now I have allocated: mypckt_buff. */
   /* Other that that, I will need: addr, wrotelenof_pckt,
-                                   *herpckt_buff, *pckt,
+                                   *herpckt_buff, pckt,
 				   small_buff[] */
  try_to_connect:
   ses_sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -1508,6 +1517,7 @@ int lib_open_session(struct name_state *handle,
     }
   }
 
+  /* FIXME: a timeout must be implemented here. */
   if (SES_HEADER_LEN > recv(ses_sckt, small_buff, SES_HEADER_LEN,
 			    MSG_WAITALL)) {
     close(ses_sckt);
@@ -1521,40 +1531,23 @@ int lib_open_session(struct name_state *handle,
   }
 
   herpckt_buff = small_buff;
-  pckt = read_ses_srvc_pckt_header(&herpckt_buff,
-				   (herpckt_buff + SES_HEADER_LEN), 0);
-  if (! pckt) {
+  if (! read_ses_srvc_pckt_header(&herpckt_buff, (herpckt_buff + SES_HEADER_LEN),
+				  &pckt)) {
     close(ses_sckt);
     free(mypckt_buff);
     return -1;
   }
 
-  switch (pckt->type) {
+  switch (pckt.type) {
   case POS_SESSION_RESPONSE:
     free(mypckt_buff);
-    while (pckt->len) {
-      if (pckt->len > SMALL_BUFF_LEN) {
-	if (SMALL_BUFF_LEN > recv(ses_sckt, herpckt_buff, SMALL_BUFF_LEN,
-				  MSG_WAITALL)) {
-	  close(ses_sckt);
-	  return -1;
-	}
-	pckt->len = pckt->len - SMALL_BUFF_LEN;
-      } else {
-	if (pckt->len > recv(ses_sckt, herpckt_buff, pckt->len,
-			     MSG_WAITALL)) {
-	  close(ses_sckt);
-	  return -1;
-	}
-	pckt->len = 0;
-      }
-    }
-    free(pckt);
+    if (pckt.len)
+      lib_flushsckt(ses_sckt, pckt.len, MSG_WAITALL);
 
     if (0 != fcntl(ses_sckt, F_SETFL, O_NONBLOCK)) {
-      close(ses_sckt);
-      /* This also may not be a fatal error. */
-      return -1;
+      //      close(ses_sckt);
+      //      /* This also may not be a fatal error. */
+      //      return -1;
     }
     /* --------------------------------------------------------------- */
     /* Looks like I will HAVE to implement some sort of errno,
@@ -1573,10 +1566,8 @@ int lib_open_session(struct name_state *handle,
     free(mypckt_buff);
     if (1 > recv(ses_sckt, herpckt_buff, 1, MSG_WAITALL)) {
       close(ses_sckt);
-      free(pckt);
       return -1;
     }
-    free(pckt);
     close(ses_sckt);
     // session_error = *herpckt_buff;
     return -1;
@@ -1594,7 +1585,6 @@ int lib_open_session(struct name_state *handle,
 				&(addr.sin_port));
     /* fall-through! */
   default:
-    free(pckt);
     close(ses_sckt);
     if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
       retry_count++;
@@ -1613,13 +1603,13 @@ int lib_open_session(struct name_state *handle,
 void *lib_ses_srv(void *arg) {
   struct pollfd pfd;
   struct name_state *handle;
-  struct nbnodename_list *caller;
+  struct nbnodename_list *caller, decoded_nbnodename;
   struct nbworks_session *new_ses;
-  struct ses_srvc_packet *pckt;
+  struct ses_srvc_packet pckt;
   struct com_comm command;
   int new_sckt;
   unsigned char ok[] = { POS_SESSION_RESPONSE, 0, 0, 0 };
-  unsigned char combuff[LEN_COMM_ONWIRE];
+  unsigned char combuff[LEN_COMM_ONWIRE], decoded_name[NETBIOS_NAME_LEN+1];
   unsigned char *buff, *walker;
 
   if (arg)
@@ -1637,14 +1627,21 @@ void *lib_ses_srv(void *arg) {
   pfd.fd = handle->ses_srv_sckt;
   pfd.events = POLLIN;
 
-  while ((! nbworks_libcntl.stop_allses_srv) ||
+  decoded_nbnodename.name = decoded_name;
+  decoded_nbnodename.len = NETBIOS_NAME_LEN;
+  decoded_nbnodename.next_name = handle->scope;
+
+  while ((! nbworks_libcntl.stop_allses_srv) &&
 	 (! handle->ses_srv_stop)) {
-    if (0 <= poll(&pfd, 1, nbworks_libcntl.ses_srv_polltimeout)) {
+    if (0 >= poll(&pfd, 1, nbworks_libcntl.ses_srv_polltimeout)) {
       if (pfd.revents & (POLLHUP | POLLNVAL | POLLERR)) {
 	break;
       } else
 	continue;
     }
+
+    caller = 0;
+    memset(&pckt, 0, sizeof(struct ses_srvc_packet));
 
     if (LEN_COMM_ONWIRE > recv(handle->ses_srv_sckt, combuff,
 			       LEN_COMM_ONWIRE, MSG_WAITALL)) {
@@ -1681,6 +1678,8 @@ void *lib_ses_srv(void *arg) {
       break;
     }
 
+    /* Because LEN_COMM_ONWIRE > SES_HEADER_LEN, we can reuse
+     * combuff for the header of the session packet. */
     if (SES_HEADER_LEN > recv(new_sckt, combuff, SES_HEADER_LEN, MSG_WAITALL)) {
       close(new_sckt);
       continue;
@@ -1707,37 +1706,49 @@ void *lib_ses_srv(void *arg) {
     }
 
     walker = combuff;
-    pckt = read_ses_srvc_pckt_header(&walker, (walker+SES_HEADER_LEN), 0);
-    if (! pckt) {
+    if (! read_ses_srvc_pckt_header(&walker, (walker+SES_HEADER_LEN), &pckt)) {
       close(new_sckt);
       break;
     }
 
-    buff = malloc(pckt->len + SES_HEADER_LEN);
+    buff = malloc(pckt.len + SES_HEADER_LEN);
     if (! buff) {
-      free(pckt);
       close(new_sckt);
       break;
     }
 
-    if (pckt->len > recv(new_sckt, (buff +SES_HEADER_LEN), pckt->len,
-			 MSG_WAITALL)) {
-      free(pckt);
+    if (pckt.len > recv(new_sckt, (buff +SES_HEADER_LEN), pckt.len,
+			MSG_WAITALL)) {
       free(buff);
       close(new_sckt);
       break;
     }
 
-    caller = ses_srvc_get_callingname(buff, pckt->len);
+    caller = ses_srvc_get_callingname(buff, (pckt.len +SES_HEADER_LEN));
+    if (! caller) {
+      close(new_sckt);
+      continue;
+    }
+
     free(buff);
-    free(pckt);
+
+    if (caller->len != NETBIOS_CODED_NAME_LEN) {
+      destroy_nbnodename(caller);
+      close(new_sckt);
+      continue;
+    } else {
+      decode_nbnodename(caller->name, decoded_nbnodename.name);
+      destroy_nbnodename(caller);
+    }
+
+    /* In orded to not change too much of the existing code, I will utilize a hack
+     * with a dangling pointer. I will use caller, which has a value and points to
+     * unallocated (freed) memory to signal the code below. */
 
     if (! (handle->ses_takes & HANDLE_TAKES_ALL)) {
-      if (! (lib_doeslistento(caller, handle->ses_listento) &&
-	     caller)) {
-	destroy_nbnodename(caller);
+      if (! (lib_doeslistento(&decoded_nbnodename, handle->ses_listento) &&
+	     caller)) { /* Note that this (using caller) doesn't actually make any sense. */
 	command.command = rail_stream_error;
-	command.command = 0;
 	command.node_type = SES_ERR_NOTLISCALLING;
 
 	if (! fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE))) {
@@ -1757,7 +1768,6 @@ void *lib_ses_srv(void *arg) {
     }
 
     if (0 != fcntl(new_sckt, F_SETFL, O_NONBLOCK)) {
-      destroy_nbnodename(caller);
       close(new_sckt);
       break;
     }
@@ -1766,27 +1776,23 @@ void *lib_ses_srv(void *arg) {
     command.len = 0;
 
     if (! fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE))) {
-      destroy_nbnodename(caller);
       close(new_sckt);
       break;
     }
 
     if (LEN_COMM_ONWIRE > send(new_sckt, combuff, LEN_COMM_ONWIRE,
 			       MSG_NOSIGNAL)) {
-      destroy_nbnodename(caller);
       close(new_sckt);
       break;
     }
 
-    new_ses = lib_make_session(new_sckt, caller, handle, FALSE);
-    destroy_nbnodename(caller);
+    new_ses = lib_make_session(new_sckt, &decoded_nbnodename, handle, FALSE);
     if (! new_ses) {
       close(new_sckt);
       break;
     }
 
     if (4 > send(new_sckt, ok, 4, MSG_NOSIGNAL)) {
-      destroy_nbnodename(caller);
       close(new_sckt);
       break;
     }
@@ -1889,18 +1895,23 @@ void *lib_caretaker(void *arg) {
 }
 
 struct nbworks_session *lib_make_session(int socket,
-					 struct nbnodename_list *caller,
+					 struct nbnodename_list *peer,
 					 struct name_state *handle,
 					 unsigned char keepalive) {
   struct nbworks_session *result;
+
+  if (socket < 0) {
+    nbworks_errno = EINVAL;
+    return 0;
+  }
 
   result = malloc(sizeof(struct nbworks_session));
   if (! result) {
     return 0;
   }
 
-  if (caller)
-    result->peer = clone_nbnodename(caller);
+  if (peer)
+    result->peer = clone_nbnodename(peer);
   else
     result->peer = 0;
   result->handle = handle;
@@ -1937,6 +1948,17 @@ struct nbworks_session *lib_take_session(struct name_state *handle) {
   if (handle->sesin_library) {
     result = handle->sesin_library;
 
+    if (! result->peer) {
+      if (result->next) {
+	handle->sesin_library = result->next;
+	lib_dstry_session(result);
+
+	return lib_take_session(handle);
+      } else {
+	return 0;
+      }
+    }
+
     if (result->keepalive) {
       if (0 != pthread_create(&(result->caretaker_tid), 0,
 			      lib_caretaker, handle)) {
@@ -1959,6 +1981,8 @@ struct nbworks_session *lib_take_session(struct name_state *handle) {
       memcpy(clone, result, sizeof(struct nbworks_session));
 
       result->peer = 0;
+      result->socket = -1;
+
       pthread_mutex_init(&(clone->mutex), 0);
 
       return clone;
@@ -1972,7 +1996,8 @@ void lib_dstry_sesslist(struct nbworks_session *ses) {
   struct nbworks_session *next;
 
   while (ses) {
-    close(ses->socket);
+    if (ses->socket >= 0)
+      close(ses->socket);
 
     if (ses->caretaker_tid) {
       ses->kill_caretaker = TRUE;
@@ -1999,7 +2024,8 @@ void lib_dstry_session(struct nbworks_session *ses) {
   if (! ses)
     return;
 
-  close(ses->socket);
+  if (ses->socket >= 0)
+    close(ses->socket);
 
   if (ses->caretaker_tid) {
     ses->kill_caretaker = TRUE;

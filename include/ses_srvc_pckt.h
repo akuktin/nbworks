@@ -87,6 +87,8 @@ void *
                               void *packet_field);
 
 void
+  destroy_ses_srvc_pcktpyld(struct ses_srvc_packet *pckt);
+void
   destroy_ses_srvc_pckt(struct ses_srvc_packet *pckt);
 
 #endif /* NBWORKS_SESSRVCPCKT_H */

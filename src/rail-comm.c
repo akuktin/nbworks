@@ -411,7 +411,7 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
     return 0;
   }
 
-  result->name = malloc(NETBIOS_NAME_LEN);
+  result->name = malloc(NETBIOS_NAME_LEN+1);
   if (! result->name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -700,7 +700,8 @@ int rail_senddtg(int rail_sckt,
 	if (namecard->group_flg & ISGROUP_YES) {
 	  group_addrs = namecard->addrs.recrd[i].addr;
 	  while (group_addrs->next) {
-	    dst_addr.sin_addr.s_addr = group_addrs->ip_addr;
+	    fill_32field(group_addrs->ip_addr,
+			 (unsigned char *)&(dst_addr.sin_addr.s_addr));
 
 	    ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
 
@@ -972,38 +973,31 @@ void *dtg_server(void *arg) {
 /* returns: 0=success, >0=fail, <0=error */
 int rail_add_ses_server(int rail_sckt,
 			struct com_comm *command) {
-  struct nbnodename_list *nbname;
   struct cache_namenode *namecard;
+  struct nbnodename_list nbname;
   time_t cur_time;
 
   if (! command)
     return -1;
 
-  nbname = malloc(sizeof(struct nbnodename_list));
-  if (! nbname) {
-    return -1;
-  }
-
   cur_time = time(0);
 
-  namecard = find_namebytok(command->token, &(nbname->next_name));
+  namecard = find_namebytok(command->token, &(nbname.next_name));
   if ((! namecard) ||
       (namecard->timeof_death <= cur_time) ||
       (namecard->isinconflict)) {
     return 1;
   }
 
-  nbname->name = encode_nbnodename(namecard->name, 0);
-  nbname->len = NETBIOS_CODED_NAME_LEN;
+  nbname.name = encode_nbnodename(namecard->name, 0);
+  nbname.len = NETBIOS_CODED_NAME_LEN;
 
   if (command->len)
     rail_flushrail(command->len, rail_sckt);
 
-  if (ss__add_sessrv(nbname, rail_sckt)) {
-    destroy_nbnodename(nbname);
+  if (ss__add_sessrv(&nbname, rail_sckt)) {
     return 0;
   } else {
-    destroy_nbnodename(nbname);
     return 1;
   }
 }
@@ -1038,7 +1032,7 @@ int rail__send_ses_pending(int rail,
 int rail_setup_session(int rail,
 		       uint64_t token) {
   struct ses_srv_sessions *session_ptr, session;
-  struct ses_srvc_packet *pckt;
+  struct ses_srvc_packet pckt;
   struct com_comm answer;
   struct stream_connector_args new_session;
   int out_sckt;
@@ -1059,9 +1053,10 @@ int rail_setup_session(int rail,
 
   session_ptr->token = 0;
 
+  memset(&pckt, 0, sizeof(struct ses_srvc_packet));
+
   walker = session.first_buff;
-  pckt = read_ses_srvc_pckt_header(&walker, walker+SES_HEADER_LEN, 0);
-  if (! pckt) {
+  if (! read_ses_srvc_pckt_header(&walker, walker+SES_HEADER_LEN, &pckt)) {
     send(session.out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
@@ -1070,20 +1065,18 @@ int rail_setup_session(int rail,
     return -1;
   }
 
-  if ((pckt->len+SES_HEADER_LEN) > send(rail, session.first_buff,
-					(pckt->len+SES_HEADER_LEN),
-					(MSG_NOSIGNAL | MSG_DONTWAIT))) {
+  if ((pckt.len+SES_HEADER_LEN) > send(rail, session.first_buff,
+				       (pckt.len+SES_HEADER_LEN),
+				       (MSG_NOSIGNAL | MSG_DONTWAIT))) {
     send(session.out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
     close(session.out_sckt);
     free(session.first_buff);
-    free(pckt);
     return -1;
   } else {
     out_sckt = session.out_sckt;
     free(session.first_buff);
-    free(pckt);
   }
 
   if (LEN_COMM_ONWIRE > recv(rail, rail_buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
@@ -1118,11 +1111,11 @@ int rail_setup_session(int rail,
   }
 
   if (0 != fcntl(rail, F_SETFL, O_NONBLOCK)) {
-    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+    //    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
 
-    close(rail);
-    close(out_sckt);
-    return -1;
+    //    close(rail);
+    //    close(out_sckt);
+    //    return -1;
   }
   /* The rail socket is now ready for operation. Establish a tunnel. */
 
@@ -1150,7 +1143,7 @@ void *tunnel_stream_sockets(void *arg) {
   struct stream_connector_args *params;
   struct thread_node *last_will;
   struct pollfd fds[2];
-  ssize_t trans_len, sent_len;
+  ssize_t trans_len, sent_len, lastbuf_len;
   int sckt_lcl, sckt_rmt, read_sckt, write_sckt, l;
   int ret_val, i;
   unsigned char buf[DEFAULT_TUNNEL_LEN];
@@ -1170,6 +1163,9 @@ void *tunnel_stream_sockets(void *arg) {
   trans_len = sent_len = 0;
   read_sckt = sckt_lcl;
   write_sckt = sckt_rmt;
+
+  memset(buf, 0, DEFAULT_TUNNEL_LEN);
+  lastbuf_len = 0;
 
   fds[0].fd = sckt_rmt;
   fds[0].events = (POLLIN | POLLPRI);
@@ -1212,9 +1208,8 @@ void *tunnel_stream_sockets(void *arg) {
 	if (fds[i].revents & POLLIN) {
 	  trans_len = recv(read_sckt, buf, DEFAULT_TUNNEL_LEN,
 			   MSG_DONTWAIT);
-
 	  if ((trans_len <= 0) &&
-	      ((errno != EAGAIN) ||
+	      ((errno != EAGAIN) &&
 	       (errno != EWOULDBLOCK))) {
 	    if (trans_len == 0) {
 	      close(sckt_lcl);
@@ -1232,15 +1227,19 @@ void *tunnel_stream_sockets(void *arg) {
 	    }
 	  }
 
+	  if (trans_len < lastbuf_len) {
+	    memset(buf+trans_len, 0, (lastbuf_len - trans_len));
+	  }
+	  lastbuf_len = trans_len;
+
 	  sent_len = 0;
 	  while (sent_len < trans_len) {
 	    errno = 0;
 	    sent_len = sent_len + send(write_sckt, (buf + sent_len),
 				       (trans_len - sent_len),
 				       MSG_NOSIGNAL);
-
 	    if ((errno != 0) &&
-		((errno != EAGAIN) ||
+		((errno != EAGAIN) &&
 		 (errno != EWOULDBLOCK))) {
 	      /* TODO: error handling */
 	      close(sckt_lcl);
@@ -1256,7 +1255,7 @@ void *tunnel_stream_sockets(void *arg) {
 			   (MSG_DONTWAIT | MSG_OOB));
 
 	  if ((trans_len <= 0) &&
-	      ((errno != EAGAIN) ||
+	      ((errno != EAGAIN) &&
 	       (errno != EWOULDBLOCK))) {
 	    if (trans_len == 0) {
 	      close(sckt_lcl);
@@ -1274,6 +1273,11 @@ void *tunnel_stream_sockets(void *arg) {
 	    }
 	  }
 
+	  if (trans_len < lastbuf_len) {
+	    memset(buf+trans_len, 0, (lastbuf_len - trans_len));
+	  }
+	  lastbuf_len = trans_len;
+
 	  sent_len = 0;
 	  while (sent_len < trans_len) {
 	    errno = 0;
@@ -1282,7 +1286,7 @@ void *tunnel_stream_sockets(void *arg) {
 				       (MSG_NOSIGNAL | MSG_OOB));
 
 	    if ((errno != 0) &&
-		((errno != EAGAIN) ||
+		((errno != EAGAIN) &&
 		 (errno != EWOULDBLOCK))) {
 	      /* TODO: error handling */
 	      close(sckt_lcl);

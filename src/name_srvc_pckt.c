@@ -206,7 +206,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
     return 0;
   }
 
-  /* See read_name_srvc_pckt_question() for deails. */
+  /* See read_name_srvc_pckt_question() for details. */
   remember_walker = *master_packet_walker +1;
 
   resource->name = read_all_DNS_labels(master_packet_walker,

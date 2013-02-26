@@ -6,6 +6,7 @@ struct thread_cache {
   pthread_t prune_scopes_tid;
   pthread_t ss__port137_tid;
   pthread_t ss__port138_tid;
+  pthread_t ss__port139_tid;
 };
 
 

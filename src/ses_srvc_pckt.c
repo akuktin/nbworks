@@ -427,6 +427,25 @@ void *master_ses_srvc_pckt_writer(void *packet_ptr,
 }
 
 
+void destroy_ses_srvc_pcktpyld(struct ses_srvc_packet *pckt) {
+  struct ses_pckt_pyld_two_names *two_names_ptr;
+
+  if (! pckt)
+    return;
+
+  if (pckt->payload) {
+    if (pckt->payload_t == two_names) {
+      two_names_ptr = pckt->payload;
+      destroy_nbnodename(two_names_ptr->called_name);
+      destroy_nbnodename(two_names_ptr->calling_name);
+    }
+
+    free(pckt->payload);
+  }
+
+  return;
+}
+
 void destroy_ses_srvc_pckt(struct ses_srvc_packet *pckt) {
   struct ses_pckt_pyld_two_names *two_names_ptr;
 

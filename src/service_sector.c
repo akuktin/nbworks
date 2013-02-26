@@ -527,7 +527,7 @@ struct ses_srv_rails *ss__add_sessrv(struct nbnodename_list *name,
       }
     }
 
-    *last_srv = cur_srv;
+    *last_srv = result;
   }
 }
 
@@ -970,11 +970,21 @@ void *ss__udp_recver(void *sckts_ptr) {
       new_pckt->packet = sckts.master_reader(udp_pckt, len, &tid);
 
       if (new_pckt->packet) {
+
+	if (sckts.branch == DTG_SRVC) {
+	  name_as_id = dtg_srvc_get_srcnam_recvpckt(new_pckt->packet);
+	  if ((! name_as_id) ||
+	      (name_as_id->len != NETBIOS_CODED_NAME_LEN)) {
+	    sckts.pckt_dstr(new_pckt->packet, 1, 1);
+	    free(new_pckt);
+	    new_pckt = 0;
+	  }
+	}
+
 	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
 	new_pckt->dstry = sckts.pckt_dstr;
 	new_pckt->next = 0;
-	if (sckts.branch == DTG_SRVC)
-	  name_as_id = dtg_srvc_get_srcnam_recvpckt(new_pckt->packet);
+
       } else {
 	/* TODO: errno signaling stuff */
 	/* BUT see third comment up! */
@@ -1168,11 +1178,13 @@ void *ss__port139(void *args) {
   unsigned int ones;
 
   ones = ZEROONES;
+
   port_addr.sin_family = AF_INET;
   /* VAXism below */
   fill_16field(139, (unsigned char *)&(port_addr.sin_port));
-  port_addr.sin_addr.s_addr = get_inaddr();
-  params.isbusy = 0;
+  fill_32field(my_ipv4_address(), (unsigned char *)&(port_addr.sin_addr.s_addr));
+
+  params.isbusy = 0; /* This is 0 on purpose. */
 
   sckt139 = socket(PF_INET, SOCK_STREAM, 0);
   if (sckt139 < 0) {
@@ -1234,14 +1246,15 @@ void *ss__port139(void *args) {
 }
 
 void *take_incoming_session(void *arg) {
+  struct ses_srvc_packet new_pckt;
   struct ss_tcp_sckts params, *release_lock;
   struct ses_srv_rails *servers;
-  struct ses_srvc_packet *new_pckt;
   struct nbnodename_list *called_name;
   struct ses_srv_sessions *session;
   struct thread_node *last_will;
   uint64_t token;
   unsigned char buf[SES_HEADER_LEN+1]; /* +1 is for the error code */
+  //  unsigned char decoded_name[NETBIOS_CODED_NAME_LEN+1];
   unsigned char err[] = { NEG_SESSION_RESPONSE, 0, 0, 1, SES_ERR_NOCALLED };
   unsigned char *walker, *big_buff;
 
@@ -1254,9 +1267,12 @@ void *take_incoming_session(void *arg) {
   else
     last_will = 0;
 
+  memset(&new_pckt, 0, sizeof(struct ses_srvc_packet));
+  memset(buf, 0, (SES_HEADER_LEN+1));
+
   if (SES_HEADER_LEN > recv(params.sckt139, buf,
 			    SES_HEADER_LEN, MSG_WAITALL)) {
-    err[4] = SES_ERR_UNSPEC;
+    err[4] = 1;//SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1266,7 +1282,7 @@ void *take_incoming_session(void *arg) {
   }
 
   if (buf[0] != SESSION_REQUEST) {
-    err[4] = SES_ERR_UNSPEC;
+    err[4] = 2;//SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1276,9 +1292,8 @@ void *take_incoming_session(void *arg) {
   }
 
   walker = buf;
-  new_pckt = read_ses_srvc_pckt_header(&walker, buf+SES_HEADER_LEN, 0);
-  if (! new_pckt) {
-    err[4] = SES_ERR_UNSPEC;
+  if (! read_ses_srvc_pckt_header(&walker, buf+SES_HEADER_LEN, &new_pckt)) {
+    err[4] = 3;//SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1287,10 +1302,10 @@ void *take_incoming_session(void *arg) {
     return 0;
   }
 
-  if (two_names != (new_pckt->payload_t =
-		    understand_ses_pckt_type(new_pckt->type))) {
+  if (two_names != (new_pckt.payload_t =
+		    understand_ses_pckt_type(new_pckt.type))) {
     /* Sorry, wrong daemon. */
-    err[4] = SES_ERR_UNSPEC;
+    err[4] = 4;//SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1299,9 +1314,9 @@ void *take_incoming_session(void *arg) {
     return 0;
   }
 
-  big_buff = malloc(new_pckt->len+SES_HEADER_LEN);
+  big_buff = malloc(new_pckt.len+SES_HEADER_LEN);
   if (! big_buff) {
-    err[4] = SES_ERR_UNSPEC;
+    err[4] = 5;//SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1312,9 +1327,9 @@ void *take_incoming_session(void *arg) {
 
   memcpy(big_buff, buf, SES_HEADER_LEN);
 
-  if (new_pckt->len > recv(params.sckt139, (big_buff+SES_HEADER_LEN),
-			   new_pckt->len, MSG_WAITALL)) {
-    err[4] = SES_ERR_UNSPEC;
+  if (new_pckt.len > recv(params.sckt139, (big_buff+SES_HEADER_LEN),
+			  new_pckt.len, MSG_WAITALL)) {
+    err[4] = 6;//SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     free(big_buff);
@@ -1324,9 +1339,10 @@ void *take_incoming_session(void *arg) {
     return 0;
   }
 
-  called_name = ses_srvc_get_calledname(big_buff, (new_pckt->len+SES_HEADER_LEN));
-  if (! called_name) {
-    err[4] = SES_ERR_UNSPEC;
+  called_name = ses_srvc_get_calledname(big_buff, (new_pckt.len+SES_HEADER_LEN));
+  if ((! called_name) ||
+      (called_name->len != NETBIOS_CODED_NAME_LEN)) {
+    err[4] = 7;//SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     free(big_buff);
@@ -1335,6 +1351,10 @@ void *take_incoming_session(void *arg) {
       last_will->dead = TRUE;
     return 0;
   }
+
+  //  memcpy(decoded_name, called_name->name, NETBIOS_CODED_NAME_LEN);
+  //  called_name->name = decode_nbnodename(decoded_name, called_name->name);
+  //  called_name->len = NETBIOS_NAME_LEN;
 
   servers = *(params.servers);
   while (servers) {
@@ -1347,22 +1367,22 @@ void *take_incoming_session(void *arg) {
   if (servers) {
     token = make_token();
     if (0 != fcntl(params.sckt139, F_SETFL, O_NONBLOCK)) {
-      err[4] = SES_ERR_UNSPEC;
+      /*      err[4] = SES_ERR_UNSPEC;
       send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
       free(big_buff);
       close(params.sckt139);
       if (last_will)
 	last_will->dead = TRUE;
-      return 0;
+	return 0;*/
     }
 
     if (! ((session = ss__add_session(token, params.sckt139, big_buff)) &&
-	   (0 <= rail__send_ses_pending(servers->rail, token)))) {
+	   (0 < rail__send_ses_pending(servers->rail, token)))) {
       if (session)
 	ss__del_session(token, FALSE);
 
-      err[4] = SES_ERR_UNSPEC;
+      err[4] = 8;//SES_ERR_UNSPEC;
       send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
       free(big_buff);
@@ -1380,8 +1400,6 @@ void *take_incoming_session(void *arg) {
       last_will->dead = TRUE;
     return 0;
   }
-
-  destroy_ses_srvc_pckt(new_pckt);
 
   nanosleep(&(nbworks_ses_srv_cntrl.take_timeout), 0);
 
@@ -1435,6 +1453,6 @@ uint32_t get_inaddr() {
 
 uint32_t my_ipv4_address() {
   // FIXME: stub
-  //        192.168.1.2/24
-  return 0xc0a80102;
+  //        192.168.1.3/24
+  return 0xc0a80103;
 }
