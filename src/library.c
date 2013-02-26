@@ -1353,7 +1353,6 @@ void *lib_dtgserver(void *arg) {
 #define SMALL_BUFF_LEN (SES_HEADER_LEN +4+2)
 int lib_open_session(struct name_state *handle,
 		     struct nbnodename_list *dst) {
-  struct com_comm command;
   struct nbnodename_list *name_id, *her; /* To vary names a bit. */
   struct ses_srvc_packet pckt;
   struct ses_pckt_pyld_two_names *twins;
@@ -1438,9 +1437,6 @@ int lib_open_session(struct name_state *handle,
   }
   name_id->len = NETBIOS_CODED_NAME_LEN;
 
-
-  memset(&command, 0, sizeof(struct com_comm));
-  command.command = rail_addr_ofXuniq;
 
   memset(&pckt, 0, sizeof(struct ses_srvc_packet));
   pckt.payload_t = two_names;

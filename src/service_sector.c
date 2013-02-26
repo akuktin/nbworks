@@ -1272,7 +1272,7 @@ void *take_incoming_session(void *arg) {
 
   if (SES_HEADER_LEN > recv(params.sckt139, buf,
 			    SES_HEADER_LEN, MSG_WAITALL)) {
-    err[4] = 1;//SES_ERR_UNSPEC;
+    err[4] = SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1282,7 +1282,7 @@ void *take_incoming_session(void *arg) {
   }
 
   if (buf[0] != SESSION_REQUEST) {
-    err[4] = 2;//SES_ERR_UNSPEC;
+    err[4] = SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1293,7 +1293,7 @@ void *take_incoming_session(void *arg) {
 
   walker = buf;
   if (! read_ses_srvc_pckt_header(&walker, buf+SES_HEADER_LEN, &new_pckt)) {
-    err[4] = 3;//SES_ERR_UNSPEC;
+    err[4] = SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1305,7 +1305,7 @@ void *take_incoming_session(void *arg) {
   if (two_names != (new_pckt.payload_t =
 		    understand_ses_pckt_type(new_pckt.type))) {
     /* Sorry, wrong daemon. */
-    err[4] = 4;//SES_ERR_UNSPEC;
+    err[4] = SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1316,7 +1316,7 @@ void *take_incoming_session(void *arg) {
 
   big_buff = malloc(new_pckt.len+SES_HEADER_LEN);
   if (! big_buff) {
-    err[4] = 5;//SES_ERR_UNSPEC;
+    err[4] = SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     close(params.sckt139);
@@ -1329,7 +1329,7 @@ void *take_incoming_session(void *arg) {
 
   if (new_pckt.len > recv(params.sckt139, (big_buff+SES_HEADER_LEN),
 			  new_pckt.len, MSG_WAITALL)) {
-    err[4] = 6;//SES_ERR_UNSPEC;
+    err[4] = SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     free(big_buff);
@@ -1342,7 +1342,7 @@ void *take_incoming_session(void *arg) {
   called_name = ses_srvc_get_calledname(big_buff, (new_pckt.len+SES_HEADER_LEN));
   if ((! called_name) ||
       (called_name->len != NETBIOS_CODED_NAME_LEN)) {
-    err[4] = 7;//SES_ERR_UNSPEC;
+    err[4] = SES_ERR_UNSPEC;
     send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
     free(big_buff);
@@ -1382,7 +1382,7 @@ void *take_incoming_session(void *arg) {
       if (session)
 	ss__del_session(token, FALSE);
 
-      err[4] = 8;//SES_ERR_UNSPEC;
+      err[4] = SES_ERR_UNSPEC;
       send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
       free(big_buff);
