@@ -141,6 +141,4 @@ struct addrlst_bigblock *
 void
   destroy_bigblock(struct addrlst_bigblock *block);
 
-struct cache_scopenode *nbworks_rootscope;
-
 #endif /* NBWORKS_NAMESRVCCACHE_H*/
