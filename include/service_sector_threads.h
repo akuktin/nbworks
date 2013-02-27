@@ -12,6 +12,6 @@ struct thread_node {
 void init_service_sector_threads();
 
 struct thread_node *add_thread(pthread_t tid);
-void *thread_joiner(void *placeholder);
+void thread_joiner();
 
 #endif /* NBWORKS_SERVICESECTORTHREADS_H */

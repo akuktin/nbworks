@@ -86,58 +86,51 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 }
 
 
-void *prune_scopes(void *placeholder) {
+void prune_scopes() {
   struct cache_scopenode *cur_scope, **last_scope;
   struct cache_namenode *cur_name, **last_name;
   struct ipv4_addr_list *cur_addr, *addr_fordel;
   int i;
   time_t curtime;
 
-  while (0xbeefcafe) {
-    if (nbworks_cache_control.all_stop)
-      break;
+  curtime = time(0);
 
-    curtime = time(0);
+  cur_scope = nbworks_rootscope;
+  last_scope = &(nbworks_rootscope);
 
-    cur_scope = nbworks_rootscope;
-    last_scope = &(nbworks_rootscope);
+  while (cur_scope) {
+    cur_name = cur_scope->names;
+    last_name = &(cur_scope->names);
 
-    while (cur_scope) {
-      cur_name = cur_scope->names;
-      last_name = &(cur_scope->names);
-
-      while (cur_name) {
-	if (cur_name->timeof_death < curtime) {
-	  *last_name = cur_name->next;
-	  for (i=0; i<4; i++) {
-	    cur_addr = cur_name->addrs.recrd[i].addr;
-	    while (cur_addr) {
-	      addr_fordel = cur_addr->next;
-	      free(cur_addr);
-	      cur_addr = addr_fordel;
-	    }
+    while (cur_name) {
+      if (cur_name->timeof_death < curtime) {
+	*last_name = cur_name->next;
+	for (i=0; i<4; i++) {
+	  cur_addr = cur_name->addrs.recrd[i].addr;
+	  while (cur_addr) {
+	    addr_fordel = cur_addr->next;
+	    free(cur_addr);
+	    cur_addr = addr_fordel;
 	  }
-	  free(cur_name->name);
-	  free(cur_name);
-          cur_name = *last_name;
-	} else {
-          last_name = &(cur_name->next);
-          cur_name = *last_name;
-        }
-      }
-
-      if (! cur_scope->names) {
-	*last_scope = cur_scope->next;
-	destroy_nbnodename(cur_scope->scope);
-	free(cur_scope);
-	cur_scope = *last_scope;
+	}
+	free(cur_name->name);
+	free(cur_name);
+	cur_name = *last_name;
       } else {
-	last_scope = &(cur_scope->next);
-        cur_scope = *last_scope;
+	last_name = &(cur_name->next);
+	cur_name = *last_name;
       }
     }
 
-    nanosleep(&(nbworks_cache_control.sleeptime), 0);
+    if (! cur_scope->names) {
+      *last_scope = cur_scope->next;
+      destroy_nbnodename(cur_scope->scope);
+      free(cur_scope);
+      cur_scope = *last_scope;
+    } else {
+      last_scope = &(cur_scope->next);
+      cur_scope = *last_scope;
+    }
   }
 
   return nbworks_rootscope;

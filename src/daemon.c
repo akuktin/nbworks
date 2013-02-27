@@ -31,6 +31,10 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   init_service_sector();
   init_name_srvc_cache();
 
+  nbworks_pruners_cntrl.all_stop = 0;
+  nbworks_pruners_cntrl.timeout.tv_sec = 0;
+  nbworks_pruners_cntrl.timeout.tv_nsec = T_250MS;
+
   railparams.isbusy = 0xda;
   railparams.rail_sckt = open_rail();
   if (railparams.rail_sckt < 0) {
@@ -39,17 +43,8 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
     return 0;
   }
 
-  if (0 != pthread_create(&(result->thread_joiner_tid), 0,
-			  thread_joiner, 0)) {
-    if (! tcache)
-      free(result);
-    close(railparams.rail_sckt);
-    return 0;
-  }
-
-  if (0 != pthread_create(&(result->prune_scopes_tid), 0,
-			  prune_scopes, 0)) {
-    pthread_cancel(result->thread_joiner_tid);
+  if (0 != pthread_create(&(result->pruners_tid), 0,
+			  pruners, 0)) {
     if (! tcache)
       free(result);
     close(railparams.rail_sckt);
@@ -58,8 +53,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 
   if (0 != pthread_create(&(result->ss__port137_tid), 0,
 			  ss__port137, 0)) {
-    pthread_cancel(result->thread_joiner_tid);
-    pthread_cancel(result->prune_scopes_tid);
+    pthread_cancel(result->pruners_tid);
     if (! tcache)
       free(result);
     close(railparams.rail_sckt);
@@ -68,8 +62,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 
   if (0 != pthread_create(&(result->ss__port138_tid), 0,
 			  ss__port138, 0)) {
-    pthread_cancel(result->thread_joiner_tid);
-    pthread_cancel(result->prune_scopes_tid);
+    pthread_cancel(result->pruners_tid);
     pthread_cancel(result->ss__port137_tid);
     if (! tcache)
       free(result);
@@ -79,8 +72,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 
   if (0 != pthread_create(&(result->ss__port139_tid), 0,
 			  ss__port139, 0)) {
-    pthread_cancel(result->thread_joiner_tid);
-    pthread_cancel(result->prune_scopes_tid);
+    pthread_cancel(result->pruners_tid);
     pthread_cancel(result->ss__port137_tid);
     pthread_cancel(result->ss__port138_tid);
     if (! tcache)
@@ -91,8 +83,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 
   if (0 != pthread_create(&(railparams.thread_id), 0,
 			  poll_rail, &railparams)) {
-    pthread_cancel(result->thread_joiner_tid);
-    pthread_cancel(result->prune_scopes_tid);
+    pthread_cancel(result->pruners_tid);
     pthread_cancel(result->ss__port137_tid);
     pthread_cancel(result->ss__port138_tid);
     pthread_cancel(result->ss__port139_tid);
@@ -116,3 +107,15 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 }
 
 
+void *pruners(void *arg_ignored) {
+
+  do {
+    ss_check_all_ses_server_rails();
+    prune_scopes();
+    thread_joiner();
+
+    nanosleep(&(nbworks_pruners_cntrl.timeout), 0);
+  } while (! nbworks_pruners_cntrl.all_stop);
+
+  return 0;
+}

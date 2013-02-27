@@ -1214,8 +1214,6 @@ void *ss__port139(void *args) {
     ret_val = poll(&pfd, 1, TP_100MS);
     if (ret_val <= 0) {
       if (ret_val == 0) {
-	/* NOTE: There is a possibility we may never enter this. */
-	ss_check_all_ses_server_rails(&(nbworks_all_session_srvrs));
 	continue;
       } else {
 	/* TODO: error handling */
@@ -1417,28 +1415,26 @@ void *take_incoming_session(void *arg) {
 }
 
 
-void ss_check_all_ses_server_rails(struct ses_srv_rails **rails) {
-  struct ses_srv_rails *cur_rail;
+void ss_check_all_ses_server_rails() {
+  struct ses_srv_rails *cur_rail, **last_rail;
   struct pollfd pfd;
-
-  if (! rails)
-    return;
 
   pfd.events = POLLOUT;
 
-  cur_rail = *rails;
+  last_rail = &(nbworks_all_session_srvrs);
+  cur_rail = *last_rail;
   while (cur_rail) {
     pfd.fd = cur_rail->rail;
     poll(&pfd, 1, 0);
 
     if (pfd.revents & POLLHUP) {
-      *rails = cur_rail->next;
+      *last_rail = cur_rail->next;
       close(cur_rail->rail);
       free(cur_rail);
     } else {
-      rails = &(cur_rail->next);
+      last_rail = &(cur_rail->next);
     }
-    cur_rail = *rails;
+    cur_rail = *last_rail;
   }
 
   return;

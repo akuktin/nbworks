@@ -180,7 +180,7 @@ void *
 void *
   take_incoming_session(void *arg);
 void
-  ss_check_all_ses_server_rails(struct ses_srv_rails **rails);
+  ss_check_all_ses_server_rails();
 
 uint32_t
   get_inaddr();

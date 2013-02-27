@@ -49,36 +49,29 @@ struct thread_node *add_thread(pthread_t tid) {
   }
 }
 
-void *thread_joiner(void *placeholder) { /* AKA "the body collector" */
+void thread_joiner() { /* AKA "the body collector" */
   struct thread_node *node, *for_del, **last;
 
-  while (0xfeed) {
-    if (nbworks_threadcontrol.all_stop)
-      break;
+  node = nbworks_all_threads;
+  last = &(nbworks_all_threads);
 
-    node = nbworks_all_threads;
-    last = &(nbworks_all_threads);
-
-    while (node) {
-      if (node->dead != 0) { /* Test for all stages of decomposition. */
-	if (node->dead < 0) {
-	  if (0 == pthread_join(node->tid, 0)) {
-	    *last = node->next;
-	    for_del = node;
-	    node = node->next;
-	    free(for_del);
-	    continue;
-	  }
-	} else
-	  node->dead = -1;
-      }
-
-      last = &(node->next);
-      node = node->next;
+  while (node) {
+    if (node->dead != 0) { /* Test for all stages of decomposition. */
+      if (node->dead < 0) {
+	if (0 == pthread_join(node->tid, 0)) {
+	  *last = node->next;
+	  for_del = node;
+	  node = node->next;
+	  free(for_del);
+	  continue;
+	}
+      } else
+	node->dead = -1;
     }
 
-    nanosleep(&(nbworks_threadcontrol.sleeptime), 0);
+    last = &(node->next);
+    node = node->next;
   }
 
-  return nbworks_all_threads;
+  return;
 }

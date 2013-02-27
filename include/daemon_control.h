@@ -34,4 +34,9 @@ struct {
   struct timespec take_timeout;
 } nbworks_ses_srv_cntrl;
 
+struct {
+  unsigned char all_stop;
+  struct timespec timeout;
+} nbworks_pruners_cntrl;
+
 #endif /* NBWORKS_DAEMONCONTROL_H */

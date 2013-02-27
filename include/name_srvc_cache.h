@@ -85,8 +85,8 @@ struct cache_scopenode *
 struct cache_scopenode *
   find_scope(struct nbnodename_list *scope);
 
-void *
-  prune_scopes(void *);
+void
+  prune_scopes();
 
 struct cache_namenode *
   add_name(struct cache_namenode *name,
