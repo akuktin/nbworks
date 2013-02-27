@@ -86,14 +86,14 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 }
 
 
-void prune_scopes() {
+void prune_scopes(time_t when) {
   struct cache_scopenode *cur_scope, **last_scope;
   struct cache_namenode *cur_name, **last_name;
   struct ipv4_addr_list *cur_addr, *addr_fordel;
   int i;
   time_t curtime;
 
-  curtime = time(0);
+  curtime = when;
 
   cur_scope = nbworks_rootscope;
   last_scope = &(nbworks_rootscope);

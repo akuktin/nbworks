@@ -49,7 +49,7 @@ struct thread_node *add_thread(pthread_t tid) {
   }
 }
 
-void thread_joiner() { /* AKA "the body collector" */
+void thread_joiner(time_t eternity) { /* AKA "the body collector" */
   struct thread_node *node, *for_del, **last;
 
   node = nbworks_all_threads;

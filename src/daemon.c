@@ -108,11 +108,14 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 
 
 void *pruners(void *arg_ignored) {
+  time_t now;
 
   do {
-    ss_check_all_ses_server_rails();
-    prune_scopes();
-    thread_joiner();
+    now = time(0);
+
+    ss_check_all_ses_server_rails(now);
+    prune_scopes(now);
+    thread_joiner(now);
 
     nanosleep(&(nbworks_pruners_cntrl.timeout), 0);
   } while (! nbworks_pruners_cntrl.all_stop);
