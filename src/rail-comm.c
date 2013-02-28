@@ -261,8 +261,7 @@ void *handle_rail(void *args) {
 
   case rail_send_dtg:
     if (find_namebytok(command.token, 0)) {
-      if (0 == rail_senddtg(params.rail_sckt, &command,
-                            &(nbworks_queue_storage[DTG_SRVC]))) {
+      if (0 == rail_senddtg(params.rail_sckt, &command)) {
 	command.len = 0;
 	command.data = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
@@ -274,8 +273,7 @@ void *handle_rail(void *args) {
 
   case rail_dtg_sckt:
     if (0 == rail_add_dtg_server(params.rail_sckt,
-				 &command,
-				 &(nbworks_queue_storage[DTG_SRVC]))) {
+				 &command)) {
       command.len = 0;
       fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
@@ -586,8 +584,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 
 /* returns: 0 = success, >0 = fail, <0 = error */
 int rail_senddtg(int rail_sckt,
-		 struct com_comm *command,
-		 struct ss_queue_storage **queue_stor) {
+		 struct com_comm *command) {
   struct sockaddr_in dst_addr;
   struct dtg_srvc_packet *pckt;
   struct dtg_pckt_pyld_normal *normal_pyld;
@@ -600,7 +597,7 @@ int rail_senddtg(int rail_sckt,
   unsigned short node_type, group_flg;
   unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
 
-  if (! (command && queue_stor))
+  if (! command)
     return -1;
 
   switch (command->node_type) {
@@ -655,10 +652,10 @@ int rail_senddtg(int rail_sckt,
 
     tid.name_scope = normal_pyld->src_name;
 
-    trans = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
+    trans = ss_find_queuestorage(&tid, DTG_SRVC);
     if (! trans) {
       queue = ss_register_dtg_tid(&tid);
-      trans = ss_add_queuestorage(queue, &tid, DTG_SRVC, queue_stor);
+      trans = ss_add_queuestorage(queue, &tid, DTG_SRVC);
 
       free(queue);
     }
@@ -739,8 +736,7 @@ int rail_senddtg(int rail_sckt,
 
 /* returns: 0=success, >0=fail, <0=error */
 int rail_add_dtg_server(int rail_sckt,
-			struct com_comm *command,
-			struct ss_queue_storage **queue_stor) {
+			struct com_comm *command) {
   struct ss_queue *trans;
   struct ss_queue_storage *queue;
   struct cache_namenode *namecard;
@@ -750,7 +746,7 @@ int rail_add_dtg_server(int rail_sckt,
   union trans_id tid;
   time_t cur_time;
 
-  if (! (command && queue_stor))
+  if (! command)
     return -1;
 
   new_rail = malloc(sizeof(struct rail_list));
@@ -788,9 +784,9 @@ int rail_add_dtg_server(int rail_sckt,
   if (! trans) {
     /* This can only mean there is already
        a registered queue with this name. */
-    queue = ss_find_queuestorage(&tid, DTG_SRVC, *queue_stor);
+    queue = ss_find_queuestorage(&tid, DTG_SRVC);
   } else {
-    queue = ss_add_queuestorage(trans, &tid, DTG_SRVC, queue_stor);
+    queue = ss_add_queuestorage(trans, &tid, DTG_SRVC);
   }
 
   if (! queue) {
@@ -832,13 +828,12 @@ int rail_add_dtg_server(int rail_sckt,
     params.isbusy = 0xda;
     params.nbname = nbname;
     params.queue = queue;
-    params.all_queues = queue_stor;
 
     if (0 != pthread_create(&(params.thread_id), 0,
 			    dtg_server, &params)) {
       ss_deregister_dtg_tid(&tid);
       ss__dstry_recv_queue(&(queue->queue));
-      ss_del_queuestorage(&tid, DTG_SRVC, queue_stor);
+      ss_del_queuestorage(&tid, DTG_SRVC);
       destroy_nbnodename(nbname);
       free(new_rail);
 
@@ -860,7 +855,6 @@ void *dtg_server(void *arg) {
   struct nbnodename_list *nbname;
   struct ss_queue *trans;
   struct ss_queue_storage *queue;
-  struct ss_queue_storage **all_queues;
   struct dtg_srvc_recvpckt *pckt;
   struct rail_list *cur_rail, **last_rail;
   struct pollfd pollfd;
@@ -877,7 +871,6 @@ void *dtg_server(void *arg) {
     last_will = 0;
   nbname = params->nbname;
   queue = params->queue;
-  all_queues = params->all_queues;
   params->isbusy = 0;
 
   trans = &(queue->queue);
@@ -961,7 +954,7 @@ void *dtg_server(void *arg) {
 
   ss_deregister_dtg_tid(&tid);
   ss__dstry_recv_queue(&(queue->queue));
-  ss_del_queuestorage(&tid, DTG_SRVC, all_queues);
+  ss_del_queuestorage(&tid, DTG_SRVC);
   destroy_nbnodename(nbname);
 
   if (last_will)

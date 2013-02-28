@@ -35,6 +35,7 @@
 
 
 struct ss_priv_trans *nbworks_all_transactions[2];
+struct ss_queue_storage *nbworks_queue_storage[2];
 struct ses_srv_rails *nbworks_all_session_srvrs;
 struct ses_srv_sessions *nbworks_all_sessions;
 
@@ -183,12 +184,11 @@ void ss_deregister_tid(union trans_id *arg,
 
 struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
 					     union trans_id *arg,
-					     unsigned char branch,
-					     struct ss_queue_storage **queue_stor) {
+					     unsigned char branch) {
   struct ss_queue_storage *result, *cur_stor, **last_stor;
   uint16_t tid;
 
-  if (! (queue && arg && queue_stor))
+  if (! (queue && arg))
     return 0;
 
   tid = 0;
@@ -212,8 +212,8 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
   result->next = 0;
 
   while (0666) {
-    cur_stor = *queue_stor;
-    last_stor = queue_stor;
+    last_stor = &(nbworks_queue_storage[branch]);
+    cur_stor = *last_stor;
 
     while (cur_stor) {
       if ((branch == DTG_SRVC) ?
@@ -240,17 +240,16 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
 }
 
 void ss_del_queuestorage(union trans_id *arg,
-			 unsigned char branch,
-			 struct ss_queue_storage **queue_stor) {
+			 unsigned char branch) {
   struct ss_queue_storage *cur_stor, **last_stor;
   struct rail_list *for_del2, *for_del2prim;
   uint16_t tid;
 
-  if (! (arg && queue_stor))
+  if (! arg)
     return;
 
-  cur_stor = *queue_stor;
-  last_stor = queue_stor;
+  last_stor = &(nbworks_queue_storage[branch]);
+  cur_stor = *last_stor;
 
   tid = arg->tid;
 
@@ -278,15 +277,14 @@ void ss_del_queuestorage(union trans_id *arg,
 }
 
 struct ss_queue_storage *ss_find_queuestorage(union trans_id *arg,
-					      unsigned char branch,
-					      struct ss_queue_storage *queue_stor) {
+					      unsigned char branch) {
   struct ss_queue_storage *cur_stor;
   uint16_t tid;
 
   if (! arg)
     return 0;
 
-  cur_stor = queue_stor;
+  cur_stor = nbworks_queue_storage[branch];
 
   tid = arg->tid;
 

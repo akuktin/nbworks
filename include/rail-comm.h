@@ -79,7 +79,6 @@ struct dtg_srv_params {
   pthread_t thread_id;
   struct nbnodename_list *nbname;
   struct ss_queue_storage *queue;
-  struct ss_queue_storage **all_queues;
 };
 
 void
@@ -119,13 +118,11 @@ struct cache_namenode *
 
 int
   rail_senddtg(int rail_sckt,
-               struct com_comm *command,
-               struct ss_queue_storage **queue_stor);
+               struct com_comm *command);
 /* returns: 0=success, >0=fail, <0=error */
 int
   rail_add_dtg_server(int rail_sckt,
-                      struct com_comm *command,
-                      struct ss_queue_storage **queue_stor);
+                      struct com_comm *command);
 
 void *
   dtg_server(void *arg);

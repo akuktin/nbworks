@@ -101,8 +101,6 @@ struct ses_srv_sessions {
   struct ses_srv_sessions *next;
 };
 
-struct ss_queue_storage *nbworks_queue_storage[2];
-
 void init_service_sector();
 struct ss_queue *
   ss_register_tid(union trans_id *trans_id,
@@ -113,16 +111,13 @@ void
 struct ss_queue_storage *
   ss_add_queuestorage(struct ss_queue *queue,
                       union trans_id *trans_id,
-                      unsigned char branch,
-                      struct ss_queue_storage **queue_stor);
+                      unsigned char branch);
 void
   ss_del_queuestorage(union trans_id *trans_id,
-                      unsigned char branch,
-                      struct ss_queue_storage **queue_stor);
+                      unsigned char branch);
 struct ss_queue_storage *
   ss_find_queuestorage(union trans_id *trans_id,
-                       unsigned char branch,
-                       struct ss_queue_storage *queue_stor);
+                       unsigned char branch);
 
 void
   ss_set_inputdrop_tid(union trans_id *trans_id,
