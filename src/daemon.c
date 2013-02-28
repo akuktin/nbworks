@@ -116,7 +116,7 @@ void *pruners(void *arg_ignored) {
     now = time(0);
 
     prune_scopes(now);
-    ss_prune_queuestorage(now +
+    ss_prune_queuestorage(now -
 	     nbworks_pruners_cntrl.lifetimeof_queue_storage);
     ss__prune_sessions();
     ss_check_all_ses_server_rails();

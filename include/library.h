@@ -146,6 +146,9 @@ void
   lib_del_fragbckbone(uint16_t id,
                       struct nbnodename_list *src,
                       struct dtg_frag_bckbone **frags);
+void
+  lib_prune_fragbckbone(struct dtg_frag_bckbone **frags,
+                        time_t killtime);
 struct dtg_frag_bckbone *
   lib_add_frag_tobone(uint16_t id,
                       struct nbnodename_list *src,

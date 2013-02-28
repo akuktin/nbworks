@@ -23,12 +23,7 @@
 #include "randomness.h"
 
 
-struct name_state *nbworks_allhandles;
-
-
 void lib_init() {
-  nbworks_allhandles = 0;
-
   nbworks_libcntl.stop_alldtg_srv = 0;
   nbworks_libcntl.stop_allses_srv = 0;
 
@@ -39,6 +34,8 @@ void lib_init() {
 	      What do I know? Just choose a random number,
 	      it oughta work. I guess. */
   nbworks_libcntl.keepalive_interval = 120; /* seconds */
+
+  nbworks_libcntl.dtg_frag_keeptime = 60; /* seconds */
 }
 
 
@@ -572,6 +569,9 @@ struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
 					     struct dtg_frag_bckbone **frags) {
   struct dtg_frag_bckbone *result, *cur_frag, **last_frag;
 
+  if (! (src && frags))
+    return 0;
+
   result = malloc(sizeof(struct dtg_frag_bckbone));
   if (! result) {
     /* TODO: errno signaling stuff */
@@ -585,7 +585,7 @@ struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
   }
 
   result->id = id;
-  result->last_active = ZEROONES;
+  result->last_active = time(0);
   result->src = clone_nbnodename(src);
 
   result->frags->offset = offsetof_first;
@@ -624,6 +624,9 @@ struct dtg_frag_bckbone *lib_find_fragbckbone(uint16_t id,
 					      struct dtg_frag_bckbone *frags) {
   struct dtg_frag_bckbone *cur_frag;
 
+  if (! (frags && src))
+    return 0;
+
   cur_frag = frags;
   while (cur_frag) {
     if ((cur_frag->id == id) &&
@@ -640,6 +643,9 @@ struct dtg_frag_bckbone *lib_take_fragbckbone(uint16_t id,
 					      struct nbnodename_list *src,
 					      struct dtg_frag_bckbone **frags) {
   struct dtg_frag_bckbone *cur_frag, **last_frag;
+
+  if (! (frags && src))
+    return 0;
 
   last_frag = frags;
   cur_frag = *last_frag;
@@ -663,6 +669,9 @@ void lib_del_fragbckbone(uint16_t id,
 			 struct dtg_frag_bckbone **frags) {
   struct dtg_frag_bckbone *cur_frag, **last_frag;
 
+  if (! (frags && src))
+    return;
+
   last_frag = frags;
   cur_frag = *last_frag;
 
@@ -676,6 +685,30 @@ void lib_del_fragbckbone(uint16_t id,
       last_frag = &(cur_frag->next);
       cur_frag = *last_frag;
     }
+  }
+
+  return;
+}
+
+void lib_prune_fragbckbone(struct dtg_frag_bckbone **frags,
+			   time_t killtime) {
+  struct dtg_frag_bckbone *cur_frag, **last_frag;
+
+  if (! frags)
+    return;
+
+  last_frag = frags;
+  cur_frag = *last_frag;
+
+  while (cur_frag) {
+    if (cur_frag->last_active < killtime) {
+      *last_frag = cur_frag->next;
+      lib_destroy_fragbckbone(cur_frag);
+    } else {
+      last_frag = &(cur_frag->next);
+    }
+
+    cur_frag = *last_frag;
   }
 
   return;
@@ -704,6 +737,8 @@ struct dtg_frag_bckbone *lib_add_frag_tobone(uint16_t id,
     free(result);
     return 0;
   }
+
+  bone->last_active = time(0);
 
   while (42) {
     last_frag = &(bone->frags);
@@ -1145,6 +1180,7 @@ void *lib_dtgserver(void *arg) {
   struct dtg_srvc_packet *dtg;
   struct dtg_pckt_pyld_normal *nrml_pyld;
   struct nbnodename_list decoded_nbnodename;
+  time_t last_pruned, killtime;
   uint32_t len;
   unsigned char lenbuf[4], decoded_name[NETBIOS_NAME_LEN+1];
   unsigned char *new_pckt, take_dtg;
@@ -1169,9 +1205,22 @@ void *lib_dtgserver(void *arg) {
   decoded_nbnodename.next_name = 0;
   toshow = 0;
   take_dtg = FALSE;
+  last_pruned = time(0);
 
   while ((! nbworks_libcntl.stop_alldtg_srv) &&
 	 (! handle->dtg_srv_stop)) {
+    /* This is a bad solution because, in the event of a datagram torrent,
+     * time() is called far too often. However, the alternative is to put
+     * it in the poll test below, which would be an even worse proposition
+     * because lib_prune_fragbckbone() will not be called at all in the
+     * event of a datagram torrent, when datagrams are comming in in
+     * intervals shorter than nbworks_libcntl.dtg_srv_polltimeout. */
+    killtime = time(0) - nbworks_libcntl.dtg_frag_keeptime;
+
+    if (last_pruned < killtime) {
+      lib_prune_fragbckbone(&(handle->dtg_frags), killtime);
+    }
+
     if (0 >= poll(&pfd, 1, nbworks_libcntl.dtg_srv_polltimeout)) {
       if (pfd.revents & (POLLHUP | POLLNVAL | POLLERR)) {
 	break;
@@ -1255,9 +1304,9 @@ void *lib_dtgserver(void *arg) {
 				  nrml_pyld->payload, handle->dtg_frags)) {
 	    nrml_pyld->payload = 0;
 	  } else {
-	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
 				&(handle->dtg_frags));
+	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    continue;
 	  }
 	} else {
@@ -1267,9 +1316,9 @@ void *lib_dtgserver(void *arg) {
 				    nrml_pyld->payload, &(handle->dtg_frags))) {
 	      nrml_pyld->payload = 0;
 	    } else {
-	      destroy_dtg_srvc_pckt(dtg, 1, 1);
 	      lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
 				  &(handle->dtg_frags));
+	      destroy_dtg_srvc_pckt(dtg, 1, 1);
 	      continue;
 	    }
 	  }
@@ -1278,23 +1327,32 @@ void *lib_dtgserver(void *arg) {
 	if (! (dtg->flags & DTG_MORE_FLAG)) {
 	  toshow = malloc(sizeof(struct packet_cooked));
 	  if (! toshow) {
-	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
 				&(handle->dtg_frags));
+	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    continue;
 	  }
 
 	  if (dtg->flags & DTG_FIRST_FLAG) {
-	    toshow->data = nrml_pyld->payload;
-	    nrml_pyld->payload = 0;
+	    if (! nrml_pyld->offset) {
+	      toshow->data = nrml_pyld->payload;
+	      nrml_pyld->payload = 0;
 
-	    /* Ignore the offset field. */
-	    toshow->len = nrml_pyld->len;
+	      toshow->len = nrml_pyld->len;
 
-	    toshow->src = nrml_pyld->src_name;
-	    nrml_pyld->src_name = 0;
+	      toshow->src = nrml_pyld->src_name;
+	      nrml_pyld->src_name = 0;
 
-	    toshow->next = 0;
+	      toshow->next = 0;
+	    } else {
+	      /* Now, interestingly, I might be able to interpret the
+	       * offset as meaning that the offsetted part is filled with
+	       * well-known information (maybe NULLs?) and is thus not
+	       * transmitted, but only the other, meaningfull part is
+	       * transmitted. */
+	      free(toshow);
+	      toshow = 0;
+	    }
 	  } else {
 	    fragbone = lib_take_fragbckbone(dtg->id, nrml_pyld->src_name,
 					    &(handle->dtg_frags));
