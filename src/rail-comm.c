@@ -821,7 +821,6 @@ int rail_add_dtg_server(int rail_sckt,
       break;
   }
 
-  queue->last_active = ZEROONES;
   if (trans) {
     free(trans);
 
@@ -871,6 +870,7 @@ void *dtg_server(void *arg) {
     last_will = 0;
   nbname = params->nbname;
   queue = params->queue;
+  /* Release the caller. */
   params->isbusy = 0;
 
   trans = &(queue->queue);
@@ -886,6 +886,9 @@ void *dtg_server(void *arg) {
     while (438) {
       pckt = ss__recv_pckt(trans);
       if (pckt) {
+	if (queue->last_active < ZEROONES)
+	  queue->last_active = time(0);
+
 	fill_32field(pckt->len, buff);
 
 	cur_rail = queue->rail;

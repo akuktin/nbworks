@@ -27,6 +27,7 @@ struct {
   unsigned char all_stop;
   struct timespec timeout;
   unsigned int passes_ses_srv_ses;
+  time_t lifetimeof_queue_storage;
 } nbworks_pruners_cntrl;
 
 #endif /* NBWORKS_DAEMONCONTROL_H */

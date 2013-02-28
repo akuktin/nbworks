@@ -53,6 +53,7 @@ struct ss_queue {
 };
 
 struct ss_queue_storage {
+  unsigned char branch;
   union trans_id id;
   time_t last_active;
   struct rail_list *rail;
@@ -118,6 +119,8 @@ void
 struct ss_queue_storage *
   ss_find_queuestorage(union trans_id *trans_id,
                        unsigned char branch);
+void
+  ss_prune_queuestorage(time_t killtime);
 
 void
   ss_set_inputdrop_tid(union trans_id *trans_id,

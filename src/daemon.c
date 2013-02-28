@@ -35,6 +35,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_pruners_cntrl.timeout.tv_sec = 0;
   nbworks_pruners_cntrl.timeout.tv_nsec = T_250MS;
   nbworks_pruners_cntrl.passes_ses_srv_ses = 8; /* AKA 2 seconds */
+  nbworks_pruners_cntrl.lifetimeof_queue_storage = 25; /* seconds */
 
   railparams.isbusy = 0xda;
   railparams.rail_sckt = open_rail();
@@ -115,6 +116,8 @@ void *pruners(void *arg_ignored) {
     now = time(0);
 
     prune_scopes(now);
+    ss_prune_queuestorage(now + 
+	     nbworks_pruners_cntrl.lifetimeof_queue_storage);
     ss__prune_sessions();
     ss_check_all_ses_server_rails();
     thread_joiner();

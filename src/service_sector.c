@@ -199,6 +199,7 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
     return 0;
   }
 
+  result->branch = branch;
   if (branch == DTG_SRVC)
     result->id.name_scope = clone_nbnodename(arg->name_scope);
   else {
@@ -259,18 +260,24 @@ void ss_del_queuestorage(union trans_id *arg,
 			  arg->name_scope)) :
 	cur_stor->id.tid == tid) {
       *last_stor = cur_stor->next;
+
       for_del2prim = cur_stor->rail;
       while (for_del2prim) {
 	for_del2 = for_del2prim->next;
 	free(for_del2prim);
 	for_del2prim = for_del2;
       }
+
+      if (branch == DTG_SRVC)
+	destroy_nbnodename(cur_stor->id.name_scope);
+
       free(cur_stor);
       return;
     } else {
       last_stor = &(cur_stor->next);
-      cur_stor = cur_stor->next;
     }
+
+    cur_stor = *last_stor;
   }
 
   return;
@@ -300,6 +307,41 @@ struct ss_queue_storage *ss_find_queuestorage(union trans_id *arg,
   }
 
   return 0;
+}
+
+void ss_prune_queuestorage(time_t killtime) {
+  struct ss_queue_storage *cur_stor, **last_stor;
+  struct rail_list *railkill, *roadkill;
+  int i;
+
+  for (i=0; i<2; i++) {
+    last_stor = &(nbworks_queue_storage[i]);
+    cur_stor = *last_stor;
+
+    while (cur_stor) {
+      if (cur_stor->last_active < killtime) {
+	*last_stor = cur_stor->next;
+
+	railkill = cur_stor->rail;
+	while (railkill) {
+	  roadkill = railkill->next;
+	  close(railkill->rail_sckt);
+	  free(railkill);
+	  railkill = roadkill;
+	}
+
+	if (cur_stor->branch == DTG_SRVC) {
+	  destroy_nbnodename(cur_stor->id.name_scope);
+	}
+
+	free(cur_stor);
+      } else {
+	last_stor = &(cur_stor->next);
+      }
+
+      cur_stor = *last_stor;
+    }
+  }
 }
 
 
