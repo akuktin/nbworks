@@ -141,4 +141,10 @@ struct addrlst_bigblock *
 void
   destroy_bigblock(struct addrlst_bigblock *block);
 
+/* returns: >0 = success, 0 = failure, <0 = error */
+int
+  remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
+                       struct cache_namenode *namecard,
+                       uint32_t my_ipv4_address);
+
 #endif /* NBWORKS_NAMESRVCCACHE_H*/

@@ -546,6 +546,8 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
   else
     result = malloc(sizeof(struct addrlst_bigblock));
 
+  memset(result, 0, sizeof(struct addrlst_bigblock));
+
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -676,14 +678,6 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
   }
 
 
-  result->node_types = 0;
-  for (i=0; i<4; i++) {
-    result->ysgrp.recrd[i].node_type = 0;
-    result->ysgrp.recrd[i].addr = 0;
-    result->nogrp.recrd[i].node_type = 0;
-    result->nogrp.recrd[i].addr = 0;
-  }
-
   if (ipv4_addr_list_grpB_frst) {
     result->node_types = result->node_types | CACHE_NODEGRPFLG_B;
     for (i=0; i<4; i++) {
@@ -793,4 +787,64 @@ void destroy_bigblock(struct addrlst_bigblock *block) {
   free(block);
 
   return;
+}
+
+
+/* returns: >0 = success, 0 = failure, <0 = error */
+int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
+			 struct cache_namenode *namecard,
+			 uint32_t my_ipv4_address) {
+  struct addrlst_bigblock addrblock, *addrof_addrblock;
+  struct ipv4_addr_list *cur_addr, **last_addr,
+    *card_addr, **last_card_addr;
+  int i, j;
+
+  if (! (nbaddr_list && namecard))
+    return -1;
+
+  addrof_addrblock = &addrblock;
+  if (! sort_nbaddrs(nbaddr_list, &addrof_addrblock)) {
+    return 0;
+  }
+
+  for (i=0; i<4; i++) {
+    for (j=0; j<4; j++) {
+      if (addrblock.ysgrp.recrd[i].node_type ==
+	  namecard->addrs.recrd[j].node_type)
+	break;
+    }
+
+    if (! (j<4))
+      continue;
+
+    last_addr = &(addrblock.ysgrp.recrd[i].addr);
+    cur_addr = *last_addr;
+
+    while (cur_addr) {
+      if (cur_addr->ip_addr == my_ipv4_address) {
+	*last_addr = cur_addr->next;
+      } else {
+	last_addr = &(cur_addr->next);
+
+	last_card_addr = &(namecard->addrs.recrd[j].addr);
+	card_addr = *last_card_addr;
+
+	while (card_addr) {
+	  if (card_addr->ip_addr == cur_addr->ip_addr) {
+	    *last_card_addr = card_addr->next;
+	    free(card_addr);
+	  } else {
+	    last_card_addr = &(card_addr->next);
+	  }
+
+	  card_addr = *last_card_addr;
+	}
+      }
+
+      free(cur_addr);
+      cur_addr = *last_addr;
+    }
+  }
+
+  return 1;
 }
