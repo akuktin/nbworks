@@ -59,8 +59,6 @@ void init_service_sector() {
   nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_nsec = T_10MS;
 
   nbworks_ses_srv_cntrl.all_stop = 0;
-  nbworks_ses_srv_cntrl.take_timeout.tv_sec = 0;
-  nbworks_ses_srv_cntrl.take_timeout.tv_nsec = T_500MS;
 }
 
 struct ss_queue *ss_register_tid(union trans_id *arg,
@@ -581,6 +579,7 @@ struct ses_srv_sessions *ss__add_session(uint64_t token,
   result->token = token;
   result->out_sckt = out_sckt;
   result->first_buff = first_buff;
+  result->numof_passes = 0;
   result->next = 0;
 
   while (0xb00b5) {
@@ -653,6 +652,28 @@ void ss__del_session(uint64_t token,
       last_ses = &(cur_ses->next);
       cur_ses = *last_ses;
     }
+  }
+
+  return;
+}
+
+void ss__prune_sessions() {
+  struct ses_srv_sessions *cur_ses, **last_ses;
+
+  last_ses = &(nbworks_all_sessions);
+  cur_ses = *last_ses;
+  while (cur_ses) {
+    if (cur_ses->numof_passes >
+	nbworks_pruners_cntrl.passes_ses_srv_ses) {
+      *last_ses = cur_ses->next;
+      close(cur_ses->out_sckt);
+      free(cur_ses);
+    } else {
+      last_ses = &(cur_ses->next);
+      cur_ses->numof_passes++;
+    }
+
+    cur_ses = *last_ses;
   }
 
   return;
@@ -1399,23 +1420,13 @@ void *take_incoming_session(void *arg) {
     return 0;
   }
 
-  nanosleep(&(nbworks_ses_srv_cntrl.take_timeout), 0);
-
-  if (session->token) {
-    ss__del_session(params.sckt139, TRUE);
-  } else {
-    /* For preventing a use-after-free, session is freed here
-     * instead of in rail_setup_session() from the rail sector. */
-    free(session);
-  }
-
   if (last_will)
     last_will->dead = TRUE;
   return 0;
 }
 
 
-void ss_check_all_ses_server_rails(time_t when) {
+void ss_check_all_ses_server_rails() {
   struct ses_srv_rails *cur_rail, **last_rail;
   struct pollfd pfd;
 

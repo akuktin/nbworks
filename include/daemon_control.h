@@ -21,12 +21,12 @@ struct {
 
 struct {
   unsigned char all_stop;
-  struct timespec take_timeout;
 } nbworks_ses_srv_cntrl;
 
 struct {
   unsigned char all_stop;
   struct timespec timeout;
+  unsigned int passes_ses_srv_ses;
 } nbworks_pruners_cntrl;
 
 #endif /* NBWORKS_DAEMONCONTROL_H */

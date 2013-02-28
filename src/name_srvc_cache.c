@@ -88,7 +88,6 @@ void prune_scopes(time_t when) {
   struct cache_namenode *cur_name, **last_name;
   struct ipv4_addr_list *cur_addr, *addr_fordel;
   int i;
-  time_t curtime;
 
   cur_scope = nbworks_rootscope;
   last_scope = &(nbworks_rootscope);

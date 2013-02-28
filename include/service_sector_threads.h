@@ -2,7 +2,6 @@
 # define NBWORKS_SERVICESECTORTHREADS_H 1
 
 # include <pthread.h>
-# include <time.h>
 
 struct thread_node {
   pthread_t tid;
@@ -13,6 +12,6 @@ struct thread_node {
 void init_service_sector_threads();
 
 struct thread_node *add_thread(pthread_t tid);
-void thread_joiner(time_t run_for_how_long);
+void thread_joiner();
 
 #endif /* NBWORKS_SERVICESECTORTHREADS_H */

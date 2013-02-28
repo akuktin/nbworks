@@ -97,6 +97,7 @@ struct ses_srv_sessions {
   uint64_t token;
   int out_sckt;
   unsigned char *first_buff;
+  unsigned int numof_passes;
   struct ses_srv_sessions *next;
 };
 
@@ -164,6 +165,8 @@ struct ses_srv_sessions *
 void
   ss__del_session(uint64_t token,
                   unsigned char close_sckt);
+void
+  ss__prune_sessions();
 
 void *
   ss__port137(void *placeholder);

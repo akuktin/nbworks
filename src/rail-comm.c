@@ -1031,7 +1031,7 @@ int rail__send_ses_pending(int rail,
 /* returns: >0 = success, 0 = failed, <0 = error */
 int rail_setup_session(int rail,
 		       uint64_t token) {
-  struct ses_srv_sessions *session_ptr, session;
+  struct ses_srv_sessions *session;
   struct ses_srvc_packet pckt;
   struct com_comm answer;
   struct stream_connector_args new_session;
@@ -1040,58 +1040,55 @@ int rail_setup_session(int rail,
   unsigned char err[] = { NEG_SESSION_RESPONSE, 0, 0, 1, SES_ERR_UNSPEC };
   unsigned char *walker;
 
-  session_ptr = ss__take_session(token);
-  if (! session_ptr) {
+  session = ss__take_session(token);
+  if (! session) {
     close(rail);
     return 0;
   }
 
-  memcpy(&session, session_ptr, sizeof(struct ses_srv_sessions));
-
-  /* To prevent a use-after-free, session_ptr is freed by
-   * take_incoming_session() from the service sector. */
-
-  session_ptr->token = 0;
-
   memset(&pckt, 0, sizeof(struct ses_srvc_packet));
 
-  walker = session.first_buff;
+  walker = session->first_buff;
   if (! read_ses_srvc_pckt_header(&walker, walker+SES_HEADER_LEN, &pckt)) {
-    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
-    close(session.out_sckt);
-    free(session.first_buff);
+    close(session->out_sckt);
+    free(session->first_buff);
+    free(session);
     return -1;
   }
 
-  if ((pckt.len+SES_HEADER_LEN) > send(rail, session.first_buff,
+  if ((pckt.len+SES_HEADER_LEN) > send(rail, session->first_buff,
 				       (pckt.len+SES_HEADER_LEN),
 				       (MSG_NOSIGNAL | MSG_DONTWAIT))) {
-    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
-    close(session.out_sckt);
-    free(session.first_buff);
+    close(session->out_sckt);
+    free(session->first_buff);
+    free(session);
     return -1;
   } else {
-    out_sckt = session.out_sckt;
-    free(session.first_buff);
+    out_sckt = session->out_sckt;
+    free(session->first_buff);
   }
 
   if (LEN_COMM_ONWIRE > recv(rail, rail_buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
-    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
     close(out_sckt);
+    free(session);
     return 0;
   }
 
   if (! read_railcommand(rail_buff, (rail_buff+LEN_COMM_ONWIRE), &answer)) {
-    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
     close(out_sckt);
+    free(session);
     return -1;
   }
 
@@ -1104,6 +1101,7 @@ int rail_setup_session(int rail,
 
     close(rail);
     close(out_sckt);
+    free(session);
     return -1;
   } else {
     if (answer.len)
@@ -1111,10 +1109,11 @@ int rail_setup_session(int rail,
   }
 
   if (0 != fcntl(rail, F_SETFL, O_NONBLOCK)) {
-    //    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+    //    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
 
     //    close(rail);
     //    close(out_sckt);
+    //    free(session);
     //    return -1;
   }
   /* The rail socket is now ready for operation. Establish a tunnel. */
@@ -1125,16 +1124,19 @@ int rail_setup_session(int rail,
 
   if (0 != pthread_create(&(new_session.thread_id), 0,
 			  tunnel_stream_sockets, &new_session)) {
-    send(session.out_sckt, err, 5, MSG_NOSIGNAL);
+    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
     close(out_sckt);
+    free(session);
     return -1;
   }
 
   while (new_session.isbusy) {
     /* busy-wait */
   }
+
+  free(session);
 
   return TRUE;
 }
