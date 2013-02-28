@@ -25,9 +25,6 @@ struct cache_scopenode *nbworks_rootscope;
 
 void init_name_srvc_cache() {
   nbworks_rootscope = 0;
-  nbworks_cache_control.all_stop = 0;
-  nbworks_cache_control.sleeptime.tv_sec = 1;
-  nbworks_cache_control.sleeptime.tv_nsec = 0;
 }
 
 
@@ -93,8 +90,6 @@ void prune_scopes(time_t when) {
   int i;
   time_t curtime;
 
-  curtime = when;
-
   cur_scope = nbworks_rootscope;
   last_scope = &(nbworks_rootscope);
 
@@ -103,7 +98,7 @@ void prune_scopes(time_t when) {
     last_name = &(cur_scope->names);
 
     while (cur_name) {
-      if (cur_name->timeof_death < curtime) {
+      if (cur_name->timeof_death < when) {
 	*last_name = cur_name->next;
 	for (i=0; i<4; i++) {
 	  cur_addr = cur_name->addrs.recrd[i].addr;
@@ -133,7 +128,7 @@ void prune_scopes(time_t when) {
     }
   }
 
-  return nbworks_rootscope;
+  return;
 }
 
 

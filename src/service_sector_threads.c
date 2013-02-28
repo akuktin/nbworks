@@ -12,9 +12,6 @@ struct thread_node *nbworks_all_threads;
 
 
 void init_service_sector_threads() {
-  nbworks_threadcontrol.all_stop = 0;
-  nbworks_threadcontrol.sleeptime.tv_sec = 1;
-  nbworks_threadcontrol.sleeptime.tv_nsec = 0;
   nbworks_all_threads = 0;
 }
 
