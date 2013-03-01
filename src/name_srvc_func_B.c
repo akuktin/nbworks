@@ -649,54 +649,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 	(outpckt->header->rcode == RCODE_CFT_ERR) &&
 	(outpckt->header->nm_flags & FLG_AA)) {
 
-      res = outpckt->answers;
-      while (res) {
-	status = STATUS_DID_NONE;
-
-	if ((res->res) &&
-	    (res->res->rdata_t == nb_address_list)) {
-
-	  nbaddr_list = res->res->rdata;
-	  while (nbaddr_list) {
-	    if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
-	      status = status | STATUS_DID_GROUP;
-	    else
-	      status = status | STATUS_DID_UNIQ;
-
-	    if (status & (STATUS_DID_UNIQ | STATUS_DID_GROUP))
-	      break;
-	    else
-	      nbaddr_list = nbaddr_list->next_address;
-	  }
-
-	  if (status & STATUS_DID_GROUP) {
-	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
-                                                            decoded_name),
-					  NETBIOS_NAME_LEN,
-					  ANY_NODETYPE, ISGROUP_YES,
-					  res->res->rrtype,
-					  res->res->rrclass,
-					  res->res->name->next_name);
-	    if (cache_namecard)
-	      if (cache_namecard->token)
-		cache_namecard->isinconflict = TRUE; /* WRONG ? */
-	  }
-	  if (status & STATUS_DID_UNIQ) {
-	    cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
-                                                            decoded_name),
-					  NETBIOS_NAME_LEN,
-					  ANY_NODETYPE, ISGROUP_NO,
-					  res->res->rrtype,
-					  res->res->rrclass,
-					  res->res->name->next_name);
-	    if (cache_namecard)
-	      if (cache_namecard->token)
-		cache_namecard->isinconflict = TRUE;
-	  }
-	}
-
-	res = res->next;
-      }
+      name_srvc_do_namcftdem(outpckt);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;

@@ -42,4 +42,7 @@ void
                              uint32_t tid,
                              time_t cur_time);
 
+void
+  name_srvc_do_namcftdem(struct name_srvc_packet *outpckt);
+
 #endif /* NBWORKS_NAMESRVCFUNCFUNC_H */

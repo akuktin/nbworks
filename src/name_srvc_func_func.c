@@ -61,6 +61,8 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	(res->res->rdata_t == nb_address_list)) {
       nbaddr_list = res->res->rdata;
 
+      decode_nbnodename(res->res->name->name, decoded_name);
+
       while (nbaddr_list) {
 	if ((nbaddr_list->flags & NBADDRLST_GROUP_MASK) ||
 	    (! nbaddr_list->there_is_an_address)) {
@@ -69,8 +71,7 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	  continue;
 	}
 
-	cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
-							decoded_name),
+	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
 				      ANY_NODETYPE, ISGROUP_NO,
 				      res->res->rrtype,
@@ -105,7 +106,7 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	  }
 
 	  if (i<4) {
-	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN],
+	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
 						 res->res->name->next_name,
 						 (cache_namecard->timeof_death
 						  - cur_time),
@@ -503,7 +504,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	     * so. Thus, this code may get triggered in such an innocent case.
 	     * If the sending node has its conflict timer running, said node
 	     * could experience various problems. */
-	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN],
+	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
 						 res->res->name->next_name,
 						 0, 0, ISGROUP_YES,
 						 cache_namecard->addrs.recrd[0].node_type);
@@ -556,7 +557,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	      else
 		nbaddr_list = nbaddr_list->next_address;
 
-	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN],
+	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
 						 res->res->name->next_name,
 						 0, 0, ISGROUP_NO,
 						 cache_namecard->addrs.recrd[0].node_type);
@@ -607,6 +608,62 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
   }
 }
 
+void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt) {
+  struct cache_namenode *cache_namecard;
+  struct name_srvc_resource_lst *res;
+  struct nbaddress_list *nbaddr_list;
+  uint32_t status;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  res = outpckt->answers;
+  while (res) {
+    status = STATUS_DID_NONE;
+
+    if ((res->res) &&
+	(res->res->rdata_t == nb_address_list)) {
+
+      nbaddr_list = res->res->rdata;
+      while (nbaddr_list) {
+	if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
+	  status = status | STATUS_DID_GROUP;
+	else
+	  status = status | STATUS_DID_UNIQ;
+
+	if (status & (STATUS_DID_UNIQ | STATUS_DID_GROUP))
+	  break;
+	else
+	  nbaddr_list = nbaddr_list->next_address;
+      }
+
+      decode_nbnodename(res->res->name->name, decoded_name);
+
+      if (status & STATUS_DID_GROUP) {
+	cache_namecard = find_nblabel(decoded_name,
+				      NETBIOS_NAME_LEN,
+				      ANY_NODETYPE, ISGROUP_YES,
+				      res->res->rrtype,
+				      res->res->rrclass,
+				      res->res->name->next_name);
+	if (cache_namecard)
+	  if (cache_namecard->token)
+	    cache_namecard->isinconflict = TRUE; /* WRONG ? */
+      }
+      if (status & STATUS_DID_UNIQ) {
+	cache_namecard = find_nblabel(decoded_name,
+				      NETBIOS_NAME_LEN,
+				      ANY_NODETYPE, ISGROUP_NO,
+				      res->res->rrtype,
+				      res->res->rrclass,
+				      res->res->name->next_name);
+	if (cache_namecard)
+	  if (cache_namecard->token)
+	    cache_namecard->isinconflict = TRUE;
+      }
+    }
+
+    res = res->next;
+  }
+}
 #undef STATUS_DID_NONE
 #undef STATUS_DID_GROUP
 #undef STATUS_DID_UNIQ
