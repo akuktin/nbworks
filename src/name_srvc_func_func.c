@@ -83,7 +83,6 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 
   pckt->header->transaction_id = tid.tid;
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
-  
   pckt->header->nm_flags = name_flags;
 
   for (i=0; i < BCAST_REQ_RETRY_COUNT; i++) {
