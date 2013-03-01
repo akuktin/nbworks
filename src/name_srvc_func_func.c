@@ -768,10 +768,11 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   struct name_srvc_resource_lst *res;
   struct addrlst_bigblock *addr_bigblock;
   int i, j;
+  //  uint32_t in_addr;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
-  //      /* Make sure noone spoofs the update request. */
-  //      read_32field(outside_pckt->addr.sinaddr, &in_addr);
+  //  /* Make sure noone spoofs the update request. */
+  //  read_32field($(addr->sin_addr.s_addr), &in_addr);
 
   res = outpckt->aditionals;
   while (res) {
