@@ -112,6 +112,8 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
     ss_name_send_pckt(pckt, &addr, trans);
 
     nanosleep(&sleeptime, 0);
+    if (sleeptime.tv_sec)
+      sleeptime.tv_sec = 0;
     ss_set_inputdrop_name_tid(&tid);
 
     while (101) {
@@ -167,7 +169,10 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	       res = res->next) {
 	    if (res->res &&
 		(0 == cmp_nbnodename(pckt->aditionals->res->name,
-				     res->res->name)))
+				     res->res->name)) &&
+		((res->res->rrtype == RRTYPE_NULL) ||
+		 (res->res->rrtype == pckt->aditionals->res->rrtype)) &&
+		(res->res->rrclass == pckt->aditionals->res->rrclass))
 	      break;
 	  }
 	  if (res) {
@@ -184,7 +189,9 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 		 res = res->next) {
 	      if (res->res &&
 		  (0 == cmp_nbnodename(pckt->aditionals->res->name,
-				       res->res->name)))
+				       res->res->name)) &&
+		  (res->res->rrtype == pckt->aditionals->res->rrtype) &&
+		  (res->res->rrclass == pckt->aditionals->res->rrclass))
 		break;
 	    }
 	    if (res) {
@@ -200,7 +207,9 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 		 res = res->next) {
 	      if (res->res &&
 		  (0 == cmp_nbnodename(pckt->aditionals->res->name,
-				       res->res->name)))
+				       res->res->name)) &&
+		  (res->res->rrtype == pckt->aditionals->res->rrtype) &&
+		  (res->res->rrclass == pckt->aditionals->res->rrclass))
 		break;
 	    }
 	    if (res) {
@@ -213,6 +222,24 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	      break;
 	    }
 	  }
+	}
+      }
+
+      if (outpckt->header->opcode == (OPCODE_RESPONSE |
+				      OPCODE_WACK)) {
+	for (res = outpckt->answers;
+	     res != 0;
+	     res = res->next) {
+	  if (res->res &&
+	      (0 == cmp_nbnodename(pckt->aditionals->res->name,
+				   res->res->name)) &&
+	      ((res->res->rrtype == RRTYPE_NULL) ||
+	       (res->res->rrtype == pckt->aditionals->res->rrtype)) &&
+	      (res->res->rrclass == pckt->aditionals->res->rrclass))
+	    break;
+	}
+	if (res) {
+	  sleeptime.tv_sec = res->res->ttl;
 	}
       }
 
