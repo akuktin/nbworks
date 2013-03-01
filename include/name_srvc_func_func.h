@@ -19,6 +19,7 @@
 #ifndef NBWORKS_NAMESRVCFUNCFUNC_H
 # define NBWORKS_NAMESRVCFUNCFUNC_H 1
 
+# include <time.h>
 # include "service_sector.h"
 
 void
