@@ -38,7 +38,7 @@
 #include "name_srvc_cache.h"
 
 
-struct cache_scopenode *nbworks_rootscope;
+//struct cache_scopenode *nbworks_rootscope;
 
 
 void init_name_srvc_cache() {

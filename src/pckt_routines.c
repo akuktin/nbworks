@@ -496,17 +496,17 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
   while (iterator) {
     /* field + 1 octet for the len + 1 octet for the
        terminating 0 + the len of the label */
-    if ((field + 2 + content->len) > endof_pckt) {
+    if ((field + 2 + iterator->len) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       if (state)
 	*state = iterator;
       return field;
     }
-    *field = content->len;
+    *field = iterator->len;
     field++;
-    field = mempcpy(field, content->name, content->len);
-    iterator = content->next_name;
+    field = mempcpy(field, iterator->name, iterator->len);
+    iterator = iterator->next_name;
   }
 
   *field = '\0';

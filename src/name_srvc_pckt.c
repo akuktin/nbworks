@@ -241,15 +241,9 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   if ((walker + 5 * sizeof(uint16_t)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
-
-    struct nbnodename_list *names_list;
-    while (resource->name) {
-      names_list = resource->name->next_name;
-      free(resource->name->name);
-      free(resource->name);
-      resource->name = names_list;
-    }
+    destroy_nbnodename(resource->name);
     free(resource);
+
     *master_packet_walker = end_of_packet;
     return 0;
   }
@@ -307,11 +301,11 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *weighted_companion_cube, *walker, num_names;
 
-  if (! start_and_end_of_walk)
+  if ((! start_and_end_of_walk) ||
+      (! resource))
     return 0;
 
   if ((! *start_and_end_of_walk) ||
-      (! resource) ||
       (*start_and_end_of_walk < start_of_packet) ||
       (*start_and_end_of_walk + resource->rdata_len) > end_of_packet) {
     /* OUT_OF_BOUNDS */
@@ -407,12 +401,9 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	  listof_names = nbstat->listof_names;
 	  while (listof_names) {
 	    nbstat->listof_names = listof_names->next_nbnodename;
-	    while (listof_names->nbnodename) {
-	      free(listof_names->nbnodename->name);
-	      nbnodename = listof_names->nbnodename->next_name;
-	      free(listof_names->nbnodename);
-	      listof_names->nbnodename = nbnodename;
-	    }
+
+	    destroy_nbnodename(listof_names->nbnodename);
+
 	    free(listof_names);
 	    listof_names = nbstat->listof_names;
 	  }
@@ -429,12 +420,9 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	  listof_names = nbstat->listof_names;
 	  while (listof_names) {
 	    nbstat->listof_names = listof_names->next_nbnodename;
-	    while (listof_names->nbnodename) {
-	      free(listof_names->nbnodename->name);
-	      nbnodename = listof_names->nbnodename->next_name;
-	      free(listof_names->nbnodename);
-	      listof_names->nbnodename = nbnodename;
-	    }
+
+	    destroy_nbnodename(listof_names->nbnodename);
+
 	    free(listof_names);
 	    listof_names = nbstat->listof_names;
 	  }
@@ -452,12 +440,9 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	    listof_names = nbstat->listof_names;
 	    while (listof_names) {
 	      nbstat->listof_names = listof_names->next_nbnodename;
-	      while (listof_names->nbnodename) {
-		free(listof_names->nbnodename->name);
-		nbnodename = listof_names->nbnodename->next_name;
-		free(listof_names->nbnodename);
-		listof_names->nbnodename = nbnodename;
-	      }
+
+	      destroy_nbnodename(listof_names->nbnodename);
+
 	      free(listof_names);
 	      listof_names = nbstat->listof_names;
 	    }
@@ -486,12 +471,9 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       listof_names = nbstat->listof_names;
       while (listof_names) {
 	nbstat->listof_names = listof_names->next_nbnodename;
-	while (listof_names->nbnodename) {
-	  free(listof_names->nbnodename->name);
-	  nbnodename = listof_names->nbnodename->next_name;
-	  free(listof_names->nbnodename);
-	  listof_names->nbnodename = nbnodename;
-	}
+
+	destroy_nbnodename(listof_names->nbnodename);
+
 	free(listof_names);
 	listof_names = nbstat->listof_names;
       }
@@ -501,7 +483,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     }
 
     /* I am interpreting the RFC 1002 to mean the statistics blob is aligned
-       to 32-bit boundaries. */
+       to 32-bit boundaries. */ /* Or not... */
     walker = read_48field(walker, &(nbstat->unique_id));
     nbstat->jumpers = *walker;
     walker++;
@@ -733,16 +715,11 @@ void *master_name_srvc_pckt_reader(void *packet,
   walker = startof_pckt;
   endof_pckt = startof_pckt + len;
 
-  result = malloc(sizeof(struct name_srvc_packet));
+  result = calloc(1, sizeof(struct name_srvc_packet));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  result->for_del = 0;
-  result->questions = 0;
-  result->answers = 0;
-  result->authorities = 0;
-  result->aditionals = 0;
 
   result->header = read_name_srvc_pckt_header(&walker, endof_pckt);
   if (! result->header) {
@@ -755,7 +732,7 @@ void *master_name_srvc_pckt_reader(void *packet,
     *tid = result->header->transaction_id;
 
   i = result->header->numof_questions;
-  if (i) {
+  if (i > 0) {
     cur_qstn = malloc(sizeof(struct name_srvc_question_lst));
     if (! cur_qstn) {
       /* TODO: errno signaling stuff */
@@ -763,13 +740,12 @@ void *master_name_srvc_pckt_reader(void *packet,
       return 0;
     }
     result->questions = cur_qstn;
-    cur_qstn->next = 0;
 
-    i--;
     while (1) {
+      i--;
       cur_qstn->qstn = read_name_srvc_pckt_question(&walker, startof_pckt,
 						    endof_pckt);
-      if (i) {
+      if (i >= 0) {
 	cur_qstn->next = malloc(sizeof(struct name_srvc_question_lst));
 	if (! cur_qstn->next) {
 	  /* TODO: errno signaling stuff */
@@ -777,18 +753,18 @@ void *master_name_srvc_pckt_reader(void *packet,
 	  return 0;
 	}
 	cur_qstn = cur_qstn->next;
-	cur_qstn->next = 0;
-	i--;
       } else {
 	break;
       }
     }
+
+    cur_qstn->next = 0;
   } else {
     result->questions = 0;
   }
 
   i = result->header->numof_answers;
-  if (i) {
+  if (i > 0) {
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
       /* TODO: errno signaling stuff */
@@ -796,13 +772,12 @@ void *master_name_srvc_pckt_reader(void *packet,
       return 0;
     }
     result->answers = cur_res;
-    cur_res->next = 0;
 
-    i--;
     while (1) {
+      i--;
       cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
 					     endof_pckt);
-      if (i) {
+      if (i >= 0) {
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
 	  /* TODO: errno signaling stuff */
@@ -810,18 +785,18 @@ void *master_name_srvc_pckt_reader(void *packet,
 	  return 0;
 	}
 	cur_res = cur_res->next;
-	cur_res->next = 0;
-	i--;
       } else {
 	break;
       }
     }
+
+    cur_res->next = 0;
   } else {
     result->answers = 0;
   }
 
   i = result->header->numof_authorities;
-  if (i) {
+  if (i > 0) {
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
       /* TODO: errno signaling stuff */
@@ -829,13 +804,12 @@ void *master_name_srvc_pckt_reader(void *packet,
       return 0;
     }
     result->authorities = cur_res;
-    cur_res->next = 0;
 
-    i--;
     while (1) {
+      i--;
       cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
 					     endof_pckt);
-      if (i) {
+      if (i >= 0) {
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
 	  /* TODO: errno signaling stuff */
@@ -843,18 +817,18 @@ void *master_name_srvc_pckt_reader(void *packet,
 	  return 0;
 	}
 	cur_res = cur_res->next;
-	cur_res->next = 0;
-	i--;
       } else {
 	break;
       }
     }
+
+    cur_res->next = 0;
   } else {
     result->authorities = 0;
   }
 
   i = result->header->numof_additional_recs;
-  if (i) {
+  if (i > 0) {
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
       /* TODO: errno signaling stuff */
@@ -862,13 +836,12 @@ void *master_name_srvc_pckt_reader(void *packet,
       return 0;
     }
     result->aditionals = cur_res;
-    cur_res->next = 0;
 
-    i--;
     while (1) {
+      i--;
       cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
 					     endof_pckt);
-      if (i) {
+      if (i >= 0) {
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
 	  /* TODO: errno signaling stuff */
@@ -876,12 +849,12 @@ void *master_name_srvc_pckt_reader(void *packet,
 	  return 0;
 	}
 	cur_res = cur_res->next;
-	cur_res->next = 0;
-	i--;
       } else {
 	break;
       }
     }
+
+    cur_res->next = 0;
   } else {
     result->aditionals = 0;
   }
@@ -1141,7 +1114,7 @@ void destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
   struct name_srvc_resource_lst *res;
   struct nbnodename_list_backbone *nbnodename_bckbone,
     *next_nbnodename_bckbone;
-  struct nbnodename_list *nbnodename, *next_nbnodename;
+  struct nbnodename_list *nbnodename;
   struct nbaddress_list *addr_list, *next_addr_list;
   struct name_srvc_statistics_rfc1002 *stats;
 
@@ -1169,12 +1142,7 @@ void destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
 	    next_nbnodename_bckbone = nbnodename_bckbone->next_nbnodename;
 	    nbnodename = nbnodename_bckbone->nbnodename;
 	    if (really_complete) {
-	      while (nbnodename) {
-		next_nbnodename = nbnodename->next_name;
-		free(nbnodename->name);
-		free(nbnodename);
-		nbnodename = next_nbnodename;
-	      }
+	      destroy_nbnodename(nbnodename);
 	    } else {
 	      if (nbnodename)
 		free(nbnodename->name);
@@ -1191,12 +1159,7 @@ void destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
 	nbnodename = cur_res->res->rdata;
 	if (nbnodename) {
 	  if (really_complete) {
-	    while (nbnodename) {
-	      next_nbnodename = nbnodename->next_name;
-	      free(nbnodename->name);
-	      free(nbnodename);
-	      nbnodename = next_nbnodename;
-	    }
+	    destroy_nbnodename(nbnodename);
 	  } else {
 	    if (nbnodename)
 	      free(nbnodename->name);

@@ -165,4 +165,5 @@ int
                        struct cache_namenode *namecard,
                        uint32_t my_ipv4_address);
 
+struct cache_scopenode *nbworks_rootscope;
 #endif /* NBWORKS_NAMESRVCCACHE_H*/
