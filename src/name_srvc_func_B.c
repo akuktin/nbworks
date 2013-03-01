@@ -604,87 +604,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 	(! outpckt->header->rcode)) {
       /* NAME REGISTRATION REQUEST */
 
-      for (res = outpckt->aditionals;
-	   res != 0;      /* Maybe test in questions too. */
-	   res = res->next) {
-	if (res->res) {
-
-	  if ((res->res->name) &&
-	      (res->res->rdata_t == nb_address_list)) {
-	    nbaddr_list = res->res->rdata;
-
-	    while (nbaddr_list) {
-	      if ((nbaddr_list->flags & NBADDRLST_GROUP_MASK) ||
-		  (! nbaddr_list->there_is_an_address)) {
-		/* Jump over group addresses and empty fields. */
-		nbaddr_list = nbaddr_list->next_address;
-		continue;
-	      }
-
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
-                                                              decoded_name),
-					    NETBIOS_NAME_LEN,
-					    ANY_NODETYPE, ISGROUP_NO,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-
-	      /*
-	       * RATIONALE: Names can be either group names or unique names. Since
-	       * we jump over group names, that means we are only looking for unique
-	       * names. Furthermore, we are only looking for our names. If we fail to
-	       * find a record for the asked unique name, that means we have no problem.
-	       * Also, if we find a record, but the name is not ours, we again have
-	       * no problem.
-	       */
-
-	      if (cache_namecard) {
-		if ((cache_namecard->token) &&
-		    (cache_namecard->timeof_death > cur_time) &&
-		    (! cache_namecard->isinconflict)) { /* Paired with the DOS_BUG in the
-							 * POSITIVE NAME QUERY RESPONSE
-							 * section, this can be abused to
-							 * execute a hostile name takeover.
-							 */
-		  /* Someone is trying to take my name. */
-
-		  memcpy(label, cache_namecard->name, NETBIOS_NAME_LEN);
-		  label_type = label[NETBIOS_NAME_LEN-1];
-		  label[NETBIOS_NAME_LEN-1] = '\0';
-
-		  in_addr = 0;
-		  for (i=0; i<4; i++) {
-		    if (cache_namecard->addrs.recrd[i].addr) {
-		      in_addr = cache_namecard->addrs.recrd[i].addr->ip_addr;
-		      break;
-		    }
-		  }
-
-		  if (i<4) {
-		    pckt = name_srvc_make_name_reg_small(label, label_type,
-							 res->res->name->next_name,
-							 (cache_namecard->timeof_death
-							  - cur_time),
-							 in_addr, ISGROUP_NO,
-							 cache_namecard->addrs.recrd[i].node_type);
-		    pckt->header->transaction_id = params.id.tid;
-		    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-		    pckt->header->nm_flags = FLG_AA;
-		    pckt->header->rcode = RCODE_CFT_ERR;
-		    pckt->for_del = 1;
-		    ss_name_send_pckt(pckt, &(outside_pckt->addr), params.trans);
-		  }
-
-		  break;
-		} else
-		  break;
-	      } else
-		break;
-	    }
-	  }
-	}
-
-      }
+      name_srvc_do_namregreq(outpckt, outside_pckt->addr,
+			     &(params.trans), params.id.tid,
+			     cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
