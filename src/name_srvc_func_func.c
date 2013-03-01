@@ -156,6 +156,9 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
   qstn = outpckt->questions;
   while (qstn) {
+    numof_answers = 0;
+    answer_lst = res = 0;
+    ipv4_addr_list = 0;
 
     if (qstn->qstn &&
 	qstn->qstn->name) {
@@ -363,3 +366,247 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
   return;
 }
+
+#define STATUS_DID_NONE   0x00
+#define STATUS_DID_GROUP  0x01
+#define STATUS_DID_UNIQ   0x02
+void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
+				struct sockaddr_in *addr,
+				struct ss_queue *trans,
+				uint32_t tid,
+				time_t cur_time) {
+  struct name_srvc_packet *pckt;
+  struct cache_namenode *cache_namecard, *cache_namecard_b;
+  struct name_srvc_resource_lst *res;
+  struct nbaddress_list *nbaddr_list, **nbaddr_list_frst,
+    **nbaddr_list_last;
+  struct ipv4_addr_list *ipv4_addr_list;
+  uint32_t in_addr, status, i;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  res = outpckt->answers;
+  while (res) {
+    status = STATUS_DID_NONE;
+    cache_namecard = cache_namecard_b = 0;
+
+    if (res->res &&
+	(res->res->name) &&
+	(res->res->rdata_t == nb_address_list) &&
+	(res->res->rdata)) {
+      /* Make sure noone spoofs the response. */
+      /* VAXism below. */
+      read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+
+      nbaddr_list_last = nbaddr_list_frst = (struct nbaddress_list **)&(res->res->rdata);
+      nbaddr_list = *nbaddr_list_last;
+
+      /* Rearange the address list so that group names come first,
+	 unique names second and naked flags fields get deleted. */
+      while (nbaddr_list) {
+	if (! nbaddr_list->there_is_an_address) {
+	  *nbaddr_list_last = nbaddr_list->next_address;
+	  free(nbaddr_list);
+
+	} else {
+	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+	    *nbaddr_list_last = nbaddr_list->next_address;
+	    nbaddr_list->next_address = *nbaddr_list_frst;
+	    *nbaddr_list_frst = nbaddr_list;
+
+	  } else {
+	    nbaddr_list_last = &(nbaddr_list->next_address);
+	  }
+	}
+
+	nbaddr_list = *nbaddr_list_last;
+      }
+      nbaddr_list = res->res->rdata;
+
+      if (nbaddr_list) {
+	decode_nbnodename(res->res->name->name, decoded_name);
+	while (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
+	  if (! (status & STATUS_DID_GROUP)) {
+	    status = status | STATUS_DID_GROUP;
+	    cache_namecard_b = find_nblabel(decoded_name,
+					    NETBIOS_NAME_LEN,
+					    ANY_NODETYPE, ISGROUP_YES,
+					    res->res->rrtype,
+					    res->res->rrclass,
+					    res->res->name->next_name);
+
+	    if (cache_namecard_b)
+	      if (cache_namecard_b->endof_conflict_chance < cur_time)
+		cache_namecard_b = 0;
+	  }
+
+	  nbaddr_list = nbaddr_list->next_address;
+	  if (! nbaddr_list)
+	    break;
+	}
+
+	if (nbaddr_list) {
+	  cache_namecard = find_nblabel(decoded_name,
+					NETBIOS_NAME_LEN,
+					ANY_NODETYPE, ISGROUP_NO,
+					res->res->rrtype,
+					res->res->rrclass,
+					res->res->name->next_name);
+
+	  if (cache_namecard)
+	    if (cache_namecard->endof_conflict_chance < cur_time)
+	      cache_namecard = 0;
+
+	}
+	nbaddr_list = res->res->rdata;
+
+	/*
+	 * DOS_BUG: It is interesting.
+	 * RFC 1002 requires me to delete the entry from the
+	 * cache if I receive a POSITIVE NAME QUERY RESPONSE.
+	 * That would imply it is possible for an attacker to
+	 * just send me a response, forcing the cache expulsion
+	 * and effectivelly preventing me from ever obtaining
+	 * any handles to other nodes.
+	 *
+	 * Attempt at mitigation: verify the following matches:
+	 * 1. sender IP
+	 * 2. sender IP listed in the rdata of the res
+	 * 3. sender IP is listed in my cache
+	 *          (Therefore, I will only ever delete or mark as
+	 *           conflicting a group name if a member of the
+	 *           group is the one doing the talking. Conversely,
+	 *           only the owner of the unique name will be
+	 *           listened to.) (In this, node types are not
+	 *           taken into account.)
+	 */
+	if (cache_namecard || cache_namecard_b) {
+
+	  if ((cache_namecard_b) &&
+	      (cache_namecard_b->timeof_death > cur_time) &&
+	      (! cache_namecard_b->isinconflict)) {
+	    /* Verify the sender lists themselves as a member of the
+	       group being updated. */
+	    while (nbaddr_list) {
+	      if (!(nbaddr_list->flags & NBADDRLST_GROUP_MASK))
+		break;
+	      if (nbaddr_list->address == in_addr)
+		break;
+	      else
+		nbaddr_list = nbaddr_list->next_address;
+	    }
+
+	    /* Note to self: this is here because RFC 1002 requires that
+	     * this be sent regardless of whether the name is group name
+	     * or unique name. */
+	    /* Problem: generally, if I ask for a group name, all members of
+	     * the group will respond. It may also take them some time to do
+	     * so. Thus, this code may get triggered in such an innocent case.
+	     * If the sending node has its conflict timer running, said node
+	     * could experience various problems. */
+	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN],
+						 res->res->name->next_name,
+						 0, 0, ISGROUP_YES,
+						 cache_namecard->addrs.recrd[0].node_type);
+	    pckt->header->transaction_id = tid;
+	    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+	    pckt->header->nm_flags = FLG_AA;
+	    pckt->header->rcode = RCODE_CFT_ERR;
+	    pckt->for_del = 1;
+
+	    ss_name_send_pckt(pckt, addr, trans);
+
+	    /* Verify that the name in question previously had
+	     * the IP address in question listed as it's member. */
+	    if ((nbaddr_list) &&
+		(nbaddr_list->flags & NBADDRLST_GROUP_MASK)) {
+	      for (i=0; i<4; i++) {
+		ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
+		while (ipv4_addr_list) {
+		  if (ipv4_addr_list->ip_addr == in_addr)
+		    break;
+		  else
+		    ipv4_addr_list = ipv4_addr_list->next;
+		}
+		if (ipv4_addr_list)
+		  break;
+	      }
+	    } else
+	      ipv4_addr_list = 0;
+
+	    if (ipv4_addr_list) {
+	      if (! cache_namecard->token)
+		cache_namecard->timeof_death = 0;
+	      else
+		cache_namecard->isinconflict = 1;  /* WRONG!!! */
+	    }
+	  }
+	  if ((cache_namecard) &&
+	      (cache_namecard->timeof_death > cur_time) &&
+	      (! cache_namecard->isinconflict)) {
+	    /* Skip a bit, till we get to the unique names. */
+	    while (nbaddr_list)
+	      if (!(nbaddr_list->flags & NBADDRLST_GROUP_MASK))
+		break;
+	      else
+		nbaddr_list = nbaddr_list->next_address;
+	    /* Verify the sender lists himself as the owner. */
+	    while (nbaddr_list)
+	      if (nbaddr_list->address == in_addr)
+		break;
+	      else
+		nbaddr_list = nbaddr_list->next_address;
+
+	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN],
+						 res->res->name->next_name,
+						 0, 0, ISGROUP_NO,
+						 cache_namecard->addrs.recrd[0].node_type);
+	    pckt->header->transaction_id = tid;
+	    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+	    pckt->header->nm_flags = FLG_AA;
+	    pckt->header->rcode = RCODE_CFT_ERR;
+	    pckt->for_del = 1;
+
+	    ss_name_send_pckt(pckt, addr, trans);
+
+	    /* Verify that the name in question previously had
+	     * the IP address in question listed as it's owner. */
+	    if (nbaddr_list)
+	      for (i=0; i<4; i++) {
+		ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
+		while (ipv4_addr_list) {
+		  if (ipv4_addr_list->ip_addr == in_addr)
+		    break;
+		  else
+		    ipv4_addr_list = ipv4_addr_list->next;
+		}
+		if (ipv4_addr_list)
+		  break;
+	      }
+	    else
+	      ipv4_addr_list = 0;
+
+	    if (ipv4_addr_list) {
+	      if (! cache_namecard->token)
+		cache_namecard->timeof_death = 0;
+	      else {
+		/* Impossible. */
+		cache_namecard->isinconflict = 1;
+	      }
+	    }
+	  }
+	}
+	/* TODO: THIS ISN'T OVER YET, DOS_BUG!!! */
+	/* TODO: make the function cross-reference the addr lists,
+	   looking for inconsistencies, like the
+	   NAME RELEASE REQUEST section does. */
+
+      }
+    }
+
+    res = res->next;
+  }
+}
+
+#undef STATUS_DID_NONE
+#undef STATUS_DID_GROUP
+#undef STATUS_DID_UNIQ
