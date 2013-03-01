@@ -19,11 +19,20 @@
 #ifndef NBWORKS_NAMESRVCFUNCFUNC_H
 # define NBWORKS_NAMESRVCFUNCFUNC_H 1
 
+# include "service_sector.h"
+
 void
   name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
                          struct sockaddr_in *addr,
                          struct ss_queue *trans,
                          uint32_t tid,
                          time_t cur_time);
+
+void
+  name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
+                              struct sockaddr_in *addr,
+                              struct ss_queue *trans,
+                              uint32_t tid,
+                              time_t cur_time);
 
 #endif /* NBWORKS_NAMESRVCFUNCFUNC_H */
