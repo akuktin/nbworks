@@ -27,22 +27,22 @@ void
                          struct ss_queue *trans,
                          uint32_t tid,
                          time_t cur_time);
-
 void
   name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
                               struct sockaddr_in *addr,
                               struct ss_queue *trans,
                               uint32_t tid,
                               time_t cur_time);
-
 void
   name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
                              struct sockaddr_in *addr,
                              struct ss_queue *trans,
                              uint32_t tid,
                              time_t cur_time);
-
 void
   name_srvc_do_namcftdem(struct name_srvc_packet *outpckt);
+void
+  name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
+                         struct sockaddr_in *addr);
 
 #endif /* NBWORKS_NAMESRVCFUNCFUNC_H */

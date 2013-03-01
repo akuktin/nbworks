@@ -58,18 +58,22 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
        res = res->next) {
     if ((res->res) &&
 	(res->res->name) &&
+	(res->res->name->name) &&
+	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
       nbaddr_list = res->res->rdata;
-
-      decode_nbnodename(res->res->name->name, decoded_name);
 
       while (nbaddr_list) {
 	if ((nbaddr_list->flags & NBADDRLST_GROUP_MASK) ||
 	    (! nbaddr_list->there_is_an_address)) {
 	  /* Jump over group addresses and empty fields. */
 	  nbaddr_list = nbaddr_list->next_address;
-	  continue;
-	}
+	} else
+	  break;
+      }
+
+      if (nbaddr_list) {
+	decode_nbnodename(res->res->name->name, decoded_name);
 
 	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
@@ -121,10 +125,7 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	      ss_name_send_pckt(pckt, addr, trans);
 	    }
 	  }
-
-	  break;
-	} else
-	  break;
+	}
       }
     }
   }
@@ -157,15 +158,16 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
   qstn = outpckt->questions;
   while (qstn) {
-    numof_answers = 0;
-    answer_lst = res = 0;
     ipv4_addr_list = 0;
 
     if (qstn->qstn &&
-	qstn->qstn->name) {
+	qstn->qstn->name &&
+	qstn->qstn->name->name &&
+	(qstn->qstn->name->len >= NETBIOS_CODED_NAME_LEN)) {
+      decode_nbnodename(qstn->qstn->name->name, decoded_name);
+
       if (qstn->qstn->qtype == QTYPE_NBSTAT) {
-	cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name,
-							decoded_name),
+	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
 				      ANY_NODETYPE, ANY_GROUP,
 				      QTYPE_NB,
@@ -258,8 +260,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  numof_names = 0;
 	}
       } else {
-	cache_namecard = find_nblabel(decode_nbnodename(qstn->qstn->name->name,
-							decoded_name),
+	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
 				      ANY_NODETYPE, ANY_GROUP,
 				      qstn->qstn->qtype,
@@ -392,6 +393,8 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 
     if (res->res &&
 	(res->res->name) &&
+	(res->res->name->name) &&
+	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list) &&
 	(res->res->rdata)) {
       /* Make sure noone spoofs the response. */
@@ -606,6 +609,8 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 
     res = res->next;
   }
+
+  return;
 }
 
 void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt) {
@@ -620,7 +625,12 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt) {
     status = STATUS_DID_NONE;
 
     if ((res->res) &&
+	(res->res->name) &&
+	(res->res->name->name) &&
+	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
+
+      decode_nbnodename(res->res->name->name, decoded_name);
 
       nbaddr_list = res->res->rdata;
       while (nbaddr_list) {
@@ -634,8 +644,6 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt) {
 	else
 	  nbaddr_list = nbaddr_list->next_address;
       }
-
-      decode_nbnodename(res->res->name->name, decoded_name);
 
       if (status & STATUS_DID_GROUP) {
 	cache_namecard = find_nblabel(decoded_name,
@@ -663,6 +671,89 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt) {
 
     res = res->next;
   }
+
+  return;
+}
+
+void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
+			    struct sockaddr_in *addr) {
+  struct cache_namenode *cache_namecard;
+  struct name_srvc_resource_lst *res;
+  struct nbaddress_list *nbaddr_list;
+  uint32_t in_addr, status, i;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  /* Make sure noone spoofs the release request. */
+  /* VAXism below. */
+  read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+
+  res = outpckt->aditionals;
+  while (res) {
+    status = STATUS_DID_NONE;
+
+    if (res->res &&
+	res->res->name &&
+	res->res->name->name &&
+	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
+	(res->res->rdata_t == nb_address_list)) {
+      nbaddr_list = res->res->rdata;
+
+      while (nbaddr_list) {
+	if ((nbaddr_list->there_is_an_address) &&
+	    (nbaddr_list->address == in_addr)) {
+	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
+	    status = status | STATUS_DID_GROUP;
+	  else
+	    status = status | STATUS_DID_UNIQ;
+	}
+
+	if (status == (STATUS_DID_GROUP | STATUS_DID_UNIQ))
+	  break;
+	else
+	  nbaddr_list = nbaddr_list->next_address;
+      }
+
+      nbaddr_list = res->res->rdata;
+
+      decode_nbnodename(res->res->name->name, decoded_name);
+
+      if (status & STATUS_DID_GROUP) {
+	cache_namecard = find_nblabel(decoded_name,
+				      NETBIOS_NAME_LEN,
+				      ANY_NODETYPE, ISGROUP_YES,
+				      res->res->rrtype,
+				      res->res->rrclass,
+				      res->res->name->next_name);
+	if (cache_namecard) {
+	  remove_membrs_frmlst(nbaddr_list, cache_namecard, my_ipv4_address());
+
+	  for (i=0; i<4; i++) {
+	    if (cache_namecard->addrs.recrd[i].addr)
+	      break;
+	  }
+
+	  if (! (i<4))
+	    cache_namecard->timeof_death = 0;
+	}
+      }
+      if (status & STATUS_DID_UNIQ) {
+	cache_namecard = find_nblabel(decoded_name,
+				      NETBIOS_NAME_LEN,
+				      ANY_NODETYPE, ISGROUP_NO,
+				      res->res->rrtype,
+				      res->res->rrclass,
+				      res->res->name->next_name);
+	if (cache_namecard)
+	  if (! cache_namecard->token)
+	    cache_namecard->timeof_death = 0;
+	/* else: Did I just get a name release for my own name? */
+      }
+    }
+
+    res = res->next;
+  }
+
+  return;
 }
 #undef STATUS_DID_NONE
 #undef STATUS_DID_GROUP

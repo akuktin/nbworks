@@ -661,69 +661,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 				     OPCODE_RELEASE)) &&
 	(outpckt->header->rcode == 0)) {
 
-      /* Make sure noone spoofs the release request. */
-      /* VAXism below. */
-      read_32field((unsigned char *)&(outside_pckt->addr.sin_addr), &in_addr);
-
-      res = outpckt->aditionals;
-      while (res) {
-	status = STATUS_DID_NONE;
-
-	if (res->res) {
-	  if (res->res->rdata_t == nb_address_list) {
-	    nbaddr_list = res->res->rdata;
-	    while (nbaddr_list) {
-	      if ((nbaddr_list->there_is_an_address) &&
-		  (nbaddr_list->address == in_addr)) {
-		  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
-		    status = status | STATUS_DID_GROUP;
-		  else
-		    status = status | STATUS_DID_UNIQ;
-	      }
-
-	      nbaddr_list = nbaddr_list->next_address;
-	      if (status == (STATUS_DID_GROUP | STATUS_DID_UNIQ))
-		break;
-	    }
-
-	    if (status & STATUS_DID_GROUP) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
-                                                              decoded_name),
-					    NETBIOS_NAME_LEN,
-					    ANY_NODETYPE, ISGROUP_YES,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-	      if (cache_namecard) {
-		remove_membrs_frmlst(nbaddr_list, cache_namecard, my_ipv4_address());
-
-		for (i=0; i<4; i++) {
-		  if (cache_namecard->addrs.recrd[i].addr)
-		    break;
-		}
-
-		if (! (i<4))
-		  cache_namecard->timeof_death = 0;
-	      }
-	    }
-	    if (status & STATUS_DID_UNIQ) {
-	      cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
-                                                              decoded_name),
-					    NETBIOS_NAME_LEN,
-					    ANY_NODETYPE, ISGROUP_NO,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-	      if (cache_namecard)
-		if (! cache_namecard->token)
-		  cache_namecard->timeof_death = 0;
-	      /* else: Did I just get a name release for my own name? */
-	    }
-	  }
-	}
-
-	res = res->next;
-      }
+      name_srvc_do_namrelreq(outpckt, outside_pckt->addr);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
