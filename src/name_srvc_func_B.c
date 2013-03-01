@@ -21,9 +21,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#ifndef _POSIX_C_SOURCE
-# define _POSIX_C_SOURCE 199309
-#endif
 #include <time.h>
 
 #include <pthread.h>
@@ -78,7 +75,7 @@ int name_srvc_B_add_name(unsigned char *name,
   addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
-  addr.sin_addr.s_addr = get_inaddr();
+  fill_32field(get_inaddr(), (unsigned char *)&(addr.sin_addr.s_addr));
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, ttl,
 				     my_ip_address, group_flg, CACHE_NODEFLG_B);
@@ -111,7 +108,7 @@ int name_srvc_B_add_name(unsigned char *name,
   ss_set_inputdrop_name_tid(&tid);
 
   while (1) {
-    outside_pckt = ss__recv_pckt(trans);
+    outside_pckt = ss__recv_pckt(trans, 0);
     if (! outside_pckt) {
       break;
     }
@@ -189,7 +186,7 @@ int name_srvc_B_release_name(unsigned char *name,
   addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
-  addr.sin_addr.s_addr = get_inaddr();
+  fill_32field(get_inaddr(), (unsigned char *)&(addr.sin_addr.s_addr));
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
 				     my_ip_address, group_flg, CACHE_NODEFLG_B);
@@ -230,125 +227,6 @@ int name_srvc_B_release_name(unsigned char *name,
   free(trans);
 
   return 0;
-}
-
-struct name_srvc_resource_lst *name_srvc_B_callout_name(unsigned char *name,
-							unsigned char name_type,
-							struct nbnodename_list *scope) {
-  struct timespec sleeptime;
-  struct sockaddr_in addr;
-  struct name_srvc_resource_lst *res, **last_res;
-  struct ss_queue *trans;
-  struct name_srvc_packet *pckt, *outside_pckt;
-  struct name_srvc_resource_lst *result, *walker;
-  int i;
-  union trans_id tid;
-
-  walker = result = 0;
-  /* TODO: change this to a global setting. */
-  sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_250MS;
-
-  addr.sin_family = AF_INET;
-  /* VAXism below. */
-  fill_16field(137, (unsigned char *)&(addr.sin_port));
-  addr.sin_addr.s_addr = get_inaddr();
-
-  pckt = name_srvc_make_name_qry_req(name, name_type, scope);
-  if (! pckt) {
-    /* TODO: errno signaling stuff */
-    return 0;
-  }
-
-  tid.tid = make_weakrandom();
-
-  trans = ss_register_name_tid(&tid);
-  if (! trans) {
-    /* TODO: errno signaling stuff */
-    destroy_name_srvc_pckt(pckt, 1, 1);
-    return 0;
-  }
-
-  pckt->header->transaction_id = tid.tid;
-  pckt->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
-  pckt->header->nm_flags = FLG_B;
-
-  for (i=0; i < BCAST_REQ_RETRY_COUNT; i++) {
-    ss_name_send_pckt(pckt, &addr, trans);
-
-    nanosleep(&sleeptime, 0);
-
-    ss_set_inputdrop_name_tid(&tid);
-
-    while (1) {
-      outside_pckt = ss__recv_pckt(trans);
-      if (! outside_pckt) {
-	break;
-      }
-
-      if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
-					    OPCODE_QUERY)) &&
-	  (outside_pckt->header->nm_flags & FLG_AA) &&
-	  (outside_pckt->header->rcode == 0)) {
-	/* POSITIVE NAME QUERY RESPONSE */
-	res = outside_pckt->answers;
-	last_res = &(outside_pckt->answers);
-
-	while (res) {
-	  if ((0 == cmp_nbnodename(pckt->questions->qstn->name,
-				   res->res->name)) &&
-	      (pckt->questions->qstn->qtype ==
-	       res->res->rrtype) &&
-	      (pckt->questions->qstn->qclass ==
-	       res->res->rrclass) &&
-	      (res->res->rdata_t == nb_address_list)) {
-	    /* This is what we are looking for. */
-
-	    if (result) {
-	      walker->next = res;
-	      walker = walker->next;
-	    } else {
-	      result = res;
-	      walker = result;
-	    }
-
-	    res = *last_res = res->next;
-	    break;
-
-	  } else {
-	    last_res = &(res->next);
-	    res = res->next;
-	  }
-	}
-      }
-
-      /* Temporary fix to prevent reading more that one packet,
-       * which could lead us to have duplicate addresses; not
-       * a problem per se, but I don't want to implement yet
-       * another complicated (and somewhat brittle) list walker,
-       * this one for removing the duplicates. */
-      if (result) {
-	walker->next = 0;
-	break;
-      }
-
-      destroy_name_srvc_pckt(outside_pckt, 1, 1);
-    }
-
-    if (result) {
-      walker->next = 0;
-      break;
-    }
-
-    ss_set_normalstate_name_tid(&tid);
-  }
-  ss_deregister_name_tid(&tid);
-  ss__dstry_recv_queue(trans);
-  free(trans);
-
-  destroy_name_srvc_pckt(pckt, 1, 1);
-
-  return result;
 }
 
 struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
@@ -398,7 +276,8 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
     break;
   }
 
-  res = name_srvc_B_callout_name(name, name_type, scope);
+  res = name_srvc_callout_name(name, name_type, scope,
+			       get_inaddr(), 0, FLG_B);
   if (! res)
     return 0;
   else {

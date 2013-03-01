@@ -16,40 +16,18 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NBWORKS_DAEMONCONTROL_H
-# define NBWORKS_DAEMONCONTROL_H 1
+#ifndef NBWORKS_NAMESRVCFUNCB_H
+# define NBWORKS_NAMESRVCFUNCB_H 1
 
-# include <time.h>
+# include "name_srvc_pckt.h"
 
-struct {
-  unsigned char all_stop;
-  struct timespec sleeptime;
-  int poll_timeout; /* miliseconds */
-} nbworks_all_port_cntl;
+/* return: >0=success (return is ttl), 0=fail, <0=error */
+uint32_t
+  name_srvc_P_add_name(unsigned char *name,
+                       unsigned char name_type,
+                       struct nbnodename_list *scope,
+                       uint32_t my_ip_address,
+                       unsigned char group_flg,
+                       uint32_t ttl);
 
-struct {
-  unsigned char all_stop;
-  int poll_timeout;
-} nbworks__rail_control;
-
-struct {
-  unsigned char all_stop;
-  struct timespec dtg_srv_sleeptime;
-} nbworks_dtg_srv_cntrl;
-
-struct {
-  unsigned char all_stop;
-} nbworks_ses_srv_cntrl;
-
-struct {
-  unsigned char all_stop;
-  struct timespec timeout;
-  unsigned int passes_ses_srv_ses;
-  time_t lifetimeof_queue_storage;
-} nbworks_pruners_cntrl;
-
-struct {
-  int retries_NBNS;
-} nbworks__functn_cntrl;
-
-#endif /* NBWORKS_DAEMONCONTROL_H */
+#endif /* NBWORKS_NAMESRVCFUNCB_H */

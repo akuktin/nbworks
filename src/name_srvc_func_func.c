@@ -41,6 +41,130 @@
 #include "service_sector_threads.h"
 
 
+struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
+						      unsigned char name_type,
+						      struct nbnodename_list *scope,
+						      uint32_t ask_address,
+						      uint32_t listen_address,
+						      unsigned char name_flags) {
+  struct timespec sleeptime;
+  struct sockaddr_in addr;
+  struct name_srvc_resource_lst *res, **last_res;
+  struct ss_queue *trans;
+  struct name_srvc_packet *pckt, *outside_pckt;
+  struct name_srvc_resource_lst *result, *walker;
+  int i;
+  union trans_id tid;
+
+  walker = result = 0;
+  /* TODO: change this to a global setting. */
+  sleeptime.tv_sec = 0;
+  sleeptime.tv_nsec = T_250MS;
+
+  addr.sin_family = AF_INET;
+  /* VAXism below. */
+  fill_16field(137, (unsigned char *)&(addr.sin_port));
+  fill_32field(ask_address, (unsigned char *)&(addr.sin_addr.s_addr));
+
+  pckt = name_srvc_make_name_qry_req(name, name_type, scope);
+  if (! pckt) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  tid.tid = make_weakrandom();
+
+  trans = ss_register_name_tid(&tid);
+  if (! trans) {
+    /* TODO: errno signaling stuff */
+    destroy_name_srvc_pckt(pckt, 1, 1);
+    return 0;
+  }
+
+  pckt->header->transaction_id = tid.tid;
+  pckt->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
+  
+  pckt->header->nm_flags = name_flags;
+
+  for (i=0; i < BCAST_REQ_RETRY_COUNT; i++) {
+    ss_name_send_pckt(pckt, &addr, trans);
+
+    nanosleep(&sleeptime, 0);
+
+    ss_set_inputdrop_name_tid(&tid);
+
+    while (1) {
+      outside_pckt = ss__recv_pckt(trans, listen_address);
+      if (! outside_pckt) {
+	break;
+      }
+
+      if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
+					    OPCODE_QUERY)) &&
+	  (outside_pckt->header->nm_flags & FLG_AA) &&
+	  (outside_pckt->header->rcode == 0)) {
+	/* POSITIVE NAME QUERY RESPONSE */
+	res = outside_pckt->answers;
+	last_res = &(outside_pckt->answers);
+
+	while (res) {
+	  if ((0 == cmp_nbnodename(pckt->questions->qstn->name,
+				   res->res->name)) &&
+	      (pckt->questions->qstn->qtype ==
+	       res->res->rrtype) &&
+	      (pckt->questions->qstn->qclass ==
+	       res->res->rrclass) &&
+	      (res->res->rdata_t == nb_address_list)) {
+	    /* This is what we are looking for. */
+
+	    if (result) {
+	      walker->next = res;
+	      walker = walker->next;
+	    } else {
+	      result = res;
+	      walker = result;
+	    }
+
+	    res = *last_res = res->next;
+	    break;
+
+	  } else {
+	    last_res = &(res->next);
+	    res = res->next;
+	  }
+	}
+      }
+
+      /* Temporary fix to prevent reading more that one packet,
+       * which could lead us to have duplicate addresses; not
+       * a problem per se, but I don't want to implement yet
+       * another complicated (and somewhat brittle) list walker,
+       * this one for removing the duplicates. */
+      if (result) {
+	walker->next = 0;
+	break;
+      }
+
+      destroy_name_srvc_pckt(outside_pckt, 1, 1);
+    }
+
+    if (result) {
+      walker->next = 0;
+      break;
+    }
+
+    ss_set_normalstate_name_tid(&tid);
+  }
+  ss_deregister_name_tid(&tid);
+  ss__dstry_recv_queue(trans);
+  free(trans);
+
+  destroy_name_srvc_pckt(pckt, 1, 1);
+
+  return result;
+}
+
+
 void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 			    struct sockaddr_in *addr,
 			    struct ss_queue *trans,

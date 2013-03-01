@@ -482,8 +482,9 @@ inline int ss_dtg_send_pckt(struct dtg_srvc_packet *pckt,
   return -1;
 }
 
-inline void *ss__recv_pckt(struct ss_queue *trans) {
+inline void *ss__recv_pckt(struct ss_queue *trans, uint32_t listen) {
   struct ss_unif_pckt_list *holdme;
+  uint32_t real_listen;
   void *result;
 
   if (! trans)
@@ -491,8 +492,17 @@ inline void *ss__recv_pckt(struct ss_queue *trans) {
   if (! trans->incoming)
     return 0;
 
+  fill_32field(listen, (unsigned char *)&(real_listen));
+
+ try_again:
   result = trans->incoming->packet;
   trans->incoming->packet = 0;
+
+  if (real_listen &&
+      (trans->incoming->addr.sin_addr.s_addr != real_listen)) {
+    trans->incoming->dstry(result, 1, 1);
+    result = 0;
+  }
 
   if (result) {
     if (trans->incoming->next) {
@@ -508,7 +518,7 @@ inline void *ss__recv_pckt(struct ss_queue *trans) {
       /* NOTETOSELF: This too is safe. */
       free(holdme);
 
-      result = ss__recv_pckt(trans);
+      goto try_again;
     } else {
       result = 0;
     }
@@ -1513,7 +1523,13 @@ void ss_check_all_ses_server_rails() {
 uint32_t get_inaddr() {
   // FIXME: stub
   //        192.168.1.255/24
-  return 0xff01a8c0;
+  return 0xc0a801ff;
+}
+
+uint32_t get_nbnsaddr() {
+  // FIXME: stub
+  //        192.168.1.42/24
+  return 0xc0a8012a;
 }
 
 uint32_t my_ipv4_address() {

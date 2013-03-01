@@ -156,7 +156,7 @@ inline int
                    struct sockaddr_in *addr,
                    struct ss_queue *trans);
 inline void *
-  ss__recv_pckt(struct ss_queue *trans);
+  ss__recv_pckt(struct ss_queue *trans, uint32_t listen);
 inline struct ss_unif_pckt_list *
   ss__recv_entry(struct ss_queue *trans);
 inline void
@@ -203,6 +203,8 @@ void
 
 uint32_t
   get_inaddr();
+uint32_t
+  get_nbnsaddr();
 uint32_t
   my_ipv4_address();
 

@@ -685,7 +685,8 @@ int rail_senddtg(int rail_sckt,
 	(0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name,
 		     NETBIOS_CODED_NAME_LEN))) {
 
-      dst_addr.sin_addr.s_addr = get_inaddr();
+      /* VAXism below. */
+      fill_32field(get_inaddr(), (unsigned char *)&(dst_addr.sin_addr.s_addr));
 
       pckt->for_del = TRUE;
       ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
@@ -902,7 +903,7 @@ void *dtg_server(void *arg) {
 
   while (! nbworks_dtg_srv_cntrl.all_stop) {
     while (438) {
-      pckt = ss__recv_pckt(trans);
+      pckt = ss__recv_pckt(trans, 0);
       if (pckt) {
 	if (queue->last_active < ZEROONES)
 	  queue->last_active = time(0);

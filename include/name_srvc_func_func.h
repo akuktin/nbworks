@@ -22,6 +22,14 @@
 # include <time.h>
 # include "service_sector.h"
 
+struct name_srvc_resource_lst *
+  name_srvc_callout_name(unsigned char *name,
+                         unsigned char name_type,
+                         struct nbnodename_list *scope,
+                         uint32_t ask_address,
+                         uint32_t listen_address,
+                         unsigned char name_flags);
+
 void
   name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
                          struct sockaddr_in *addr,
