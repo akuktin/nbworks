@@ -758,3 +758,182 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 #undef STATUS_DID_NONE
 #undef STATUS_DID_GROUP
 #undef STATUS_DID_UNIQ
+
+void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
+			  struct sockaddr_in *addr,
+			  struct ss_queue *trans,
+			  uint32_t tid,
+			  time_t cur_time) {
+  struct cache_namenode *cache_namecard;
+  struct name_srvc_resource_lst *res;
+  struct addrlst_bigblock *addr_bigblock;
+  int i, j;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  //      /* Make sure noone spoofs the update request. */
+  //      read_32field(outside_pckt->addr.sinaddr, &in_addr);
+
+  res = outpckt->aditionals;
+  while (res) {
+    if (res->res &&
+	res->res->name &&
+	res->res->name->name &&
+	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
+	(res->res->rdata_t == nb_address_list)) {
+
+      addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
+      if (addr_bigblock) {
+	decode_nbnodename(res->res->name->name, decoded_name);
+
+	if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
+	  cache_namecard = find_nblabel(decoded_name,
+					NETBIOS_NAME_LEN,
+					ANY_NODETYPE, ISGROUP_YES,
+					res->res->rrtype,
+					res->res->rrclass,
+					res->res->name->next_name);
+
+	  if (! cache_namecard) {
+	    cache_namecard = add_nblabel(decoded_name,
+					 NETBIOS_NAME_LEN,
+					 ((addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK)
+					  >> 4),
+					 FALSE, ISGROUP_YES,
+					 res->res->rrtype, res->res->rrclass,
+					 &(addr_bigblock->ysgrp),
+					 res->res->name->next_name);
+	    if (cache_namecard) { /* Race conditions, race conditions... */
+	      if (res->res->ttl)
+		cache_namecard->timeof_death = cur_time + res->res->ttl;
+	      else
+		cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
+	      /* Delete the reference to the the address
+		 * lists so they do not get freed.*/
+	      memset(&(addr_bigblock->ysgrp), 0, sizeof(struct addrlst_grpblock));
+	    } /* else
+		 failed */
+	  } else {
+	    /* BUG: The number of problems a rogue node can create is mind boggling. */
+	    if (res->res->ttl)
+	      cache_namecard->timeof_death = cur_time + res->res->ttl;
+	    else
+	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
+	    for (i=0; i<4; i++) {
+	      if (addr_bigblock->ysgrp.recrd[i].addr) {
+		for (j=0; j<4; j++) {
+		  if (cache_namecard->addrs.recrd[j].node_type ==
+		      addr_bigblock->ysgrp.recrd[i].node_type) {
+		    cache_namecard->addrs.recrd[j].addr =
+		      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+				      addr_bigblock->ysgrp.recrd[i].addr);
+
+		    break;
+		  } else {
+		    if (cache_namecard->addrs.recrd[j].node_type == 0) {
+		      cache_namecard->addrs.recrd[j].node_type =
+			addr_bigblock->ysgrp.recrd[i].node_type;
+		      cache_namecard->addrs.recrd[j].addr =
+			addr_bigblock->ysgrp.recrd[i].addr;
+		      /* Delete the reference to the address
+		       * list so it does not get freed.*/
+		      addr_bigblock->ysgrp.recrd[i].addr = 0;
+
+		      cache_namecard->node_types = cache_namecard->node_types |
+			addr_bigblock->ysgrp.recrd[i].node_type;
+
+		      break;
+		    } /* else
+			 continue the loop */
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+	if (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+	  cache_namecard = find_nblabel(decoded_name,
+					NETBIOS_NAME_LEN,
+					ANY_NODETYPE, ISGROUP_YES,
+					res->res->rrtype,
+					res->res->rrclass,
+					res->res->name->next_name);
+
+	  if (! cache_namecard) {
+	    cache_namecard = add_nblabel(decoded_name,
+					 NETBIOS_NAME_LEN,
+					 (addr_bigblock->node_types &
+					  CACHE_ADDRBLCK_UNIQ_MASK),
+					 FALSE, ISGROUP_NO,
+					 res->res->rrtype, res->res->rrclass,
+					 &(addr_bigblock->nogrp),
+					 res->res->name->next_name);
+
+	    if (cache_namecard) { /* Race conditions, race conditions... */
+	      if (res->res->ttl)
+		cache_namecard->timeof_death = cur_time + res->res->ttl;
+	      else
+		cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
+	      /* Delete the reference to the address
+	       * lists so they do not get freed.*/
+	      memset(&(addr_bigblock->ysgrp), 0, sizeof(struct addrlst_grpblock));
+	    } /* else
+		 failed */
+	  } else {
+	    if (! cache_namecard->token) {
+	      if (res->res->ttl)
+		cache_namecard->timeof_death = cur_time + res->res->ttl;
+	      else
+		cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
+	      for (i=0; i<4; i++) {
+		if (addr_bigblock->nogrp.recrd[i].addr) {
+		  for (j=0; j<4; j++) {
+		    if (cache_namecard->addrs.recrd[j].node_type ==
+			addr_bigblock->nogrp.recrd[i].node_type) {
+		      cache_namecard->addrs.recrd[j].addr =
+			merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+					addr_bigblock->nogrp.recrd[i].addr);
+
+		      break;
+		    } else {
+		      if (cache_namecard->addrs.recrd[j].node_type == 0) {
+			cache_namecard->addrs.recrd[j].node_type =
+			  addr_bigblock->nogrp.recrd[i].node_type;
+			cache_namecard->addrs.recrd[j].addr =
+			  addr_bigblock->nogrp.recrd[i].addr;
+			/* Delete the reference to the address
+			 * list so it does not get freed.*/
+			addr_bigblock->nogrp.recrd[i].addr = 0;
+
+			cache_namecard->node_types = cache_namecard->node_types |
+			  addr_bigblock->nogrp.recrd[i].node_type;
+
+			break;
+		      } /* else
+			   continue the loop */
+		    }
+		  }
+		}
+	      }
+	    }
+	    /* else: Sorry honey baby, you're cute, but that just ain't gonna work.
+	       MAYBE: send a NAME CONFLICT DEMAND packet. */
+	  }
+	}
+
+	destroy_bigblock(addr_bigblock);
+      }
+    }
+
+    res = res->next;
+  }
+
+  return;
+}

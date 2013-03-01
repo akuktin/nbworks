@@ -40,6 +40,7 @@
 #include "name_srvc_cnst.h"
 #include "name_srvc_cache.h"
 #include "name_srvc_func_B.h"
+#include "name_srvc_func_func.h"
 #include "randomness.h"
 #include "service_sector.h"
 #include "service_sector_threads.h"
@@ -485,36 +486,13 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
   return 0;
 }
 
-#define STATUS_DID_NONE   0x00
-#define STATUS_DID_GROUP  0x01
-#define STATUS_DID_UNIQ   0x02
 void *name_srvc_B_handle_newtid(void *input) {
   struct timespec sleeptime;
   struct newtid_params params, *release_lock;
   struct thread_node *last_will;
-
-  struct name_srvc_packet *outpckt, *pckt;
+  struct name_srvc_packet *outpckt;
   struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
-
-  struct name_srvc_resource_lst *res, *answer_lst;
-  struct name_srvc_question_lst *qstn;
-  struct cache_scopenode *this_scope;
-  struct cache_namenode *cache_namecard, *cache_namecard_b;
-  struct nbaddress_list *nbaddr_list, *nbaddr_list_frst,
-    *nbaddr_list_hldme, **nbaddr_list_last;
-  struct name_srvc_statistics_rfc1002 *stats;
-  struct nbnodename_list_backbone *names_list;
-
-  struct ipv4_addr_list *ipv4_addr_list;
-  struct addrlst_bigblock *addr_bigblock;
-
-  uint32_t in_addr;
-  uint16_t flags, numof_answers;
-  int i, j;
-  unsigned char label[NETBIOS_NAME_LEN+1], label_type;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
-  unsigned char waited, status, numof_names;
-
+  unsigned char waited;
   time_t cur_time;
 
 
@@ -530,9 +508,6 @@ void *name_srvc_B_handle_newtid(void *input) {
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
   sleeptime.tv_nsec = T_500MS;
-
-  label[NETBIOS_NAME_LEN] = '\0';
-  decoded_name[NETBIOS_NAME_LEN] = '\0';
 
   last_outpckt = 0;
   waited = 0;
@@ -577,23 +552,7 @@ void *name_srvc_B_handle_newtid(void *input) {
     outside_pckt->packet = 0;
 
     cur_time = time(0);
-    this_scope = 0;
-    cache_namecard = 0;
-    cache_namecard_b = 0;
-    answer_lst = 0;
-    res = 0;
-    qstn = 0;
-    ipv4_addr_list = 0;
-    addr_bigblock = 0;
-    in_addr = 0;
-    numof_answers = 0;
-    numof_names = 0;
-    nbaddr_list = nbaddr_list_frst =
-      nbaddr_list_hldme = 0;
-    nbaddr_list_last = 0;
-    stats = 0;
-    names_list = 0;
-    status = STATUS_DID_NONE;
+
 
 
     // NAME REGISTRATION REQUEST (UNIQUE)
@@ -604,8 +563,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	(! outpckt->header->rcode)) {
       /* NAME REGISTRATION REQUEST */
 
-      name_srvc_do_namregreq(outpckt, outside_pckt->addr,
-			     &(params.trans), params.id.tid,
+      name_srvc_do_namregreq(outpckt, &(outside_pckt->addr),
+			     params.trans, params.id.tid,
 			     cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
@@ -619,8 +578,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 				     OPCODE_QUERY)) &&
 	(! outpckt->header->rcode)) {
 
-      name_srvc_do_namqrynodestat(outpckt, outside_pckt->addr,
-				  &(params.trans), params.id.tid,
+      name_srvc_do_namqrynodestat(outpckt, &(outside_pckt->addr),
+				  params.trans, params.id.tid,
 				  cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
@@ -634,8 +593,8 @@ void *name_srvc_B_handle_newtid(void *input) {
 	(outpckt->header->rcode == 0) &&
 	(outpckt->header->nm_flags & FLG_AA)) {
 
-      name_srvc_do_posnamqryresp(outpckt, outside_pckt->addr,
-				 &(params.trans), params.id.tid,
+      name_srvc_do_posnamqryresp(outpckt, &(outside_pckt->addr),
+				 params.trans, params.id.tid,
 				 cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
@@ -661,7 +620,7 @@ void *name_srvc_B_handle_newtid(void *input) {
 				     OPCODE_RELEASE)) &&
 	(outpckt->header->rcode == 0)) {
 
-      name_srvc_do_namrelreq(outpckt, outside_pckt->addr);
+      name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr));
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -680,169 +639,9 @@ void *name_srvc_B_handle_newtid(void *input) {
 				      OPCODE_REFRESH2))) &&
 	(outpckt->header->rcode == 0)) {
 
-      //      /* Make sure noone spoofs the update request. */
-      //      read_32field(outside_pckt->addr.sinaddr, &in_addr);
-
-      res = outpckt->aditionals;
-      while (res) {
-	if (res->res) {
-	  if (res->res->rdata_t == nb_address_list) {
-	    addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
-
-	    if (addr_bigblock) {
-	      if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
-		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
-                                                                decoded_name),
-					      NETBIOS_NAME_LEN,
-					      ANY_NODETYPE, ISGROUP_YES,
-					      res->res->rrtype,
-					      res->res->rrclass,
-					      res->res->name->next_name);
-
-		if (! cache_namecard) {
-		  cache_namecard = add_nblabel(decode_nbnodename(res->res->name->name,
-                                                                 decoded_name),
-					       NETBIOS_NAME_LEN,
-					       ((addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK)
-						>> 4),
-					       FALSE, ISGROUP_YES,
-					       res->res->rrtype,
-					       res->res->rrclass,
-					       &(addr_bigblock->ysgrp),
-					       res->res->name->next_name);
-		  if (cache_namecard) { /* Race conditions, race conditions... */
-		    if (res->res->ttl)
-		      cache_namecard->timeof_death = cur_time + res->res->ttl;
-		    else
-		      cache_namecard->timeof_death = ZEROONES; /* infinity */
-		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
-
-		    /* Delete the reference to the the address
-		     * lists so they do not get freed.*/
-		    for (i=0; i<4; i++) {
-		      addr_bigblock->ysgrp.recrd[i].addr = 0;
-		    }
-		  }
-		} else {
-		  /* BUG: The number of problems a rogue node can create is mind boggling. */
-		  if (res->res->ttl)
-		    cache_namecard->timeof_death = cur_time + res->res->ttl;
-		  else
-		    cache_namecard->timeof_death = ZEROONES; /* infinity */
-		  cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
-
-		  for (i=0; i<4; i++) {
-		    if (addr_bigblock->ysgrp.recrd[i].addr) {
-		      for (j=0; j<4; j++) {
-			if (cache_namecard->addrs.recrd[j].node_type ==
-			    addr_bigblock->ysgrp.recrd[i].node_type) {
-			  cache_namecard->addrs.recrd[j].addr =
-			    merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-					    addr_bigblock->ysgrp.recrd[i].addr);
-			} else {
-			  if (cache_namecard->addrs.recrd[j].node_type == 0) {
-			    cache_namecard->addrs.recrd[j].node_type =
-			      addr_bigblock->ysgrp.recrd[i].node_type;
-			    cache_namecard->addrs.recrd[j].addr =
-			      addr_bigblock->ysgrp.recrd[i].addr;
-			    /* Delete the reference to the address
-			     * list so it does not get freed.*/
-			    addr_bigblock->ysgrp.recrd[i].addr = 0;
-
-			    cache_namecard->node_types = cache_namecard->node_types |
-			      addr_bigblock->ysgrp.recrd[i].node_type;
-
-			    break;
-			  }
-			}
-		      }
-		    } else
-		      break;
-		  }
-		}
-	      }
-	      if (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
-		cache_namecard = find_nblabel(decode_nbnodename(res->res->name->name,
-                                                                decoded_name),
-					      NETBIOS_NAME_LEN,
-					      ANY_NODETYPE, ISGROUP_YES,
-					      res->res->rrtype,
-					      res->res->rrclass,
-					      res->res->name->next_name);
-
-		if (! cache_namecard) {
-		  cache_namecard = add_nblabel(decode_nbnodename(res->res->name->name,
-                                                                 decoded_name),
-					       NETBIOS_NAME_LEN,
-					       (addr_bigblock->node_types &
-						CACHE_ADDRBLCK_UNIQ_MASK),
-					       FALSE, ISGROUP_NO,
-					       res->res->rrtype,
-					       res->res->rrclass,
-					       &(addr_bigblock->nogrp),
-					       res->res->name->next_name);
-
-		  if (cache_namecard) { /* Race conditions, race conditions... */
-		    if (res->res->ttl)
-		      cache_namecard->timeof_death = cur_time + res->res->ttl;
-		    else
-		      cache_namecard->timeof_death = ZEROONES; /* infinity */
-		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
-
-		    /* Delete the reference to the address
-		     * lists so they do not get freed.*/
-		    for (i=0; i<4; i++) {
-		      addr_bigblock->nogrp.recrd[i].addr = 0;
-		    }
-		  }
-		} else {
-		  if (! cache_namecard->token) {
-		    if (res->res->ttl)
-		      cache_namecard->timeof_death = cur_time + res->res->ttl;
-		    else
-		      cache_namecard->timeof_death = ZEROONES; /* infinity */
-		    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
-
-		    for (i=0; i<4; i++) {
-		      if (addr_bigblock->nogrp.recrd[i].addr) {
-			for (j=0; j<4; j++) {
-			  if (cache_namecard->addrs.recrd[j].node_type ==
-			      addr_bigblock->nogrp.recrd[i].node_type) {
-			    cache_namecard->addrs.recrd[j].addr =
-			      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-					      addr_bigblock->nogrp.recrd[i].addr);
-			  } else {
-			    if (cache_namecard->addrs.recrd[j].node_type == 0) {
-			      cache_namecard->addrs.recrd[j].node_type =
-				addr_bigblock->nogrp.recrd[i].node_type;
-			      cache_namecard->addrs.recrd[j].addr =
-				addr_bigblock->nogrp.recrd[i].addr;
-			      /* Delete the reference to the address
-			       * list so it does not get freed.*/
-			      addr_bigblock->nogrp.recrd[i].addr = 0;
-
-			      cache_namecard->node_types = cache_namecard->node_types |
-				addr_bigblock->nogrp.recrd[i].node_type;
-
-			      break;
-			    }
-			  }
-			}
-		      } else
-			break;
-		    }
-		  }
-		}
-		/* else: Sorry honey baby, you're cute, but that just ain't gonna work.
-		         MAYBE: send a NAME CONFLICT DEMAND packet. */
-	      }
-
-	      destroy_bigblock(addr_bigblock);
-	    }
-	  }
-	}
-	res = res->next;
-      }
+      name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
+			   params.trans, params.id.tid,
+			   cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -855,6 +654,3 @@ void *name_srvc_B_handle_newtid(void *input) {
 
   return 0;
 }
-#undef STATUS_DID_NONE
-#undef STATUS_DID_GROUP
-#undef STATUS_DID_UNIQ
