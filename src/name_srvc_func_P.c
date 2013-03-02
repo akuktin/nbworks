@@ -46,7 +46,7 @@
 
 #define TRY_AGAIN (TRUE+1)
 #define CHALLENGE (TRY_AGAIN+1)
-/* return: >0=success (return is ttl), 0=fail, <0=error */
+/* return: >0=success (return is ttl), 0=fail */
 uint32_t name_srvc_P_add_name(unsigned char *name,
 			      unsigned char name_type,
 			      struct nbnodename_list *scope,
@@ -71,7 +71,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
       (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
 	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
 	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
-    return -1;
+    return 0;
 
   success = TRY_AGAIN;
   rcode = 0;
@@ -92,7 +92,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
       (! pckt->aditionals) ||
       (! pckt->header)) {
     /* TODO: errno signaling stuff */
-    return -1;
+    return 0;
   }
 
   tid.tid = make_weakrandom();
@@ -101,7 +101,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
   if (! trans) {
     /* TODO: errno signaling stuff */
     destroy_name_srvc_pckt(pckt, 1, 1);
-    return -1;
+    return 0;
   }
 
   pckt->header->transaction_id = tid.tid;
@@ -271,7 +271,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 				       pckt->aditionals->res->name->next_name,
 				       nbaddr_list->address,
 				       nbaddr_list->address,
-				       0);
+				       0, FALSE);
 	  if (res) {
 	    while (nbaddr_alllst) {
 	      nbaddr_list = nbaddr_alllst->next_address;

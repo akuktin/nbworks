@@ -40,6 +40,7 @@
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
 #include "name_srvc_cache.h"
+#include "name_srvc_func_func.h"
 #include "name_srvc_func_B.h"
 #include "dtg_srvc_pckt.h"
 #include "ses_srvc_pckt.h"
@@ -701,10 +702,10 @@ int rail_senddtg(int rail_sckt,
 			    NETBIOS_NAME_LEN, node_type, group_flg,
 			    QTYPE_NB, QCLASS_IN, normal_pyld->dst_name->next_name);
     if (! namecard)
-      namecard = name_srvc_B_find_name(decoded_name,
-				       decoded_name[NETBIOS_NAME_LEN-1],
-				       normal_pyld->dst_name->next_name,
-				       node_type, group_flg);
+      namecard = name_srvc_find_name(decoded_name,
+				     decoded_name[NETBIOS_NAME_LEN-1],
+				     normal_pyld->dst_name->next_name,
+				     node_type, group_flg, FALSE);
     if (namecard) {
       /* FIXME: sending to another name on the same host */
       for (i=0; i<4; i++) {
@@ -1398,10 +1399,10 @@ uint32_t rail_whatisaddrX(int rail_sckt,
 			  name->next_name);
 
   if (! namecard) {
-    namecard = name_srvc_B_find_name(name->name, (name->name)[NETBIOS_NAME_LEN -1],
-				     name->next_name, node_type,
-				     (command->command == rail_addr_ofXgroup) ?
-				       ISGROUP_YES : ISGROUP_NO);
+    namecard = name_srvc_find_name(name->name, (name->name)[NETBIOS_NAME_LEN -1],
+				   name->next_name, node_type,
+				   ((command->command == rail_addr_ofXgroup) ?
+				    ISGROUP_YES : ISGROUP_NO), FALSE);
   }
 
   destroy_nbnodename(name);

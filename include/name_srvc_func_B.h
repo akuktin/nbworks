@@ -35,12 +35,6 @@ int
                            struct nbnodename_list *scope,
                            uint32_t my_ip_address,
                            unsigned char group_flg);
-struct cache_namenode *
-  name_srvc_B_find_name(unsigned char *name,
-                        unsigned char name_type,
-                        struct nbnodename_list *scope,
-                        unsigned short nodetype, /* Only one node type! */
-                        unsigned char group_flg);
 void *
   name_srvc_B_handle_newtid(void *input);
 

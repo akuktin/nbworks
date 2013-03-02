@@ -229,11 +229,12 @@ int name_srvc_B_release_name(unsigned char *name,
   return 0;
 }
 
-struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
-					     unsigned char name_type,
-					     struct nbnodename_list *scope,
-					     unsigned short nodetype, /* Only one node type! */
-					     unsigned char group_flg) {
+struct cache_namenode *name_srvc_find_name(unsigned char *name,
+					   unsigned char name_type,
+					   struct nbnodename_list *scope,
+					   unsigned short nodetype, /* Only one node type! */
+					   unsigned char group_flg,
+					   unsigned char recursion) {
   struct name_srvc_resource_lst *res, *cur_res;
   struct nbaddress_list *list;//, *cmpnd_lst;
   struct ipv4_addr_list *addrlst, *frstaddrlst;
@@ -277,7 +278,9 @@ struct cache_namenode *name_srvc_B_find_name(unsigned char *name,
   }
 
   res = name_srvc_callout_name(name, name_type, scope,
-			       get_inaddr(), 0, FLG_B);
+			       get_inaddr(), 0,
+			       (recursion ? FLG_RD : FLG_B),
+			       recursion);
   if (! res)
     return 0;
   else {

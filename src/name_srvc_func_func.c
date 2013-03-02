@@ -46,10 +46,13 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      struct nbnodename_list *scope,
 						      uint32_t ask_address,
 						      uint32_t listen_address,
-						      unsigned char name_flags) {
+						      unsigned char name_flags,
+						      unsigned char recursive) {
   struct timespec sleeptime;
   struct sockaddr_in addr;
   struct name_srvc_resource_lst *res, **last_res;
+  struct nbnodename_list *authority;
+  struct nbaddress_list *nbaddr_list;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
   struct name_srvc_resource_lst *result, *walker;
@@ -107,7 +110,8 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 	last_res = &(outside_pckt->answers);
 
 	while (res) {
-	  if ((0 == cmp_nbnodename(pckt->questions->qstn->name,
+	  if (res->res &&
+	      (0 == cmp_nbnodename(pckt->questions->qstn->name,
 				   res->res->name)) &&
 	      (pckt->questions->qstn->qtype ==
 	       res->res->rrtype) &&
@@ -144,6 +148,79 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 	break;
       }
 
+      if (recursive) {
+	if (outside_pckt->header->opcode == (OPCODE_RESPONSE |
+					     OPCODE_WACK)) {
+	  for (res = outside_pckt->answers;
+	       res != 0;
+	       res = res->next) {
+	    if (res->res &&
+		(0 == cmp_nbnodename(pckt->questions->qstn->name,
+				     res->res->name)) &&
+		((res->res->rrtype == RRTYPE_NULL) ||
+		 (res->res->rrtype == pckt->questions->qstn->qtype)) &&
+		(res->res->rrclass == pckt->questions->qstn->qclass))
+	      break;
+	  }
+	  if (res) {
+	    sleeptime.tv_sec = res->res->ttl;
+	    ss_set_normalstate_name_tid(&tid);
+
+	    nanosleep(&sleeptime, 0);
+
+	    ss_set_inputdrop_name_tid(&tid);
+	    sleeptime.tv_sec = 0;
+	  }
+	}
+
+	if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
+					      OPCODE_QUERY)) &&
+	    (outside_pckt->header->nm_flags & FLG_RD) &&
+	    (outside_pckt->header->rcode == 0)) {
+	  // REDIRECT NAME QUERY RESPONSE, probably
+	  res = outside_pckt->authorities;
+
+	  authority = 0;
+	  while (res) {
+	    if (res->res &&
+		(0 == cmp_nbnodename(pckt->questions->qstn->name,
+				     res->res->name)) &&
+		(res->res->rrtype == RRTYPE_NS) &&
+		(pckt->questions->qstn->qclass ==
+		 res->res->rrclass) &&
+		(res->res->rdata_t == nb_nodename)) {
+	      authority = res->res->rdata;
+	      break;
+	    }
+
+	    res = res->next;
+	  }
+
+	  if (authority) {
+	    res = outside_pckt->aditionals;
+
+	    while (res) {
+	      if (res->res &&
+		  (0 == cmp_nbnodename(authority,
+				       res->res->name)) &&
+		  (res->res->rrtype == RRTYPE_A) &&
+		  (pckt->questions->qstn->qclass ==
+		   res->res->rrclass) &&
+		  (res->res->rdata_t == nb_NBT_node_ip_address)) {
+		nbaddr_list = res->res->rdata;
+
+		/* VAXism below. */
+		fill_32field(nbaddr_list->address,
+			     (unsigned char *)&(addr.sin_addr.s_addr));
+		break;
+	      }
+
+	      res = res->next;
+	    }
+	  }
+	}
+      }
+
       destroy_name_srvc_pckt(outside_pckt, 1, 1);
     }
 
@@ -161,6 +238,145 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
   destroy_name_srvc_pckt(pckt, 1, 1);
 
   return result;
+}
+
+struct cache_namenode *name_srvc_find_name(unsigned char *name,
+					   unsigned char name_type,
+					   struct nbnodename_list *scope,
+					   unsigned short nodetype, /* Only one node type! */
+					   unsigned char group_flg,
+					   unsigned char recursion) {
+  struct name_srvc_resource_lst *res, *cur_res;
+  struct nbaddress_list *list;//, *cmpnd_lst;
+  struct ipv4_addr_list *addrlst, *frstaddrlst;
+  struct cache_namenode *new_name;
+  time_t curtime;
+  uint32_t ttl;
+  uint16_t target_flags;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  if ((! name) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+    return 0;
+
+  decoded_name[NETBIOS_NAME_LEN] = '\0';
+
+  if (group_flg & ISGROUP_YES)
+    target_flags = NBADDRLST_GROUP_YES;
+  else
+    target_flags = NBADDRLST_GROUP_NO;
+  switch (nodetype) {
+  case CACHE_NODEFLG_H:
+    target_flags = target_flags | NBADDRLST_NODET_H;
+    break;
+  case CACHE_NODEFLG_M:
+    target_flags = target_flags | NBADDRLST_NODET_M;
+    break;
+  case CACHE_NODEFLG_P:
+    target_flags = target_flags | NBADDRLST_NODET_P;
+    break;
+  case CACHE_NODEFLG_B:
+    break;
+  default:
+    /* TODO: errno signaling stuff */
+    return 0;
+    break;
+  }
+
+  res = name_srvc_callout_name(name, name_type, scope,
+			       get_inaddr(), 0,
+			       (recursion ? FLG_RD : FLG_B),
+			       recursion);
+  if (! res)
+    return 0;
+  else {
+    frstaddrlst = addrlst = 0;
+    ttl = 0;
+    cur_res = res;
+    do {
+      if (cur_res->res->rdata_t == nb_address_list) {
+	list = cur_res->res->rdata;
+	while (list) {
+	  if (list->there_is_an_address &&
+	      (list->flags == target_flags)) {
+	    if (! frstaddrlst) {
+	      frstaddrlst = malloc(sizeof(struct ipv4_addr_list));
+	      if (! frstaddrlst) {
+		/* TODO: errno signaling stuff */
+		destroy_name_srvc_res_lst(res, TRUE, TRUE);
+		return 0;
+	      }
+	      addrlst = frstaddrlst;
+	    } else {
+	      addrlst->next = malloc(sizeof(struct ipv4_addr_list));
+	      if (! addrlst->next) {
+		/* TODO: errno signaling stuff */
+		while (frstaddrlst) {
+		  addrlst = frstaddrlst->next;
+		  free(frstaddrlst);
+		  frstaddrlst = addrlst;
+		}
+		destroy_name_srvc_res_lst(res, TRUE, TRUE);
+		return 0;
+	      }
+	      addrlst = addrlst->next;
+	    }
+
+	    addrlst->ip_addr = list->address;
+	  }
+	  list = list->next_address;
+	}
+	if (addrlst) {
+	  addrlst->next = 0;
+	  /* The below will lose quite a bit of information,
+	   * but I am in no mood to make YET ANOTHER LIST. */
+	  if (cur_res->res->ttl > ttl)
+	    ttl = cur_res->res->ttl;
+	}
+      }
+      cur_res = cur_res->next;
+    } while (cur_res);
+  }
+
+  if (frstaddrlst) {
+    new_name = alloc_namecard(decode_nbnodename(res->res->name->name,
+                                                decoded_name),
+			      NETBIOS_NAME_LEN,
+			      nodetype, 0, group_flg,
+			      res->res->rrtype, res->res->rrclass);
+    if (new_name) {
+      new_name->addrs.recrd[0].node_type = nodetype;
+      new_name->addrs.recrd[0].addr = frstaddrlst;
+
+      if (add_scope(scope, new_name) ||
+	  add_name(new_name, scope)) {
+	curtime = time(0);
+	new_name->endof_conflict_chance = curtime + CONFLICT_TTL;
+	/* Fun fact: the below can overflow. No,
+	 * I'm not gonna make a test for that. */
+	new_name->timeof_death = curtime + ttl;
+
+	destroy_name_srvc_res_lst(res, TRUE, TRUE);
+	return new_name;
+      } else {
+	destroy_namecard(new_name);
+      }
+    } else {
+      while (frstaddrlst) {
+	addrlst = frstaddrlst->next;
+	free(frstaddrlst);
+	frstaddrlst = addrlst;
+      }
+    }
+  }
+
+  destroy_name_srvc_res_lst(res, TRUE, TRUE);
+  return 0;
 }
 
 

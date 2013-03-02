@@ -28,7 +28,15 @@ struct name_srvc_resource_lst *
                          struct nbnodename_list *scope,
                          uint32_t ask_address,
                          uint32_t listen_address,
-                         unsigned char name_flags);
+                         unsigned char name_flags,
+                         unsigned char recursive);
+struct cache_namenode *
+  name_srvc_find_name(unsigned char *name,
+                      unsigned char name_type,
+                      struct nbnodename_list *scope,
+                      unsigned short nodetype, /* Only one node type! */
+                      unsigned char group_flg,
+                      unsigned char recursion);
 
 void
   name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
