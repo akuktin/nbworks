@@ -37,6 +37,14 @@ struct cache_namenode *
                       unsigned short nodetype, /* Only one node type! */
                       unsigned char group_flg,
                       unsigned char recursion);
+/* return: 0=success, >0=fail, <0=error */
+int
+  name_srvc_release_name(unsigned char *name,
+                         unsigned char name_type,
+                         struct nbnodename_list *scope,
+                         uint32_t my_ip_address,
+                         unsigned char group_flg,
+                         unsigned char recursion);
 
 void
   name_srvc_do_namregreq(struct name_srvc_packet *outpckt,

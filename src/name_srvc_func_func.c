@@ -383,6 +383,161 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   return 0;
 }
 
+/* return: 0=success, >0=fail, <0=error */
+int name_srvc_release_name(unsigned char *name,
+			   unsigned char name_type,
+			   struct nbnodename_list *scope,
+			   uint32_t my_ip_address,
+			   unsigned char group_flg,
+			   unsigned char recursion) {
+  struct timespec sleeptime;
+  struct sockaddr_in addr;
+  struct ss_queue *trans;
+  struct name_srvc_packet *pckt, *outpckt;
+  struct name_srvc_resource_lst *res;
+  struct nbnodename_list *probe;
+  uint32_t listento;
+  uint16_t type, class;
+  int i;
+  unsigned char stop_yourself;
+  union trans_id tid;
+
+  if ((! name) ||
+      /* The explanation for the below test:
+       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
+       * 2. you can not set both bits at the same time. */
+      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
+	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
+	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+    return -1;
+
+  /* TODO: change this to a global setting. */
+  sleeptime.tv_sec = 0;
+  sleeptime.tv_nsec = T_250MS;
+  stop_yourself = FALSE;
+
+  addr.sin_family = AF_INET;
+  /* VAXism below. */
+  fill_16field(137, (unsigned char *)&(addr.sin_port));
+  /* In case of recursion, call get_nbnsaddr(), put the result in listento
+   * and use it as an argument for fill_32field(), otherwise, set listento
+   * to 0, call get_inaddr() and pass its result to fill_32field(). */
+  fill_32field((recursion ? (listento = get_nbnsaddr()) :
+		            (listento = 0, get_inaddr())),
+	       (unsigned char *)&(addr.sin_addr.s_addr));
+
+  pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
+				     my_ip_address, group_flg,
+				     (recursion ? CACHE_NODEFLG_P :
+				                  CACHE_NODEFLG_B));
+  if (! pckt) {
+    /* TODO: errno signaling stuff */
+    return -1;
+  }
+
+  tid.tid = make_weakrandom();
+
+  trans = ss_register_name_tid(&tid);
+  if (! trans) {
+    /* TODO: errno signaling stuff */
+    destroy_name_srvc_pckt(pckt, 1, 1);
+    return -1;
+  }
+
+  if (! recursion) {
+    /* Don't listen for incoming packets in B mode. */
+    ss_set_inputdrop_name_tid(&tid);
+    ss__dstry_recv_queue(trans);
+    probe = 0;
+    type = class = 0;
+  } else {
+    probe = clone_nbnodename(pckt->questions->qstn->name);
+    type = pckt->questions->qstn->qtype;
+    class = pckt->questions->qstn->qclass;
+  }
+
+  pckt->header->transaction_id = tid.tid;
+  pckt->header->opcode = OPCODE_REQUEST | OPCODE_RELEASE;
+  pckt->header->nm_flags = (recursion ? FLG_RD : FLG_B);
+
+  for (i=BCAST_REQ_RETRY_COUNT; i>0; i--) {
+    if (stop_yourself)
+      break;
+
+    ss_name_send_pckt(pckt, &addr, trans);
+    nanosleep(&sleeptime, 0);
+
+    if (recursion) {
+      ss_set_inputdrop_name_tid(&tid);
+
+      while (0101) {
+	if (stop_yourself)
+	  break;
+
+	outpckt = ss__recv_pckt(trans, listento);
+	if (! outpckt) {
+	  ss_set_normalstate_name_tid(&tid);
+	  break;
+	}
+
+	if (! outpckt->header) {
+	  /* Paranoid. */
+	  destroy_name_srvc_pckt(outpckt, 1, 1);
+	  continue;
+	}
+
+	if (outpckt->header->opcode == (OPCODE_RESPONSE |
+					OPCODE_WACK)) {
+	  for (res = outpckt->answers;
+	       res != 0;
+	       res = res->next) {
+	    if (res->res &&
+		(0 == cmp_nbnodename(probe, res->res->name)) &&
+		((res->res->rrtype == RRTYPE_NULL) ||
+		 (res->res->rrtype == type)) &&
+		(res->res->rrclass == class))
+	      break;
+	  }
+	  if (res) {
+	    sleeptime.tv_sec = res->res->ttl;
+	    ss_set_normalstate_name_tid(&tid);
+
+	    nanosleep(&sleeptime, 0);
+
+	    ss_set_inputdrop_name_tid(&tid);
+	    sleeptime.tv_sec = 0;
+	  }
+	}
+
+	if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+					 OPCODE_RELEASE)) &&
+	    (outpckt->header->nm_flags & FLG_AA)) {
+	  stop_yourself = TRUE;
+	  if (outpckt->header->rcode == 0) {
+	    // POSITIVE NAME RELEASE RESPONSE
+	  } else {
+	    // NEGATIVE NAME RELEASE RESPONSE
+	  }
+	}
+
+	destroy_name_srvc_pckt(outpckt, 1, 1);
+      }
+    }
+
+    if (i == 2) /* Thread carefully, off-by-one danger. */
+      pckt->for_del = TRUE;
+  }
+
+  ss_deregister_name_tid(&tid);
+  if (recursion) {
+    destroy_nbnodename(probe);
+    ss__dstry_recv_queue(trans);
+  }
+  free(trans);
+
+  return 0;
+}
+
 
 void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 			    struct sockaddr_in *addr,
@@ -464,7 +619,7 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 	      pckt->header->nm_flags = FLG_AA;
 	      pckt->header->rcode = RCODE_CFT_ERR;
-	      pckt->for_del = 1;
+	      pckt->for_del = TRUE;
 	      ss_name_send_pckt(pckt, addr, trans);
 	    }
 	  }
@@ -704,7 +859,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
     pckt->header->nm_flags = FLG_AA;
     pckt->header->rcode = 0;
     pckt->header->numof_answers = numof_answers;
-    pckt->for_del = 1;
+    pckt->for_del = TRUE;
 
     ss_name_send_pckt(pckt, addr, trans);
   }
@@ -858,7 +1013,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 	    pckt->header->nm_flags = FLG_AA;
 	    pckt->header->rcode = RCODE_CFT_ERR;
-	    pckt->for_del = 1;
+	    pckt->for_del = TRUE;
 
 	    ss_name_send_pckt(pckt, addr, trans);
 
@@ -911,7 +1066,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 	    pckt->header->nm_flags = FLG_AA;
 	    pckt->header->rcode = RCODE_CFT_ERR;
-	    pckt->for_del = 1;
+	    pckt->for_del = TRUE;
 
 	    ss_name_send_pckt(pckt, addr, trans);
 

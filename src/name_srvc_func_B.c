@@ -144,7 +144,7 @@ int name_srvc_B_add_name(unsigned char *name,
   if (! result) {
     /* Succeded. */
     pckt->header->opcode = OPCODE_REQUEST | OPCODE_REFRESH;
-    pckt->for_del = 1;
+    pckt->for_del = TRUE;
     ss_name_send_pckt(pckt, &addr, trans);
   } else {
     destroy_name_srvc_pckt(pckt, 1, 1);
@@ -155,78 +155,6 @@ int name_srvc_B_add_name(unsigned char *name,
   free(trans);
 
   return result;
-}
-
-/* return: 0=success, >0=fail, <0=error */
-int name_srvc_B_release_name(unsigned char *name,
-			     unsigned char name_type,
-			     struct nbnodename_list *scope,
-			     uint32_t my_ip_address,
-			     unsigned char group_flg) {
-  struct timespec sleeptime;
-  struct ss_queue *trans;
-  struct name_srvc_packet *pckt;
-  struct sockaddr_in addr;
-  int i;
-  union trans_id tid;
-
-  if ((! name) ||
-      /* The explanation for the below test:
-       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
-       * 2. you can not set both bits at the same time. */
-      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
-	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
-	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
-    return -1;
-
-  /* TODO: change this to a global setting. */
-  sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_250MS;
-
-  addr.sin_family = AF_INET;
-  /* VAXism below. */
-  fill_16field(137, (unsigned char *)&(addr.sin_port));
-  fill_32field(get_inaddr(), (unsigned char *)&(addr.sin_addr.s_addr));
-
-  pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
-				     my_ip_address, group_flg, CACHE_NODEFLG_B);
-  if (! pckt) {
-    /* TODO: errno signaling stuff */
-    return -1;
-  }
-
-  tid.tid = make_weakrandom();
-
-  trans = ss_register_name_tid(&tid);
-  if (! trans) {
-    /* TODO: errno signaling stuff */
-    destroy_name_srvc_pckt(pckt, 1, 1);
-    return -1;
-  }
-
-  /* Don't listen for incoming packets. */
-  ss_set_inputdrop_name_tid(&tid);
-  ss__dstry_recv_queue(trans);
-
-  pckt->header->transaction_id = tid.tid;
-  pckt->header->opcode = OPCODE_REQUEST | OPCODE_RELEASE;
-  pckt->header->nm_flags = FLG_B;
-
-  ss_name_send_pckt(pckt, &addr, trans);
-
-  for (i=0; i < (BCAST_REQ_RETRY_COUNT -2); i++) {
-    nanosleep(&sleeptime, 0);
-    ss_name_send_pckt(pckt, &addr, trans);
-  }
-
-  nanosleep(&sleeptime, 0);
-  pckt->for_del = 1;
-  ss_name_send_pckt(pckt, &addr, trans);
-
-  ss_deregister_name_tid(&tid);
-  free(trans);
-
-  return 0;
 }
 
 void *name_srvc_B_handle_newtid(void *input) {

@@ -28,13 +28,6 @@ int
                        uint32_t my_ip_address,
                        unsigned char group_flg,
                        uint32_t ttl);
-/* return: 0=success, >0=fail, -1=error */
-int
-  name_srvc_B_release_name(unsigned char *name,
-                           unsigned char name_type,
-                           struct nbnodename_list *scope,
-                           uint32_t my_ip_address,
-                           unsigned char group_flg);
 void *
   name_srvc_B_handle_newtid(void *input);
 

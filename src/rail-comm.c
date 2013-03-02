@@ -252,9 +252,9 @@ void *handle_rail(void *args) {
 
     if (cache_namecard) {
       name_ptr = cache_namecard->name;
-      name_srvc_B_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			       scope, my_ipv4_address(),
-			       cache_namecard->group_flg);
+      name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
+			     scope, my_ipv4_address(),
+			     cache_namecard->group_flg, FALSE);
 
       if (cache_namecard->group_flg & ISGROUP_YES) {
 	cache_namecard->token = 0;
