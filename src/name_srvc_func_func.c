@@ -212,6 +212,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 		/* VAXism below. */
 		fill_32field(nbaddr_list->address,
 			     (unsigned char *)&(addr.sin_addr.s_addr));
+		listen_address = nbaddr_list->address;
 		break;
 	      }
 
@@ -289,7 +290,10 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   }
 
   res = name_srvc_callout_name(name, name_type, scope,
-			       get_inaddr(), 0,
+			       (recursion ? get_nbnsaddr() :
+				get_inaddr()),
+			       (recursion ? get_nbnsaddr() :
+				0),
 			       (recursion ? FLG_RD : FLG_B),
 			       recursion);
   if (! res)
