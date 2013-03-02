@@ -668,6 +668,7 @@ struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_w
   return_result = malloc(sizeof(struct nbaddress_list));
   if (! return_result) {
     /* TODO: errno signaling stuff */
+    *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
     return 0;
   }
   return_result->next_address = 0;
@@ -686,11 +687,12 @@ struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_w
 	  free(return_result);
 	  return_result = result;
 	}
+        *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
 	return 0;
       }
       result = result->next_address;
-    } else {
       result->next_address = 0;
+    } else {
       break;
     }
   }
