@@ -112,8 +112,6 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
     ss_name_send_pckt(pckt, &addr, trans);
 
     nanosleep(&sleeptime, 0);
-    if (sleeptime.tv_sec)
-      sleeptime.tv_sec = 0;
     ss_set_inputdrop_name_tid(&tid);
 
     while (101) {
@@ -240,6 +238,12 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	}
 	if (res) {
 	  sleeptime.tv_sec = res->res->ttl;
+	  ss_set_normalstate_name_tid(&tid);
+
+	  nanosleep(&sleeptime, 0);
+
+	  ss_set_inputdrop_name_tid(&tid);
+	  sleeptime.tv_sec = 0;
 	}
       }
 
