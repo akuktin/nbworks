@@ -23,9 +23,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#ifndef _POSIX_C_SOURCE
-# define _POSIX_C_SOURCE 199309
-#endif
 #include <time.h>
 #include <errno.h>
 
@@ -43,6 +40,7 @@
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
 #include "name_srvc_func_B.h"
+#include "name_srvc_func_func.h"
 #include "dtg_srvc_pckt.h"
 #include "dtg_srvc_func.h"
 #include "ses_srvc_pckt.h"
@@ -770,7 +768,7 @@ void *ss__port137(void *placeholder) {
 
   sckts.isbusy = 0xda;
   sckts.all_trans = &(nbworks_all_transactions[NAME_SRVC]);
-  sckts.newtid_handler = &name_srvc_B_handle_newtid;
+  sckts.newtid_handler = &name_srvc_handle_newtid;
   sckts.pckt_dstr = &destroy_name_srvc_pckt;
   sckts.master_writer = &master_name_srvc_pckt_writer;
   sckts.master_reader = &master_name_srvc_pckt_reader;

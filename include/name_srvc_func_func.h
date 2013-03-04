@@ -22,6 +22,9 @@
 # include <time.h>
 # include "service_sector.h"
 
+void *
+  name_srvc_handle_newtid(void *input);
+
 struct name_srvc_resource_lst *
   name_srvc_callout_name(unsigned char *name,
                          unsigned char name_type,

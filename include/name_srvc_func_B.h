@@ -28,7 +28,5 @@ int
                        uint32_t my_ip_address,
                        unsigned char group_flg,
                        uint32_t ttl);
-void *
-  name_srvc_B_handle_newtid(void *input);
 
 #endif /* NBWORKS_NAMESRVCFUNCB_H */

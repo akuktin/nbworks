@@ -21,9 +21,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#ifndef _POSIX_C_SOURCE
-# define _POSIX_C_SOURCE 199309
-#endif
 #include <time.h>
 
 #include <pthread.h>
@@ -513,6 +510,18 @@ struct ipv4_addr_list *merge_addrlists(struct ipv4_addr_list *master,
   return master;
 }
 
+void destroy_addrlist(struct ipv4_addr_list *list) {
+  struct ipv4_addr_list *next;
+
+  while (list) {
+    next = list->next;
+    free(list);
+    list = next;
+  }
+
+  return;
+}
+
 
 struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
 				      struct addrlst_bigblock **writeem_here) {
@@ -808,28 +817,41 @@ void destroy_bigblock(struct addrlst_bigblock *block) {
 }
 
 
-/* returns: >0 = success, 0 = failure, <0 = error */
+#define REMOVED_OWN_PMODE    1
+#define THEREIS_OWN_NONPMODE 2
+/* returns: >0 = removed own address, 0 = didn't, <0 = error */
 int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
 			 struct cache_namenode *namecard,
-			 uint32_t my_ipv4_address) {
+			 uint32_t my_ipv4_address,
+			 unsigned int sender_is_nbns) {
   struct addrlst_bigblock addrblock, *addrof_addrblock;
   struct ipv4_addr_list *cur_addr, **last_addr,
     *card_addr, **last_card_addr;
   int i, j;
+  unsigned char do_force, ret_val;
 
   if (! (nbaddr_list && namecard))
     return -1;
 
+  ret_val = 0;
   addrof_addrblock = &addrblock;
   if (! sort_nbaddrs(nbaddr_list, &addrof_addrblock)) {
-    return 0;
+    return -1;
   }
 
   for (i=0; i<4; i++) {
     for (j=0; j<4; j++) {
       if (addrblock.ysgrp.recrd[i].node_type ==
-	  namecard->addrs.recrd[j].node_type)
+	  namecard->addrs.recrd[j].node_type) {
+	if ((namecard->addrs.recrd[j].node_type &
+	     (CACHE_NODEFLG_P | CACHE_NODEFLG_M | CACHE_NODEFLG_H)) &&
+	    sender_is_nbns)
+	  do_force = TRUE;
+	else
+	  do_force = FALSE;
+
 	break;
+      }
     }
 
     if (! (j<4))
@@ -839,7 +861,19 @@ int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
     cur_addr = *last_addr;
 
     while (cur_addr) {
-      if (cur_addr->ip_addr == my_ipv4_address) {
+      /* First, detect if sender of the list wants us to delete our own IP
+       * from the list. If yes, see if the removal should be forced. If it
+       * should, set the signal bit and enter the other branch, thus
+       * removing our IP and having an opportunity to signal upstream we
+       * did so. If removal should not be forced, set a different signal bit
+       * meaning that there is at least one surviving IP address to the name.
+       * Enter this branch.
+       * If it turns out the sender does not want us to delete our own address,
+       * just enter the other branch. */
+      if (((cur_addr->ip_addr == my_ipv4_address) ?
+	   (do_force ? ((ret_val |= REMOVED_OWN_PMODE), FALSE) :
+	               ((ret_val |= THEREIS_OWN_NONPMODE), TRUE)) :
+	   FALSE)) {
 	*last_addr = cur_addr->next;
       } else {
 	last_addr = &(cur_addr->next);
@@ -857,6 +891,20 @@ int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
 
 	  card_addr = *last_card_addr;
 	}
+
+	if (! namecard->addrs.recrd[j].addr) {
+	  namecard->node_types = namecard->node_types &
+	    (~(addrblock.ysgrp.recrd[i].node_type));
+	  namecard->addrs.recrd[j].node_type = 0;
+
+	  while (*last_addr) {
+	    free(cur_addr);
+	    cur_addr = *last_addr;
+	    last_addr = &(cur_addr->next);
+	  }
+	  free(cur_addr);
+	  break;
+	}
       }
 
       free(cur_addr);
@@ -864,5 +912,14 @@ int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
     }
   }
 
-  return 1;
+  if (ret_val & THEREIS_OWN_NONPMODE)
+    return 0;
+  else {
+    if (ret_val & REMOVED_OWN_PMODE)
+      return 1;
+    else
+      return 0;
+  }
 }
+#undef REMOVED_OWN_PMODE
+#undef THEREIS_OWN_NONPMODE

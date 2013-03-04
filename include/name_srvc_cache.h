@@ -152,6 +152,8 @@ void
 struct ipv4_addr_list *
   merge_addrlists(struct ipv4_addr_list *master,
                   struct ipv4_addr_list *mergee);
+void
+  destroy_addrlist(struct ipv4_addr_list *list);
 
 struct addrlst_bigblock *
   sort_nbaddrs(struct nbaddress_list *nbaddr_list,
@@ -163,7 +165,8 @@ void
 int
   remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
                        struct cache_namenode *namecard,
-                       uint32_t my_ipv4_address);
+                       uint32_t my_ipv4_address,
+                       unsigned int sender_is_nbns);
 
 struct cache_scopenode *nbworks_rootscope;
 #endif /* NBWORKS_NAMESRVCCACHE_H*/

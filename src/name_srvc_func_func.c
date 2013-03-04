@@ -41,6 +41,176 @@
 #include "service_sector_threads.h"
 
 
+void *name_srvc_handle_newtid(void *input) {
+  struct timespec sleeptime;
+  struct newtid_params params, *release_lock;
+  struct thread_node *last_will;
+  struct name_srvc_packet *outpckt;
+  struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
+  unsigned char waited;
+  time_t cur_time;
+
+
+  memcpy(&params, input, sizeof(struct newtid_params));
+  release_lock = input;
+  release_lock->isbusy = 0;
+
+  if (params.thread_id)
+    last_will = add_thread(params.thread_id);
+  else
+    last_will = 0;
+
+  /* TODO: change this to a global setting. */
+  sleeptime.tv_sec = 0;
+  sleeptime.tv_nsec = T_500MS;
+
+  last_outpckt = 0;
+  waited = 0;
+
+  while (0xceca) /* Also known as sesa. */ {
+
+    ss_set_inputdrop_name_tid(&(params.id));
+
+    do {
+      outside_pckt = ss__recv_entry(params.trans);
+
+      if (outside_pckt == last_outpckt) {
+	/* No packet. */
+	if (waited) {
+	  /* Wait time passed. */
+	  ss_deregister_name_tid(&(params.id));
+	  ss__dstry_recv_queue(params.trans);
+	  free(params.trans);
+	  if (last_will)
+	    last_will->dead = 9001; /* It's OVER *9000*!!! */
+	  return 0;
+	} else {
+	  waited = 1;
+	  ss_set_normalstate_name_tid(&(params.id));
+	  nanosleep(&sleeptime, 0);
+	  ss_set_inputdrop_name_tid(&(params.id));
+	}
+      } else {
+	if (last_outpckt)
+	  free(last_outpckt);
+	last_outpckt = outside_pckt;
+      }
+
+    } while (! outside_pckt->packet);
+
+    ss_set_normalstate_name_tid(&(params.id));
+
+    outpckt = outside_pckt->packet;
+
+    /* Hack to make the complex loops of
+       this function work as they should. */
+    outside_pckt->packet = 0;
+
+    cur_time = time(0);
+
+
+
+    // NAME REGISTRATION REQUEST (UNIQUE)
+    // NAME REGISTRATION REQUEST (GROUP)
+
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				     OPCODE_REGISTRATION)) &&
+	(! outpckt->header->rcode)) {
+      /* NAME REGISTRATION REQUEST */
+
+      name_srvc_do_namregreq(outpckt, &(outside_pckt->addr),
+			     params.trans, params.id.tid,
+			     cur_time);
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // NAME QUERY REQUEST
+    // NODE STATUS REQUEST
+
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				     OPCODE_QUERY)) &&
+	(! outpckt->header->rcode)) {
+
+      name_srvc_do_namqrynodestat(outpckt, &(outside_pckt->addr),
+				  params.trans, params.id.tid,
+				  cur_time);
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // POSITIVE NAME QUERY RESPONSE
+
+    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+				     OPCODE_QUERY)) &&
+	(outpckt->header->rcode == 0) &&
+	(outpckt->header->nm_flags & FLG_AA)) {
+
+      name_srvc_do_posnamqryresp(outpckt, &(outside_pckt->addr),
+				 params.trans, params.id.tid,
+				 cur_time);
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // NAME CONFLICT DEMAND
+
+    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+				     OPCODE_REGISTRATION)) &&
+	(outpckt->header->rcode == RCODE_CFT_ERR) &&
+	(outpckt->header->nm_flags & FLG_AA)) {
+
+      name_srvc_do_namcftdem(outpckt);
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // NAME RELEASE REQUEST
+
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				     OPCODE_RELEASE)) &&
+	(outpckt->header->rcode == 0)) {
+
+      name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr));
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // NAME UPDATE REQUEST
+    /*
+     * The hardest one to date, because I had to COMPLETELY redo the cache
+     * records to make it work. I also had to implement linked list
+     * cross-checker.
+     */
+
+    if (((outpckt->header->opcode == (OPCODE_REQUEST |
+				      OPCODE_REFRESH)) ||
+	 (outpckt->header->opcode == (OPCODE_REQUEST |
+				      OPCODE_REFRESH2))) &&
+	(outpckt->header->rcode == 0)) {
+
+      name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
+			   params.trans, params.id.tid,
+			   cur_time);
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // NOOP
+
+    destroy_name_srvc_pckt(outpckt, 1, 1);
+  }
+
+  return 0;
+}
+
+
 struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      unsigned char name_type,
 						      struct nbnodename_list *scope,
@@ -461,6 +631,9 @@ int name_srvc_release_name(unsigned char *name,
   pckt->header->nm_flags = (recursion ? FLG_RD : FLG_B);
 
   for (i=BCAST_REQ_RETRY_COUNT; i>0; i--) {
+    if (i == 1)
+      pckt->for_del = TRUE;
+
     if (stop_yourself)
       break;
 
@@ -523,9 +696,6 @@ int name_srvc_release_name(unsigned char *name,
 	destroy_name_srvc_pckt(outpckt, 1, 1);
       }
     }
-
-    if (i == 2) /* Thread carefully, off-by-one danger. */
-      pckt->for_del = TRUE;
   }
 
   ss_deregister_name_tid(&tid);
@@ -665,17 +835,15 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
       decode_nbnodename(qstn->qstn->name->name, decoded_name);
 
       if (qstn->qstn->qtype == QTYPE_NBSTAT) {
-	cache_namecard = find_nblabel(decoded_name,
-				      NETBIOS_NAME_LEN,
-				      ANY_NODETYPE, ANY_GROUP,
-				      QTYPE_NB,
-				      qstn->qstn->qclass,
-				      qstn->qstn->name->next_name);
-
-	if (cache_namecard &&
-	    (cache_namecard->token) &&
-	    (cache_namecard->timeof_death > cur_time) &&
-	    (! cache_namecard->isinconflict) &&
+	if ((((cache_namecard = find_nblabel(decoded_name,
+					     NETBIOS_NAME_LEN,
+					     ANY_NODETYPE, ANY_GROUP,
+					     QTYPE_NB, qstn->qstn->qclass,
+					     qstn->qstn->name->next_name)) &&
+	      (cache_namecard->token) &&
+	      (cache_namecard->timeof_death > cur_time) &&
+	      (! cache_namecard->isinconflict)) ||
+	     (0 == memcmp(JOKER_NAME, decoded_name, NETBIOS_NAME_LEN))) &&
 	    (this_scope = find_scope(qstn->qstn->name->next_name))) {
 
 	  numof_answers++;
@@ -692,7 +860,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  /* no check */
 	  res->res->name = clone_nbnodename(qstn->qstn->name);
 	  res->res->rrtype = RRTYPE_NBSTAT;
-	  res->res->rrclass = cache_namecard->dns_class;
+	  res->res->rrclass = qstn->qstn->qclass;
 	  res->res->ttl = 0;
 
 	  stats = calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
@@ -1039,7 +1207,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	      if (! cache_namecard->token)
 		cache_namecard->timeof_death = 0;
 	      else
-		cache_namecard->isinconflict = 1;  /* WRONG!!! */
+		cache_namecard->isinconflict = 1;  /* WRONG! But how do I fix it? */
 	    }
 	  }
 	  if ((cache_namecard) &&
@@ -1178,12 +1346,22 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
   struct nbaddress_list *nbaddr_list;
-  uint32_t in_addr, status, i;
+  struct ipv4_addr_list *ipv4fordel;
+  uint32_t in_addr, status, name_flags, i;
+  unsigned int sender_is_nbns;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  if (! (outpckt && addr))
+    return;
 
   /* Make sure noone spoofs the release request. */
   /* VAXism below. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+  if (in_addr == get_nbnsaddr())
+    sender_is_nbns = TRUE;
+  else
+    sender_is_nbns = FALSE;
+  name_flags = outpckt->header->nm_flags;
 
   res = outpckt->aditionals;
   while (res) {
@@ -1198,7 +1376,12 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 
       while (nbaddr_list) {
 	if ((nbaddr_list->there_is_an_address) &&
-	    (nbaddr_list->address == in_addr)) {
+	    (((nbaddr_list->flags & NBADDRLST_NODET_MASK) == NBADDRLST_NODET_P) ?
+	     /* Only read this if the packet was not broadcast. That is, if the packet
+	      * does not have the broadcast flag set - we will still process a broadcast
+	      * packet with the broadcast flag off. */
+	     ((name_flags ^ FLG_B) && sender_is_nbns) :
+	     (nbaddr_list->address == in_addr))) {
 	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
 	    status = status | STATUS_DID_GROUP;
 	  else
@@ -1223,7 +1406,10 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 				      res->res->rrclass,
 				      res->res->name->next_name);
 	if (cache_namecard) {
-	  remove_membrs_frmlst(nbaddr_list, cache_namecard, my_ipv4_address());
+	  if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard, my_ipv4_address(),
+				       sender_is_nbns)) {
+	    cache_namecard->token = 0;
+	  }
 
 	  for (i=0; i<4; i++) {
 	    if (cache_namecard->addrs.recrd[i].addr)
@@ -1241,10 +1427,33 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 				      res->res->rrtype,
 				      res->res->rrclass,
 				      res->res->name->next_name);
-	if (cache_namecard)
+	if (cache_namecard) {
 	  if (! cache_namecard->token)
 	    cache_namecard->timeof_death = 0;
-	/* else: Did I just get a name release for my own name? */
+	  else {
+	    /* Did I just get a name release for my own name? */
+	    if (sender_is_nbns &&
+		(cache_namecard->node_types & (CACHE_NODEFLG_P |
+					       CACHE_NODEFLG_M |
+					       CACHE_NODEFLG_H))) {
+	      for (i=0; i<4; i++) {
+		if (cache_namecard->addrs.recrd[i].node_type != CACHE_NODEFLG_B) {
+		  ipv4fordel = cache_namecard->addrs.recrd[i].addr;
+		  cache_namecard->addrs.recrd[i].addr = 0;
+		  destroy_addrlist(ipv4fordel);
+
+		  cache_namecard->node_types = cache_namecard->node_types &
+		    (~(cache_namecard->addrs.recrd[i].node_type));
+		  cache_namecard->addrs.recrd[i].node_type = 0;
+		}
+	      }
+
+	      if (! cache_namecard->node_types) {
+		cache_namecard->timeof_death = 0;
+	      }
+	    }
+	  }
+	}
       }
     }
 
@@ -1266,11 +1475,13 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   struct name_srvc_resource_lst *res;
   struct addrlst_bigblock *addr_bigblock;
   int i, j;
-  //  uint32_t in_addr;
+  uint32_t in_addr, nbns_addr, name_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
-  //  /* Make sure noone spoofs the update request. */
-  //  read_32field(&(addr->sin_addr.s_addr), &in_addr);
+  /* Make sure only NBNS is listened to in P mode. */
+  read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+  nbns_addr = get_nbnsaddr();
+  name_flags = outpckt->header->nm_flags;
 
   res = outpckt->aditionals;
   while (res) {
@@ -1293,26 +1504,47 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 					res->res->name->next_name);
 
 	  if (! cache_namecard) {
-	    cache_namecard = add_nblabel(decoded_name,
-					 NETBIOS_NAME_LEN,
-					 ((addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK)
-					  >> 4),
-					 FALSE, ISGROUP_YES,
-					 res->res->rrtype, res->res->rrclass,
-					 &(addr_bigblock->ysgrp),
-					 res->res->name->next_name);
-	    if (cache_namecard) { /* Race conditions, race conditions... */
-	      if (res->res->ttl)
-		cache_namecard->timeof_death = cur_time + res->res->ttl;
-	      else
-		cache_namecard->timeof_death = ZEROONES; /* infinity */
-	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+	    cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
+					    ((addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK)
+					     >> 4),
+					    FALSE, ISGROUP_YES, res->res->rrtype, res->res->rrclass);
 
-	      /* Delete the reference to the the address
-		 * lists so they do not get freed.*/
-	      memset(&(addr_bigblock->ysgrp), 0, sizeof(struct addrlst_grpblock));
-	    } /* else
-		 failed */
+	    if (res->res->ttl)
+	      cache_namecard->timeof_death = cur_time + res->res->ttl;
+	    else
+	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+
+	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->ysgrp),
+		   sizeof(struct addrlst_grpblock));
+
+	    /* Delete the reference to the the address
+	     * lists so they do not get freed.*/
+	    memset(&(addr_bigblock->ysgrp), 0, sizeof(struct addrlst_grpblock));
+
+	    if ((in_addr != nbns_addr) ||
+		(name_flags & FLG_B)) {
+	      for (i=0; i<4; i++) {
+		if (cache_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_P) {
+		  destroy_addrlist(cache_namecard->addrs.recrd[i].addr);
+		  cache_namecard->addrs.recrd[i].addr = 0;
+		  cache_namecard->addrs.recrd[i].node_type = 0;
+		  cache_namecard->node_types = cache_namecard->node_types & (~CACHE_NODEFLG_P);
+		  if (! cache_namecard->node_types) {
+		    destroy_namecard(cache_namecard);
+		    cache_namecard = 0;
+		    break;
+		  }
+		}
+	      }
+	    }
+
+	    if (cache_namecard) {
+	      if (! add_name(cache_namecard, res->res->name->next_name))
+		destroy_namecard(cache_namecard);
+	        /* failed */
+	    }
+
 	  } else {
 	    /* BUG: The number of problems a rogue node can create is mind boggling. */
 	    if (res->res->ttl)
@@ -1324,6 +1556,10 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    for (i=0; i<4; i++) {
 	      if (addr_bigblock->ysgrp.recrd[i].addr) {
 		for (j=0; j<4; j++) {
+		  if ((addr_bigblock->ysgrp.recrd[j].node_type == CACHE_NODEFLG_P) &&
+		      ((nbns_addr != in_addr) || (name_flags & FLG_B)))
+		    continue;
+
 		  if (cache_namecard->addrs.recrd[j].node_type ==
 		      addr_bigblock->ysgrp.recrd[i].node_type) {
 		    cache_namecard->addrs.recrd[j].addr =
@@ -1362,27 +1598,46 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 					res->res->name->next_name);
 
 	  if (! cache_namecard) {
-	    cache_namecard = add_nblabel(decoded_name,
-					 NETBIOS_NAME_LEN,
-					 (addr_bigblock->node_types &
-					  CACHE_ADDRBLCK_UNIQ_MASK),
-					 FALSE, ISGROUP_NO,
-					 res->res->rrtype, res->res->rrclass,
-					 &(addr_bigblock->nogrp),
-					 res->res->name->next_name);
+	    cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
+					    (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK),
+					    FALSE, ISGROUP_NO, res->res->rrtype, res->res->rrclass);
 
-	    if (cache_namecard) { /* Race conditions, race conditions... */
-	      if (res->res->ttl)
-		cache_namecard->timeof_death = cur_time + res->res->ttl;
-	      else
-		cache_namecard->timeof_death = ZEROONES; /* infinity */
-	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+	    if (res->res->ttl)
+	      cache_namecard->timeof_death = cur_time + res->res->ttl;
+	    else
+	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-	      /* Delete the reference to the address
-	       * lists so they do not get freed.*/
-	      memset(&(addr_bigblock->ysgrp), 0, sizeof(struct addrlst_grpblock));
-	    } /* else
-		 failed */
+	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->nogrp),
+		   sizeof(struct addrlst_grpblock));
+
+	    /* Delete the reference to the the address
+	     * lists so they do not get freed.*/
+	    memset(&(addr_bigblock->nogrp), 0, sizeof(struct addrlst_grpblock));
+
+	    if ((in_addr != nbns_addr) ||
+		(name_flags & FLG_B)) {
+	      for (i=0; i<4; i++) {
+		if (cache_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_P) {
+		  destroy_addrlist(cache_namecard->addrs.recrd[i].addr);
+		  cache_namecard->addrs.recrd[i].addr = 0;
+		  cache_namecard->addrs.recrd[i].node_type = 0;
+		  cache_namecard->node_types = cache_namecard->node_types & (~CACHE_NODEFLG_P);
+		  if (! cache_namecard->node_types) {
+		    destroy_namecard(cache_namecard);
+		    cache_namecard = 0;
+		    break;
+		  }
+		}
+	      }
+	    }
+
+	    if (cache_namecard) {
+	      if (! add_name(cache_namecard, res->res->name->next_name))
+		destroy_namecard(cache_namecard);
+	        /* failed */
+	    }
+
 	  } else {
 	    if (! cache_namecard->token) {
 	      if (res->res->ttl)
@@ -1394,6 +1649,10 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      for (i=0; i<4; i++) {
 		if (addr_bigblock->nogrp.recrd[i].addr) {
 		  for (j=0; j<4; j++) {
+		    if ((addr_bigblock->nogrp.recrd[j].node_type == CACHE_NODEFLG_P) &&
+			((nbns_addr != in_addr) || (name_flags & FLG_B)))
+		      continue;
+
 		    if (cache_namecard->addrs.recrd[j].node_type ==
 			addr_bigblock->nogrp.recrd[i].node_type) {
 		      cache_namecard->addrs.recrd[j].addr =
