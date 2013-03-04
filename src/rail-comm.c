@@ -260,7 +260,7 @@ void *handle_rail(void *args) {
 	cur_addr = *last_addr;
 
 	while (cur_addr) {
-	  if (cur_addr->addr == ipv4) {
+	  if (cur_addr->ip_addr == ipv4) {
 	    *last_addr = cur_addr->next;
 	    free(cur_addr);
 	  } else {
