@@ -189,6 +189,7 @@ void *handle_rail(void *args) {
   struct com_comm command;
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
+  struct ipv4_addr_list *cur_addr, **last_addr;
   uint32_t ipv4, i;
   unsigned char buff[LEN_COMM_ONWIRE], *name_ptr;
 
@@ -245,27 +246,37 @@ void *handle_rail(void *args) {
     break;
 
   case rail_delname:
-    /* Currently, this code does not remove my IPv4 address from
-     * the cache. */
-    /* WRONG FOR GROUPS!!! */
     cache_namecard = find_namebytok(command.token, &scope);
 
     if (cache_namecard) {
       name_ptr = cache_namecard->name;
+      ipv4 = my_ipv4_address();
       name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			     scope, my_ipv4_address(),
-			     cache_namecard->group_flg, FALSE);
+			     scope, ipv4, cache_namecard->group_flg,
+			     FALSE);
 
-      if (cache_namecard->group_flg & ISGROUP_YES) {
-	cache_namecard->token = 0;
-	for (i=0; i<4; i++) {
-	  if (cache_namecard->addrs.recrd[i].addr)
-	    break;
+      for (i=0; i<4; i++) {
+	last_addr = &(cache_namecard->addrs.recrd[i].addr);
+	cur_addr = *last_addr;
+
+	while (cur_addr) {
+	  if (cur_addr->addr == ipv4) {
+	    *last_addr = cur_addr->next;
+	    free(cur_addr);
+	  } else {
+	    last_addr = &(cur_addr->next);
+	  }
+
+	  cur_addr = *last_addr;
 	}
-	if (i > 3) {
-	  cache_namecard->timeof_death = 0;
+
+	if (! cache_namecard->addrs.recrd[i].addr) {
+	  cache_namecard->node_types = cache_namecard->node_types &
+	    (~(cache_namecard->addrs.recrd[i].node_type));
 	}
-      } else {
+      }
+
+      if (! cache_namecard->node_types) {
 	cache_namecard->timeof_death = 0;
       }
 
