@@ -225,26 +225,10 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 
       if (outpckt->header->opcode == (OPCODE_RESPONSE |
 				      OPCODE_WACK)) {
-	for (res = outpckt->answers;
-	     res != 0;
-	     res = res->next) {
-	  if (res->res &&
-	      (0 == cmp_nbnodename(pckt->aditionals->res->name,
-				   res->res->name)) &&
-	      ((res->res->rrtype == RRTYPE_NULL) ||
-	       (res->res->rrtype == pckt->aditionals->res->rrtype)) &&
-	      (res->res->rrclass == pckt->aditionals->res->rrclass))
-	    break;
-	}
-	if (res) {
-	  sleeptime.tv_sec = res->res->ttl;
-	  ss_set_normalstate_name_tid(&tid);
-
-	  nanosleep(&sleeptime, 0);
-
-	  ss_set_inputdrop_name_tid(&tid);
-	  sleeptime.tv_sec = 0;
-	}
+	name_srvc_do_wack(outpckt, pckt->aditionals->res->name,
+			  pckt->aditionals->res->rrtype,
+			  pckt->aditionals->res->rrclass,
+			  &tid);
       }
 
       outside_pckt->dstry(outpckt, 1, 1);

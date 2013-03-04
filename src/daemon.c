@@ -55,6 +55,9 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_pruners_cntrl.passes_ses_srv_ses = 8; /* AKA 2 seconds */
   nbworks_pruners_cntrl.lifetimeof_queue_storage = 25; /* seconds */
 
+  nbworks__functn_cntrl.retries_NBNS = 3;
+  nbworks__functn_cntrl.max_wack_sleeptime = 120;
+
   railparams.isbusy = 0xda;
   railparams.rail_sckt = open_rail();
   if (railparams.rail_sckt < 0) {

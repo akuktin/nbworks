@@ -39,6 +39,7 @@
 #include "randomness.h"
 #include "service_sector.h"
 #include "service_sector_threads.h"
+#include "daemon_control.h"
 
 
 void *name_srvc_handle_newtid(void *input) {
@@ -163,7 +164,7 @@ void *name_srvc_handle_newtid(void *input) {
 	(outpckt->header->rcode == RCODE_CFT_ERR) &&
 	(outpckt->header->nm_flags & FLG_AA)) {
 
-      name_srvc_do_namcftdem(outpckt);
+      name_srvc_do_namcftdem(outpckt, &(outside_pckt->addr));
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -321,26 +322,11 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
       if (recursive) {
 	if (outside_pckt->header->opcode == (OPCODE_RESPONSE |
 					     OPCODE_WACK)) {
-	  for (res = outside_pckt->answers;
-	       res != 0;
-	       res = res->next) {
-	    if (res->res &&
-		(0 == cmp_nbnodename(pckt->questions->qstn->name,
-				     res->res->name)) &&
-		((res->res->rrtype == RRTYPE_NULL) ||
-		 (res->res->rrtype == pckt->questions->qstn->qtype)) &&
-		(res->res->rrclass == pckt->questions->qstn->qclass))
-	      break;
-	  }
-	  if (res) {
-	    sleeptime.tv_sec = res->res->ttl;
-	    ss_set_normalstate_name_tid(&tid);
-
-	    nanosleep(&sleeptime, 0);
-
-	    ss_set_inputdrop_name_tid(&tid);
-	    sleeptime.tv_sec = 0;
-	  }
+	  name_srvc_do_wack(outside_pckt,
+			    pckt->questions->qstn->name,
+			    pckt->questions->qstn->qtype,
+			    pckt->questions->qstn->qclass,
+			    &tid);
 	}
 
 	if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
@@ -564,7 +550,6 @@ int name_srvc_release_name(unsigned char *name,
   struct sockaddr_in addr;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outpckt;
-  struct name_srvc_resource_lst *res;
   struct nbnodename_list *probe;
   uint32_t listento;
   uint16_t type, class;
@@ -661,25 +646,8 @@ int name_srvc_release_name(unsigned char *name,
 
 	if (outpckt->header->opcode == (OPCODE_RESPONSE |
 					OPCODE_WACK)) {
-	  for (res = outpckt->answers;
-	       res != 0;
-	       res = res->next) {
-	    if (res->res &&
-		(0 == cmp_nbnodename(probe, res->res->name)) &&
-		((res->res->rrtype == RRTYPE_NULL) ||
-		 (res->res->rrtype == type)) &&
-		(res->res->rrclass == class))
-	      break;
-	  }
-	  if (res) {
-	    sleeptime.tv_sec = res->res->ttl;
-	    ss_set_normalstate_name_tid(&tid);
-
-	    nanosleep(&sleeptime, 0);
-
-	    ss_set_inputdrop_name_tid(&tid);
-	    sleeptime.tv_sec = 0;
-	  }
+	  name_srvc_do_wack(outpckt, probe,
+			    type, class, &tid);
 	}
 
 	if ((outpckt->header->opcode == (OPCODE_RESPONSE |
@@ -708,6 +676,46 @@ int name_srvc_release_name(unsigned char *name,
   return 0;
 }
 
+
+void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
+		       struct nbnodename_list *refname,
+		       uint16_t reftype,
+		       uint16_t refclass,
+		       void *tid) {
+  struct timespec sleeptime;
+  struct name_srvc_resource_lst *res;
+  uint32_t ttl;
+
+  ttl = 0;
+
+  for (res = outside_pckt->answers;
+       res != 0;
+       res = res->next) {
+    if (res->res &&
+	(0 == cmp_nbnodename(refname, res->res->name)) &&
+	((res->res->rrtype == RRTYPE_NULL) ||
+	 (res->res->rrtype == reftype)) &&
+	(res->res->rrclass == refclass) &&
+	(res->res->ttl > ttl))
+      ttl = res->res->ttl;
+  }
+
+  if (ttl > nbworks__functn_cntrl.max_wack_sleeptime) {
+    ttl = nbworks__functn_cntrl.max_wack_sleeptime;
+  }
+
+  if (ttl) {
+    sleeptime.tv_sec = ttl;
+    sleeptime.tv_nsec = 0;
+    ss_set_normalstate_name_tid(tid);
+
+    nanosleep(&sleeptime, 0);
+
+    ss_set_inputdrop_name_tid(tid);
+  }
+
+  return;
+}
 
 void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 			    struct sockaddr_in *addr,
@@ -1279,12 +1287,25 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
   return;
 }
 
-void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt) {
+void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
+			    struct sockaddr_in *addr) {
   struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
   struct nbaddress_list *nbaddr_list;
-  uint32_t status;
+  uint32_t status, in_addr, sender_is_nbns, name_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  if (! (outpckt && addr))
+    return;
+
+  /* Make sure we only listen to NBNS in P mode. */
+  /* VAXism below. */
+  read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+  if (in_addr == get_nbnsaddr())
+    sender_is_nbns = TRUE;
+  else
+    sender_is_nbns = FALSE;
+  name_flags = outpckt->header->nm_flags;
 
   res = outpckt->answers;
   while (res) {
@@ -1300,10 +1321,15 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt) {
 
       nbaddr_list = res->res->rdata;
       while (nbaddr_list) {
-	if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
-	  status = status | STATUS_DID_GROUP;
-	else
-	  status = status | STATUS_DID_UNIQ;
+	if (((nbaddr_list->flags & NBADDRLST_NODET_MASK) ==
+	        NBADDRLST_NODET_P) ?
+	    (sender_is_nbns && (name_flags ^ FLG_B)) :
+	    TRUE) {
+	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
+	    status = status | STATUS_DID_GROUP;
+	  else
+	    status = status | STATUS_DID_UNIQ;
+	}
 
 	if (status & (STATUS_DID_UNIQ | STATUS_DID_GROUP))
 	  break;

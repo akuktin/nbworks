@@ -20,6 +20,7 @@
 # define NBWORKS_DAEMONCONTROL_H 1
 
 # include <time.h>
+# include <stdint.h>
 
 struct {
   unsigned char all_stop;
@@ -50,6 +51,7 @@ struct {
 
 struct {
   int retries_NBNS;
+  uint32_t max_wack_sleeptime;
 } nbworks__functn_cntrl;
 
 #endif /* NBWORKS_DAEMONCONTROL_H */

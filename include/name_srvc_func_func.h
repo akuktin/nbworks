@@ -50,6 +50,12 @@ int
                          unsigned char recursion);
 
 void
+  name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
+                    struct nbnodename_list *refname,
+                    uint16_t reftype,
+                    uint16_t refclass,
+                    void *tid);
+void
   name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
                          struct sockaddr_in *addr,
                          struct ss_queue *trans,
@@ -68,7 +74,8 @@ void
                              uint32_t tid,
                              time_t cur_time);
 void
-  name_srvc_do_namcftdem(struct name_srvc_packet *outpckt);
+  name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
+                         struct sockaddr_in *addr);
 void
   name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
                          struct sockaddr_in *addr);
