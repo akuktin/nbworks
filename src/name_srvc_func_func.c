@@ -1060,6 +1060,10 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
   uint32_t in_addr, status, i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
+  /* Make sure noone spoofs the response. */
+  /* VAXism below. */
+  read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+
   res = outpckt->answers;
   while (res) {
     status = STATUS_DID_NONE;
@@ -1071,9 +1075,6 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list) &&
 	(res->res->rdata)) {
-      /* Make sure noone spoofs the response. */
-      /* VAXism below. */
-      read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
 
       nbaddr_list_last = nbaddr_list_frst = (struct nbaddress_list **)&(res->res->rdata);
       nbaddr_list = *nbaddr_list_last;
@@ -1323,7 +1324,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
       while (nbaddr_list) {
 	if (((nbaddr_list->flags & NBADDRLST_NODET_MASK) ==
 	        NBADDRLST_NODET_P) ?
-	    (sender_is_nbns && (name_flags ^ FLG_B)) :
+	    (sender_is_nbns && ((name_flags ^ FLG_B) & FLG_B)) :
 	    TRUE) {
 	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
 	    status = status | STATUS_DID_GROUP;
@@ -1406,7 +1407,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	     /* Only read this if the packet was not broadcast. That is, if the packet
 	      * does not have the broadcast flag set - we will still process a broadcast
 	      * packet with the broadcast flag off. */
-	     ((name_flags ^ FLG_B) && sender_is_nbns) :
+	     (((name_flags ^ FLG_B) & FLG_B) && sender_is_nbns) :
 	     (nbaddr_list->address == in_addr))) {
 	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
 	    status = status | STATUS_DID_GROUP;
@@ -1532,8 +1533,8 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	  if (! cache_namecard) {
 	    cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
 					    ((addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK)
-					     >> 4),
-					    FALSE, ISGROUP_YES, res->res->rrtype, res->res->rrclass);
+					     >> 4), FALSE, ISGROUP_YES,
+					    res->res->rrtype, res->res->rrclass);
 
 	    if (res->res->ttl)
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
