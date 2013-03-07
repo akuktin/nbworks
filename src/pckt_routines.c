@@ -478,11 +478,13 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
 
   /* I have to check if I can fit the terminating 0 into
      the packet here because content may be NULL. */
-  if ((field +1) > endof_pckt) {
+  if ((walker +1) > endof_pckt) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
-    return field;
+    return walker;
   }
+
+  field = walker;
 
   if (state) {
     if (*state) {

@@ -589,7 +589,8 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
   unsigned char *walker;
 
   if ((! (content && field)) ||
-      (! end_of_packet))
+      (! end_of_packet) ||
+      (! field))
     return field;
 
   walker = field;
