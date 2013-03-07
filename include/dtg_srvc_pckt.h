@@ -129,7 +129,8 @@ void *
 void *
   master_dtg_srvc_pckt_writer(void *packet_ptr,
                               unsigned int *pckt_len,
-                              void *packet_field);
+                              void *packet_field,
+                              unsigned char placeholder);
 
 void
   destroy_dtg_srvc_pckt(void *packet,

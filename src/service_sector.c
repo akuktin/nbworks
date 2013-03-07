@@ -1179,7 +1179,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 	  if (cur_trans->out->packet) {
 	    ptr = cur_trans->out->packet;
 	    len = MAX_UDP_PACKET_LEN;
-	    sckts.master_writer(ptr, &len, udp_pckt);
+	    sckts.master_writer(ptr, &len, udp_pckt, TRANSIS_UDP);
 	    if (prev_len > len) {
 	      memset((udp_pckt + prev_len), 0, (prev_len - len));
 	    }
@@ -1207,7 +1207,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 	  if (cur_trans->out->packet) {
 	    ptr = cur_trans->out->packet;
 	    len = MAX_UDP_PACKET_LEN;
-	    sckts.master_writer(ptr, &len, udp_pckt);
+	    sckts.master_writer(ptr, &len, udp_pckt, TRANSIS_UDP);
 	    if (prev_len > len) {
 	      memset((udp_pckt + prev_len), 0, (prev_len - len));
 	    }
@@ -1229,7 +1229,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 	if (cur_trans->out->packet) {
 	  ptr = cur_trans->out->packet;
 	  len = MAX_UDP_PACKET_LEN;
-	  sckts.master_writer(ptr, &len, udp_pckt);
+	  sckts.master_writer(ptr, &len, udp_pckt, TRANSIS_UDP);
 	  if (prev_len > len) {
 	    memset((udp_pckt + prev_len), 0, (prev_len - len));
 	  }

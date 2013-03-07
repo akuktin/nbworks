@@ -126,7 +126,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
     walker = read_16field(walker, &(normal_pckt->len));
     walker = read_16field(walker, &(normal_pckt->offset));
-    if ((walker + 2 + normal_pckt->len) >= end_of_packet) {
+    if ((walker + 2 + normal_pckt->len) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       free(normal_pckt);
@@ -145,10 +145,10 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     }
 
     walker = align(remember_walker, walker, 4);
-    if ((walker + 1 + normal_pckt->len) >= end_of_packet) {
+    if ((walker + 1 + normal_pckt->len) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      free(normal_pckt->src_name);
+      destroy_nbnodename(normal_pckt->src_name);
       free(normal_pckt);
       return 0;
     }
@@ -193,7 +193,6 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     } else {
       normal_pckt->do_del_pyldpyld = FALSE;
       normal_pckt->payload = walker;
-      normal_pckt->pyldpyld_delptr = 0;
       walker = walker + normal_pckt->len;
     }
 
@@ -229,7 +228,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
 					       unsigned char *field,
 					       unsigned char *endof_pckt) {
   struct dtg_pckt_pyld_normal *normal_pckt;
-  unsigned char *walker, *remember_walker;
+  unsigned char *walker, *remember_walker, *save_walker;
 
   if ((! (content && field)) ||
       (field > endof_pckt))
@@ -255,27 +254,29 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     walker = fill_all_DNS_labels(normal_pckt->src_name, walker,
 				 endof_pckt, 0);
 
+    save_walker = walker;
     walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->len +1) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      return walker;
+      memset(field, 0, (save_walker-field));
+      return field;
     }
 
     walker = fill_all_DNS_labels(normal_pckt->dst_name, walker,
 				 endof_pckt, 0);
 
+    save_walker = walker;
     walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->len) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      return walker;
+      memset(field, 0, (save_walker-field));
+      return field;
     }
 
-    walker = mempcpy(walker, normal_pckt->payload,
-		     normal_pckt->len);
-
-    return walker;
+    return mempcpy(walker, normal_pckt->payload,
+		   normal_pckt->len);
     break;
 
   case error_code:
@@ -285,8 +286,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
       return walker;
     }
     *walker = content->error_code;
-    walker++;
-    return walker;
+    return walker +1;
     break;
 
   case nbnodename:
@@ -454,7 +454,8 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
 
 void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 				  unsigned int *pckt_len,
-				  void *packet_field) {
+				  void *packet_field,
+				  unsigned char placeholder) {
   struct dtg_srvc_packet *packet;
   unsigned char *result, *walker, *endof_pckt;
 

@@ -107,6 +107,7 @@ enum name_srvc_rdata_type {
   bad_type
 };
 
+# define SIZEOF_NAMEHDR_ONWIRE (2+2+(4*2))
 struct name_srvc_pckt_header {
   uint16_t transaction_id;
   unsigned int opcode   :5;
@@ -230,7 +231,8 @@ void *
 void *
   master_name_srvc_pckt_writer(void *packet_ptr,
                                unsigned int *pckt_len,
-                               void *packet_field);
+                               void *packet_field,
+                               unsigned char transport);
 struct name_srvc_packet *
   alloc_name_srvc_pckt(unsigned int qstn,
                        unsigned int answ,

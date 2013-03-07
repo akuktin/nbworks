@@ -29,6 +29,9 @@
 # include "name_srvc_pckt.h"
 # include "dtg_srvc_pckt.h"
 
+# define TRANSIS_UDP 1
+# define TRANSIS_TCP 2
+
 
 enum trans_status {
   nmtrst_normal = 0,
@@ -86,7 +89,7 @@ struct ss_sckts {
   int tcp_sckt;
   unsigned char branch; /* passthrough for ss_register_tid() */
   void *(*master_reader)(void *, int, uint16_t *);
-  void *(*master_writer)(void *, unsigned int *, void *);
+  void *(*master_writer)(void *, unsigned int *, void *, unsigned char);
   void  (*pckt_dstr)(void *, unsigned int, unsigned int);
   void *(*newtid_handler)(void *);
   struct ss_priv_trans **all_trans;

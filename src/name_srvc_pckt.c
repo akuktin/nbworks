@@ -160,15 +160,8 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   if ((walker + 2 * sizeof(uint16_t)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
-    struct nbnodename_list *names_list;
-    while (question->name) {
-      names_list = question->name->next_name;
-      free(question->name->name);
-      free(question->name);
-      question->name = names_list;
-    }
+    destroy_nbnodename(question->name);
     free(question);
-    *master_packet_walker = end_of_packet;
     return 0;
   }
 
@@ -184,7 +177,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 					    unsigned char *field,
 					    unsigned char *end_of_packet,
 					    unsigned char *overflow) {
-  unsigned char *walker;
+  unsigned char *walker, *save_walker;
 
   if (! (question && field))
     return field;
@@ -209,6 +202,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
     return field;
   }
 
+  save_walker = walker;
   /* Respect the 32-bit boundary. */
   walker = align(field, walker, 4);
 
@@ -216,7 +210,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
     /* OUT_OF_BOUNDS */
     if (overflow)
       *overflow = OVERFLOW_BUF;
-    memset(field, 0, (walker-field));
+    memset(field, 0, (save_walker-field));
     return field;
   }
 
@@ -270,7 +264,6 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
     destroy_nbnodename(resource->name);
     free(resource);
 
-    *master_packet_walker = end_of_packet;
     return 0;
   }
 
@@ -310,6 +303,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
     return field;
   }
 
+  save_walker = walker;
   /* Respect the 32-bit boundary. */
   walker = align(field, walker, 4);
 
@@ -317,7 +311,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
     /* OUT_OF_BOUNDS */
     if (overflow)
       *overflow = OVERFLOW_BUF;
-    memset(field, 0, (walker-field));
+    memset(field, 0, (save_walker-field));
     return field;
   }
 
@@ -426,6 +420,21 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 				  end_of_packet);
     break;
 
+
+#define abort_stats                                         \
+    listof_names->next_nbnodename = 0;			    \
+    listof_names = nbstat->listof_names;		    \
+    while (listof_names) {				    \
+      nbstat->listof_names = listof_names->next_nbnodename; \
+							    \
+      destroy_nbnodename(listof_names->nbnodename);         \
+							    \
+      free(listof_names);				    \
+      listof_names = nbstat->listof_names;		    \
+    }							    \
+    free(nbstat);
+
+
   case nb_statistics_rfc1002:
     resource->rdata_t = nb_statistics_rfc1002;
     if (! resource->rdata_len) {
@@ -441,8 +450,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     }
     num_names = *walker;
     nbstat->numof_names = num_names;
-    walker++;
     weighted_companion_cube = walker +1;
+    walker++;
     if (num_names > 0) {
       listof_names = malloc(sizeof(struct nbnodename_list_backbone));
       if (! listof_names) {
@@ -450,41 +459,22 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	free(nbstat);
 	return 0;
       }
+      listof_names->nbnodename = 0;
       nbstat->listof_names = listof_names;
       while (0xbeefbeef) {
 	if (walker >= end_of_packet) {
 	  /* OUT_OF_BOUNDS */
 	  /* TODO: errno signaling stuff */
-	  listof_names = nbstat->listof_names;
-	  while (listof_names) {
-	    nbstat->listof_names = listof_names->next_nbnodename;
-
-	    destroy_nbnodename(listof_names->nbnodename);
-
-	    free(listof_names);
-	    listof_names = nbstat->listof_names;
-	  }
-	  free(nbstat);
-
+	  abort_stats;
 	  return 0;
 	}
 	listof_names->nbnodename = read_all_DNS_labels(&walker, start_of_packet,
 						       end_of_packet, 0);
 	walker = align(weighted_companion_cube, walker, 4);
-	if ((walker + 1 * sizeof(uint16_t)) > end_of_packet) {
+	if ((walker + 2) > end_of_packet) {
 	  /* OUT_OF_BOUNDS */
 	  /* TODO: errno signaling stuff */
-	  listof_names = nbstat->listof_names;
-	  while (listof_names) {
-	    nbstat->listof_names = listof_names->next_nbnodename;
-
-	    destroy_nbnodename(listof_names->nbnodename);
-
-	    free(listof_names);
-	    listof_names = nbstat->listof_names;
-	  }
-	  free(nbstat);
-
+	  abort_stats;
 	  return 0;
 	}
 	walker = read_16field(walker, &(listof_names->name_flags));
@@ -494,17 +484,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	  listof_names->next_nbnodename = malloc(sizeof(struct nbnodename_list_backbone));
 	  if (! listof_names->next_nbnodename) {
 	    /* TODO: errno signaling stuff */
-	    listof_names = nbstat->listof_names;
-	    while (listof_names) {
-	      nbstat->listof_names = listof_names->next_nbnodename;
-
-	      destroy_nbnodename(listof_names->nbnodename);
-
-	      free(listof_names);
-	      listof_names = nbstat->listof_names;
-	    }
-	    free(nbstat);
-
+	    abort_stats;
 	    return 0;
 	  }
 	  listof_names = listof_names->next_nbnodename;
@@ -515,9 +495,6 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       }
     } else {
       nbstat->listof_names = 0;
-      /* I have to increment walker by at least one.
-	 Also read the comment after the next one. */
-      walker++;
     }
 
     walker = align(weighted_companion_cube, walker, 4);
@@ -525,17 +502,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     if ((walker + 23 * sizeof(uint16_t)) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      listof_names = nbstat->listof_names;
-      while (listof_names) {
-	nbstat->listof_names = listof_names->next_nbnodename;
-
-	destroy_nbnodename(listof_names->nbnodename);
-
-	free(listof_names);
-	listof_names = nbstat->listof_names;
-      }
-      free(nbstat);
-
+      abort_stats;
       return 0;
     }
 
@@ -568,6 +535,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
     return nbstat;
     break;
+#undef abort_stats
 
   case bad_type:
   default:
@@ -586,7 +554,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 					    unsigned char *end_of_packet) {
   struct nbnodename_list_backbone *names;
   struct name_srvc_statistics_rfc1002 *nbstat;
-  unsigned char *walker;
+  unsigned char *walker, *save_walker;
 
   if ((! (content && field)) ||
       (field > end_of_packet))
@@ -656,16 +624,17 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 	return (field + content->rdata_len);
       }
 
+      save_walker = walker;
       walker = align(field, walker, 4);
       if ((walker +2+6+2+19*2) > end_of_packet) {
 	/* OUT_OF_BOUNDS */
 	/* TODO: errno signaling stuff */
-	memset(field, 0, (((walker-field) > content->rdata_len) ?
-			  (walker-field) : content->rdata_len));
+	memset(field, 0, (((save_walker-field) > content->rdata_len) ?
+			  (save_walker-field) : content->rdata_len));
 	return (field + content->rdata_len);
       }
       walker = fill_16field(names->name_flags, walker);
-      walker = align(field, walker, 4);
+      //      walker = align(field, walker, 4);
       names = names->next_nbnodename;
     }
     if ((walker +6+2+19*2) > end_of_packet) {
@@ -935,11 +904,12 @@ void *master_name_srvc_pckt_reader(void *packet,
 
 void *master_name_srvc_pckt_writer(void *packet_ptr,
 				   unsigned int *pckt_len,
-				   void *packet_field) {
+				   void *packet_field,
+				   unsigned char transport) {
   struct name_srvc_packet *packet;
   struct name_srvc_question_lst *cur_qstn;
   struct name_srvc_resource_lst *cur_res;
-  unsigned char *result, *walker, *endof_pckt;
+  unsigned char *result, *walker, *endof_pckt, overflow;
 
   if (! (packet_ptr && pckt_len)) {
     /* TODO: errno signaling stuff */
@@ -961,13 +931,17 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   walker = result;
   endof_pckt = result + *pckt_len;
 
-  walker = fill_name_srvc_pckt_header(packet->header, walker,
-				      endof_pckt);
+  if (transport != TRANSIS_UDP) {
+    walker = fill_name_srvc_pckt_header(packet->header, walker,
+					endof_pckt);
+  } else {
+    walker = walker + SIZEOF_NAMEHDR_ONWIRE;
+  }
 
   cur_qstn = packet->questions;
   while (cur_qstn) {
     walker = fill_name_srvc_pckt_question(cur_qstn->qstn, walker,
-					  endof_pckt, 0);
+					  endof_pckt, &overflow);
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
@@ -979,7 +953,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   cur_res = packet->answers;
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
-				     endof_pckt, 0);
+				     endof_pckt, &overflow);
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
@@ -991,7 +965,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   cur_res = packet->authorities;
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
-				     endof_pckt, 0);
+				     endof_pckt, &overflow);
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
@@ -1003,13 +977,18 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   cur_res = packet->aditionals;
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
-				     endof_pckt, 0);
+				     endof_pckt, &overflow);
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
       return result;
     }
     cur_res = cur_res->next;
+  }
+
+  if (transport == TRANSIS_UDP) {
+    walker = fill_name_srvc_pckt_header(packet->header, result,
+					endof_pckt);
   }
 
   *pckt_len = walker - result;
