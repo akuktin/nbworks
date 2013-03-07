@@ -202,6 +202,12 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
   }
 
   walker = fill_all_DNS_labels(question->name, walker, end_of_packet, 0);
+  if (walker == field) {
+    /* OUT_OF_BOUNDS */
+    if (overflow)
+      *overflow = OVERFLOW_BUF;
+    return field;
+  }
 
   /* Respect the 32-bit boundary. */
   walker = align(field, walker, 4);
@@ -296,14 +302,13 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
     walker = field;
   }
 
-  if ((walker +1 +1 +3*2+4+ resource->rdata_len) > end_of_packet) {
+  walker = fill_all_DNS_labels(resource->name, walker, end_of_packet, 0);
+  if (walker == field) {
     /* OUT_OF_BOUNDS */
     if (overflow)
       *overflow = OVERFLOW_BUF;
     return field;
   }
-
-  walker = fill_all_DNS_labels(resource->name, walker, end_of_packet, 0);
 
   /* Respect the 32-bit boundary. */
   walker = align(field, walker, 4);
@@ -584,12 +589,12 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
   unsigned char *walker;
 
   if ((! (content && field)) ||
-      (field > end_of_packet))
+      (! end_of_packet))
     return field;
 
   walker = field;
 
-  if ((walker + content->rdata_len) > end_of_packet) {
+  if ((walker + content->rdata_len) > end_of_packet)) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     return walker;
@@ -614,6 +619,11 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 
   case nb_nodename:
     walker = fill_all_DNS_labels(content->rdata, walker, end_of_packet, 0);
+    if (walker == field) {
+      /* OUT_OF_BOUNDS */
+      memset(field, 0, content->rdata_len);
+      return (field + content->rdata_len);
+    }
     walker = align(field, walker, 4);
     if (walker > end_of_packet) {
       /* TODO: maybe do errno signaling stuff? */
@@ -639,6 +649,13 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     names = nbstat->listof_names;
     while (names) {
       walker = fill_all_DNS_labels(names->nbnodename, walker, end_of_packet, 0);
+      if (walker == field) {
+	/* OUT_OF_BOUNDS */
+	memset(field, 0, (((walker-field) > content->rdata_len) ?
+			  (walker-field) : content->rdata_len));
+	return (field + content->rdata_len);
+      }
+
       walker = align(field, walker, 4);
       if ((walker +2+6+2+19*2) > end_of_packet) {
 	/* OUT_OF_BOUNDS */

@@ -470,10 +470,11 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 }
 
 unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
-				   unsigned char *field,
+				   unsigned char *walker,
 				   unsigned char *endof_pckt,
 				   struct nbnodename_list **state) {
   struct nbnodename_list *iterator;
+  unsigned char *field;
 
   /* I have to check if I can fit the terminating 0 into
      the packet here because content may be NULL. */
@@ -499,9 +500,13 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
     if ((field + 2 + iterator->len) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      if (state)
+      if (state) {
 	*state = iterator;
-      return field;
+	return field;
+      } else {
+	memset(walker, 0, (field-walker));
+	return walker;
+      }
     }
     *field = iterator->len;
     field++;
