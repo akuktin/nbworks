@@ -236,6 +236,7 @@ struct cache_namenode *add_nblabel(void *label,
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
   result->endof_conflict_chance = 0;
+  result->refresh_ttl = 0;
   result->next = 0;
 
   /* The below code GUARANTEES insertion
@@ -260,7 +261,7 @@ struct cache_namenode *add_nblabel(void *label,
 struct cache_namenode *replace_namecard(struct cache_namenode *name,
 					struct nbnodename_list *scope) {
   struct cache_scopenode *my_scope;
-  struct cache_namenode *cur_name, **last_name;
+  struct cache_namenode *cur_name, **last_name, for_del;
   struct ipv4_addr_list *addrlist, *nextaddrlist;
   int i;
 
@@ -284,19 +285,36 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
 	(cur_name->dns_type == name->dns_type) &&
 	(cur_name->dns_class == name->dns_class)) {
 
-      name->next = cur_name->next;
-      *last_name = name;
+      memcpy(&for_del, cur_name, sizeof(struct cache_namenode));
+
+      /* Do everything manually instead of with memcpy()
+       * because this way pointers are copied atomically. */
+      cur_name->name = name->name;
+      cur_name->namelen = name->namelen;
+      cur_name->node_types = name->node_types;
+      cur_name->isinconflict = name->isinconflict;
+      cur_name->token = name->token;
+      cur_name->group_flg = name->group_flg;
+      cur_name->dns_type = name->dns_type;
+      cur_name->dns_class = name->dns_class;
+      cur_name->timeof_death = name->timeof_death;
+      cur_name->endof_conflict_chance = name->endof_conflict_chance;
+      cur_name->refresh_ttl = name->refresh_ttl;
+      for (i=0; i<4; i++) {
+	cur_name->addrs.recrd[i].node_type = name->addrs.recrd[i].node_type;
+	cur_name->addrs.recrd[i].addr = name->addrs.recrd[i].addr;
+      }
 
       for (i=0; i<4; i++) {
-	addrlist = cur_name->addrs.recrd[i].addr;
+	addrlist = for_del.addrs.recrd[i].addr;
 	while (addrlist) {
 	  nextaddrlist = addrlist->next;
 	  free(addrlist);
 	  addrlist = nextaddrlist;
 	}
       }
-      free(cur_name->name);
-      free(cur_name);
+      free(for_del.name);
+      free(name);
       break;
 
     } else {
