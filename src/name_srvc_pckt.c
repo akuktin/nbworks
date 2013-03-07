@@ -1184,7 +1184,7 @@ struct nbaddress_list *make_nbaddrlst(struct ipv4_addr_list *ipv4_list,
 
   if (! ipv4_list)
     return 0;
-    
+
   switch (type) {
   case nb_address_list:
     lenstep = 6;
