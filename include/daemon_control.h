@@ -34,6 +34,12 @@ struct {
 } nbworks__rail_control;
 
 struct {
+  int retries_NBNS;
+  uint32_t max_wack_sleeptime;
+  time_t Ptimer_refresh_margin;
+} nbworks_namsrvc_cntrl;
+
+struct {
   unsigned char all_stop;
   struct timespec dtg_srv_sleeptime;
 } nbworks_dtg_srv_cntrl;
@@ -48,10 +54,5 @@ struct {
   unsigned int passes_ses_srv_ses;
   time_t lifetimeof_queue_storage;
 } nbworks_pruners_cntrl;
-
-struct {
-  int retries_NBNS;
-  uint32_t max_wack_sleeptime;
-} nbworks__functn_cntrl;
 
 #endif /* NBWORKS_DAEMONCONTROL_H */

@@ -108,7 +108,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
   pckt->header->nm_flags = FLG_RD;
 
-  for (i=0; i < nbworks__functn_cntrl.retries_NBNS; i++) {
+  for (i=0; i < nbworks_namsrvc_cntrl.retries_NBNS; i++) {
     ss_name_send_pckt(pckt, &addr, trans);
 
     nanosleep(&sleeptime, 0);

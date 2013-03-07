@@ -212,6 +212,7 @@ void *name_srvc_handle_newtid(void *input) {
 }
 
 
+
 struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      unsigned char name_type,
 						      struct nbnodename_list *scope,
@@ -520,6 +521,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 	/* Fun fact: the below can overflow. No,
 	 * I'm not gonna make a test for that. */
 	new_name->timeof_death = curtime + ttl;
+	new_name->refresh_ttl = ttl;
 
 	destroy_name_srvc_res_lst(res, TRUE, TRUE);
 	return new_name;
@@ -700,8 +702,8 @@ void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
       ttl = res->res->ttl;
   }
 
-  if (ttl > nbworks__functn_cntrl.max_wack_sleeptime) {
-    ttl = nbworks__functn_cntrl.max_wack_sleeptime;
+  if (ttl > nbworks_namsrvc_cntrl.max_wack_sleeptime) {
+    ttl = nbworks_namsrvc_cntrl.max_wack_sleeptime;
   }
 
   if (ttl) {
@@ -1536,10 +1538,13 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 					     >> 4), FALSE, ISGROUP_YES,
 					    res->res->rrtype, res->res->rrclass);
 
-	    if (res->res->ttl)
+	    if (res->res->ttl) {
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
-	    else
+	      cache_namecard->refresh_ttl = res->res->ttl;
+	    } else {
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->refresh_ttl = ONES;
+	    }
 	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->ysgrp),
@@ -1574,10 +1579,13 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 
 	  } else {
 	    /* BUG: The number of problems a rogue node can create is mind boggling. */
-	    if (res->res->ttl)
+	    if (res->res->ttl) {
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
-	    else
+	      cache_namecard->refresh_ttl = res->res->ttl;
+	    } else {
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->refresh_ttl = ONES;
+	    }
 	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 	    for (i=0; i<4; i++) {
@@ -1629,10 +1637,13 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 					    (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK),
 					    FALSE, ISGROUP_NO, res->res->rrtype, res->res->rrclass);
 
-	    if (res->res->ttl)
+	    if (res->res->ttl) {
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
-	    else
+	      cache_namecard->refresh_ttl = res->res->ttl;
+	    } else {
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->refresh_ttl = ONES;
+	    }
 	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->nogrp),
@@ -1667,10 +1678,13 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 
 	  } else {
 	    if (! cache_namecard->token) {
-	      if (res->res->ttl)
+	      if (res->res->ttl) {
 		cache_namecard->timeof_death = cur_time + res->res->ttl;
-	      else
+		cache_namecard->refresh_ttl = res->res->ttl;
+	      } else {
 		cache_namecard->timeof_death = ZEROONES; /* infinity */
+		cache_namecard->refresh_ttl = ONES;
+	      }
 	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 	      for (i=0; i<4; i++) {

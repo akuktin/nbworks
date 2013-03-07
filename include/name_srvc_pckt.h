@@ -22,6 +22,7 @@
 # include <stdint.h>
 
 # include "nodename.h"
+# include "name_srvc_cache_data.h"
 
 # define ISGROUP_YES   1
 # define ISGROUP_NO    2
@@ -51,7 +52,10 @@
 # define OPCODE_RELEASE      0x06
 # define OPCODE_WACK         0x07
 # define OPCODE_REFRESH      0x08
-# define OPCODE_REFRESH2     0x09
+# define OPCODE_REFRESH2     0x09 /* This should not be here but, sadly and
+                                   * regrettably, some people wrote some
+                                   * NetBIOS implementations in a too literal
+                                   * way. */
 
 
 /* nm_flag */
@@ -230,6 +234,29 @@ struct name_srvc_packet *
                        unsigned int answ,
                        unsigned int auth,
                        unsigned int adit);
+struct name_srvc_question *
+  name_srvc_make_qstn(unsigned char *label,
+                      struct nbnodename_list *scope,
+                      uint16_t dns_type,
+                      uint16_t dns_class);
+struct name_srvc_resource *
+  name_srvc_make_res(unsigned char *label,
+                     struct nbnodename_list *scope,
+                     uint16_t dns_type,
+                     uint16_t dns_class,
+                     uint32_t ttl,
+                     enum name_srvc_rdata_type rdata_t,
+                     void *rdata_content,
+                 /* node_type and isgroup are ignored if rdata_t is neither
+                  * nb_address_list nor nb_NBT_node_ip_address. */
+                     unsigned char node_type,
+                     unsigned char isgroup);
+struct nbaddress_list *
+  make_nbaddrlst(struct ipv4_addr_list *ipv4_list,
+                 uint16_t *finallen,
+                 enum name_srvc_rdata_type type,
+                 unsigned char isgroup,
+                 unsigned char node_type);
 void
   destroy_name_srvc_pckt(void *packet,
                          unsigned int complete,
@@ -238,5 +265,11 @@ void
   destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
                             unsigned int complete,
                             unsigned int really_complete);
+
+/* Dont forget to fill in the transaction_id of the packet! */
+struct name_srvc_packet *
+  name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard,
+                          struct nbnodename_list *scope,
+                          uint64_t *total_lenof_nbaddrs);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */
