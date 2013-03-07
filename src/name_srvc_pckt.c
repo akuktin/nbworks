@@ -594,7 +594,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 
   walker = field;
 
-  if ((walker + content->rdata_len) > end_of_packet)) {
+  if ((walker + content->rdata_len) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     return walker;
