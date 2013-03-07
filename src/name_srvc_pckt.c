@@ -29,6 +29,10 @@
 #include "daemon_control.h"
 
 
+#define OVERFLOW_BUF      1
+#define OVERFLOW_RDATALEN 2
+
+
 struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_packet_walker,
 							 unsigned char *end_of_packet) {
   struct name_srvc_pckt_header *header;
@@ -178,13 +182,24 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
 
 unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 					    unsigned char *field,
-					    unsigned char *end_of_packet) {
+					    unsigned char *end_of_packet,
+					    unsigned char *overflow) {
   unsigned char *walker;
 
   if (! (question && field))
     return field;
+  else {
+    if (overflow)
+      *overflow = FALSE;
+    walker = field;
+  }
 
-  walker = field;
+  if ((walker +1 +1 +4) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    if (overflow)
+      *overflow = OVERFLOW_BUF;
+    return field;
+  }
 
   walker = fill_all_DNS_labels(question->name, walker, end_of_packet, 0);
 
@@ -193,8 +208,10 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 
   if ((walker +4) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    /* TODO: errno signaling stuff */
-    return walker;
+    if (overflow)
+      *overflow = OVERFLOW_BUF;
+    memset(field, 0, (walker-field));
+    return field;
   }
 
   walker = fill_16field(question->qtype, walker);
@@ -264,36 +281,68 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   return resource;
 }
 
+#define VIRTUAL_OVERHANG (NETBIOS_CODED_NAME_LEN+1+2)
 unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 				       unsigned char *field,
-				       unsigned char *end_of_packet) {
-  unsigned char *walker;
+				       unsigned char *end_of_packet,
+				       unsigned char *overflow) {
+  unsigned char *walker, *save_walker;
 
   if (! (resource && field))
     return field;
+  else {
+    if (overflow)
+      *overflow = FALSE;
+    walker = field;
+  }
 
-  walker = field;
+  if ((walker +1 +1 +3*2+4+ resource->rdata_len) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    if (overflow)
+      *overflow = OVERFLOW_BUF;
+    return field;
+  }
 
   walker = fill_all_DNS_labels(resource->name, walker, end_of_packet, 0);
 
   /* Respect the 32-bit boundary. */
   walker = align(field, walker, 4);
 
-  if ((walker +3*2+4) > end_of_packet) {
+  if ((walker +3*2+4+ resource->rdata_len) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    /* TODO: errno signaling stuff */
-    return walker;
+    if (overflow)
+      *overflow = OVERFLOW_BUF;
+    memset(field, 0, (walker-field));
+    return field;
   }
 
   walker = fill_16field(resource->rrtype, walker);
   walker = fill_16field(resource->rrclass, walker);
   walker = fill_32field(resource->ttl, walker);
   walker = fill_16field(resource->rdata_len, walker);
+
+  save_walker = walker;
   walker = fill_name_srvc_resource_data(resource, walker,
-					end_of_packet);
+		      (((walker +VIRTUAL_OVERHANG +resource->rdata_len) > end_of_packet) ?
+		       end_of_packet : (walker +VIRTUAL_OVERHANG +resource->rdata_len)));
+
+  if (walker > (save_walker + resource->rdata_len)) {
+    /* Overflow. */
+    /* Hypothesis #1: the data itself is fucked up, probably a loose pointer.
+     *                This implies that we are currently undergoing a fandago-on-core
+     *                and are not having the best of days. */
+    /* Hypothesis #2: there is *SO MUCH* data, that the RDATA_LEN field has overflown.
+     *                There is pretty much no way to recover from this at this point
+     *                that I know of. */
+    if (overflow)
+      *overflow = OVERFLOW_RDATALEN;
+    memset((save_walker + resource->rdata_len), 0, (walker-(save_walker + resource->rdata_len)));
+    return (save_walker + resource->rdata_len);
+  }
 
   return walker;
 }
+#undef VIRTUAL_OVERHANG
 
 void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 				   struct name_srvc_resource *resource,
@@ -540,21 +589,22 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 
   walker = field;
 
+  if ((walker + content->rdata_len) > end_of_packet) {
+    /* OUT_OF_BOUNDS */
+    /* TODO: errno signaling stuff */
+    return walker;
+  }
+  if (! content->rdata) {
+    memset(walker, 0, content->rdata_len);
+    return (walker + content->rdata_len);
+  }
+
   switch (content->rdata_t) {
   case unknown_important_resource:
-    if (! content->rdata)
-      return field;
-    if ((walker + content->rdata_len) > end_of_packet) {
-      /* OUT_OF_BOUNDS */
-      /* TODO: errno signaling stuff */
-      return walker;
-    }
     return mempcpy(walker, content->rdata, content->rdata_len);
     break;
 
   case nb_address_list:
-    if (! content->rdata)
-      return field;
     return fill_nbaddress_list(content->rdata, walker, end_of_packet);
     break;
 
@@ -563,12 +613,10 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_nodename:
-    if (! content->rdata)
-      return field;
     walker = fill_all_DNS_labels(content->rdata, walker, end_of_packet, 0);
     walker = align(field, walker, 4);
     if (walker > end_of_packet) {
-      /* TODO: maybe do errno signaling stuff */
+      /* TODO: maybe do errno signaling stuff? */
       return end_of_packet;
     } else {
       return walker;
@@ -576,19 +624,16 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_NBT_node_ip_address:
-    if (! content->rdata)
-      return field;
     return fill_ipv4_address_list(content->rdata, walker, end_of_packet);
     break;
 
   case nb_statistics_rfc1002:
-    if (! content->rdata)
-      return field;
     nbstat = content->rdata;
     if ((walker +1+3+6+2+19*2) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      return walker;
+      memset(field, 0, content->rdata_len);
+      return (field + content->rdata_len);
     }
     *walker = nbstat->numof_names;
     names = nbstat->listof_names;
@@ -598,7 +643,9 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       if ((walker +2+6+2+19*2) > end_of_packet) {
 	/* OUT_OF_BOUNDS */
 	/* TODO: errno signaling stuff */
-	return walker;
+	memset(field, 0, (((walker-field) > content->rdata_len) ?
+			  (walker-field) : content->rdata_len));
+	return (field + content->rdata_len);
       }
       walker = fill_16field(names->name_flags, walker);
       walker = align(field, walker, 4);
@@ -607,7 +654,9 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     if ((walker +6+2+19*2) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      return walker;
+      memset(field, 0, (((walker-field) > content->rdata_len) ?
+			(walker-field) : content->rdata_len));
+      return (field + content->rdata_len);
     }
     walker = fill_48field(nbstat->unique_id, walker);
     *walker = nbstat->jumpers;
@@ -636,12 +685,14 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   default:
-    return walker;
+    memset(walker, 0, content->rdata_len);
+    return (walker + content->rdata_len);
     break;
   }
 
   /* Never reached. */
-  return field;
+  memset(walker, 0, content->rdata_len);
+  return (walker + content->rdata_len);
 }
 
 inline enum name_srvc_rdata_type name_srvc_understand_resource(uint16_t rrtype,
@@ -899,7 +950,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   cur_qstn = packet->questions;
   while (cur_qstn) {
     walker = fill_name_srvc_pckt_question(cur_qstn->qstn, walker,
-					  endof_pckt);
+					  endof_pckt, 0);
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
@@ -911,7 +962,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   cur_res = packet->answers;
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
-				     endof_pckt);
+				     endof_pckt, 0);
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
@@ -923,7 +974,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   cur_res = packet->authorities;
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
-				     endof_pckt);
+				     endof_pckt, 0);
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
@@ -935,7 +986,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   cur_res = packet->aditionals;
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
-				     endof_pckt);
+				     endof_pckt, 0);
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
@@ -1312,84 +1363,90 @@ void destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
 			       unsigned int complete,
 			       unsigned int really_complete) {
   struct name_srvc_resource_lst *res;
-  struct nbnodename_list_backbone *nbnodename_bckbone,
-    *next_nbnodename_bckbone;
-  struct nbnodename_list *nbnodename;
-  struct nbaddress_list *addr_list, *next_addr_list;
-  struct name_srvc_statistics_rfc1002 *stats;
 
   while (cur_res) {
     res = cur_res->next;
     if (cur_res->res) {
       if (complete) {
-	while (cur_res->res->name) {
-	  nbnodename = cur_res->res->name->next_name;
+	destroy_nbnodename(cur_res->res->name);
+      } else {
+	if (cur_res->res->name) {
 	  free(cur_res->res->name->name);
 	  free(cur_res->res->name);
-	  cur_res->res->name = nbnodename;
 	}
-      } else {
-	if (cur_res->res->name)
-	  free(cur_res->res->name->name);
-	free(cur_res->res->name);
       }
-      switch (cur_res->res->rdata_t) {
-      case nb_statistics_rfc1002:
-	stats = cur_res->res->rdata;
-	if (stats) {
-	  nbnodename_bckbone = stats->listof_names;
-	  while (nbnodename_bckbone) {
-	    next_nbnodename_bckbone = nbnodename_bckbone->next_nbnodename;
-	    nbnodename = nbnodename_bckbone->nbnodename;
-	    if (really_complete) {
-	      destroy_nbnodename(nbnodename);
-	    } else {
-	      if (nbnodename)
-		free(nbnodename->name);
-	      free(nbnodename);
-	    }
-	    free(nbnodename_bckbone);
-	    nbnodename_bckbone = next_nbnodename_bckbone;
-	  }
-	  free(stats);
-	}
-	break;
 
-      case nb_nodename:
-	nbnodename = cur_res->res->rdata;
-	if (nbnodename) {
-	  if (really_complete) {
-	    destroy_nbnodename(nbnodename);
-	  } else {
-	    if (nbnodename)
-	      free(nbnodename->name);
-	    free(nbnodename);
-	  }
-	}
-	break;
+      destroy_name_srvc_res_data(cur_res->res, complete, really_complete);
 
-      case nb_address_list:
-      case nb_NBT_node_ip_address:
-	addr_list = cur_res->res->rdata;
-	if (addr_list) {
-	  while (addr_list) {
-	    next_addr_list = addr_list->next_address;
-	    free(addr_list);
-	    addr_list = next_addr_list;
-	  }
-	}
-	break;
-
-      case unknown_important_resource:
-      default:
-	free(cur_res->res->rdata);
-	break;
-      }
       free(cur_res->res);
     }
     free(cur_res);
     cur_res = res;
   }
+}
+
+void destroy_name_srvc_res_data(struct name_srvc_resource *res,
+				unsigned int complete,
+				unsigned int really_complete) {
+  struct name_srvc_statistics_rfc1002 *stats;
+  struct nbnodename_list_backbone *nbnodename_bckbone,
+    *next_nbnodename_bckbone;
+  struct nbnodename_list *nbnodename;
+  struct nbaddress_list *addr_list, *next_addr_list;
+
+  switch (res->rdata_t) {
+  case nb_statistics_rfc1002:
+    stats = res->rdata;
+    if (stats) {
+      nbnodename_bckbone = stats->listof_names;
+      while (nbnodename_bckbone) {
+	next_nbnodename_bckbone = nbnodename_bckbone->next_nbnodename;
+
+	if (really_complete) {
+	  destroy_nbnodename(nbnodename_bckbone->nbnodename);
+	} else {
+	  if (nbnodename_bckbone->nbnodename) {
+	    free(nbnodename_bckbone->nbnodename->name);
+	    free(nbnodename_bckbone->nbnodename);
+	  }
+	}
+
+	free(nbnodename_bckbone);
+	nbnodename_bckbone = next_nbnodename_bckbone;
+      }
+      free(stats);
+    }
+    break;
+
+  case nb_nodename:
+    nbnodename = res->rdata;
+    if (really_complete) {
+      destroy_nbnodename(nbnodename);
+    } else {
+      if (nbnodename) {
+	free(nbnodename->name);
+	free(nbnodename);
+      }
+    }
+    break;
+
+  case nb_address_list:
+  case nb_NBT_node_ip_address:
+    addr_list = res->rdata;
+    while (addr_list) {
+      next_addr_list = addr_list->next_address;
+      free(addr_list);
+      addr_list = next_addr_list;
+    }
+    break;
+
+  case unknown_important_resource:
+  default:
+    free(res->rdata);
+    break;
+  }
+
+  return;
 }
 
 

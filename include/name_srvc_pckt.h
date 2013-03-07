@@ -199,7 +199,8 @@ struct name_srvc_question *
 unsigned char *
   fill_name_srvc_pckt_question(struct name_srvc_question *question,
                                unsigned char *field,
-                               unsigned char *end_of_packet);
+                               unsigned char *end_of_packet,
+                               unsigned char *overflow);
 struct name_srvc_resource *
   read_name_srvc_resource(unsigned char **master_packet_walker,
                           unsigned char *start_of_packet,
@@ -207,7 +208,8 @@ struct name_srvc_resource *
 unsigned char *
   fill_name_srvc_resource(struct name_srvc_resource *resource,
                           unsigned char *field,
-                          unsigned char *end_of_packet);
+                          unsigned char *end_of_packet,
+                          unsigned char *overflow);
 void *
   read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
                                struct name_srvc_resource *resource,
@@ -265,6 +267,10 @@ void
   destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
                             unsigned int complete,
                             unsigned int really_complete);
+void
+  destroy_name_srvc_res_data(struct name_srvc_resource *res,
+                             unsigned int complete,
+                             unsigned int really_complete);
 
 /* Dont forget to fill in the transaction_id of the packet! */
 struct name_srvc_packet *
