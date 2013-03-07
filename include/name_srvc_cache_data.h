@@ -74,6 +74,7 @@ struct addrlst_bigblock {
 struct cache_scopenode {
   struct nbnodename_list *scope;
   struct cache_namenode *names;
+  uint32_t nbns_addr;
   struct cache_scopenode *next;
 };
 

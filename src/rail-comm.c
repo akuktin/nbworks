@@ -580,7 +580,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 				    namedata->scope,
 				    my_ipv4_address(),
 				    namedata->group_flg, namedata->ttl)) {
-	if (! (add_scope(namedata->scope, cache_namecard) ||
+	if (! (add_scope(namedata->scope, cache_namecard, get_nbnsaddr()) ||
 	       add_name(cache_namecard, namedata->scope))) {
 	  destroy_namecard(cache_namecard);
 	  cleanup;

@@ -514,7 +514,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
       new_name->addrs.recrd[0].node_type = nodetype;
       new_name->addrs.recrd[0].addr = frstaddrlst;
 
-      if (add_scope(scope, new_name) ||
+      if (add_scope(scope, new_name, get_nbnsaddr()) ||
 	  add_name(new_name, scope)) {
 	curtime = time(0);
 	new_name->endof_conflict_chance = curtime + CONFLICT_TTL;

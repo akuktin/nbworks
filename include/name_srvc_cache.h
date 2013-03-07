@@ -31,7 +31,8 @@ void init_name_srvc_cache();
 
 struct cache_scopenode *
   add_scope(struct nbnodename_list *scope,
-            struct cache_namenode *first_node);
+            struct cache_namenode *first_node,
+            uint32_t nbns_addr);
 struct cache_scopenode *
   find_scope(struct nbnodename_list *scope);
 

@@ -44,7 +44,8 @@ void init_name_srvc_cache() {
 
 
 struct cache_scopenode *add_scope(struct nbnodename_list *scope,
-				  struct cache_namenode *first_node) {
+				  struct cache_namenode *first_node,
+				  uint32_t nbns_addr) {
   struct cache_scopenode *result, *new_scope,
     *cur_scope, **last_scope;
 
@@ -56,6 +57,7 @@ struct cache_scopenode *add_scope(struct nbnodename_list *scope,
 
   result->scope = clone_nbnodename(scope);
   result->names = first_node;
+  result->nbns_addr = nbns_addr;
   result->next = 0;
   new_scope = result;
 
@@ -242,7 +244,7 @@ struct cache_namenode *add_nblabel(void *label,
   /* The below code GUARANTEES insertion
      (unless a use-after-free or similar happens). */
 
-  if (add_scope(scope, result) ||
+  if (add_scope(scope, result, get_nbnsaddr()) ||
       add_name(result, scope)) {
     /* Success! */
     return result;
