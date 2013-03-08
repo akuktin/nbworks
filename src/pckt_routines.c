@@ -334,6 +334,10 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
     } else {
       *pointer_blck = malloc(sizeof(struct DNS_label_pointer_block));
       if (! (*pointer_blck)) {
+	if (state && (*state)) {
+	  free(*state);
+	  *state = 0;
+	}
 	return 0;
       }
       (*pointer_blck)->startblock = 0;
@@ -504,6 +508,7 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 	    cur_label->name = 0;
 	    cur_label->next_name = 0;
 	    destroy_nbnodename(first_label);
+	    first_label = 0;
 
 	    break;
 	  }
@@ -559,7 +564,8 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   }
 
   cur_label->next_name = 0;
-  if (first_label->name == 0) {
+  if (first_label &&
+      (first_label->name == 0)) {
     /* This means we have been only been fed the root label,
        which is NULL, which is imposibble to parse and should
        never happen (I think).
