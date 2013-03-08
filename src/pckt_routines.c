@@ -192,7 +192,7 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
     return 0;							\
   }								\
   cur_label = first_label;					\
-  								\
+								\
   name_offset = ONES;
 
 
@@ -225,7 +225,6 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
     cur_label->name = 0;				\
     cur_label->next_name = 0;				\
     destroy_nbnodename(first_label);			\
-    *start_and_end_of_walk = end_of_packet;		\
     return 0;						\
   }
 
@@ -251,7 +250,6 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
     *pointer_blck = 0;					\
   }							\
   destroy_namepointer(pointer_root);			\
-  *start_and_end_of_walk = end_of_packet;		\
   return 0;
 
   /* MEMMAN_NOTES: 1. After the macro exits in the first branch case,
@@ -385,7 +383,8 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 
   walker = *start_and_end_of_walk;
   pckt_offset = offsetof_start + (walker - start_of_packet);
-  if (offsetof_start > MAX_PACKET_POINTER) {
+  if ((pckt_offset < offsetof_start) ||
+      (offsetof_start > MAX_PACKET_POINTER)) {
     offsetof_start = ONES;
     pckt_offset = ONES;
   }
@@ -537,13 +536,15 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 
 	if (offsetof_start <= name_offset) {
 	  walker = start_of_packet + (name_offset - offsetof_start);
-	  if (walker >= end_of_packet) {
+	  if ((walker >= end_of_packet) ||
+	      (walker < startof_packet)) {
 	    handle_abort;
 	  }
 	} else {
 	  if (startblock) {
 	    walker = startblock + name_offset;
-	    if (walker >= endof_startblock) {
+	    if ((walker >= end_of_packet) ||
+		(walker < startof_packet)) {
 	      cur_label->name = 0;
 	      kill_yourself;
 	    }
