@@ -33,11 +33,29 @@
 # endif
 # define MAX_DNS_LABEL_LEN 0x3f
 
+/* The largest amount the intrapacket pointer can handle. */
+# define MAX_PACKET_POINTER 0x3fff
+
 struct state__readDNSlabels {
-  struct nbnodename_list *first_label, *cur_label;
-  void *pointers_visited_root;
+  struct nbnodename_list *first_label;
+  struct nbnodename_list *cur_label;
   unsigned int name_offset;
-  unsigned char *walker;
+};
+
+struct DNS_label_pointer_list {
+  uint32_t position;
+  unsigned char *label;
+  unsigned char labellen;
+  struct DNS_label_pointer_list *next_label;
+  struct DNS_label_pointer_list *next;
+};
+
+struct DNS_label_pointer_block {
+  struct DNS_label_pointer_list *pointer_root;
+  struct DNS_label_pointer_list **pointer_next;
+  struct DNS_label_pointer_list **pointer_brokenlbl;
+  unsigned char *startblock;
+  unsigned char *endof_startblock;
 };
 
 inline unsigned char *read_16field(unsigned char *content,
@@ -60,7 +78,9 @@ struct nbnodename_list *
   read_all_DNS_labels(unsigned char **start_and_end_of_walk,
                       unsigned char *start_of_packet,
                       unsigned char *end_of_packet,
-                      struct state__readDNSlabels **state);
+                      struct state__readDNSlabels **state,
+                      struct DNS_label_pointer_block **pointer_blck,
+                      uint32_t offsetof_start);
 unsigned char *
   fill_all_DNS_labels(struct nbnodename_list *content,
                       unsigned char *field,

@@ -27,6 +27,7 @@
 #include "name_srvc_cache.h"
 #include "name_srvc_pckt.h"
 #include "daemon_control.h"
+#include "service_sector.h"
 
 
 #define OVERFLOW_BUF      1
@@ -148,7 +149,8 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   remember_walker = *master_packet_walker +1;
 
   question->name = read_all_DNS_labels(master_packet_walker,
-				       start_of_packet, end_of_packet, 0);
+				       start_of_packet, end_of_packet,
+				       0, 0, 0);
   if (! question->name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -248,7 +250,8 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   remember_walker = *master_packet_walker +1;
 
   resource->name = read_all_DNS_labels(master_packet_walker,
-				       start_of_packet, end_of_packet, 0);
+				       start_of_packet, end_of_packet,
+				       0, 0, 0);
   if (! resource->name) {
     /* TODO: errno signaling stuff */
     free(resource);
@@ -399,7 +402,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     weighted_companion_cube = *start_and_end_of_walk +1;
 
     nbnodename = read_all_DNS_labels(start_and_end_of_walk,
-				     start_of_packet, end_of_packet, 0);
+				     start_of_packet, end_of_packet,
+				     0, 0, 0);
     if (! nbnodename) {
       /* TODO: errno signaling stuff */
       return 0;
@@ -421,21 +425,24 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     break;
 
 
-#define abort_stats                                         \
-    listof_names->next_nbnodename = 0;			    \
-    listof_names = nbstat->listof_names;		    \
-    while (listof_names) {				    \
-      nbstat->listof_names = listof_names->next_nbnodename; \
-							    \
-      destroy_nbnodename(listof_names->nbnodename);         \
-							    \
-      free(listof_names);				    \
-      listof_names = nbstat->listof_names;		    \
-    }							    \
+#define abort_stats						\
+    if (listof_names) {						\
+      listof_names->next_nbnodename = 0;			\
+      listof_names = nbstat->listof_names;			\
+      while (listof_names) {					\
+	nbstat->listof_names = listof_names->next_nbnodename;	\
+								\
+	destroy_nbnodename(listof_names->nbnodename);		\
+								\
+	free(listof_names);					\
+	listof_names = nbstat->listof_names;			\
+      }								\
+    }								\
     free(nbstat);
 
 
   case nb_statistics_rfc1002:
+    listof_names = 0;
     resource->rdata_t = nb_statistics_rfc1002;
     if (! resource->rdata_len) {
       /* BULLSHIT_IN_PACKET */
@@ -469,7 +476,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	  return 0;
 	}
 	listof_names->nbnodename = read_all_DNS_labels(&walker, start_of_packet,
-						       end_of_packet, 0);
+						       end_of_packet, 0, 0, 0);
 	walker = align(weighted_companion_cube, walker, 4);
 	if ((walker + 2) > end_of_packet) {
 	  /* OUT_OF_BOUNDS */

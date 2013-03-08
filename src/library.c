@@ -1133,7 +1133,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     ((1+NETBIOS_CODED_NAME_LEN) *2) + (handle->lenof_scope *2) +
     (2 * 4) /* extra space for name alignment, if performed */ + len;
 
-  readypacket = master_dtg_srvc_pckt_writer(pckt, &pckt_len, 0);
+  readypacket = master_dtg_srvc_pckt_writer(pckt, &pckt_len, 0, 0);
   if (! readypacket) {
     nbworks_errno = ZEROONES; /* FIXME */
     destroy_dtg_srvc_pckt(pckt, 1, 1);

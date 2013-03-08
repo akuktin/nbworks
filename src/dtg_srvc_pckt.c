@@ -136,7 +136,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     /* read_all_DNS_labels() increments the walker by at least one. */
     remember_walker = walker +1;
     normal_pckt->src_name = read_all_DNS_labels(&walker, start_of_packet,
-						end_of_packet, 0);
+						end_of_packet, 0, 0, 0);
     if (! normal_pckt->src_name) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -155,7 +155,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
     remember_walker = walker +1;
     normal_pckt->dst_name = read_all_DNS_labels(&walker, start_of_packet,
-						end_of_packet, 0);
+						end_of_packet, 0, 0, 0);
     if (! normal_pckt->dst_name) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
@@ -210,7 +210,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
   case nbnodename:
     packet->payload_t = nbnodename;
     return read_all_DNS_labels(master_packet_walker, start_of_packet,
-			       end_of_packet, 0);
+			       end_of_packet, 0, 0, 0);
     break;
 
   case bad_type_dtg:
@@ -426,8 +426,8 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
 
   align(startof_pckt, readhead, 4);
 
-  result->dst = read_all_DNS_labels(&readhead, packet,
-				    (startof_pckt + len), 0);
+  result->dst = read_all_DNS_labels(&readhead, packet, (startof_pckt + len),
+				    0, 0, 0);
   if (! result->dst) {
     free(result);
     return 0;

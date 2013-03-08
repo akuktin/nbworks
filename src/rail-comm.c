@@ -450,7 +450,7 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
   result->name_type = *walker;
   walker++;
 
-  result->scope = read_all_DNS_labels(&walker, walker, endof_buff, 0);
+  result->scope = read_all_DNS_labels(&walker, walker, endof_buff, 0, 0, 0);
 
   result->group_flg = *walker;
   walker++;
@@ -1397,7 +1397,7 @@ uint32_t rail_whatisaddrX(int rail_sckt,
   }
 
   walker = buff;
-  name = read_all_DNS_labels(&walker, buff, buff + command->len, 0);
+  name = read_all_DNS_labels(&walker, buff, buff + command->len, 0, 0, 0);
   free(buff);
   if (! name) {
     return 0;

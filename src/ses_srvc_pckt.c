@@ -137,7 +137,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
        increase the pointer by at least one. */
     remember_walker = walker +1;
     two_names_payload->called_name = read_all_DNS_labels(&walker, start_of_packet,
-							 end_of_packet, 0);
+							 end_of_packet, 0, 0, 0);
     if (! two_names_payload->called_name) {
       /* TODO: errno signaling stuff */
       free(two_names_payload);
@@ -155,7 +155,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
     }
 
     two_names_payload->calling_name = read_all_DNS_labels(&walker, start_of_packet,
-							  end_of_packet, 0);
+							  end_of_packet, 0, 0, 0);
     if (! two_names_payload->calling_name) {
       /* TODO: errno signaling stuff */
       free(two_names_payload->called_name);
@@ -385,7 +385,7 @@ struct nbnodename_list *ses_srvc_get_calledname(void *packet,
 
   walker = packet + SES_HEADER_LEN;
 
-  return read_all_DNS_labels(&walker, packet, (packet + len), 0);
+  return read_all_DNS_labels(&walker, packet, (packet + len), 0, 0, 0);
 }
 
 /* Call with whole packet, len is total len of whole packet. */
@@ -407,7 +407,7 @@ struct nbnodename_list *ses_srvc_get_callingname(void *packet_ptr,
 
   align(packet, walker, 4);
 
-  return read_all_DNS_labels(&walker, packet, (packet + len), 0);
+  return read_all_DNS_labels(&walker, packet, (packet + len), 0, 0, 0);
 }
 
 void *master_ses_srvc_pckt_writer(void *packet_ptr,
