@@ -150,7 +150,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
 
   question->name = read_all_DNS_labels(master_packet_walker,
 				       start_of_packet, end_of_packet,
-				       0, 0, 0);
+				       0, 0, 0, 0);
   if (! question->name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -251,7 +251,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
 
   resource->name = read_all_DNS_labels(master_packet_walker,
 				       start_of_packet, end_of_packet,
-				       0, 0, 0);
+				       0, 0, 0, 0);
   if (! resource->name) {
     /* TODO: errno signaling stuff */
     free(resource);
@@ -403,7 +403,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
     nbnodename = read_all_DNS_labels(start_and_end_of_walk,
 				     start_of_packet, end_of_packet,
-				     0, 0, 0);
+				     0, 0, 0, 0);
     if (! nbnodename) {
       /* TODO: errno signaling stuff */
       return 0;
@@ -475,8 +475,9 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	  abort_stats;
 	  return 0;
 	}
-	listof_names->nbnodename = read_all_DNS_labels(&walker, start_of_packet,
-						       end_of_packet, 0, 0, 0);
+	listof_names->nbnodename =
+          read_all_DNS_labels(&walker, start_of_packet, end_of_packet,
+                              0, 0, 0, 0);
 	walker = align(weighted_companion_cube, walker, 4);
 	if ((walker + 2) > end_of_packet) {
 	  /* OUT_OF_BOUNDS */

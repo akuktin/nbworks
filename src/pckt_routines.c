@@ -147,329 +147,163 @@ inline unsigned char *fill_64field(uint64_t content,
   return field;
 }
 
-void destroy_namepointer(struct DNS_label_pointer_list *first) {
-  struct DNS_label_pointer_list *next;
-
-  while (first) {
-    next = first->next;
-    free(first->label);
-    free(first);
-    first = next;
-  }
-
-  return;
-}
-
 struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_walk,
-					    unsigned char *start_of_packet,
+					    unsigned char *startof_packet,
 					    unsigned char *end_of_packet,
+					    uint32_t offsetof_start,
 					    struct state__readDNSlabels **state,
-					    struct DNS_label_pointer_block **pointer_blck,
-					    uint32_t offsetof_start) {
-  struct nbnodename_list *first_label, *cur_label;
-  struct DNS_label_pointer_list *pointer_root, *pointer,
-    **pointer_nxt, **pointer_lbl;
-  int name_len, weighted_companion_pointer;
-  uint32_t name_offset, pckt_offset;
-  unsigned char *walker, **label_ptr;
-  unsigned char *startblock, *endof_startblock;
-  unsigned char buf[MAX_DNS_LABEL_LEN +1]; /* saves us calls to
-					      malloc() and free() */
+					    unsigned char *startblock,
+					    unsigned int lenof_startblock) {
+  /* The first member of this list exists on the stack because I do not deem it
+   * worthwile to use malloc. Here's the thing: in normal operation, it is
+   * perfectly understandable and expected that the name will have one pointer.
+   * Having more that one pointer is not likely. If I were to not have one struct
+   * on the stack, I would have to malloc a pointer_clip very often - at least
+   * once per all non-query packets. Using the stack, however, eliminates that
+   * problem. It does, however, expose us to failure on architectures where one
+   * is not allowed to use pointers will-nilly, for example, in cases where an
+   * architecture prevents the function to use a single pointer type for objects
+   * on the stack an objects on the heap. */
+  struct pointer_clip {
+    unsigned int offset;
+    struct pointer_clip *next;
+  } clip1, *clip_ptr, **clip_pptr;
 
-  if (*start_and_end_of_walk < start_of_packet ||
-      *start_and_end_of_walk >= end_of_packet) {
+  struct nbnodename_list *label, *first_label, **cur_label;
+  int name_len;
+  uint32_t name_offset;
+  unsigned char *walker, *weighted_companion_buf, *end;
+
+  /* The author assures you that weighted_companion_buf will never
+   * bite your ass when you are not careful with pointers and that it,
+   * infact, does not exist as an entity. */
+
+  /* --- sanity check --- */
+  if (start_and_end_of_walk &&
+      (*start_and_end_of_walk < startof_packet ||
+       *start_and_end_of_walk >= end_of_packet)) {
     /* TODO: errno signaling stuff */
     return 0;
   }
+  /* --- sanity check --- */
 
   /* @@ MACROS BEGIN @------------------------------------------- */
   /* This is the point where C stops being sleak and sexy. */
 
-#define alloc_stateless_labels					\
-  first_label = calloc(1, sizeof(struct nbnodename_list));	\
-  if (! first_label) {						\
-    /* TODO: errno signaling stuff */				\
-    return 0;							\
-  }								\
-  cur_label = first_label;					\
-								\
-  name_offset = ONES;
-
-
-#define handle_abort					\
-  *pointer_nxt = 0;					\
-  if (pointer_lbl)					\
-    *pointer_lbl = 0;					\
-  if (pointer_blck) {					\
-    (*pointer_blck)->pointer_root = pointer_root;	\
-    if (pointer_root) {					\
-      (*pointer_blck)->pointer_next = pointer_nxt;	\
-    } else {						\
-      (*pointer_blck)->pointer_next = 0;		\
-    }							\
-    (*pointer_blck)->pointer_brokenlbl = pointer_lbl;	\
-  } else {						\
-    destroy_namepointer(pointer_root);			\
-  }							\
-							\
-  if (state) {						\
-    (*state)->first_label = first_label;		\
-    (*state)->cur_label = cur_label;			\
-    (*state)->name_offset = name_offset;		\
-							\
-    if (name_offset == ONES)				\
-      *start_and_end_of_walk = walker;			\
-    return 0;						\
-  } else {						\
-    /* TODO: errno signaling stuff */			\
-    cur_label->name = 0;				\
-    cur_label->next_name = 0;				\
-    destroy_nbnodename(first_label);			\
-    return 0;						\
+#define del_clip					\
+  clip_ptr = clip1.next;				\
+  while (clip_ptr) {					\
+    clip1.next = clip_ptr->next;			\
+    free(clip_ptr);					\
+    clip_ptr = clip1.next;				\
   }
 
-  /* MEMMAN_NOTES: be carefull about this one. cur_label->name
-   *               is not touched, but destroy_nbnodename() IS
-   *               called on cur_label. If cur_label->name is
-   *               not initialized, you will crash, or worse.
-   *               Therefore: pay attention and if cur_label->name
-   *               is not set before kill_yourself is called,
-   *               you have to NULL it. */
 #define kill_yourself					\
-  *pointer_nxt = 0;					\
-  if (pointer_lbl)					\
-    *pointer_lbl = 0;					\
   if (state) {						\
     free(*state);					\
     *state = 0;						\
   }							\
-  cur_label->next_name = 0;				\
+							\
+  del_clip;						\
+							\
+  *cur_label = 0;					\
   destroy_nbnodename(first_label);			\
-  if (pointer_blck) {					\
-    free(*pointer_blck);				\
-    *pointer_blck = 0;					\
-  }							\
-  destroy_namepointer(pointer_root);			\
   return 0;
 
-  /* MEMMAN_NOTES: 1. After the macro exits in the first branch case,
-   *               a new pointer structure has been added with the
-   *               previous one's links set to point to this one.
-   *               The new pointer structure has position and labellen
-   *               filled, label is either malloced or is NULL and
-   *               next_label and next are undefined. The label_ptr
-   *               has been updated to either point to the malloced
-   *               label buffer or NULL and is thus safe for use.
-   *               2. After the macro exits in the second branch case,
-   *               no new pointer structures are added, and the previous
-   *               structures' forward links are terminated. The
-   *               label_ptr has been NULLed and is thus safe for use. 
-   *          Conclusion:
-   *               The pointer structures' internal values are never
-   *               manipulated directly by the code. There are exactly
-   *               three pointer pointers that are used as handles to
-   *               internal value fields. All three are properly
-   *               initialized and are thus safe. */
-#define move_pointer							\
-  if ((pckt_offset <= MAX_PACKET_POINTER) || pointer_lbl) {		\
-    pointer = malloc(sizeof(struct DNS_label_pointer_list));		\
-    if (! pointer) {							\
-      cur_label->name = 0;						\
-      kill_yourself;							\
-    }									\
-    pointer->position = pckt_offset;					\
-    if (name_len) {							\
-      /* IMPORTANT: pckt_offset is updated by this macro! */		\
-      pckt_offset = pckt_offset + name_len +1;				\
-      if (pckt_offset < name_len) {					\
-	pckt_offset = ONES;						\
-      }									\
-									\
-      pointer->label = malloc(name_len+1);				\
-      if (! pointer->label) {						\
-	cur_label->name = 0;						\
-	kill_yourself;							\
-      }									\
-      label_ptr = &(pointer->label);					\
-    } else {								\
-      pointer->label = 0;						\
-      label_ptr = 0;							\
-    }									\
-    pointer->labellen = name_len;					\
-									\
-    if (pointer_lbl)							\
-      *pointer_lbl = pointer;						\
-    pointer_lbl = &(pointer->next_label);				\
-									\
-    *pointer_nxt = pointer;						\
-    pointer_nxt = &(pointer->next);					\
-  } else {								\
-    *pointer_nxt = 0;							\
-    if (pointer_lbl) {							\
-      *pointer_lbl = 0;							\
-      pointer_lbl = 0;							\
-    }									\
+#define handle_abort						\
+  if (state) {							\
+    if (! *state) {						\
+      *state = malloc(sizeof(struct state__readDNSlabels));	\
+      if (! *state) {						\
+	kill_yourself;						\
+      }								\
+    }								\
+    (*state)->first_label = first_label;			\
+    (*state)->cur_label = cur_label;				\
+    (*state)->name_offset = name_offset;			\
+    (*state)->mystery_int = clip1.offset;			\
+    (*state)->mystery_pointer = clip1.next;			\
+								\
+    if (name_offset == ONES)					\
+      *start_and_end_of_walk = walker;				\
+    return 0;							\
+  } else {							\
+    /* TODO: errno signaling stuff */				\
+    *cur_label = 0;						\
+    destroy_nbnodename(first_label);				\
+    return 0;							\
   }
-  /* I don't have to NULL out label_ptr because it is non-NULL only
-   * in a short span of time between allocing a new pointer structure
-   * and cloning the label into it. */
 
   /* @@ MACROS END @--------------------------------------------- */
 
-  if (pointer_blck) {
-    if (*pointer_blck) {
-      pointer_root = (*pointer_blck)->pointer_root;
-      pointer_nxt = (*pointer_blck)->pointer_next;
-      if (! pointer_nxt) {
-	pointer_nxt = &(pointer_root);
-	pointer = *pointer_nxt;
-	while (pointer) {
-	  pointer_nxt = &(pointer->next);
-	  pointer = *pointer_nxt;
-	}
-      }
-      pointer_lbl = (*pointer_blck)->pointer_brokenlbl;
-      startblock = (*pointer_blck)->startblock;
-      endof_startblock = (*pointer_blck)->endof_startblock;
-    } else {
-      *pointer_blck = malloc(sizeof(struct DNS_label_pointer_block));
-      if (! (*pointer_blck)) {
-	if (state && (*state)) {
-	  free(*state);
-	  *state = 0;
-	}
-	return 0;
-      }
-      (*pointer_blck)->startblock = 0;
-      (*pointer_blck)->endof_startblock = 0;
+  /* -XX--   BEGIN INIT   --XX- */
 
-      pointer_root = 0;
-      pointer_nxt = &pointer_root;
-      pointer_lbl = 0;
-      startblock = 0;
-      endof_startblock = 0;
-    }
-  } else {
-    pointer_root = 0;
-    pointer_nxt = &pointer_root;
-    pointer_lbl = 0;
-    startblock = 0;
-    endof_startblock = 0;
-  }
-  label_ptr = 0;
-
-
-  if (state) {
-    if (*state) {
-      first_label = (*state)->first_label;
+  if ((state && *state)) {
+    first_label = (*state)->first_label;
+    if (first_label) {
       cur_label = (*state)->cur_label;
-      name_offset = (*state)->name_offset;
-
     } else {
-      *state = malloc(sizeof(struct state__readDNSlabels));
-      if (! (*state)) {
-	/* TODO: errno signaling stuff */
-	return 0;
-      }
-
-      alloc_stateless_labels;
+      cur_label = &first_label;
     }
+    name_offset = (*state)->name_offset;
+    clip1.offset = (*state)->mystery_int;
+    clip1.next = (*state)->mystery_pointer;
   } else {
-    alloc_stateless_labels;
-  }
-
-  if (startblock > endof_startblock) {
-    cur_label->name = 0;
-    kill_yourself;
+    first_label = 0;
+    cur_label = &first_label;
+    name_offset = ONES;
+    clip1.offset = ONES;
+    clip1.next = 0;
   }
 
   /* ------------- */
 
   walker = *start_and_end_of_walk;
-  pckt_offset = offsetof_start + (walker - start_of_packet);
-  if ((pckt_offset < offsetof_start) ||
-      (offsetof_start > MAX_PACKET_POINTER)) {
-    offsetof_start = ONES;
-    pckt_offset = ONES;
-  }
-  buf[MAX_DNS_LABEL_LEN] = '\0';
+  clip_pptr = 0; /* Only to prevent compilation warnings. */
 
   /* -XX--   END INIT   --XX- */
-  /* BEGIN TEXT */
 
   /* Read RFC 1002 and RFC 883 for
      details and understanding of
      what exactly is going on here. */
   /* Not counting the start-stop system, ofcourse. */
 
-  /* MEMMAN_NOTES: at the start of every label processing, whether
-   *               pointer or not, cur_label's contents are well
-   *               defined: they are totaly undefined. */
-
   while (*walker != 0) {
     if (*walker <= MAX_DNS_LABEL_LEN) {
-      while (0xf0e4) { /* while 0xf0r_ev4! */
-	name_len = *walker;
-	if ((walker + name_len +1) >= end_of_packet) {
-	  /* OUT_OF_BOUNDS */
-	  handle_abort;
-	}
-
-	/* ------------------------ */
-	move_pointer;
-	/* ------------------------ */
-
-	cur_label->len = name_len;
-	walker++;
-	for (weighted_companion_pointer = 0;
-	     weighted_companion_pointer < name_len;
-	     weighted_companion_pointer++) {
-	  buf[weighted_companion_pointer] = *walker;
-	  walker++;
-	}
-	/* buf[weighted_companion_pointer] is now
-	 * pointing to the slot after the last
-	 * character. So we terminate it. */
-	/* weighted_companion_pointer == name_len */
-	buf[weighted_companion_pointer] = '\0';
-
-	cur_label->name = malloc(weighted_companion_pointer +1);
-	if (! cur_label->name) {
-	  /* TODO: errno signaling stuff */
-	  kill_yourself;
-	}
-
-	/* Also copy the terminating NULL. */
-	memcpy((void *)cur_label->name, (void *)buf,
-	       weighted_companion_pointer +1);
-	if (label_ptr) {
-	  memcpy(*label_ptr, buf, weighted_companion_pointer +1);
-	  label_ptr = 0;
-	}
-
-	/* see the for loop above if you are wondering about walker */
-	if (*walker <= MAX_DNS_LABEL_LEN &&
-	    *walker != 0) {
-	  cur_label->next_name = malloc(sizeof(struct nbnodename_list));
-	  if (! cur_label->next_name) {
-	    kill_yourself;
-	  }
-	  cur_label = cur_label->next_name;
-	} else
-	  break;
-	/* This would be impossible in Perl. */
-      }
-    } else { /* that is, *walker > MAX_DNS_LABEL_LEN */
-      /* pckt_pointer points to the first octet of the pointer. */
-      if ((walker +1) >= end_of_packet) {
+      name_len = *walker;
+      if ((walker + name_len +1) >= end_of_packet) {
 	/* OUT_OF_BOUNDS */
 	handle_abort;
       }
 
-      /* ------------------------ */
-      name_len = 0;
-      move_pointer;
-      /* ------------------------ */
+      *cur_label = malloc(sizeof(struct nbnodename_list));
+      label = *cur_label;
+      if (! label) {
+	kill_yourself;
+      }
+      cur_label = &(label->next_name);
+
+      label->name = malloc(name_len +1);
+      if (! label->name) {
+	/* TODO: errno signaling stuff */
+	kill_yourself;
+      }
+      walker++;
+      for (weighted_companion_buf = label->name, end = walker + name_len;
+	   walker < end; weighted_companion_buf++, walker++) {
+	*weighted_companion_buf = *walker;
+      }
+      *weighted_companion_buf = 0;
+      /* You should now incinirate the weighted_companion_buf. */
+
+      label->len = name_len;
+      /* walker is updated by the for loop. */
+
+    } else { /* that is, *walker > MAX_DNS_LABEL_LEN */
+      if ((walker +1) >= end_of_packet) {
+	/* OUT_OF_BOUNDS */
+	handle_abort;
+      }
 
       if (name_offset == ONES) {
 	/* Because of the way name_offset is filled (look below),
@@ -485,94 +319,45 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
       walker++;
       name_offset = name_offset | *walker;
 
-      /* ------------------------ */
-
-      *pointer_nxt = 0;
-
-      pointer = pointer_root;
-      while (pointer) {
-	if (pointer->position == name_offset)
-	  break;
-	else
-	  pointer = pointer->next;
-      }
-
-      if (pointer) {
-	/* pointer_lbl is set in the move_pointer macro */
-	*pointer_lbl = pointer;
-	name_offset = ONES -1;
-
-	while (0x69) {
-	  if (pointer->position == pckt_offset) {
-	    *pointer_lbl = 0;
-	    cur_label->name = 0;
-	    cur_label->next_name = 0;
-	    destroy_nbnodename(first_label);
-	    first_label = 0;
-
-	    break;
-	  }
-	  if (pointer->labellen == 0) {
-	    pointer = pointer->next_label;
-	    continue;
-	  }
-
-	  name_len = pointer->labellen;
-	  cur_label->name = malloc(name_len);
-	  memcpy(cur_label->name, pointer->label, name_len);
-	  cur_label->len = name_len;
-
-	  pointer = pointer->next_label;
-	  if (pointer) {
-	    cur_label->next_name = malloc(sizeof(struct nbnodename_list));
-	    if (! cur_label->next_name) {
-	      kill_yourself;
-	    }
-	    cur_label = cur_label->next_name;
-	  } else {
-	    cur_label->next_name = 0;
-	    break;
-	  }
+      clip_ptr = &clip1;
+      do {
+	if (clip_ptr->offset == name_offset) {
+	  /* Infinite loop. */
+	  kill_yourself;
 	}
 
-	break;
-      } else {
-	pckt_offset = name_offset;
+	if (clip_ptr->offset == ONES) {
+	  break;
+	}
 
-	if (offsetof_start <= name_offset) {
-	  walker = start_of_packet + (name_offset - offsetof_start);
-	  if ((walker >= end_of_packet) ||
-	      (walker < startof_packet)) {
+	clip_pptr = &(clip_ptr->next);
+	clip_ptr = *clip_pptr;
+      } while (clip_ptr);
+      if (! clip_ptr) {
+	*clip_pptr = malloc(sizeof(struct pointer_clip));
+	clip_ptr = *clip_pptr;
+	if (! clip_ptr) {
+	  kill_yourself;
+	}
+	clip_ptr->next = 0;
+      }
+      clip_ptr->offset = name_offset;
+
+      if (offsetof_start <= name_offset) {
+	walker = startof_packet + (name_offset - offsetof_start);
+      } else {
+	if (startblock) {
+	  walker = startblock + name_offset;
+	  if (walker >= (startblock + lenof_startblock)) {
 	    handle_abort;
 	  }
 	} else {
-	  if (startblock) {
-	    walker = startblock + name_offset;
-	    if ((walker >= end_of_packet) ||
-		(walker < startof_packet)) {
-	      cur_label->name = 0;
-	      kill_yourself;
-	    }
-	  } else {
-	    cur_label->name = 0;
-	    kill_yourself;
-	  }
+	  kill_yourself;
 	}
       }
-
     }
   }
-
-  cur_label->next_name = 0;
-  if (first_label &&
-      (first_label->name == 0)) {
-    /* This means we have been only been fed the root label,
-       which is NULL, which is imposibble to parse and should
-       never happen (I think).
-       Please be a good routine and get ready to puke for us. */
-    destroy_nbnodename(first_label);
-    first_label = 0;
-  }
+  *cur_label = 0;
 
   if (name_offset == ONES) {
     /* Read the fourth comment up.
@@ -585,30 +370,11 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   if (state)
     free(*state);
 
-  if (pointer_blck) {
-    if (*pointer_blck) {
-      (*pointer_blck)->pointer_root = pointer_root;
-      (*pointer_blck)->pointer_next = pointer_nxt;
-      (*pointer_blck)->pointer_brokenlbl = 0;
-    } else {
-      *pointer_blck = calloc(1, sizeof(struct DNS_label_pointer_block));
-      if (*pointer_blck) {
-	(*pointer_blck)->pointer_root = pointer_root;
-	(*pointer_blck)->pointer_next = pointer_nxt;
-      } else {
-	*pointer_nxt = 0;
-	destroy_namepointer(pointer_root);
-      }
-    }
-  } else {
-    *pointer_nxt = 0;
-    destroy_namepointer(pointer_root);
-  }
+  del_clip;
 
-#undef move_pointer
-#undef kill_yourself
 #undef handle_abort
-#undef alloc_stateless_labels
+#undef kill_yourself
+#undef del_clip
 
   return first_label;
 }
