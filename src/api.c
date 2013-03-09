@@ -39,6 +39,7 @@ int nbworks_poll(unsigned char service,
 		 struct nbworks_pollfd *handles,
 		 int numof_pfd,
 		 int timeout) {
+  extern nbworks_errno_t nbworks_errno;
   struct pollfd *pfd;
   struct timespec sleeptime;
   struct packet_cooked *trgt;
@@ -188,6 +189,7 @@ ssize_t nbworks_sendto(unsigned char service,
 		       size_t len,
 		       int callflags,
 		       struct nbnodename_list *dst) {
+  extern nbworks_errno_t nbworks_errno;
   struct nbnodename_list *peer;
   struct ses_srvc_packet pckt;
   ssize_t ret_val, sent, notsent;
@@ -469,6 +471,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 			 size_t len,
 			 int callflags,
 			 struct nbnodename_list **src) {
+  extern nbworks_errno_t nbworks_errno;
   struct timespec sleeptime;
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;

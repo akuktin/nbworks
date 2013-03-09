@@ -36,6 +36,7 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
 						       void *payload,
 						       uint16_t lenof_pyld,
 						       uint16_t offset) {
+  extern nbworks_do_align_t nbworks_do_align;
   struct dtg_pckt_pyld_normal *result;
   struct nbnodename_list *complete_src, *complete_dst;
   int lenof_names;

@@ -39,6 +39,8 @@
 
 
 void init_name_srvc_cache() {
+  extern struct cache_scopenode *nbworks_rootscope; /* ZZZ */
+
   nbworks_rootscope = 0;
 }
 
@@ -46,6 +48,7 @@ void init_name_srvc_cache() {
 struct cache_scopenode *add_scope(struct nbnodename_list *scope,
 				  struct cache_namenode *first_node,
 				  uint32_t nbns_addr) {
+  extern struct cache_scopenode *nbworks_rootscope; /* ZZZ */
   struct cache_scopenode *result, *new_scope,
     *cur_scope, **last_scope;
 
@@ -85,6 +88,7 @@ struct cache_scopenode *add_scope(struct nbnodename_list *scope,
 }
 
 struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
+  extern struct cache_scopenode *nbworks_rootscope; /* ZZZ */
   struct cache_scopenode *result;
 
   result = nbworks_rootscope;
@@ -101,6 +105,7 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 
 
 void prune_scopes(time_t when) {
+  extern struct cache_scopenode *nbworks_rootscope; /* ZZZ */
   struct cache_scopenode *cur_scope, **last_scope;
   struct cache_namenode *cur_name, **last_name;
   struct ipv4_addr_list *cur_addr, *addr_fordel;
@@ -401,6 +406,7 @@ struct cache_namenode *find_nblabel(void *label,
 
 struct cache_namenode *find_namebytok(uint64_t token,
 				      struct nbnodename_list **ret_scope) {
+  extern struct cache_scopenode *nbworks_rootscope; /* ZZZ */
   struct cache_scopenode *scope;
   struct cache_namenode *result;
 

@@ -101,5 +101,5 @@ int
                        uint32_t my_ipv4_address,
                        unsigned int sender_is_nbns);
 
-struct cache_scopenode *nbworks_rootscope;
+/*extern*/ struct cache_scopenode *nbworks_rootscope;
 #endif /* NBWORKS_NAMESRVCCACHE_H*/

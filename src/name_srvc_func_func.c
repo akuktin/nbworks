@@ -684,6 +684,7 @@ void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
 		       uint16_t reftype,
 		       uint16_t refclass,
 		       void *tid) {
+  extern struct nbworks_namsrvc_cntrl_t nbworks_namsrvc_cntrl;
   struct timespec sleeptime;
   struct name_srvc_resource_lst *res;
   uint32_t ttl;

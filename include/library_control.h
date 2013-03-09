@@ -21,7 +21,7 @@
 
 # include <time.h>
 
-struct {
+/*extern*/ struct nbworks_libcntl_t {
   unsigned char stop_alldtg_srv;
   unsigned char stop_allses_srv;
 

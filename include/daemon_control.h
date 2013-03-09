@@ -22,33 +22,33 @@
 # include <time.h>
 # include <stdint.h>
 
-struct {
+/*extern*/ struct nbworks_all_port_cntl_t {
   unsigned char all_stop;
   struct timespec sleeptime;
   int poll_timeout; /* miliseconds */
 } nbworks_all_port_cntl;
 
-struct {
+/*extern*/ struct nbworks__rail_control_t {
   unsigned char all_stop;
   int poll_timeout;
 } nbworks__rail_control;
 
-struct {
+/*extern*/ struct nbworks_namsrvc_cntrl_t {
   int retries_NBNS;
   uint32_t max_wack_sleeptime;
   time_t Ptimer_refresh_margin;
 } nbworks_namsrvc_cntrl;
 
-struct {
+/*extern*/ struct nbworks_dtg_srv_cntrl_t {
   unsigned char all_stop;
   struct timespec dtg_srv_sleeptime;
 } nbworks_dtg_srv_cntrl;
 
-struct {
+/*extern*/ struct nbworks_ses_srv_cntrl_t {
   unsigned char all_stop;
 } nbworks_ses_srv_cntrl;
 
-struct {
+/*extern*/ struct nbworks_pruners_cntrl_t {
   unsigned char all_stop;
   struct timespec timeout;
   unsigned int passes_ses_srv_ses;

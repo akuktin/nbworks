@@ -48,6 +48,8 @@
 
 
 void init_rail() {
+  extern struct nbworks__rail_control_t nbworks__rail_control;
+
   nbworks__rail_control.all_stop = 0;
   nbworks__rail_control.poll_timeout = TP_100MS;
 }
@@ -114,6 +116,7 @@ unsigned int rail_flushrail(uint32_t leng,
 }
 
 void *poll_rail(void *args) {
+  extern struct nbworks__rail_control_t nbworks__rail_control;
   struct rail_params params, new_params, *release_lock;
   struct pollfd pfd;
   struct sockaddr_un *address;
@@ -880,6 +883,7 @@ int rail_add_dtg_server(int rail_sckt,
 
 
 void *dtg_server(void *arg) {
+  extern struct nbworks_dtg_srv_cntrl_t nbworks_dtg_srv_cntrl;
   struct dtg_srv_params *params;
   struct thread_node *last_will;
   struct nbnodename_list *nbname;
@@ -1169,6 +1173,7 @@ int rail_setup_session(int rail,
 }
 
 void *tunnel_stream_sockets(void *arg) {
+  extern struct nbworks_ses_srv_cntrl_t nbworks_ses_srv_cntrl;
   struct stream_connector_args *params;
   struct thread_node *last_will;
   struct pollfd fds[2];

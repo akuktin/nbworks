@@ -42,6 +42,8 @@
 
 
 void lib_init() {
+  extern struct nbworks_libcntl_t nbworks_libcntl;
+
   nbworks_libcntl.stop_alldtg_srv = 0;
   nbworks_libcntl.stop_allses_srv = 0;
 
@@ -58,6 +60,7 @@ void lib_init() {
 
 
 int lib_daemon_socket() {
+  extern nbworks_errno_t nbworks_errno;
   struct sockaddr_un address;
   int daemon;
 
@@ -80,7 +83,7 @@ int lib_daemon_socket() {
     return -1;
   }
 */
-  if (0 != connect(daemon, &address, sizeof(struct sockaddr_un))) {
+  if (0 != connect(daemon, (struct sockaddr *)&address, sizeof(struct sockaddr_un))) {
     nbworks_errno = errno;
     close(daemon);
     return -1;
@@ -96,6 +99,7 @@ struct name_state *lib_regname(unsigned char *name,
 			       unsigned char group_flg,
 			       unsigned char node_type, /* only one type */
 			       uint32_t ttl) {
+  extern nbworks_errno_t nbworks_errno;
   struct name_state *result;
   struct com_comm command;
   struct rail_name_data namedt;
@@ -262,6 +266,8 @@ struct name_state *lib_regname(unsigned char *name,
 
 /* returns: >0 = success, 0 = fail, <0 = error */
 int lib_delname(struct name_state *handle) {
+  extern nbworks_errno_t nbworks_errno;
+  extern struct nbworks_libcntl_t nbworks_libcntl;
   struct timespec sleeptime;
   struct com_comm command;
   int daemon;
@@ -346,6 +352,8 @@ int lib_delname(struct name_state *handle) {
 int lib_start_dtg_srv(struct name_state *handle,
 		      unsigned char takes_field,
 		      struct nbnodename_list *listento) {
+  extern nbworks_errno_t nbworks_errno;
+  extern struct nbworks_libcntl_t nbworks_libcntl;
   struct timespec sleeptime;
   struct com_comm command;
   int daemon;
@@ -451,6 +459,7 @@ int lib_start_dtg_srv(struct name_state *handle,
 int lib_start_ses_srv(struct name_state *handle,
 		      unsigned char takes_field,
 		      struct nbnodename_list *listento) {
+  extern nbworks_errno_t nbworks_errno;
   struct com_comm command;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
@@ -963,6 +972,7 @@ unsigned int lib_doeslistento(struct nbnodename_list *query,
 
 uint32_t lib_whatisaddrX(struct nbnodename_list *X,
 			 unsigned int len) {
+  extern nbworks_errno_t nbworks_errno;
   struct com_comm command;
   uint32_t result;
   int daemon_sckt;
@@ -1061,6 +1071,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 			size_t len,
 			unsigned char group_flg,
 			int isbroadcast) {
+  extern nbworks_errno_t nbworks_errno;
   struct dtg_srvc_packet *pckt;
   struct com_comm command;
   int daemon_sckt;
@@ -1191,6 +1202,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 
 
 void *lib_dtgserver(void *arg) {
+  extern struct nbworks_libcntl_t nbworks_libcntl;
   struct pollfd pfd;
   struct name_state *handle;
   struct dtg_frag_bckbone *fragbone;
@@ -1429,6 +1441,8 @@ void *lib_dtgserver(void *arg) {
 #define SMALL_BUFF_LEN (SES_HEADER_LEN +4+2)
 int lib_open_session(struct name_state *handle,
 		     struct nbnodename_list *dst) {
+  extern nbworks_do_align_t nbworks_do_align;
+  extern struct nbworks_libcntl_t nbworks_libcntl;
   struct nbnodename_list *name_id, *her; /* To vary names a bit. */
   struct ses_srvc_packet pckt;
   struct ses_pckt_pyld_two_names *twins;
@@ -1566,7 +1580,7 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
-  if (0 != connect(ses_sckt, &addr, sizeof(struct sockaddr_in))) {
+  if (0 != connect(ses_sckt, (struct sockaddr *)&addr, sizeof(struct sockaddr_in))) {
     close(ses_sckt);
     if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
       retry_count++;
@@ -1673,6 +1687,7 @@ int lib_open_session(struct name_state *handle,
 #undef SMALL_BUFF_LEN
 
 void *lib_ses_srv(void *arg) {
+  extern struct nbworks_libcntl_t nbworks_libcntl;
   struct pollfd pfd;
   struct name_state *handle;
   struct nbnodename_list *caller, decoded_nbnodename;
@@ -1891,6 +1906,7 @@ void *lib_ses_srv(void *arg) {
 
 
 void *lib_caretaker(void *arg) {
+  extern struct nbworks_libcntl_t nbworks_libcntl;
   struct nbworks_session *handle;
   struct timespec sleeptime;
   struct pollfd pfd;
@@ -1970,6 +1986,7 @@ struct nbworks_session *lib_make_session(int socket,
 					 struct nbnodename_list *peer,
 					 struct name_state *handle,
 					 unsigned char keepalive) {
+  extern nbworks_errno_t nbworks_errno;
   struct nbworks_session *result;
 
   if (socket < 0) {
@@ -2008,6 +2025,7 @@ struct nbworks_session *lib_make_session(int socket,
 }
 
 struct nbworks_session *lib_take_session(struct name_state *handle) {
+  extern nbworks_errno_t nbworks_errno;
   struct nbworks_session *result, *clone;
 
   if (! handle) {
@@ -2122,6 +2140,7 @@ void lib_dstry_session(struct nbworks_session *ses) {
 ssize_t lib_flushsckt(int socket,
 		      ssize_t len,
 		      int flags) {
+  extern nbworks_errno_t nbworks_errno;
   ssize_t ret_val, count;
   unsigned char buff[0xff];
 
