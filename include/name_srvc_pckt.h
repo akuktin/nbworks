@@ -278,6 +278,6 @@ void
 struct name_srvc_packet *
   name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard,
                           struct nbnodename_list *scope,
-                          uint64_t *total_lenof_nbaddrs);
+                          uint32_t *total_lenof_nbaddrs);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */

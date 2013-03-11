@@ -1052,6 +1052,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	continue;
       }
 
+
       new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
       /* NOTE: No check for failure. */
       new_pckt->packet = sckts.master_reader(udp_pckt, len, &tid);
@@ -1532,6 +1533,6 @@ uint32_t get_nbnsaddr() {
 
 uint32_t my_ipv4_address() {
   // FIXME: stub
-  //        192.168.1.3/24
-  return 0xc0a80103;
+  //        192.168.1.8/24
+  return 0xc0a80108;
 }

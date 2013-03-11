@@ -995,8 +995,8 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   }
 
   if (transport == TRANSIS_UDP) {
-    walker = fill_name_srvc_pckt_header(packet->header, result,
-					endof_pckt);
+    fill_name_srvc_pckt_header(packet->header, result,
+			       endof_pckt);
   }
 
   *pckt_len = walker - result;
@@ -1457,7 +1457,7 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
 /* Dont forget to fill in the transaction_id of the packet! */
 struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard,
 						 struct nbnodename_list *scope,
-						 uint64_t *total_lenof_nbaddrs) {
+						 uint32_t *total_lenof_nbaddrs) {
   struct name_srvc_packet *pckt;
   struct name_srvc_question_lst **qstn_ptr;
   struct name_srvc_resource_lst **adit_ptr;

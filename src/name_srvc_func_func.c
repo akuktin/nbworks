@@ -1507,6 +1507,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   uint32_t in_addr, nbns_addr, name_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
+  if (! (outpckt && addr && trans))
+    return;
+
   /* Make sure only NBNS is listened to in P mode. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
   nbns_addr = get_nbnsaddr();
@@ -1572,9 +1575,11 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    }
 
 	    if (cache_namecard) {
-	      if (! add_name(cache_namecard, res->res->name->next_name))
+	      if (! (add_scope(res->res->name->next_name, cache_namecard, nbns_addr) ||
+		     add_name(cache_namecard, res->res->name->next_name))) {
 		destroy_namecard(cache_namecard);
 	        /* failed */
+	      }
 	    }
 
 	  } else {
@@ -1671,9 +1676,11 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    }
 
 	    if (cache_namecard) {
-	      if (! add_name(cache_namecard, res->res->name->next_name))
+              if (! (add_scope(res->res->name->next_name, cache_namecard, nbns_addr) ||
+		     add_name(cache_namecard, res->res->name->next_name))) {
 		destroy_namecard(cache_namecard);
 	        /* failed */
+	      }
 	    }
 
 	  } else {
