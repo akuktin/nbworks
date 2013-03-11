@@ -38,7 +38,7 @@
 //struct cache_scopenode *nbworks_rootscope;
 
 
-void init_name_srvc_cache() {
+void init_name_srvc_cache(void) {
   nbworks_rootscope = 0;
 }
 

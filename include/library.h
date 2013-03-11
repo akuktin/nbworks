@@ -111,10 +111,10 @@ union nbworks_handle {
 };
 
 void
-  lib_init();
+  lib_init(void);
 
 int
-  lib_daemon_socket();
+  lib_daemon_socket(void);
 
 struct name_state *
   lib_regname(unsigned char *name,

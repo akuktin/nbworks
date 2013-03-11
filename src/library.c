@@ -41,7 +41,7 @@
 #include "randomness.h"
 
 
-void lib_init() {
+void lib_init(void) {
   nbworks_libcntl.stop_alldtg_srv = 0;
   nbworks_libcntl.stop_allses_srv = 0;
 
@@ -57,7 +57,7 @@ void lib_init() {
 }
 
 
-int lib_daemon_socket() {
+int lib_daemon_socket(void) {
   struct sockaddr_un address;
   int daemon;
 

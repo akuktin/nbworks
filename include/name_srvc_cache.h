@@ -27,7 +27,7 @@
 # include "name_srvc_pckt.h"
 
 
-void init_name_srvc_cache();
+void init_name_srvc_cache(void);
 
 struct cache_scopenode *
   add_scope(struct nbnodename_list *scope,

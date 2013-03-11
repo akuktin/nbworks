@@ -29,7 +29,7 @@
 struct thread_node *nbworks_all_threads;
 
 
-void init_service_sector_threads() {
+void init_service_sector_threads(void) {
   nbworks_all_threads = 0;
 }
 
@@ -64,7 +64,7 @@ struct thread_node *add_thread(pthread_t tid) {
   }
 }
 
-void thread_joiner() { /* AKA "the body collector" */
+void thread_joiner(void) { /* AKA "the body collector" */
   struct thread_node *node, *for_del, **last;
 
   node = nbworks_all_threads;

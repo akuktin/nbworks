@@ -27,7 +27,7 @@ struct {
   unsigned int weakstate;
 } nbworks_random_state;
 
-uint32_t make_weakrandom() {
+uint32_t make_weakrandom(void) {
   if (! nbworks_random_state.weakstate) {
     nbworks_random_state.weakstate = time(0);
   }

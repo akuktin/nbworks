@@ -47,13 +47,13 @@
 #include "randomness.h"
 
 
-void init_rail() {
+void init_rail(void) {
   nbworks__rail_control.all_stop = 0;
   nbworks__rail_control.poll_timeout = TP_100MS;
 }
 
 
-int open_rail() {
+int open_rail(void) {
   struct sockaddr_un address;
   int result;
 
@@ -1429,7 +1429,7 @@ uint32_t rail_whatisaddrX(int rail_sckt,
 }
 
 
-uint64_t make_token() {
+uint64_t make_token(void) {
   uint64_t result;
 
   do {

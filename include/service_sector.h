@@ -123,7 +123,9 @@ struct ses_srv_sessions {
   struct ses_srv_sessions *next;
 };
 
-void init_service_sector();
+void
+  init_service_sector(void);
+
 struct ss_queue *
   ss_register_tid(union trans_id *trans_id,
                   unsigned char branch);
@@ -185,7 +187,7 @@ void
   ss__del_session(uint64_t token,
                   unsigned char close_sckt);
 void
-  ss__prune_sessions();
+  ss__prune_sessions(void);
 
 void *
   ss__port137(void *placeholder);
@@ -202,14 +204,14 @@ void *
 void *
   take_incoming_session(void *arg);
 void
-  ss_check_all_ses_server_rails();
+  ss_check_all_ses_server_rails(void);
 
 uint32_t
-  get_inaddr();
+  get_inaddr(void);
 uint32_t
-  get_nbnsaddr();
+  get_nbnsaddr(void);
 uint32_t
-  my_ipv4_address();
+  my_ipv4_address(void);
 
 # define ss_register_name_tid(tid)        ss_register_tid(tid, NAME_SRVC)
 # define ss_deregister_name_tid(tid)      ss_deregister_tid(tid, NAME_SRVC)

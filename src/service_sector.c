@@ -56,7 +56,7 @@ struct ses_srv_rails *nbworks_all_session_srvrs;
 struct ses_srv_sessions *nbworks_all_sessions;
 
 
-void init_service_sector() {
+void init_service_sector(void) {
   nbworks_all_transactions[0] = 0;
   nbworks_all_transactions[1] = 0;
 
@@ -723,7 +723,7 @@ void ss__del_session(uint64_t token,
   return;
 }
 
-void ss__prune_sessions() {
+void ss__prune_sessions(void) {
   struct ses_srv_sessions *cur_ses, **last_ses;
 
   last_ses = &(nbworks_all_sessions);
@@ -1493,7 +1493,7 @@ void *take_incoming_session(void *arg) {
 }
 
 
-void ss_check_all_ses_server_rails() {
+void ss_check_all_ses_server_rails(void) {
   struct ses_srv_rails *cur_rail, **last_rail;
   struct pollfd pfd;
 
@@ -1519,19 +1519,19 @@ void ss_check_all_ses_server_rails() {
 }
 
 
-uint32_t get_inaddr() {
+uint32_t get_inaddr(void) {
   // FIXME: stub
   //        192.168.1.255/24
   return 0xc0a801ff;
 }
 
-uint32_t get_nbnsaddr() {
+uint32_t get_nbnsaddr(void) {
   // FIXME: stub
   //        192.168.1.42/24
   return 0xc0a8012a;
 }
 
-uint32_t my_ipv4_address() {
+uint32_t my_ipv4_address(void) {
   // FIXME: stub
   //        192.168.1.8/24
   return 0xc0a80108;

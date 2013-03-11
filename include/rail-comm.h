@@ -100,10 +100,10 @@ struct dtg_srv_params {
 };
 
 void
-  init_rail();
+  init_rail(void);
 
 int
-  open_rail();
+  open_rail(void);
 /* returns: >=0 = success, <0 = error */
 unsigned int
   rail_flushrail(uint32_t len,
@@ -165,6 +165,6 @@ uint32_t
                    struct com_comm *command);
 
 uint64_t
-  make_token();
+  make_token(void);
 
 #endif /* NBWORKS_RAILCOMM_H */
