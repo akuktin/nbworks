@@ -112,7 +112,6 @@ unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *he
 struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_packet_walker,
 							unsigned char *start_of_packet,
 							unsigned char *end_of_packet) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct name_srvc_question *question;
   unsigned char *walker, *remember_walker;
 
@@ -180,7 +179,6 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 					    unsigned char *field,
 					    unsigned char *end_of_packet,
 					    unsigned char *overflow) {
-  extern nbworks_do_align_t nbworks_do_align;
   unsigned char *walker, *save_walker;
 
   if (! (question && field))
@@ -227,7 +225,6 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet_walker,
 						   unsigned char *start_of_packet,
 						   unsigned char *end_of_packet) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct name_srvc_resource *resource;
   unsigned char *walker, *remember_walker;
 
@@ -291,7 +288,6 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 				       unsigned char *field,
 				       unsigned char *end_of_packet,
 				       unsigned char *overflow) {
-  extern nbworks_do_align_t nbworks_do_align;
   unsigned char *walker, *save_walker;
 
   if (! (resource && field))
@@ -354,7 +350,6 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 				   struct name_srvc_resource *resource,
 				   unsigned char *start_of_packet,
 				   unsigned char *end_of_packet) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct nbnodename_list *nbnodename;
   struct nbnodename_list_backbone *listof_names;
   struct name_srvc_statistics_rfc1002 *nbstat;
@@ -565,7 +560,6 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 					    unsigned char *field,
 					    unsigned char *end_of_packet) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct nbnodename_list_backbone *names;
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *walker, *save_walker;
@@ -1464,7 +1458,6 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
 struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard,
 						 struct nbnodename_list *scope,
 						 uint64_t *total_lenof_nbaddrs) {
-  extern struct nbworks_namsrvc_cntrl_t nbworks_namsrvc_cntrl;
   struct name_srvc_packet *pckt;
   struct name_srvc_question_lst **qstn_ptr;
   struct name_srvc_resource_lst **adit_ptr;

@@ -57,10 +57,6 @@ struct ses_srv_sessions *nbworks_all_sessions;
 
 
 void init_service_sector() {
-  extern struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
-  extern struct nbworks_dtg_srv_cntrl_t nbworks_dtg_srv_cntrl;
-  extern struct nbworks_ses_srv_cntrl_t nbworks_ses_srv_cntrl;
-
   nbworks_all_transactions[0] = 0;
   nbworks_all_transactions[1] = 0;
 
@@ -728,7 +724,6 @@ void ss__del_session(uint64_t token,
 }
 
 void ss__prune_sessions() {
-  extern struct nbworks_pruners_cntrl_t nbworks_pruners_cntrl;
   struct ses_srv_sessions *cur_ses, **last_ses;
 
   last_ses = &(nbworks_all_sessions);
@@ -752,7 +747,6 @@ void ss__prune_sessions() {
 
 
 void *ss__port137(void *placeholder) {
-  extern struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
   pthread_t thread[2];/*3];*/
@@ -891,7 +885,6 @@ void *ss__port137(void *placeholder) {
 }
 
 void *ss__port138(void *i_dont_actually_use_this) {
-  extern struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
   pthread_t thread[2];
@@ -976,7 +969,6 @@ void *ss__port138(void *i_dont_actually_use_this) {
 
 
 void *ss__udp_recver(void *sckts_ptr) {
-  extern struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
   struct ss_sckts sckts, *release_lock;
   struct sockaddr_in his_addr, discard_addr;
   struct ss_unif_pckt_list *new_pckt;
@@ -1158,7 +1150,6 @@ void *ss__udp_recver(void *sckts_ptr) {
 }
 
 void *ss__udp_sender(void *sckts_ptr) {
-  extern struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
   struct ss_sckts sckts, *release_lock;
   struct ss_unif_pckt_list *for_del;
   struct ss_priv_trans *cur_trans, **last_trans, *for_del2;
@@ -1266,7 +1257,6 @@ void *ss__udp_sender(void *sckts_ptr) {
 
 
 void *ss__port139(void *args) {
-  extern struct nbworks_ses_srv_cntrl_t nbworks_ses_srv_cntrl;
   struct ss_tcp_sckts params;
   struct pollfd pfd;
   struct sockaddr_in port_addr;

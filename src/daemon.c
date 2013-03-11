@@ -33,9 +33,6 @@
 
 
 struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
-  extern nbworks_do_align_t nbworks_do_align;
-  extern struct nbworks_namsrvc_cntrl_t nbworks_namsrvc_cntrl;
-  extern struct nbworks_pruners_cntrl_t nbworks_pruners_cntrl;
   struct thread_cache *result;
   struct rail_params railparams;
 
@@ -135,7 +132,6 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 
 
 void *pruners(void *arg_ignored) {
-  extern struct nbworks_pruners_cntrl_t nbworks_pruners_cntrl;
   time_t now;
 
   do {

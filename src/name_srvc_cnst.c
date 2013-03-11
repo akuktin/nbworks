@@ -505,7 +505,6 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
 							 unsigned char name_type,
 							 struct nbnodename_list *scope,
 							 struct nbnodename_list_backbone *my_names_this_scope) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct name_srvc_packet *result;
   struct nbnodename_list *complete_name;
   struct nbnodename_list_backbone *cur_names;

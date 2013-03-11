@@ -100,7 +100,6 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
 				      unsigned char **master_packet_walker,
 				      unsigned char *start_of_packet,
 				      unsigned char *end_of_packet) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct ses_pckt_pyld_two_names *two_names_payload;
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
   unsigned char *walker, *remember_walker;
@@ -232,7 +231,6 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
 unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
 					       unsigned char *field,
 					       unsigned char *endof_pckt) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct ses_pckt_pyld_two_names *two_names_payload;
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
   unsigned char *walker, *remember_walker;
@@ -395,7 +393,6 @@ struct nbnodename_list *ses_srvc_get_calledname(void *packet,
 /* Call with whole packet, len is total len of whole packet. */
 struct nbnodename_list *ses_srvc_get_callingname(void *packet_ptr,
 						 int len) {
-  extern nbworks_do_align_t nbworks_do_align;
   unsigned char *packet;
   unsigned char *walker;
 

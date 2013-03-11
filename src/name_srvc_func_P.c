@@ -53,7 +53,6 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 			      uint32_t my_ip_address,
 			      unsigned char group_flg,
 			      uint32_t ttl) {
-  extern struct nbworks_namsrvc_cntrl_t nbworks_namsrvc_cntrl;
   struct timespec sleeptime;
   struct sockaddr_in addr;
   struct ss_queue *trans;

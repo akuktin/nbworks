@@ -95,7 +95,6 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
                                       unsigned char *start_of_packet,
                                       unsigned char *end_of_packet,
 				      unsigned char read_allpyld) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct dtg_pckt_pyld_normal *normal_pckt;
   unsigned char *walker, *remember_walker;
 
@@ -228,7 +227,6 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
 					       unsigned char *field,
 					       unsigned char *endof_pckt) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct dtg_pckt_pyld_normal *normal_pckt;
   unsigned char *walker, *remember_walker, *save_walker;
 
@@ -401,7 +399,6 @@ void *partial_dtg_srvc_pckt_reader(void *packet,
 void *recving_dtg_srvc_pckt_reader(void *packet,
 				   int len,
 				   uint16_t *tid) {
-  extern nbworks_do_align_t nbworks_do_align;
   struct dtg_srvc_recvpckt *result;
   unsigned char *readhead, *startof_pckt;
 
