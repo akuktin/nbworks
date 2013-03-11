@@ -844,11 +844,11 @@ void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
        res != 0;
        res = res->next) {
     if (res->res &&
-	((0 == cmp_nbnodename(refname, res->res->name)) &&
-	 ((res->res->rrtype == RRTYPE_NULL) ||
-	  (res->res->rrtype == reftype)) &&
-	 (res->res->rrclass == refclass) &&
-	 (res->res->ttl > ttl)))
+	(0 == cmp_nbnodename(refname, res->res->name)) &&
+	((res->res->rrtype == RRTYPE_NULL) ||
+	 (res->res->rrtype == reftype)) &&
+	(res->res->rrclass == refclass) &&
+	(res->res->ttl > ttl))
       ttl = res->res->ttl;
   }
 

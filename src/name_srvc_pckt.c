@@ -1499,7 +1499,8 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
       continue;
     }
     diff = (namecard->timeof_death) - cur_time;
-    if (diff < nbworks_namsrvc_cntrl.Ptimer_refresh_margin) {
+    if ((diff < nbworks_namsrvc_cntrl.Ptimer_refresh_margin) &&
+	(namecard->refresh_ttl)) {
       if (! pckt) {
 	pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
 	if (! pckt)
