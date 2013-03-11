@@ -24,6 +24,7 @@ struct thread_cache {
   pthread_t ss__port137_tid;
   pthread_t ss__port138_tid;
   pthread_t ss__port139_tid;
+  pthread_t refresh_scopes_tid;
 };
 
 

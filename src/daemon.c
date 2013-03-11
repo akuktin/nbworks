@@ -26,6 +26,7 @@
 #include "daemon_control.h"
 #include "constdef.h"
 #include "name_srvc_cache.h"
+#include "name_srvc_func_func.h"
 #include "service_sector.h"
 #include "service_sector_threads.h"
 #include "daemon.h"
@@ -60,6 +61,9 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_namsrvc_cntrl.Ptimer_refresh_margin = 2; /* I will increase it later on. */
 
   /* RELEASE: This has to be changed, somehow. */
+  /* No srsly, how do I do this? If the config file is empty? */
+  /* Maybe: do whatever get_inaddr() will do to get the network prefix,
+   *        then call host 1 in that network prefix. */
   nbworks__default_nbns = 0xc0a8012a;
 
   railparams.isbusy = 0xda;
@@ -108,12 +112,25 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
     return 0;
   }
 
+  if (0 != pthread_create(&(result->refresh_scopes_tid), 0,
+			  refresh_scopes, 0)) {
+    pthread_cancel(result->pruners_tid);
+    pthread_cancel(result->ss__port137_tid);
+    pthread_cancel(result->ss__port138_tid);
+    pthread_cancel(result->ss__port139_tid);
+    if (! tcache)
+      free(result);
+    close(railparams.rail_sckt);
+    return 0;
+  }
+
   if (0 != pthread_create(&(railparams.thread_id), 0,
 			  poll_rail, &railparams)) {
     pthread_cancel(result->pruners_tid);
     pthread_cancel(result->ss__port137_tid);
     pthread_cancel(result->ss__port138_tid);
     pthread_cancel(result->ss__port139_tid);
+    pthread_cancel(result->refresh_scopes_tid);
     if (! tcache)
       free(result);
     close(railparams.rail_sckt);

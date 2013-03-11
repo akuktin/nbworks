@@ -209,8 +209,6 @@ void
 uint32_t
   get_inaddr(void);
 uint32_t
-  get_nbnsaddr(struct nbnodename_list *scope);
-uint32_t
   my_ipv4_address(void);
 
 # define ss_register_name_tid(tid)        ss_register_tid(tid, NAME_SRVC)

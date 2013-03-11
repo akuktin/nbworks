@@ -728,6 +728,7 @@ int rail_senddtg(int rail_sckt,
 	if (namecard->group_flg & ISGROUP_YES) {
 	  group_addrs = namecard->addrs.recrd[i].addr;
 	  while (group_addrs->next) {
+            /* VAXism below */
 	    fill_32field(group_addrs->ip_addr,
 			 (unsigned char *)&(dst_addr.sin_addr.s_addr));
 

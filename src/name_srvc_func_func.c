@@ -440,9 +440,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     break;
   }
 
-  if (recursion) {
-    nbns_addr = get_nbnsaddr(scope);
-  }
+  nbns_addr = get_nbnsaddr(scope);
 
   res = name_srvc_callout_name(name, name_type, scope,
 			       (recursion ? nbns_addr : get_inaddr()),
@@ -674,6 +672,162 @@ int name_srvc_release_name(unsigned char *name,
   return 0;
 }
 
+/* This function sends refresh packets for scopes. */
+void *refresh_scopes(void *i_ignore_this) {
+  struct sockaddr_in addr;
+  struct timespec sleeptime;
+  struct cache_scopenode *cur_scope;
+  struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
+  struct name_srvc_packet *pckt;
+  union trans_id tid;
+  struct ss_queue *trans;
+  time_t cur_time;
+  uint32_t wack;
+
+  tid.tid = 0;
+
+  addr.sin_family = AF_INET;
+  /* VAXism below! */
+  fill_16field(137, (unsigned char *)&(addr.sin_port));
+
+  while (nbworks_all_port_cntl.all_stop) {
+    cur_scope = nbworks_rootscope;
+    trans = 0;
+
+    while (cur_scope) {
+      pckt = name_srvc_Ptimer_mkpckt(cur_scope->names, cur_scope->scope, 0);
+
+      if (pckt) {
+	if (! trans) {
+	  tid.tid = make_weakrandom();
+	  trans = ss_register_name_tid(&tid);
+	  if (! trans) {
+	    destroy_name_srvc_pckt(pckt, 1, 1);
+	    return 0;
+	  }
+	}
+
+	pckt->header->transaction_id = tid.tid;
+	pckt->for_del = TRUE;
+	/* VAXism below! */
+	fill_32field(cur_scope->nbns_addr, (unsigned char *)&(addr.sin_addr.s_addr));
+
+	ss_name_send_pckt(pckt, &addr, trans);
+      }
+
+      cur_scope = cur_scope->next;
+    }
+
+    nanosleep(&(nbworks_all_port_cntl.newtid_sleeptime), 0);
+
+    if (trans) {
+      ss_set_inputdrop_name_tid(&tid);
+      cur_time = time(0);
+      last_outpckt = outside_pckt = 0;
+      wack = 0;
+
+      while (0105) {
+	do {
+	  outside_pckt = ss__recv_entry(trans);
+
+	  if (outside_pckt == last_outpckt) {
+	    if (wack) {
+	      /* DOS_BUG: a malevolent NBNS can use this point to hose
+	       *          the daemon. */
+	      ss_set_inputdrop_name_tid(&tid);
+
+	      if (wack > nbworks_namsrvc_cntrl.max_wack_sleeptime) {
+		wack = nbworks_namsrvc_cntrl.max_wack_sleeptime;
+	      }
+	      sleeptime.tv_sec = wack;
+	      sleeptime.tv_nsec = 0;
+	      nanosleep(&sleeptime, 0);
+	      wack = 0;
+
+	      ss_set_inputdrop_name_tid(&tid);
+	      cur_time = time(0);
+	    } else {
+	      ss_deregister_name_tid(&tid);
+	      ss__dstry_recv_queue(trans);
+	      free(trans);
+	      trans = 0;
+
+	      break;
+	    }
+	  } else {
+	    if (last_outpckt)
+	      free(last_outpckt);
+	    last_outpckt = outside_pckt;
+	  }
+
+	} while (! outside_pckt->packet);
+
+	if (! trans)
+	  break;
+
+	pckt = outside_pckt->packet;
+	outside_pckt->packet = 0;
+
+	if (pckt->header->opcode == (OPCODE_RESPONSE |
+				     OPCODE_WACK)) {
+
+          wack = name_srvc_find_biggestwack(pckt, 0, 0, 0, wack);
+
+	  destroy_name_srvc_pckt(pckt, 1, 1);
+	  continue;
+        }
+
+	if ((pckt->header->opcode == (OPCODE_RESPONSE |
+				      OPCODE_REFRESH)) ||
+	    (pckt->header->opcode == (OPCODE_RESPONSE |
+				      OPCODE_REFRESH2))) {
+	  if (pckt->header->rcode == 0) {
+
+	    name_srvc_do_updtreq(pckt, &(outside_pckt->addr),
+				 tid.tid, cur_time);
+
+	  } else {
+
+	    name_srvc_do_namcftdem(pckt, &(outside_pckt->addr));
+
+	  }
+
+	}
+
+	destroy_name_srvc_pckt(pckt, 1, 1);
+      }
+
+    }
+  }
+
+  return 0;
+}
+
+
+uint32_t name_srvc_find_biggestwack(struct name_srvc_packet *outside_pckt,
+				    struct nbnodename_list *refname,
+				    uint16_t reftype,
+				    uint16_t refclass,
+				    uint32_t prev_best_ttl) {
+  struct name_srvc_resource_lst *res;
+
+  for (res = outside_pckt->answers;
+       res != 0;
+       res = res->next) {
+    if (res->res) {
+      if ((! reftype) ||
+	  (((0 == cmp_nbnodename(refname, res->res->name)) &&
+	    ((res->res->rrtype == RRTYPE_NULL) ||
+	     (res->res->rrtype == reftype)) &&
+	    (res->res->rrclass == refclass) &&
+	    (res->res->ttl > prev_best_ttl)))) {
+	prev_best_ttl = res->res->ttl;
+      }
+    }
+  }
+
+  return prev_best_ttl;
+}
 
 void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
 		       struct nbnodename_list *refname,
@@ -690,11 +844,11 @@ void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
        res != 0;
        res = res->next) {
     if (res->res &&
-	(0 == cmp_nbnodename(refname, res->res->name)) &&
-	((res->res->rrtype == RRTYPE_NULL) ||
-	 (res->res->rrtype == reftype)) &&
-	(res->res->rrclass == refclass) &&
-	(res->res->ttl > ttl))
+	((0 == cmp_nbnodename(refname, res->res->name)) &&
+	 ((res->res->rrtype == RRTYPE_NULL) ||
+	  (res->res->rrtype == reftype)) &&
+	 (res->res->rrclass == refclass) &&
+	 (res->res->ttl > ttl)))
       ttl = res->res->ttl;
   }
 

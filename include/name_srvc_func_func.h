@@ -48,7 +48,15 @@ int
                          uint32_t my_ip_address,
                          unsigned char group_flg,
                          unsigned char recursion);
+void *
+  refresh_scopes(void *i_ignore_this);
 
+uint32_t
+  name_srvc_find_biggestwack(struct name_srvc_packet *outside_pckt,
+                             struct nbnodename_list *refname,
+                             uint16_t reftype,
+                             uint16_t refclass,
+                             uint32_t prev_best_ttl);
 void
   name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
                     struct nbnodename_list *refname,
