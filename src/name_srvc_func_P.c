@@ -84,7 +84,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
   addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
-  fill_32field(get_nbnsaddr(), (unsigned char *)&(addr.sin_addr.s_addr));
+  fill_32field(get_nbnsaddr(scope), (unsigned char *)&(addr.sin_addr.s_addr));
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, ttl,
 				     my_ip_address, group_flg, CACHE_NODEFLG_P);

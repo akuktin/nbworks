@@ -82,7 +82,6 @@ void
 void
   name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
                        struct sockaddr_in *addr,
-                       struct ss_queue *trans,
                        uint32_t tid,
                        time_t cur_time);
 

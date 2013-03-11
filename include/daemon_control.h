@@ -25,6 +25,7 @@
 extern struct nbworks_all_port_cntl_t {
   unsigned char all_stop;
   struct timespec sleeptime;
+  struct timespec newtid_sleeptime;
   int poll_timeout; /* miliseconds */
 } nbworks_all_port_cntl;
 
@@ -54,5 +55,7 @@ extern struct nbworks_pruners_cntrl_t {
   unsigned int passes_ses_srv_ses;
   time_t lifetimeof_queue_storage;
 } nbworks_pruners_cntrl;
+
+extern uint32_t nbworks__default_nbns;
 
 #endif /* NBWORKS_DAEMONCONTROL_H */

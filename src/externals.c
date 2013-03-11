@@ -31,4 +31,5 @@ struct nbworks_dtg_srv_cntrl_t nbworks_dtg_srv_cntrl;
 struct nbworks_ses_srv_cntrl_t nbworks_ses_srv_cntrl;
 struct nbworks_pruners_cntrl_t nbworks_pruners_cntrl;
 struct nbworks_libcntl_t nbworks_libcntl;
+uint32_t nbworks__default_nbns;
 struct cache_scopenode *nbworks_rootscope;

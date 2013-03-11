@@ -69,6 +69,8 @@ void init_service_sector(void) {
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
   nbworks_all_port_cntl.sleeptime.tv_nsec = T_10MS;
+  nbworks_all_port_cntl.newtid_sleeptime.tv_sec = 0;
+  nbworks_all_port_cntl.newtid_sleeptime.tv_nsec = T_500MS;
   nbworks_all_port_cntl.poll_timeout = TP_10MS;
 
   nbworks_dtg_srv_cntrl.all_stop = 0;
@@ -174,10 +176,9 @@ void ss_deregister_tid(union trans_id *arg,
   if (! arg)
     return;
 
-  if (! nbworks_all_transactions[branch])
-    return;
-
   cur_trans = nbworks_all_transactions[branch];
+  if (! cur_trans)
+    return;
 
   tid = arg->tid;
 
@@ -1523,12 +1524,6 @@ uint32_t get_inaddr(void) {
   // FIXME: stub
   //        192.168.1.255/24
   return 0xc0a801ff;
-}
-
-uint32_t get_nbnsaddr(void) {
-  // FIXME: stub
-  //        192.168.1.42/24
-  return 0xc0a8012a;
 }
 
 uint32_t my_ipv4_address(void) {

@@ -33,6 +33,7 @@
 #include "randomness.h"
 #include "service_sector.h"
 #include "name_srvc_cache.h"
+#include "name_srvc_func_func.h"
 
 
 //struct cache_scopenode *nbworks_rootscope;
@@ -100,6 +101,21 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 }
 
 
+uint32_t get_nbnsaddr(struct nbnodename_list *scope) {
+  struct cache_scopenode *cur_scope;
+
+  cur_scope = nbworks_rootscope;
+
+  while (cur_scope) {
+    if (0 == cmp_nbnodename(cur_scope->scope, scope))
+      return cur_scope->nbns_addr;
+    else
+      cur_scope = cur_scope->next;
+  }
+
+  return nbworks__default_nbns;
+}
+
 void prune_scopes(time_t when) {
   struct cache_scopenode *cur_scope, **last_scope;
   struct cache_namenode *cur_name, **last_name;
@@ -145,6 +161,107 @@ void prune_scopes(time_t when) {
   }
 
   return;
+}
+
+/* This function sends refresh packets for scopes. */
+void *refresh_scopes(void *i_ignore_this) {
+  struct sockaddr_in addr;
+  struct cache_scopenode *cur_scope;
+  struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
+  struct name_srvc_packet *pckt;
+  union trans_id tid;
+  struct ss_queue *trans;
+  time_t cur_time;
+
+  tid.tid = 0;
+
+  addr.sin_family = AF_INET;
+  /* VAXism below! */
+  fill_16field(137, (unsigned char *)&(addr.sin_port));
+
+  while (nbworks_all_port_cntl.all_stop) {
+    cur_scope = nbworks_rootscope;
+    trans = 0;
+
+    while (cur_scope) {
+      pckt = name_srvc_Ptimer_mkpckt(cur_scope->names, cur_scope->scope, 0);
+
+      if (pckt) {
+	if (! trans) {
+	  tid.tid = make_weakrandom();
+	  trans = ss_register_name_tid(&tid);
+	  if (! trans) {
+	    destroy_name_srvc_pckt(pckt, 1, 1);
+	    return 0;
+	  }
+	}
+
+	pckt->header->transaction_id = tid.tid;
+	pckt->for_del = TRUE;
+	/* VAXism below! */
+	fill_32field(cur_scope->nbns_addr, (unsigned char *)&(addr.sin_addr.s_addr));
+
+	ss_name_send_pckt(pckt, &addr, trans);
+      }
+
+      cur_scope = cur_scope->next;
+    }
+
+    nanosleep(&(nbworks_all_port_cntl.newtid_sleeptime), 0);
+
+    if (trans) {
+      ss_deregister_name_tid(&tid);
+      cur_time = time(0);
+      last_outpckt = outside_pckt = 0;
+
+      while (0105) {
+	do {
+	  outside_pckt = ss__recv_entry(trans);
+
+	  if (outside_pckt == last_outpckt) {
+	    ss__dstry_recv_queue(trans);
+	    free(trans);
+	    trans = 0;
+
+	    break;
+	  } else {
+	    if (last_outpckt)
+	      free(last_outpckt);
+	    last_outpckt = outside_pckt;
+	  }
+
+	} while (! outside_pckt->packet);
+
+	if (! trans)
+	  break;
+
+	pckt = outside_pckt->packet;
+	outside_pckt->packet = 0;
+
+	if ((pckt->header->opcode == (OPCODE_RESPONSE |
+				      OPCODE_REFRESH)) ||
+	    (pckt->header->opcode == (OPCODE_RESPONSE |
+				      OPCODE_REFRESH2))) {
+	  if (pckt->header->rcode == 0) {
+
+	    name_srvc_do_updtreq(pckt, &(outside_pckt->addr),
+				 tid.tid, cur_time);
+
+	  } else {
+
+	    name_srvc_do_namcftdem(pckt, &(outside_pckt->addr));
+
+	  }
+
+	}
+
+	destroy_name_srvc_pckt(pckt, 1, 1);
+      }
+
+    }
+  }
+
+  return 0;
 }
 
 
@@ -244,7 +361,7 @@ struct cache_namenode *add_nblabel(void *label,
   /* The below code GUARANTEES insertion
      (unless a use-after-free or similar happens). */
 
-  if (add_scope(scope, result, get_nbnsaddr()) ||
+  if (add_scope(scope, result, get_nbnsaddr(scope)) ||
       add_name(result, scope)) {
     /* Success! */
     return result;

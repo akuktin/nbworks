@@ -43,7 +43,6 @@
 
 
 void *name_srvc_handle_newtid(void *input) {
-  struct timespec sleeptime;
   struct newtid_params params, *release_lock;
   struct thread_node *last_will;
   struct name_srvc_packet *outpckt;
@@ -60,10 +59,6 @@ void *name_srvc_handle_newtid(void *input) {
     last_will = add_thread(params.thread_id);
   else
     last_will = 0;
-
-  /* TODO: change this to a global setting. */
-  sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_500MS;
 
   last_outpckt = 0;
   waited = 0;
@@ -88,7 +83,7 @@ void *name_srvc_handle_newtid(void *input) {
 	} else {
 	  waited = 1;
 	  ss_set_normalstate_name_tid(&(params.id));
-	  nanosleep(&sleeptime, 0);
+	  nanosleep(&(nbworks_all_port_cntl.newtid_sleeptime), 0);
 	  ss_set_inputdrop_name_tid(&(params.id));
 	}
       } else {
@@ -196,8 +191,7 @@ void *name_srvc_handle_newtid(void *input) {
 	(outpckt->header->rcode == 0)) {
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
-			   params.trans, params.id.tid,
-			   cur_time);
+			   params.id.tid, cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -409,7 +403,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   struct ipv4_addr_list *addrlst, *frstaddrlst;
   struct cache_namenode *new_name;
   time_t curtime;
-  uint32_t ttl;
+  uint32_t ttl, nbns_addr;
   uint16_t target_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
@@ -446,11 +440,13 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     break;
   }
 
+  if (recursion) {
+    nbns_addr = get_nbnsaddr(scope);
+  }
+
   res = name_srvc_callout_name(name, name_type, scope,
-			       (recursion ? get_nbnsaddr() :
-				get_inaddr()),
-			       (recursion ? get_nbnsaddr() :
-				0),
+			       (recursion ? nbns_addr : get_inaddr()),
+			       (recursion ? nbns_addr : 0),
 			       (recursion ? FLG_RD : FLG_B),
 			       recursion);
   if (! res)
@@ -514,7 +510,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
       new_name->addrs.recrd[0].node_type = nodetype;
       new_name->addrs.recrd[0].addr = frstaddrlst;
 
-      if (add_scope(scope, new_name, get_nbnsaddr()) ||
+      if (add_scope(scope, new_name, nbns_addr) ||
 	  add_name(new_name, scope)) {
 	curtime = time(0);
 	new_name->endof_conflict_chance = curtime + CONFLICT_TTL;
@@ -579,7 +575,7 @@ int name_srvc_release_name(unsigned char *name,
   /* In case of recursion, call get_nbnsaddr(), put the result in listento
    * and use it as an argument for fill_32field(), otherwise, set listento
    * to 0, call get_inaddr() and pass its result to fill_32field(). */
-  fill_32field((recursion ? (listento = get_nbnsaddr()) :
+  fill_32field((recursion ? (listento = get_nbnsaddr(scope)) :
 		            (listento = 0, get_inaddr())),
 	       (unsigned char *)&(addr.sin_addr.s_addr));
 
@@ -1304,10 +1300,6 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
   /* Make sure we only listen to NBNS in P mode. */
   /* VAXism below. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
-  if (in_addr == get_nbnsaddr())
-    sender_is_nbns = TRUE;
-  else
-    sender_is_nbns = FALSE;
   name_flags = outpckt->header->nm_flags;
 
   res = outpckt->answers;
@@ -1320,6 +1312,10 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
 
+      if (in_addr == get_nbnsaddr(res->res->name->next_name))
+        sender_is_nbns = TRUE;
+      else
+        sender_is_nbns = FALSE;
       decode_nbnodename(res->res->name->name, decoded_name);
 
       nbaddr_list = res->res->rdata;
@@ -1386,10 +1382,6 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   /* Make sure noone spoofs the release request. */
   /* VAXism below. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
-  if (in_addr == get_nbnsaddr())
-    sender_is_nbns = TRUE;
-  else
-    sender_is_nbns = FALSE;
   name_flags = outpckt->header->nm_flags;
 
   res = outpckt->aditionals;
@@ -1401,6 +1393,11 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	res->res->name->name &&
 	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
+      if (in_addr == get_nbnsaddr(res->res->name->next_name))
+        sender_is_nbns = TRUE;
+      else
+        sender_is_nbns = FALSE;
+
       nbaddr_list = res->res->rdata;
 
       while (nbaddr_list) {
@@ -1497,7 +1494,6 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 
 void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			  struct sockaddr_in *addr,
-			  struct ss_queue *trans,
 			  uint32_t tid,
 			  time_t cur_time) {
   struct cache_namenode *cache_namecard;
@@ -1507,12 +1503,11 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   uint32_t in_addr, nbns_addr, name_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
-  if (! (outpckt && addr && trans))
+  if (! (outpckt && addr))
     return;
 
   /* Make sure only NBNS is listened to in P mode. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
-  nbns_addr = get_nbnsaddr();
   name_flags = outpckt->header->nm_flags;
 
   res = outpckt->aditionals;
@@ -1522,6 +1517,8 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	res->res->name->name &&
 	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
+
+      nbns_addr = get_nbnsaddr(res->res->name->next_name);
 
       addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
       if (addr_bigblock) {

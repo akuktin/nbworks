@@ -59,6 +59,9 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_namsrvc_cntrl.max_wack_sleeptime = 120;
   nbworks_namsrvc_cntrl.Ptimer_refresh_margin = 2; /* I will increase it later on. */
 
+  /* RELEASE: This has to be changed, somehow. */
+  nbworks__default_nbns = 0xc0a8012a;
+
   railparams.isbusy = 0xda;
   railparams.rail_sckt = open_rail();
   if (railparams.rail_sckt < 0) {

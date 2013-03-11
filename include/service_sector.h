@@ -209,7 +209,7 @@ void
 uint32_t
   get_inaddr(void);
 uint32_t
-  get_nbnsaddr(void);
+  get_nbnsaddr(struct nbnodename_list *scope);
 uint32_t
   my_ipv4_address(void);
 
