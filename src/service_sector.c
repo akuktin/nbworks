@@ -1414,10 +1414,11 @@ void *ss__udp_sender(void *sckts_ptr) {
 	last_trans = &(cur_trans->next);
 	cur_trans = cur_trans->next;
       }
+    }
 #else
       }
-#endif
     }
+#endif
 
     nanosleep(&(nbworks_all_port_cntl.sleeptime), 0);
   }
