@@ -973,16 +973,20 @@ void *ss__udp_recver(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
   struct sockaddr_in his_addr, discard_addr;
   struct ss_unif_pckt_list *new_pckt;
+#ifdef COMPILING_NBNS
+  struct ss_priv_trans *cur_trans[0xffff+1], *fillem_up;
+#else
   struct ss_priv_trans *cur_trans;
+#endif
   struct ss_queue *newtid_queue;
   struct newtid_params params;
   struct pollfd polldata;
   struct nbnodename_list *name_as_id;
   socklen_t addr_len;
   int ret_val;
-  unsigned int len;
+  uint32_t len;
   uint16_t tid;
-  unsigned char udp_pckt[MAX_UDP_PACKET_LEN], *deleter;
+  unsigned char udp_pckt[MAX_UDP_PACKET_LEN];
 
   if (! sckts_ptr)
     return 0;
@@ -992,6 +996,25 @@ void *ss__udp_recver(void *sckts_ptr) {
   memcpy(&sckts, sckts_ptr, sizeof(struct ss_sckts));
   release_lock = sckts_ptr;
   release_lock->isbusy = 0;
+
+#ifdef COMPILING_NBNS
+  if (sckts.branch == DTG_SRVC) {
+    return 0;
+  }
+
+  for (len = 0; len < (0xffff +1); len++) {
+    fillem_up = *(sckts.all_trans);
+    while (fillem_up) {
+      if (fillem_up->id.tid == len) {
+	cur_trans[len] = fillem_up;
+	break;
+      } else
+	fillem_up = fillem_up->next;
+    }
+    if (! fillem_up)
+      cur_trans[len] = 0;
+  }
+#endif
 
   name_as_id = 0;
 
@@ -1016,12 +1039,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 
     while (0xcafe) {
       addr_len = sizeof(struct sockaddr_in);
-      /* VAXism below. */
-      deleter = (unsigned char *)&his_addr;
-      while (deleter < ((unsigned char *)(&his_addr) + addr_len)) {
-	*deleter = '\0';
-	deleter++;
-      }
+      memset(&his_addr, 0, sizeof(his_addr));
       if (0 >= poll(&polldata, 1, 0))
 	break;
 
@@ -1060,6 +1078,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 
       if (new_pckt->packet) {
 
+#ifndef COMPILING_NBNS
 	if (sckts.branch == DTG_SRVC) {
 	  name_as_id = dtg_srvc_get_srcnam_recvpckt(new_pckt->packet);
 	  if ((! name_as_id) ||
@@ -1067,8 +1086,10 @@ void *ss__udp_recver(void *sckts_ptr) {
 	    sckts.pckt_dstr(new_pckt->packet, 1, 1);
 	    free(new_pckt);
 	    new_pckt = 0;
+	    continue;
 	  }
 	}
+#endif
 
 	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
 	new_pckt->dstry = sckts.pckt_dstr;
@@ -1084,6 +1105,15 @@ void *ss__udp_recver(void *sckts_ptr) {
 	new_pckt = 0;
       }
 
+#ifdef COMPILING_NBNS
+      if (cur_trans[tid]->status == nmtrst_normal) {
+	cur_trans[tid]->in->next = new_pckt;
+	cur_trans[tid]->in = new_pckt;
+      } else {
+	sckts.pckt_dstr(new_pckt->packet, 1, 1);
+	free(new_pckt);
+      }
+#else
       while (new_pckt) {
 	cur_trans = *(sckts.all_trans);
 	while (cur_trans) {
@@ -1145,6 +1175,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	}
 	newtid_queue = 0;
       }
+#endif
     }
   }
 
@@ -1154,7 +1185,13 @@ void *ss__udp_recver(void *sckts_ptr) {
 void *ss__udp_sender(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
   struct ss_unif_pckt_list *for_del;
-  struct ss_priv_trans *cur_trans, **last_trans, *for_del2;
+#ifdef COMPILING_NBNS
+  struct ss_priv_trans *all_trans[0xffff+1], *fillem_up;
+  uint32_t index;
+#else
+  struct ss_priv_trans **last_trans, *for_del2;
+#endif
+  struct ss_priv_trans *cur_trans;
   unsigned int len, prev_len;
   unsigned char udp_pckt[MAX_UDP_PACKET_LEN];
   void *ptr;
@@ -1166,10 +1203,33 @@ void *ss__udp_sender(void *sckts_ptr) {
   release_lock = sckts_ptr;
   release_lock->isbusy = 0;
 
+#ifdef COMPILING_NBNS
+  if (sckts.branch == DTG_SRVC) {
+    return 0;
+  }
+
+  for (index = 0; index < (0xffff +1); index++) {
+    fillem_up = *(sckts.all_trans);
+    while (fillem_up) {
+      if (fillem_up->id.tid == index) {
+	all_trans[index] = fillem_up;
+	break;
+      } else
+	fillem_up = fillem_up->next;
+    }
+    if (! fillem_up)
+      all_trans[index] = 0;
+  }
+#endif
+
   memset(udp_pckt, 0, MAX_UDP_PACKET_LEN);
   prev_len = 0;
 
   while (! nbworks_all_port_cntl.all_stop) {
+#ifdef COMPILING_NBNS
+    for (index = 0; index < (0xffff +1); index++) {
+      cur_trans = all_trans[index];
+#else
     cur_trans = *(sckts.all_trans);
     last_trans = sckts.all_trans;
     while (cur_trans) {
@@ -1205,6 +1265,8 @@ void *ss__udp_sender(void *sckts_ptr) {
 	/* BUG: There is a (trivial?) chance of use-after-free. */
 	free(for_del2);
       } else {
+#endif
+	/* In NBNS mode of operation, it is not possible to deregister a transaction. */
 	while (cur_trans->out->next) {
 	  if (cur_trans->out->packet) {
 	    ptr = cur_trans->out->packet;
@@ -1245,10 +1307,12 @@ void *ss__udp_sender(void *sckts_ptr) {
 	    sckts.pckt_dstr(cur_trans->out->packet, 1, 1);
 	  cur_trans->out->packet = 0;
 	};
+#ifndef COMPILING_NBNS
 
 	last_trans = &(cur_trans->next);
 	cur_trans = cur_trans->next;
       }
+#endif
     }
 
     nanosleep(&(nbworks_all_port_cntl.sleeptime), 0);
