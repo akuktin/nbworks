@@ -22,6 +22,12 @@
 #include "library_control.h"
 #include "constdef.h"
 
+#ifdef COMPILING_NBNS
+# include "service_sector.h"
+
+unsigned char ss_iosig[(0xffff +1)];
+#endif
+
 nbworks_do_align_t nbworks_do_align;
 nbworks_errno_t nbworks_errno;
 struct nbworks_all_port_cntl_t nbworks_all_port_cntl;

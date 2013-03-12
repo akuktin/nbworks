@@ -1212,6 +1212,8 @@ void *ss__udp_recver(void *sckts_ptr) {
       if (cur_trans[tid]->status == nmtrst_normal) {
 	cur_trans[tid]->in->next = new_pckt;
 	cur_trans[tid]->in = new_pckt;
+
+	ss_iosig[tid] |= SS_IOSIG_IN;
       } else {
 	sckts.pckt_dstr(new_pckt->packet, 1, 1);
 	free(new_pckt);
@@ -1327,7 +1329,8 @@ void *ss__udp_sender(void *sckts_ptr) {
   while (! nbworks_all_port_cntl.all_stop) {
 #ifdef COMPILING_NBNS
     for (index = 0; index < (0xffff +1); index++) {
-      cur_trans = all_trans[index];
+      if (ss_iosig[index] & SS_IOSIG_MASK_OUT) {
+	cur_trans = all_trans[index];
 #else
     cur_trans = *(sckts.all_trans);
     last_trans = sckts.all_trans;
@@ -1410,6 +1413,8 @@ void *ss__udp_sender(void *sckts_ptr) {
 
 	last_trans = &(cur_trans->next);
 	cur_trans = cur_trans->next;
+      }
+#else
       }
 #endif
     }
