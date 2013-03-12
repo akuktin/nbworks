@@ -1205,6 +1205,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 
 	free(new_pckt);
 	new_pckt = 0;
+	continue;
       }
 
 #ifdef COMPILING_NBNS
