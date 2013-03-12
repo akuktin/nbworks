@@ -158,8 +158,10 @@ void *pruners(void *arg_ignored) {
     now = time(0);
 
     prune_scopes(now);
+#ifndef COMPILING_NBNS
     ss_prune_queuestorage(now -
 	     nbworks_pruners_cntrl.lifetimeof_queue_storage);
+#endif
     ss__prune_sessions();
     ss_check_all_ses_server_rails();
     thread_joiner();
