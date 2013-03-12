@@ -300,6 +300,35 @@ void ss_del_queuestorage(union trans_id *arg,
   return;
 }
 
+struct ss_queue_storage *ss_take_queuestorage(union trans_id *arg,
+					      unsigned char branch) {
+  struct ss_queue_storage *cur_stor, **last_stor;
+  uint16_t tid;
+
+  if (! arg)
+    return 0;
+
+  last_stor = &(nbworks_queue_storage[branch]);
+  cur_stor = *last_stor;
+
+  tid = arg->tid;
+
+  while (cur_stor) {
+    if ((branch == DTG_SRVC) ?
+	(! cmp_nbnodename(cur_stor->id.name_scope,
+			  arg->name_scope)) :
+	cur_stor->id.tid == tid) {
+      *last_stor = cur_stor->next;
+      return cur_stor;
+    } else {
+      last_stor = &(cur_stor->next);
+      cur_stor = *last_stor;
+    }
+  }
+
+  return 0;
+}
+
 struct ss_queue_storage *ss_find_queuestorage(union trans_id *arg,
 					      unsigned char branch) {
   struct ss_queue_storage *cur_stor;
@@ -747,6 +776,77 @@ void ss__prune_sessions(void) {
 }
 
 
+#ifdef COMPILING_NBNS
+int fill_all_nametrans(struct ss_priv_trans **where) {
+  struct ss_priv_trans *new_trans, **last_trans;
+  struct ss_queue_storage *new_stor, **last_stor;
+  uint32_t index;
+
+  last_trans = &(nbworks_all_transactions[NAME_SRVC]);
+  last_stor = &(nbworks_queue_storage[NAME_SRVC]);
+
+  for (index = 0; index < (0xffff +1); index++) {
+
+    new_trans = malloc(sizeof(struct ss_priv_trans));
+    if (! new_trans) {
+      /* TODO: errno signaling stuff */
+      *last_trans = 0;
+      *last_stor = 0;
+      return 0;
+    }
+    new_trans->in = calloc(1, sizeof(struct ss_unif_pckt_list));
+    if (! new_trans->in) {
+      /* TODO: errno signaling stuff */
+      *last_trans = 0;
+      *last_stor = 0;
+      free(new_trans);
+      return 0;
+    }
+    new_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));
+    if (! new_trans->out) {
+      /* TODO: errno signaling stuff */
+      *last_trans = 0;
+      *last_stor = 0;
+      free(new_trans->in);
+      free(new_trans);
+      return 0;
+    }
+    new_trans->id.tid = index;
+    new_trans->status = nmtrst_normal;
+
+    *last_trans = new_trans;
+    last_trans = &(new_trans->next);
+
+
+    new_stor = malloc(sizeof(struct ss_queue_storage));
+    if (! new_stor) {
+      *last_trans = 0;
+      *last_stor = 0;
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
+
+    new_stor->branch = NAME_SRVC;
+    new_stor->id.tid = index;
+
+    new_stor->last_active = ZEROONES -1;
+    new_stor->rail = 0;
+    new_stor->queue.incoming = new_trans->in;
+    new_stor->queue.outgoing = new_trans->out;
+
+    *last_stor = new_stor;
+    last_stor = &(new_stor->next);
+
+  }
+
+  *last_trans = 0;
+  *last_stor = 0;
+
+  return 1;
+}
+#endif
+
+
 void *ss__port137(void *placeholder) {
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
@@ -769,6 +869,12 @@ void *ss__port137(void *placeholder) {
 
   sckts.isbusy = 0xda;
   sckts.all_trans = &(nbworks_all_transactions[NAME_SRVC]);
+#ifdef COMPILING_NBNS
+  if (! fill_all_nametrans(sckts.all_trans)) {
+    nbworks_all_port_cntl.all_stop = 2;
+    return 0;
+  }
+#endif
   sckts.newtid_handler = &name_srvc_handle_newtid;
   sckts.pckt_dstr = &destroy_name_srvc_pckt;
   sckts.master_writer = &master_name_srvc_pckt_writer;
@@ -1002,17 +1108,13 @@ void *ss__udp_recver(void *sckts_ptr) {
     return 0;
   }
 
-  for (len = 0; len < (0xffff +1); len++) {
-    fillem_up = *(sckts.all_trans);
-    while (fillem_up) {
-      if (fillem_up->id.tid == len) {
-	cur_trans[len] = fillem_up;
-	break;
-      } else
-	fillem_up = fillem_up->next;
-    }
-    if (! fillem_up)
-      cur_trans[len] = 0;
+  memset(cur_trans, 0, (0xffff+1));
+
+  fillem_up = *(sckts.all_trans);
+  while (fillem_up) {
+    cur_trans[fillem_up->id.tid] = fillem_up;
+
+    fillem_up = fillem_up->next;
   }
 #endif
 
@@ -1208,17 +1310,13 @@ void *ss__udp_sender(void *sckts_ptr) {
     return 0;
   }
 
-  for (index = 0; index < (0xffff +1); index++) {
-    fillem_up = *(sckts.all_trans);
-    while (fillem_up) {
-      if (fillem_up->id.tid == index) {
-	all_trans[index] = fillem_up;
-	break;
-      } else
-	fillem_up = fillem_up->next;
-    }
-    if (! fillem_up)
-      all_trans[index] = 0;
+  memset(all_trans, 0, (0xffff+1));
+
+  fillem_up = *(sckts.all_trans);
+  while (fillem_up) {
+    all_trans[fillem_up->id.tid] = fillem_up;
+
+    fillem_up = fillem_up->next;
   }
 #endif
 

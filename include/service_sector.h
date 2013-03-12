@@ -140,6 +140,9 @@ void
   ss_del_queuestorage(union trans_id *trans_id,
                       unsigned char branch);
 struct ss_queue_storage *
+  ss_take_queuestorage(union trans_id *arg,
+                       unsigned char branch);
+struct ss_queue_storage *
   ss_find_queuestorage(union trans_id *trans_id,
                        unsigned char branch);
 void
