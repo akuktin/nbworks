@@ -907,6 +907,7 @@ void *ss__port137(void *placeholder) {
     return 0;
   }
 */
+#ifndef COMPILING_NBNS
   ret_val = setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
 		       &ones, sizeof(unsigned int));
   if (ret_val < 0) {
@@ -916,6 +917,7 @@ void *ss__port137(void *placeholder) {
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
+#endif
 
   ret_val = bind(sckts.udp_sckt, (struct sockaddr *)&my_addr,
 		 sizeof(struct sockaddr_in));
@@ -1082,9 +1084,9 @@ void *ss__udp_recver(void *sckts_ptr) {
 #ifdef COMPILING_NBNS
   struct ss_priv_trans *cur_trans[0xffff+1], *fillem_up;
 #else
-  struct ss_priv_trans *cur_trans;
-#endif
+  struct ss_priv_trans *cur_trans, **last_trans, *new_trans;
   struct ss_queue *newtid_queue;
+#endif
   struct newtid_params params;
   struct pollfd polldata;
   struct nbnodename_list *name_as_id;
@@ -1096,8 +1098,6 @@ void *ss__udp_recver(void *sckts_ptr) {
 
   if (! sckts_ptr)
     return 0;
-
-  newtid_queue = 0;
 
   memcpy(&sckts, sckts_ptr, sizeof(struct ss_sckts));
   release_lock = sckts_ptr;
@@ -1129,6 +1129,51 @@ void *ss__udp_recver(void *sckts_ptr) {
   polldata.fd = sckts.udp_sckt;
   polldata.events = (POLLIN | POLLPRI);
   params.isbusy = 0;
+
+#define make_new_queue						\
+  newtid_queue = malloc(sizeof(struct ss_queue));		\
+  if (! newtid_queue) {						\
+    /* TODO: errno signaling stuff */				\
+    return 0;							\
+  }								\
+								\
+  new_trans = malloc(sizeof(struct ss_priv_trans));		\
+  if (! new_trans) {						\
+    /* TODO: errno signaling stuff */				\
+    free(newtid_queue);						\
+    return 0;							\
+  }								\
+  new_trans->in = calloc(1, sizeof(struct ss_unif_pckt_list));	\
+  if (! new_trans->in) {					\
+    /* TODO: errno signaling stuff */				\
+    free(newtid_queue);						\
+    free(new_trans);						\
+    return 0;							\
+  }								\
+  new_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));	\
+  if (! new_trans->out) {					\
+    /* TODO: errno signaling stuff */				\
+    free(newtid_queue);						\
+    free(new_trans->in);					\
+    free(new_trans);						\
+    return 0;							\
+  }								\
+								\
+  newtid_queue->incoming = new_trans->in;			\
+  newtid_queue->outgoing = new_trans->out;                      \
+								\
+  new_trans->status = nmtrst_normal;				\
+  new_trans->next = 0;
+
+#ifndef COMPILING_NBNS
+  if (sckts.branch == NAME_SRVC) {
+    make_new_queue;
+  } else {
+    /* This is for one of the below tests. */
+    new_trans = (struct ss_priv_trans *)ONES;
+    newtid_queue = (struct ss_queue *)ONES;
+  }
+#endif
 
   while (! nbworks_all_port_cntl.all_stop) {
     ret_val = poll(&polldata, 1, nbworks_all_port_cntl.poll_timeout);
@@ -1220,7 +1265,8 @@ void *ss__udp_recver(void *sckts_ptr) {
       }
 #else
       while (new_pckt) {
-	cur_trans = *(sckts.all_trans);
+	last_trans = sckts.all_trans;
+	cur_trans = *last_trans;
 	while (cur_trans) {
 	  if (((sckts.branch) == DTG_SRVC) ?              /* The problem with this scheme */
 	      (! cmp_nbnodename(cur_trans->id.name_scope, /* is that it is possible for a */
@@ -1242,7 +1288,8 @@ void *ss__udp_recver(void *sckts_ptr) {
 	      break;
 	    }
 	  } else {
-	    cur_trans = cur_trans->next;
+	    last_trans = &(cur_trans->next);
+	    cur_trans = *last_trans;
 	  }
 	}
 
@@ -1260,13 +1307,19 @@ void *ss__udp_recver(void *sckts_ptr) {
 
 	    break;
 	  } else {
+	    new_trans->id.tid = tid;
+	    *last_trans = new_trans;
+
 	    params.id.tid = tid;
-	    newtid_queue = ss_register_name_tid(&(params.id));
+	    new_trans = 0;
+
+	    /* Since I _must_ implement a consistency check,
+	     * the flow now goes back into the main loop. */
 	  }
 	}
       }
       /* Superfluous in datagram mode. */
-      if (newtid_queue) {
+      if (! new_trans) {
 	/* Signaling the new queue. */
 	while (params.isbusy) {
 	  /* busy-wait */
@@ -1277,12 +1330,23 @@ void *ss__udp_recver(void *sckts_ptr) {
 	if (0 != pthread_create(&(params.thread_id), 0,
 				sckts.newtid_handler, &params)) {
 	  params.isbusy = 0;
+	  cur_trans->status = nmtrst_deregister;
+	  ss__dstry_recv_queue(newtid_queue);
+	  free(newtid_queue);
 	}
-	newtid_queue = 0;
+
+	make_new_queue;
       }
 #endif
     }
   }
+
+#ifndef COMPILING_NBNS
+  free(newtid_queue);
+  free(new_trans->in);
+  free(new_trans->out);
+  free(new_trans);
+#endif
 
   return 0;
 }
