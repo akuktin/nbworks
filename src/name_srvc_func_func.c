@@ -360,6 +360,9 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 		  (res->res->rdata_t == nb_NBT_node_ip_address)) {
 		nbaddr_list = res->res->rdata;
 
+		/* Hey, what if I ask for several names, and the NBNS sends a
+		 * separate (and different) reference NBNS for each name? In how
+		 * much trouble would I be then? */
 		/* VAXism below. */
 		fill_32field(nbaddr_list->address,
 			     (unsigned char *)&(addr.sin_addr.s_addr));
