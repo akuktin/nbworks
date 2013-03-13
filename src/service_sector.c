@@ -1166,12 +1166,12 @@ void *ss__udp_recver(void *sckts_ptr) {
   new_trans->next = 0;
 
 #ifndef COMPILING_NBNS
-  if (sckts.branch == NAME_SRVC) {
-    make_new_queue;
-  } else {
+  if (sckts.branch == DTG_SRVC) {
     /* This is for one of the below tests. */
     new_trans = (struct ss_priv_trans *)ONES;
     newtid_queue = (struct ss_queue *)ONES;
+  } else {
+    make_new_queue;
   }
 
   hold_nwtrns = 0;
