@@ -1336,7 +1336,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	if (0 != pthread_create(&(params.thread_id), 0,
 				sckts.newtid_handler, &params)) {
 	  params.isbusy = 0;
-	  cur_trans->status = nmtrst_deregister;
+	  hold_nwtrns->status = nmtrst_deregister;
 	  ss__dstry_recv_queue(newtid_queue);
 	  free(newtid_queue);
 	}
