@@ -1561,13 +1561,19 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
   struct nbaddress_list *nbaddr_list;
+#ifndef COMPILING_NBNS
   struct ipv4_addr_list *ipv4fordel;
+#endif
   uint32_t in_addr, status, name_flags, i;
   unsigned int sender_is_nbns;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! (outpckt && addr))
     return;
+
+#ifdef COMPILING_NBNS
+  sender_is_nbns = FALSE;
+#endif
 
   /* Make sure noone spoofs the release request. */
   /* VAXism below. */
@@ -1583,21 +1589,37 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	res->res->name->name &&
 	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
+#ifndef COMPILING_NBNS
       if (in_addr == get_nbnsaddr(res->res->name->next_name))
         sender_is_nbns = TRUE;
       else
         sender_is_nbns = FALSE;
+#endif
 
       nbaddr_list = res->res->rdata;
 
+      /* Re: those fucking conditional compilation macros!
+       *   I understand reading them may be a problem, but this
+       *   was, literally, the easiest way to do this. If too many
+       *   people have a problem with reading it, I guess I will
+       *   break it up. */
       while (nbaddr_list) {
 	if ((nbaddr_list->there_is_an_address) &&
+#ifndef COMPILING_NBNS
 	    (((nbaddr_list->flags & NBADDRLST_NODET_MASK) == NBADDRLST_NODET_P) ?
+	     (
+#endif
 	     /* Only read this if the packet was not broadcast. That is, if the packet
 	      * does not have the broadcast flag set - we will still process a broadcast
-	      * packet with the broadcast flag off. */
-	     (((name_flags ^ FLG_B) & FLG_B) && sender_is_nbns) :
-	     (nbaddr_list->address == in_addr))) {
+	      * packet with the broadcast flag off. Unless we are a NBNS. */
+	       ((name_flags ^ FLG_B) & FLG_B) &&
+#ifndef COMPILING_NBNS
+	      sender_is_nbns) :
+	     (nbaddr_list->address == in_addr))
+#else
+	    (nbaddr_list->address == in_addr)
+#endif
+	    ) {
 	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
 	    status = status | STATUS_DID_GROUP;
 	  else
@@ -1608,6 +1630,11 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	  break;
 	else
 	  nbaddr_list = nbaddr_list->next_address;
+      }
+
+      if (! (status & (STATUS_DID_GROUP | STATUS_DID_UNIQ))) {
+	res = res->next;
+	continue;
       }
 
       nbaddr_list = res->res->rdata;
@@ -1622,8 +1649,9 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 				      res->res->rrclass,
 				      res->res->name->next_name);
 	if (cache_namecard) {
-	  if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard, my_ipv4_address(),
-				       sender_is_nbns)) {
+	  /* In NBNS mode, sender_is_nbns == FALSE. */
+	  if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard,
+				       my_ipv4_address(), sender_is_nbns)) {
 	    cache_namecard->token = 0;
 	  }
 
@@ -1646,6 +1674,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	if (cache_namecard) {
 	  if (! cache_namecard->token)
 	    cache_namecard->timeof_death = 0;
+#ifndef COMPILING_NBNS
 	  else {
 	    /* Did I just get a name release for my own name? */
 	    if (sender_is_nbns &&
@@ -1669,6 +1698,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	      }
 	    }
 	  }
+#endif
 	}
       }
     }
