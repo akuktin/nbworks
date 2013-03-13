@@ -1084,7 +1084,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 #ifdef COMPILING_NBNS
   struct ss_priv_trans *cur_trans[0xffff+1], *fillem_up;
 #else
-  struct ss_priv_trans *cur_trans, **last_trans, *new_trans;
+  struct ss_priv_trans *cur_trans, **last_trans, *new_trans, *hold_nwtrns;
   struct ss_queue *newtid_queue;
 #endif
   struct newtid_params params;
@@ -1173,6 +1173,8 @@ void *ss__udp_recver(void *sckts_ptr) {
     new_trans = (struct ss_priv_trans *)ONES;
     newtid_queue = (struct ss_queue *)ONES;
   }
+
+  hold_nwtrns = 0;
 #endif
 
   while (! nbworks_all_port_cntl.all_stop) {
@@ -1307,10 +1309,14 @@ void *ss__udp_recver(void *sckts_ptr) {
 
 	    break;
 	  } else {
+	    if (! new_trans) {
+	      new_trans = hold_nwtrns;
+	    }
 	    new_trans->id.tid = tid;
 	    *last_trans = new_trans;
 
 	    params.id.tid = tid;
+	    hold_nwtrns = new_trans;
 	    new_trans = 0;
 
 	    /* Since I _must_ implement a consistency check,
