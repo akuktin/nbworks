@@ -970,15 +970,19 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *res, *answer_lst;
   struct name_srvc_question_lst *qstn;
-  struct cache_namenode *cache_namecard, *cache_namecard_b;
-  struct cache_scopenode *this_scope;
+  struct cache_namenode *cache_namecard;
   struct nbaddress_list *nbaddr_list, *nbaddr_list_frst;
-  struct name_srvc_statistics_rfc1002 *stats;
-  struct nbnodename_list_backbone *names_list;
   struct ipv4_addr_list *ipv4_addr_list;
   int i;
   uint16_t numof_answers, flags;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1], numof_names;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+#ifndef COMPILING_NBNS
+  unsigned char numof_names;
+  struct nbnodename_list_backbone *names_list;
+  struct name_srvc_statistics_rfc1002 *stats;
+  struct cache_scopenode *this_scope;
+  struct cache_namenode *cache_namecard_b;
+#endif
 
   numof_answers = 0;
   answer_lst = res = 0;
@@ -994,6 +998,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	(qstn->qstn->name->len >= NETBIOS_CODED_NAME_LEN)) {
       decode_nbnodename(qstn->qstn->name->name, decoded_name);
 
+#ifndef COMPILING_NBNS
       if (qstn->qstn->qtype == QTYPE_NBSTAT) {
 	if ((((cache_namecard = find_nblabel(decoded_name,
 					     NETBIOS_NAME_LEN,
@@ -1086,6 +1091,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  numof_names = 0;
 	}
       } else {
+#endif
 	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
 				      ANY_NODETYPE, ANY_GROUP,
@@ -1171,7 +1177,9 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
 	}
       }
+#ifndef COMPILING_NBNS
     }
+#endif
 
     qstn = qstn->next;
   }
@@ -1184,13 +1192,38 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
     pckt->header->transaction_id = tid;
     pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+#ifndef COMPILING_NBNS
     pckt->header->nm_flags = FLG_AA;
+#else
+    pckt->header->nm_flags = FLG_AA | FLG_RA;
+#endif
     pckt->header->rcode = 0;
     pckt->header->numof_answers = numof_answers;
     pckt->for_del = TRUE;
 
     ss_name_send_pckt(pckt, addr, trans);
   }
+#ifdef COMPILING_NBNS
+  /* This is not really good, BTW. What I SHOULD do is keep track
+   * of names I find and of names I don't find. Then send a POSITIVE
+   * NAME QUERY RESPONSE filled with the names I found and a separate
+   * NEGATIVE NAME QUERY RESPONSE fill with the names I did not find.
+   * However... maybe some other time.
+   * Ow, and since we (presumably) have recursion, I should recursivelly
+   * ask upstream servers for the names I did not find. */
+  else {
+    pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    /* no check */
+
+    pckt->header->transaction_id = tid;
+    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+    pckt->header->nm_flags = FLG_AA | FLG_RA;
+    pckt->header->rcode = RCODE_NAM_ERR;
+    pckt->for_del = TRUE;
+
+    ss_name_send_pckt(pckt, addr, trans);
+  }
+#endif
 
   return;
 }
