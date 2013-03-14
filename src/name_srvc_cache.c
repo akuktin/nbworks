@@ -260,7 +260,7 @@ struct cache_namenode *add_nblabel(void *label,
   /* The below code GUARANTEES insertion
      (unless a use-after-free or similar happens). */
 
-  if (add_scope(scope, result, get_nbnsaddr(scope)) ||
+  if (add_scope(scope, result, nbworks__default_nbns) ||
       add_name(result, scope)) {
     /* Success! */
     return result;
@@ -438,6 +438,37 @@ struct cache_namenode *find_namebytok(uint64_t token,
   }
 
   return 0;
+}
+
+struct cache_namenode *find_nextcard(struct cache_namenode *prevcard,
+				     unsigned short node_types,
+				     unsigned char group_flg,
+				     uint16_t dns_type,
+				     uint16_t dns_class) {
+  struct cache_namenode *cur_name;
+  unsigned char labellen;
+
+  if (! prevcard)
+    return 0;
+
+  labellen = prevcard->namelen;
+  cur_name = prevcard->next;
+
+  while (cur_name) {
+    if ((cur_name->namelen == labellen) &&
+	(0 == memcmp(cur_name->name, prevcard->name,
+		     labellen)) &&
+	(cur_name->group_flg & group_flg) &&
+	(cur_name->node_types & node_types) &&
+	(cur_name->dns_type == dns_type) &&
+	(cur_name->dns_class == dns_class)) {
+      break;
+    } else {
+      cur_name = cur_name->next;
+    }
+  }
+
+  return cur_name;
 }
 
 

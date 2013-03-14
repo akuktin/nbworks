@@ -72,6 +72,12 @@ struct cache_namenode *
 struct cache_namenode *
   find_namebytok(uint64_t token,
                  struct nbnodename_list **scope);
+struct cache_namenode *
+  find_nextcard(struct cache_namenode *prevcard,
+                unsigned short node_types,
+                unsigned char group_flg,
+                uint16_t dns_type,
+                uint16_t dns_class);
 
 struct cache_namenode *
   alloc_namecard(void *label,

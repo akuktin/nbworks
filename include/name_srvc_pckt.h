@@ -88,6 +88,8 @@
 # define NBADDRLST_NODET_M    0x4000
 # define NBADDRLST_NODET_H    0x6000
 
+# define MAX_RDATALEN 0xffff
+
 
 enum name_srvc_rdata_type {
   unknown_type = 0,
