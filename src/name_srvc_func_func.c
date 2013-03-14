@@ -1091,6 +1091,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	     * for RDATALEN to overflow if this one does not overflow first. */
 	    if (numof_names >= 0xff) {
 	      istruncated = TRUE;
+	      *names_list_last = 0;
 	      break;
 	    }
 
@@ -1098,6 +1099,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	    names_list = *names_list_last;
 
 	    if (! names_list) {
+	      /* No need to NULL-terminate the list becase it is already terminated. */
 	      break;
 	    }
 	    numof_names++;
@@ -1203,13 +1205,16 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 		/* Overflow check. */
 		if (lenof_addresses > (MAX_RDATALEN - 6)) {
 		  istruncated = TRUE;
+		  *nbaddr_list_last = 0;
 		  break;
 		}
 
 		*nbaddr_list_last = malloc(sizeof(struct nbaddress_list));
 		nbaddr_list = *nbaddr_list_last;
-		if (! nbaddr_list)
+		if (! nbaddr_list) {
+		  /* The list is already terminated, no need to do it here. */
 		  break;
+		}
 
 		lenof_addresses = lenof_addresses +6;
 		nbaddr_list->flags = flags;
