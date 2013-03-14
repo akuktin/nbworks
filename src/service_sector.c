@@ -1348,10 +1348,12 @@ void *ss__udp_recver(void *sckts_ptr) {
   }
 
 #ifndef COMPILING_NBNS
-  free(newtid_queue);
-  free(new_trans->in);
-  free(new_trans->out);
-  free(new_trans);
+  if (sckts.branch != DTG_SRVC) {
+    free(newtid_queue);
+    free(new_trans->in);
+    free(new_trans->out);
+    free(new_trans);
+  }
 #endif
 
   return 0;
