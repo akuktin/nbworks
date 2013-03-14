@@ -1813,14 +1813,14 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   /* Make sure only NBNS is listened to in P mode. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
   name_flags = outpckt->header->nm_flags;
+
+
 #ifdef COMPILING_NBNS
   if (name_flags & FLG_B)
     return;
 
   succedded = FALSE;
-#endif
 
-#ifdef COMPILING_NBNS
   last_res = &(outpckt->aditionals);
   res = *last_res;
   last_answr = &answer;
