@@ -1321,8 +1321,6 @@ void destroy_name_srvc_pckt(void *packet_ptr,
 			    unsigned int complete,
 			    unsigned int really_complete) {
   struct name_srvc_packet *packet;
-  struct name_srvc_question_lst *qstn;
-  struct nbnodename_list *nbnodename;
 
   if (! packet_ptr)
     return;
@@ -1331,27 +1329,7 @@ void destroy_name_srvc_pckt(void *packet_ptr,
 
   free(packet->header);
 
-  while (packet->questions) {
-    qstn = packet->questions->next;
-    if (packet->questions->qstn) {
-      if (complete) {
-	while (packet->questions->qstn->name) {
-	  nbnodename = packet->questions->qstn->name->next_name;
-	  free(packet->questions->qstn->name->name);
-	  free(packet->questions->qstn->name);
-	  packet->questions->qstn->name = nbnodename;
-	}
-      } else {
-	if (packet->questions->qstn->name)
-	  free(packet->questions->qstn->name->name);
-	free(packet->questions->qstn->name);
-      }
-      free(packet->questions->qstn);
-    }
-    free(packet->questions);
-    packet->questions = qstn;
-  }
-
+  destroy_name_srvc_qstn_lst(packet->questions, complete);
   destroy_name_srvc_res_lst(packet->answers, complete, really_complete);
   destroy_name_srvc_res_lst(packet->authorities, complete, really_complete);
   destroy_name_srvc_res_lst(packet->aditionals, complete, really_complete);
@@ -1359,6 +1337,33 @@ void destroy_name_srvc_pckt(void *packet_ptr,
   free(packet);
 
   /* I now understand why garbage collectors were invented. */
+
+  return;
+}
+
+void destroy_name_srvc_qstn_lst(struct name_srvc_question_lst *questions,
+				unsigned int complete) {
+  struct name_srvc_question_lst *qstn;
+
+  while (questions) {
+    qstn = questions->next;
+    if (questions->qstn) {
+
+      if (complete) {
+	destroy_nbnodename(questions->qstn->name);
+      } else {
+	if (questions->qstn->name) {
+	  free(questions->qstn->name->name);
+	  free(questions->qstn->name);
+	}
+      }
+
+      free(questions->qstn);
+    }
+
+    free(questions);
+    questions = qstn;
+  }
 
   return;
 }

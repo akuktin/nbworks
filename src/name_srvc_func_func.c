@@ -232,6 +232,9 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
   int i;
   union trans_id tid;
 
+  if (! (name && ask_address))
+    return 0;
+
   walker = result = 0;
   /* TODO: change this to a global setting. */
   sleeptime.tv_sec = 0;
@@ -586,6 +589,8 @@ int name_srvc_release_name(unsigned char *name,
   fill_32field((recursion ? (listento = get_nbnsaddr(scope)) :
 		            (listento = 0, get_inaddr())),
 	       (unsigned char *)&(addr.sin_addr.s_addr));
+  if (! addr.sin_addr.s_addr)
+    return -1;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
 				     my_ip_address, group_flg,
@@ -705,24 +710,26 @@ void *refresh_scopes(void *i_ignore_this) {
     trans = 0;
 
     while (cur_scope) {
-      pckt = name_srvc_Ptimer_mkpckt(cur_scope->names, cur_scope->scope, 0);
+      if (cur_scope->nbns_addr) {
+	pckt = name_srvc_Ptimer_mkpckt(cur_scope->names, cur_scope->scope, 0);
 
-      if (pckt) {
-	if (! trans) {
-	  tid.tid = make_weakrandom();
-	  trans = ss_register_name_tid(&tid);
+	if (pckt) {
 	  if (! trans) {
-	    destroy_name_srvc_pckt(pckt, 1, 1);
-	    return 0;
+	    tid.tid = make_weakrandom();
+	    trans = ss_register_name_tid(&tid);
+	    if (! trans) {
+	      destroy_name_srvc_pckt(pckt, 1, 1);
+	      return 0;
+	    }
 	  }
+
+	  pckt->header->transaction_id = tid.tid;
+	  pckt->for_del = TRUE;
+	  /* VAXism below! */
+	  fill_32field(cur_scope->nbns_addr, (unsigned char *)&(addr.sin_addr.s_addr));
+
+	  ss_name_send_pckt(pckt, &addr, trans);
 	}
-
-	pckt->header->transaction_id = tid.tid;
-	pckt->for_del = TRUE;
-	/* VAXism below! */
-	fill_32field(cur_scope->nbns_addr, (unsigned char *)&(addr.sin_addr.s_addr));
-
-	ss_name_send_pckt(pckt, &addr, trans);
       }
 
       cur_scope = cur_scope->next;
@@ -990,7 +997,11 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   uint16_t numof_answers, flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1], istruncated;
   time_t lowest_deathtime;
-#ifndef COMPILING_NBNS
+#ifdef COMPILING_NBNS
+  unsigned int numof_failed, succedded;
+  struct name_srvc_question_lst **last_qstn, *unknown, **last_unknown;
+  struct name_srvc_resource_lst **last_res;
+#else
   unsigned char numof_names;
   struct nbnodename_list_backbone *names_list, **names_list_last;
   struct name_srvc_statistics_rfc1002 *stats;
@@ -1004,6 +1015,12 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   istruncated = FALSE;
   lowest_deathtime = ZEROONES;
 
+#ifdef COMPILING_NBNS
+  last_qstn = &(outpckt->questions);
+  last_unknown = &unknown;
+  succedded = FALSE;
+  numof_failed = 0;
+#endif
   qstn = outpckt->questions;
   while (qstn) {
     ipv4_addr_list = 0;
@@ -1243,6 +1260,9 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	    res->res->ttl = 1;
 	  }
 
+#ifdef COMPILING_NBNS
+	  succedded = TRUE;
+#endif
 	  numof_answers++;
 
 	  res->res->rdata_len = lenof_addresses;
@@ -1254,6 +1274,20 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 #endif
     }
 
+#ifdef COMPILING_NBNS
+    if (succedded) {
+      last_qstn = &(qstn->next);
+
+      succedded = FALSE;
+    } else {
+      *last_unknown = qstn;
+      last_unknown = &(qstn->next);
+
+      *last_qstn = qstn->next;
+
+      numof_failed++;
+    }
+#endif
     qstn = qstn->next;
   }
 
@@ -1283,14 +1317,11 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
     }
   }
 #ifdef COMPILING_NBNS
-  /* This is not really good, BTW. What I SHOULD do is keep track
-   * of names I find and of names I don't find. Then send a POSITIVE
-   * NAME QUERY RESPONSE filled with the names I found and a separate
-   * NEGATIVE NAME QUERY RESPONSE fill with the names I did not find.
-   * However... maybe some other time.
-   * Ow, and since we (presumably) have recursion, I should recursivelly
-   * ask upstream servers for the names I did not find. */
-  else {
+  /* Since we (presumably) have recursion, I should actually
+   * recursivelly ask upstream servers for the names I did not find. */
+  if (numof_failed) {
+    numof_failed = 0;
+
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
@@ -1300,7 +1331,41 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
       pckt->header->rcode = RCODE_NAM_ERR;
       pckt->for_del = TRUE;
 
+      last_res = &(pckt->answers);
+
+      qstn = unknown;
+      while (qstn) {
+	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	res = *last_res;
+	if (! res) {
+	  break;
+	}
+	res->res = malloc(sizeof(struct name_srvc_resource));
+	if (! res->res) {
+	  break;
+	}
+
+	numof_failed++;
+
+	res->res->name = qstn->qstn->name;
+	qstn->qstn->name = 0;
+
+	res->res->rrtype = RRTYPE_NULL;
+	res->res->rrclass = qstn->qstn->qclass;
+	res->res->ttl = 0;
+	res->res->rdata_len = 0;
+	res->res->rdata_t = nb_type_null;
+	res->res->rdata = 0;
+
+	last_res = &(res->next);
+	qstn = qstn->next;
+      }
+      *last_res = 0;
+      pckt->header->numof_answers = numof_failed;
+
       ss_name_send_pckt(pckt, addr, trans);
+
+      destroy_name_srvc_qstn_lst(unknown, TRUE);
     }
   }
 #endif
@@ -1671,17 +1736,16 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 
 #ifdef COMPILING_NBNS
   last_res = &(outpckt->aditionals);
-  res = *last_res;
 
   last_answr = &(answer);
 
   numof_succedded = 0;
   numof_failed = 0;
 #else
-  name_flags = outpckt->header->nm_flags;
 
-  res = outpckt->aditionals;
+  name_flags = outpckt->header->nm_flags;
 #endif
+  res = outpckt->aditionals;
   while (res) {
     status = STATUS_DID_NONE;
 
@@ -1819,6 +1883,8 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
       *last_res = res->next;
 
       numof_succedded++;
+
+      succedded = FALSE;
     } else {
       last_res = &(res->next);
       numof_failed++;
@@ -1858,7 +1924,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
       pckt->header->transaction_id = tid;
       pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
       pckt->header->nm_flags = FLG_AA | FLG_RA;
-      pckt->header->rcode = RCODE_SRV_ERR; /* MAYBE: make this more verbose. */
+      pckt->header->rcode = RCODE_NAM_ERR;
       pckt->header->numof_answers = numof_failed;
 
       pckt->answers = outpckt->aditionals;
@@ -1912,15 +1978,14 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   succedded = FALSE;
 
   last_res = &(outpckt->aditionals);
-  res = *last_res;
   last_answr = &answer;
   numof_succedded = 0;
   numof_failed = 0;
 #else
-  name_flags = outpckt->header->nm_flags;
 
-  res = outpckt->aditionals;
+  name_flags = outpckt->header->nm_flags;
 #endif
+  res = outpckt->aditionals;
   while (res) {
     if (res->res &&
 	res->res->name &&
@@ -1933,7 +1998,11 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 #endif
 
       addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
-      if (addr_bigblock) {
+      if (addr_bigblock
+#ifndef COMPILING_NBNS
+	  && nbns_addr
+#endif
+	  ) {
 	decode_nbnodename(res->res->name->name, decoded_name);
 
 	if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
@@ -2185,6 +2254,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
       *last_res = res->next;
 
       numof_succedded++;
+
       succedded = FALSE;
     } else {
       numof_failed++;

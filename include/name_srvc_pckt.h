@@ -268,6 +268,9 @@ void
                          unsigned int complete,
                          unsigned int really_complete);
 void
+  destroy_name_srvc_qstn_lst(struct name_srvc_question_lst *questions,
+                             unsigned int complete);
+void
   destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
                             unsigned int complete,
                             unsigned int really_complete);
