@@ -1796,7 +1796,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   struct name_srvc_resource_lst *res;
   struct addrlst_bigblock *addr_bigblock;
   int i, j;
-  uint32_t in_addr, name_flags;
+  uint32_t in_addr;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 #ifdef COMPILING_NBNS
   struct name_srvc_packet *pckt;
@@ -1804,7 +1804,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   unsigned int numof_succedded, numof_failed;
   unsigned char succedded;
 #else
-  uint32_t nbns_addr;
+  uint32_t name_flags, nbns_addr;
 #endif
 
   if (! (outpckt && addr))
@@ -1812,11 +1812,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 
   /* Make sure only NBNS is listened to in P mode. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
-  name_flags = outpckt->header->nm_flags;
-
 
 #ifdef COMPILING_NBNS
-  if (name_flags & FLG_B)
+  if (outpckt->header->nm_flags & FLG_B)
     return;
 
   succedded = FALSE;
@@ -1827,6 +1825,8 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   numof_succedded = 0;
   numof_failed = 0;
 #else
+  name_flags = outpckt->header->nm_flags;
+
   res = outpckt->aditionals;
 #endif
   while (res) {
