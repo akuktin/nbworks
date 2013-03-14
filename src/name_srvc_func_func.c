@@ -1250,24 +1250,27 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   if (answer_lst) {
     res->next = 0; /* terminate the list */
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
-    /* no check */
-    pckt->answers = answer_lst;
+    if (pckt) {
+      pckt->answers = answer_lst;
 
-    pckt->header->transaction_id = tid;
-    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
 #ifndef COMPILING_NBNS
-    pckt->header->nm_flags = FLG_AA;
+      pckt->header->nm_flags = FLG_AA;
 #else
-    pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header->nm_flags = FLG_AA | FLG_RA;
 #endif
-    if (istruncated) {
-      pckt->header->nm_flags |= FLG_TC;
-    }
-    pckt->header->rcode = 0;
-    pckt->header->numof_answers = numof_answers;
-    pckt->for_del = TRUE;
+      if (istruncated) {
+	pckt->header->nm_flags |= FLG_TC;
+      }
+      pckt->header->rcode = 0;
+      pckt->header->numof_answers = numof_answers;
+      pckt->for_del = TRUE;
 
-    ss_name_send_pckt(pckt, addr, trans);
+      ss_name_send_pckt(pckt, addr, trans);
+    } else {
+      destroy_name_srvc_res_lst(answer_lst);
+    }
   }
 #ifdef COMPILING_NBNS
   /* This is not really good, BTW. What I SHOULD do is keep track
@@ -1279,15 +1282,16 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
    * ask upstream servers for the names I did not find. */
   else {
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
-    /* no check */
+    if (pckt) {
 
-    pckt->header->transaction_id = tid;
-    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
-    pckt->header->nm_flags = FLG_AA | FLG_RA;
-    pckt->header->rcode = RCODE_NAM_ERR;
-    pckt->for_del = TRUE;
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+      pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header->rcode = RCODE_NAM_ERR;
+      pckt->for_del = TRUE;
 
-    ss_name_send_pckt(pckt, addr, trans);
+      ss_name_send_pckt(pckt, addr, trans);
+    }
   }
 #endif
 
