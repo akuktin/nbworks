@@ -398,12 +398,8 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
 
   field = walker;
 
-  if (state) {
-    if (*state) {
-      iterator = *state;
-    } else {
-      iterator = content;
-    }
+  if (state && *state) {
+    iterator = *state;
   } else {
     iterator = content;
   }
@@ -563,6 +559,18 @@ unsigned char *fill_nbaddress_list(struct nbaddress_list *content,
   }
 
   return walker;
+}
+
+void destroy_nbaddress_list(struct nbaddress_list *list) {
+  struct nbaddress_list *next;
+
+  while (list) {
+    next = list->next_address;
+    free(list);
+    list = next;
+  }
+
+  return;
 }
 
 struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_walk,

@@ -84,6 +84,8 @@ unsigned char *
   fill_nbaddress_list(struct nbaddress_list *content,
                       unsigned char *walker,
                       unsigned char *endof_pckt);
+void
+  destroy_nbaddress_list(struct nbaddress_list *list);
 struct nbaddress_list *
   read_ipv4_address_list(unsigned char **start_and_end_of_walk,
                          uint16_t len_of_addresses,

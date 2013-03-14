@@ -978,19 +978,21 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   struct ipv4_addr_list *ipv4_addr_list;
   unsigned int i, lenof_addresses;
   uint16_t numof_answers, flags;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1], istruncated;
+  time_t lowest_deathtime;
 #ifndef COMPILING_NBNS
   unsigned char numof_names;
-  struct nbnodename_list_backbone *names_list;
+  struct nbnodename_list_backbone *names_list, **names_list_last;
   struct name_srvc_statistics_rfc1002 *stats;
   struct cache_scopenode *this_scope;
-  struct cache_namenode *cache_namecard_b;
 #endif
 
   numof_answers = 0;
   answer_lst = res = 0;
   ipv4_addr_list = 0;
   flags = 0;
+  istruncated = FALSE;
+  lowest_deathtime = ZEROONES;
 
   qstn = outpckt->questions;
   while (qstn) {
@@ -1000,6 +1002,10 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	qstn->qstn->name &&
 	qstn->qstn->name->name &&
 	(qstn->qstn->name->len >= NETBIOS_CODED_NAME_LEN)) {
+      if (numof_answers >= 0xffff) {
+	istruncated = TRUE;
+	break;
+      }
       decode_nbnodename(qstn->qstn->name->name, decoded_name);
 
 #ifndef COMPILING_NBNS
@@ -1015,78 +1021,97 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	     (0 == memcmp(JOKER_NAME, decoded_name, NETBIOS_NAME_LEN))) &&
 	    (this_scope = find_scope(qstn->qstn->name->next_name))) {
 
-	  numof_answers++;
 	  if (res) {
 	    res->next = malloc(sizeof(struct name_srvc_resource_lst));
-	    /* no check */
+	    if (! res->next) {
+	      qstn = qstn->next;
+	      continue;
+	    }
 	    res = res->next;
 	  } else {
 	    res = malloc(sizeof(struct name_srvc_resource_lst));
-	    /* no check */
+	    if (! res) {
+	      qstn = qstn->next;
+	      continue;
+	    }
 	    answer_lst = res;
 	  }
 	  res->res = malloc(sizeof(struct name_srvc_resource));
-	  /* no check */
+	  if (! res->res) {
+	    qstn = qstn->next;
+	    continue;
+	  }
 	  res->res->name = clone_nbnodename(qstn->qstn->name);
 	  res->res->rrtype = RRTYPE_NBSTAT;
 	  res->res->rrclass = qstn->qstn->qclass;
 	  res->res->ttl = 0;
 
 	  stats = calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
-	  /* no check */
+	  if (! stats) {
+	    destroy_nbnodename(res->res->name);
+	    free(res->res);
+	    memset(res, 0, sizeof(struct name_srvc_resource_lst));
+	    qstn = qstn->next;
+	    continue;
+	  }
+	  numof_answers++;
 
 	  numof_names = 0;
-	  cache_namecard_b = this_scope->names;
-	  if (cache_namecard_b) {
-	    stats->listof_names = malloc(sizeof(struct nbnodename_list_backbone));
-	    names_list = stats->listof_names;
-
-	    while (0xbab1) {
-	      numof_names++;
-	      names_list->nbnodename = malloc(sizeof(struct nbnodename_list));
-	      names_list->nbnodename->name = encode_nbnodename(cache_namecard_b->name, 0);
-	      names_list->nbnodename->len = NETBIOS_CODED_NAME_LEN;
-	      names_list->nbnodename->next_name = 0;
-
-	      if (cache_namecard_b->group_flg & ISGROUP_YES)
-		names_list->name_flags = NBADDRLST_GROUP_YES;
-	      else
-		names_list->name_flags = NBADDRLST_GROUP_NO;
-	      for (i=0; i<4; i++) {
-		if (cache_namecard_b->addrs.recrd[i].node_type) {
-		  switch (cache_namecard_b->addrs.recrd[i].node_type) {
-		  case CACHE_NODEFLG_H:
-		    names_list->name_flags = names_list->name_flags | NBADDRLST_NODET_H;
-		    break;
-		  case CACHE_NODEFLG_M:
-		    names_list->name_flags = names_list->name_flags | NBADDRLST_NODET_M;
-		    break;
-		  case CACHE_NODEFLG_P:
-		    names_list->name_flags = names_list->name_flags | NBADDRLST_NODET_P;
-		    break;
-		  default: /* B */
-		    names_list->name_flags = names_list->name_flags | NBADDRLST_NODET_B;
-		  }
-
-		  break;
-		}
-	      }
-
-	      names_list->name_flags = names_list->name_flags | NODENAMEFLG_ACT;
-	      if (cache_namecard_b->isinconflict)
-		names_list->name_flags = names_list->name_flags | NODENAMEFLG_CNF;
-
-	      cache_namecard_b = cache_namecard_b->next;
-
-	      if (cache_namecard_b) {
-		names_list->next_nbnodename = malloc(sizeof(struct nbnodename_list));
-		/* no check */
-		names_list = names_list->next_nbnodename;
-	      } else
-		break;
+	  cache_namecard = this_scope->names;
+	  names_list_last = &(stats->listof_names);
+	  while (cache_namecard) {
+	    /* It is enough to only check for this overflow, as it is not possible
+	     * for RDATALEN to overflow if this one does not overflow first. */
+	    if (numof_names >= 0xff) {
+	      istruncated = TRUE;
+	      break;
 	    }
-	    names_list->next_nbnodename = 0;
+
+	    *names_list_last = malloc(sizeof(struct nbnodename_list_backbone));
+	    names_list = *names_list_last;
+
+	    if (! names_list) {
+	      break;
+	    }
+	    numof_names++;
+
+	    names_list->nbnodename = malloc(sizeof(struct nbnodename_list));
+	    names_list->nbnodename->name = encode_nbnodename(cache_namecard->name, 0);
+	    names_list->nbnodename->len = NETBIOS_CODED_NAME_LEN;
+	    names_list->nbnodename->next_name = 0;
+
+	    if (cache_namecard->group_flg & ISGROUP_YES)
+	      names_list->name_flags = NBADDRLST_GROUP_YES;
+	    else
+	      names_list->name_flags = NBADDRLST_GROUP_NO;
+	    for (i=0; i<4; i++) {
+	      if (cache_namecard->addrs.recrd[i].node_type) {
+		switch (cache_namecard->addrs.recrd[i].node_type) {
+		case CACHE_NODEFLG_H:
+		  names_list->name_flags |= NBADDRLST_NODET_H;
+		  break;
+		case CACHE_NODEFLG_M:
+		  names_list->name_flags |= NBADDRLST_NODET_M;
+		  break;
+		case CACHE_NODEFLG_P:
+		  names_list->name_flags |= NBADDRLST_NODET_P;
+		  break;
+		default: /* B */
+		  names_list->name_flags |= NBADDRLST_NODET_B;
+		}
+
+		break;
+	      }
+	    }
+
+	    names_list->name_flags = names_list->name_flags | NODENAMEFLG_ACT;
+	    if (cache_namecard->isinconflict)
+	      names_list->name_flags = names_list->name_flags | NODENAMEFLG_CNF;
+
+	    cache_namecard = cache_namecard->next;
+	    names_list_last = &(names_list->next_nbnodename);
 	  }
+	  *names_list_last = 0;
 	  stats->numof_names = numof_names;
 
 	  res->res->rdata_len = 1+20*2+6+(numof_names * (2+1+NETBIOS_CODED_NAME_LEN));
@@ -1120,6 +1145,9 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	      (cache_namecard->timeof_death > cur_time) &&
 	      (! cache_namecard->isinconflict)) {
 
+	    if (cache_namecard->timeof_death < lowest_deathtime)
+	      lowest_deathtime = cache_namecard->timeof_death;
+
 	    ipv4_addr_list = 0;
 	    for (i=0; i<4; i++) {
 	      if (cache_namecard->addrs.recrd[i].addr) {
@@ -1147,6 +1175,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	      while (ipv4_addr_list) {
 		/* Overflow check. */
 		if (lenof_addresses > (MAX_RDATALEN - 6)) {
+		  istruncated = TRUE;
 		  break;
 		}
 
@@ -1168,24 +1197,43 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	} while (cache_namecard);
 
 	if (lenof_addresses) {
-	  numof_answers++;
+	  *nbaddr_list_last = 0;
+
 	  if (res) {
 	    res->next = malloc(sizeof(struct name_srvc_resource_lst));
-	    /* no check */
+	    if (! res->next) {
+	      destroy_nbaddress_list(nbaddr_list_frst);
+	      qstn = qstn->next;
+	      continue;
+	    }
 	    res = res->next;
 	  } else {
 	    res = malloc(sizeof(struct name_srvc_resource_lst));
-	    /* no check */
+	    if (! res) {
+	      destroy_nbaddress_list(nbaddr_list_frst);
+	      qstn = qstn->next;
+	      continue;
+	    }
 	    answer_lst = res;
 	  }
 	  res->res = malloc(sizeof(struct name_srvc_resource));
-	  /* no check */
+	  if (! res->res) {
+	    destroy_nbaddress_list(nbaddr_list_frst);
+	    qstn = qstn->next;
+	    continue;
+	  }
 	  res->res->name = clone_nbnodename(qstn->qstn->name);
 	  res->res->rrtype = qstn->qstn->qtype;
 	  res->res->rrclass = qstn->qstn->qclass;
-	  res->res->ttl = (cache_namecard->timeof_death - cur_time);
+	  /* It is theorethically possible for 32-bit RDATA_TTL
+	   * to overflow. This is nbworks speciffic. */
+	  res->res->ttl = (lowest_deathtime - cur_time);
+	  if (! res->res->ttl) {
+	    /* *NEVER* send infinite answers. */
+	    res->res->ttl = 1;
+	  }
 
-	  *nbaddr_list_last = 0;
+	  numof_answers++;
 
 	  res->res->rdata_len = lenof_addresses;
 	  res->res->rdata_t = nb_address_list;
@@ -1212,6 +1260,9 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 #else
     pckt->header->nm_flags = FLG_AA | FLG_RA;
 #endif
+    if (istruncated) {
+      pckt->header->nm_flags |= FLG_TC;
+    }
     pckt->header->rcode = 0;
     pckt->header->numof_answers = numof_answers;
     pckt->for_del = TRUE;
