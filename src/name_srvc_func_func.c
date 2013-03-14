@@ -171,7 +171,11 @@ void *name_srvc_handle_newtid(void *input) {
 				     OPCODE_RELEASE)) &&
 	(outpckt->header->rcode == 0)) {
 
-      name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr));
+      name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr)
+#ifdef COMPILING_NBNS
+			     , params.trans, params.id.tid
+#endif
+			     );
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1630,30 +1634,54 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 }
 
 void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
-			    struct sockaddr_in *addr) {
+			    struct sockaddr_in *addr
+#ifdef COMPILING_NBNS
+			    ,struct ss_queue *trans,
+			    uint32_t tid
+#endif
+			    ) {
   struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
   struct nbaddress_list *nbaddr_list;
-#ifndef COMPILING_NBNS
-  struct ipv4_addr_list *ipv4fordel;
-#endif
-  uint32_t in_addr, status, name_flags, i;
+  uint32_t in_addr, status, i;
   unsigned int sender_is_nbns;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+#ifdef COMPILING_NBNS
+  struct name_srvc_packet *pckt;
+  struct name_srvc_resource_lst **last_res, *answer, **last_answr;
+  unsigned int numof_succedded, numof_failed;
+  unsigned char succedded;
+#else
+  struct ipv4_addr_list *ipv4fordel;
+  uint32_t name_flags;
+#endif
 
   if (! (outpckt && addr))
     return;
 
 #ifdef COMPILING_NBNS
   sender_is_nbns = FALSE;
+
+  succedded = FALSE;
 #endif
 
   /* Make sure noone spoofs the release request. */
   /* VAXism below. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+
+#ifdef COMPILING_NBNS
+  last_res = &(outpckt->aditionals);
+  res = *last_res;
+
+  last_answr = &(answer);
+
+  numof_succedded = 0;
+  numof_failed = 0;
+#else
   name_flags = outpckt->header->nm_flags;
 
   res = outpckt->aditionals;
+#endif
   while (res) {
     status = STATUS_DID_NONE;
 
@@ -1680,17 +1708,14 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	if ((nbaddr_list->there_is_an_address) &&
 #ifndef COMPILING_NBNS
 	    (((nbaddr_list->flags & NBADDRLST_NODET_MASK) == NBADDRLST_NODET_P) ?
-	     (
-#endif
 	     /* Only read this if the packet was not broadcast. That is, if the packet
 	      * does not have the broadcast flag set - we will still process a broadcast
-	      * packet with the broadcast flag off. Unless we are a NBNS. */
-	       ((name_flags ^ FLG_B) & FLG_B) &&
+	      * packet with the broadcast flag off. Unless we are NBNS. */
+	     (((name_flags ^ FLG_B) & FLG_B) && sender_is_nbns) :
+#endif
+	     (nbaddr_list->address == in_addr)
 #ifndef COMPILING_NBNS
-	      sender_is_nbns) :
-	     (nbaddr_list->address == in_addr))
-#else
-	    (nbaddr_list->address == in_addr)
+	     )
 #endif
 	    ) {
 	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
@@ -1706,6 +1731,10 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
       }
 
       if (! (status & (STATUS_DID_GROUP | STATUS_DID_UNIQ))) {
+#ifdef COMPILING_NBNS
+	numof_failed++;
+	last_res = &(res->next);
+#endif
 	res = res->next;
 	continue;
       }
@@ -1735,7 +1764,11 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 
 	  if (! (i<4))
 	    cache_namecard->timeof_death = 0;
-	}
+
+#ifdef COMPILING_NBNS
+	  succedded = TRUE;
+#endif
+        }
       }
       if (status & STATUS_DID_UNIQ) {
 	cache_namecard = find_nblabel(decoded_name,
@@ -1745,10 +1778,12 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 				      res->res->rrclass,
 				      res->res->name->next_name);
 	if (cache_namecard) {
-	  if (! cache_namecard->token)
+	  if (! cache_namecard->token) {
 	    cache_namecard->timeof_death = 0;
-#ifndef COMPILING_NBNS
-	  else {
+#ifdef COMPILING_NBNS
+	    succedded = TRUE;
+#else
+	  } else {
 	    /* Did I just get a name release for my own name? */
 	    if (sender_is_nbns &&
 		(cache_namecard->node_types & (CACHE_NODEFLG_P |
@@ -1770,14 +1805,71 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 		cache_namecard->timeof_death = 0;
 	      }
 	    }
-	  }
 #endif
+	  }
 	}
       }
     }
 
+#ifdef COMPILING_NBNS
+    if (succedded) {
+      *last_answr = res;
+      last_answr = &(res->next);
+
+      *last_res = res->next;
+
+      numof_succedded++;
+    } else {
+      last_res = &(res->next);
+      numof_failed++;
+    }
+#endif
+
     res = res->next;
   }
+
+#ifdef COMPILING_NBNS
+  if (numof_succedded) {
+    *last_answr = 0;
+
+    pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (pckt) {
+
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_RELEASE);
+      pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header->rcode = 0;
+      pckt->header->numof_answers = numof_succedded;
+
+      pckt->answers = answer;
+
+      pckt->for_del = TRUE;
+
+      ss_name_send_pckt(pckt, addr, trans);
+    }
+  }
+
+  if (numof_failed) {
+    *last_res = 0; /* superflous */
+
+    pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (pckt) {
+
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
+      pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header->rcode = RCODE_SRV_ERR; /* MAYBE: make this more verbose. */
+      pckt->header->numof_answers = numof_failed;
+
+      pckt->answers = outpckt->aditionals;
+      outpckt->aditionals = 0;
+
+      pckt->for_del = TRUE;
+
+      ss_name_send_pckt(pckt, addr, trans);
+    }
+  }
+#endif
 
   return;
 }

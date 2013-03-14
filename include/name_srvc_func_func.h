@@ -86,7 +86,12 @@ void
                          struct sockaddr_in *addr);
 void
   name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
-                         struct sockaddr_in *addr);
+                         struct sockaddr_in *addr
+#ifdef COMPILING_NBNS
+                         ,struct ss_queue *trans,
+                         uint32_t tid
+#endif
+);
 void
   name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
                        struct sockaddr_in *addr,
