@@ -974,9 +974,9 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   struct name_srvc_resource_lst *res, *answer_lst;
   struct name_srvc_question_lst *qstn;
   struct cache_namenode *cache_namecard;
-  struct nbaddress_list *nbaddr_list, *nbaddr_list_frst;
+  struct nbaddress_list *nbaddr_list, *nbaddr_list_frst, **nbaddr_list_last;
   struct ipv4_addr_list *ipv4_addr_list;
-  int i;
+  unsigned int i, numof_addresses;
   uint16_t numof_answers, flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 #ifndef COMPILING_NBNS
@@ -1034,6 +1034,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  stats = calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
 	  /* no check */
 
+	  numof_names = 0;
 	  cache_namecard_b = this_scope->names;
 	  if (cache_namecard_b) {
 	    stats->listof_names = malloc(sizeof(struct nbnodename_list_backbone));
@@ -1090,8 +1091,6 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  res->res->rdata_len = 1+20*2+6+(numof_names * (2+1+NETBIOS_CODED_NAME_LEN));
 	  res->res->rdata_t = nb_statistics_rfc1002;
 	  res->res->rdata = stats;
-
-	  numof_names = 0;
 	}
       } else {
 #endif
@@ -1122,12 +1121,15 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  res->res->rrclass = cache_namecard->dns_class;
 	  res->res->ttl = (cache_namecard->timeof_death - cur_time);
 
-	  if (cache_namecard->group_flg & ISGROUP_YES)
-	    flags = NBADDRLST_GROUP_YES;
-	  else
-	    flags = NBADDRLST_GROUP_NO;
+	  numof_addresses = 0;
+	  nbaddr_list_last = &nbaddr_list_frst;
+	  ipv4_addr_list = 0;
 	  for (i=0; i<4; i++) {
 	    if (cache_namecard->addrs.recrd[i].addr) {
+	      if (cache_namecard->group_flg & ISGROUP_YES)
+		flags = NBADDRLST_GROUP_YES;
+	      else
+		flags = NBADDRLST_GROUP_NO;
 	      switch (cache_namecard->addrs.recrd[i].node_type) {
 	      case CACHE_NODEFLG_H:
 		flags = flags | NBADDRLST_NODET_H;
@@ -1143,38 +1145,26 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	      }
 
 	      ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
-
-	      break;
 	    }
-	  }
 
-	  i=0;
-	  if (ipv4_addr_list) {
-	    nbaddr_list_frst = nbaddr_list = malloc(sizeof(struct nbaddress_list));
-	    //		  if (! nbaddr_list) {
-	    //		    /* Now what?? */
-	    //		  }
+	    while (ipv4_addr_list) {
+	      *nbaddr_list_last = malloc(sizeof(struct nbaddress_list));
+	      nbaddr_list = *nbaddr_list_last;
+	      if (! nbaddr_list)
+		break;
 
-	    while (137) {
-	      i++;
+	      numof_addresses++;
 	      nbaddr_list->flags = flags;
 	      nbaddr_list->there_is_an_address = TRUE;
 	      nbaddr_list->address = ipv4_addr_list->ip_addr;
 
+	      nbaddr_list_last = &(nbaddr_list->next_address);
 	      ipv4_addr_list = ipv4_addr_list->next;
-	      if (ipv4_addr_list) {
-		nbaddr_list->next_address = malloc(sizeof(struct nbaddress_list));
-		/* No test. */
-		nbaddr_list = nbaddr_list->next_address;
-	      } else {
-		nbaddr_list->next_address = 0;
-		break;
-	      }
 	    }
-	  } else
-	    nbaddr_list_frst = 0;
+	  }
+	  *nbaddr_list_last = 0;
 
-	  res->res->rdata_len = i * 6;
+	  res->res->rdata_len = numof_addresses * 6;
 	  res->res->rdata_t = nb_address_list;
 	  res->res->rdata = nbaddr_list_frst;
 
@@ -1720,7 +1710,10 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   struct name_srvc_resource_lst *res;
   struct addrlst_bigblock *addr_bigblock;
   int i, j;
-  uint32_t in_addr, nbns_addr, name_flags;
+  uint32_t in_addr, name_flags;
+#ifndef COMPILING_NBNS
+  uint32_t nbns_addr;
+#endif
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! (outpckt && addr))
@@ -1729,6 +1722,10 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   /* Make sure only NBNS is listened to in P mode. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
   name_flags = outpckt->header->nm_flags;
+#ifdef COMPILING_NBNS
+  if (name_flags & FLG_B)
+    return;
+#endif
 
   res = outpckt->aditionals;
   while (res) {
@@ -1738,7 +1735,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
 
+#ifndef COMPILING_NBNS
       nbns_addr = get_nbnsaddr(res->res->name->next_name);
+#endif
 
       addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
       if (addr_bigblock) {
@@ -1774,6 +1773,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	     * lists so they do not get freed.*/
 	    memset(&(addr_bigblock->ysgrp), 0, sizeof(struct addrlst_grpblock));
 
+#ifndef COMPILING_NBNS
 	    if ((in_addr != nbns_addr) ||
 		(name_flags & FLG_B)) {
 	      for (i=0; i<4; i++) {
@@ -1790,6 +1790,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		}
 	      }
 	    }
+#endif
 
 	    if (cache_namecard) {
 	      if (! (add_scope(res->res->name->next_name, cache_namecard, nbns_addr) ||
@@ -1811,12 +1812,13 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 	    for (i=0; i<4; i++) {
-	      if (addr_bigblock->ysgrp.recrd[i].addr) {
+#ifndef COMPILING_NBNS
+	      if (addr_bigblock->ysgrp.recrd[i].addr &&
+		  ((addr_bigblock->ysgrp.recrd[i].node_type == CACHE_NODEFLG_P) ?
+		   ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
+		   TRUE)) {
+#endif
 		for (j=0; j<4; j++) {
-		  if ((addr_bigblock->ysgrp.recrd[j].node_type == CACHE_NODEFLG_P) &&
-		      ((nbns_addr != in_addr) || (name_flags & FLG_B)))
-		    continue;
-
 		  if (cache_namecard->addrs.recrd[j].node_type ==
 		      addr_bigblock->ysgrp.recrd[i].node_type) {
 		    cache_namecard->addrs.recrd[j].addr =
@@ -1842,7 +1844,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			 continue the loop */
 		  }
 		}
+#ifndef COMPILING_NBNS
 	      }
+#endif
 	    }
 	  }
 	}
@@ -1875,6 +1879,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	     * lists so they do not get freed.*/
 	    memset(&(addr_bigblock->nogrp), 0, sizeof(struct addrlst_grpblock));
 
+#ifndef COMPILING_NBNS
 	    if ((in_addr != nbns_addr) ||
 		(name_flags & FLG_B)) {
 	      for (i=0; i<4; i++) {
@@ -1891,6 +1896,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		}
 	      }
 	    }
+#endif
 
 	    if (cache_namecard) {
               if (! (add_scope(res->res->name->next_name, cache_namecard, nbns_addr) ||
@@ -1912,12 +1918,13 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
 	      for (i=0; i<4; i++) {
-		if (addr_bigblock->nogrp.recrd[i].addr) {
+#ifndef COMPILING_NBNS
+		if (addr_bigblock->nogrp.recrd[i].addr &&
+		    ((addr_bigblock->nogrp.recrd[i].node_type == CACHE_NODEFLG_P) ?
+		     ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
+		     TRUE)) {
+#endif
 		  for (j=0; j<4; j++) {
-		    if ((addr_bigblock->nogrp.recrd[j].node_type == CACHE_NODEFLG_P) &&
-			((nbns_addr != in_addr) || (name_flags & FLG_B)))
-		      continue;
-
 		    if (cache_namecard->addrs.recrd[j].node_type ==
 			addr_bigblock->nogrp.recrd[i].node_type) {
 		      cache_namecard->addrs.recrd[j].addr =
@@ -1943,7 +1950,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			   continue the loop */
 		    }
 		  }
+#ifndef
 		}
+#endif
 	      }
 	    }
 	    /* else: Sorry honey baby, you're cute, but that just ain't gonna work.
