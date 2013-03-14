@@ -1269,7 +1269,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
       ss_name_send_pckt(pckt, addr, trans);
     } else {
-      destroy_name_srvc_res_lst(answer_lst);
+      destroy_name_srvc_res_lst(answer_lst, 1, 1);
     }
   }
 #ifdef COMPILING_NBNS
