@@ -191,6 +191,9 @@ void *name_srvc_handle_newtid(void *input) {
 	(outpckt->header->rcode == 0)) {
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
+#ifdef COMPILING_NBNS
+			   params.trans,
+#endif
 			   params.id.tid, cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
@@ -787,6 +790,9 @@ void *refresh_scopes(void *i_ignore_this) {
 	  if (pckt->header->rcode == 0) {
 
 	    name_srvc_do_updtreq(pckt, &(outside_pckt->addr),
+#ifdef COMPILING_NBNS
+				 trans,
+#endif
 				 tid.tid, cur_time);
 
 	  } else {
@@ -1781,6 +1787,9 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 
 void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			  struct sockaddr_in *addr,
+#ifdef COMPILING_NBNS
+			  struct ss_queue *trans,
+#endif
 			  uint32_t tid,
 			  time_t cur_time) {
   struct cache_namenode *cache_namecard;
@@ -1788,10 +1797,15 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   struct addrlst_bigblock *addr_bigblock;
   int i, j;
   uint32_t in_addr, name_flags;
-#ifndef COMPILING_NBNS
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+#ifdef COMPILING_NBNS
+  struct name_srvc_packet *pckt;
+  struct name_srvc_resource_lst **last_res, *answer, **last_answr;
+  unsigned int numof_succedded, numof_failed;
+  unsigned char succedded;
+#else
   uint32_t nbns_addr;
 #endif
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! (outpckt && addr))
     return;
@@ -1802,9 +1816,19 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 #ifdef COMPILING_NBNS
   if (name_flags & FLG_B)
     return;
+
+  succedded = FALSE;
 #endif
 
+#ifdef COMPILING_NBNS
+  last_res = &(outpckt->aditionals);
+  res = *last_res;
+  last_answr = &answer;
+  numof_succedded = 0;
+  numof_failed = 0;
+#else
   res = outpckt->aditionals;
+#endif
   while (res) {
     if (res->res &&
 	res->res->name &&
@@ -1847,7 +1871,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		   sizeof(struct addrlst_grpblock));
 
 	    /* Delete the reference to the the address
-	     * lists so they do not get freed.*/
+	     * lists so they do not get freed. */
 	    memset(&(addr_bigblock->ysgrp), 0, sizeof(struct addrlst_grpblock));
 
 #ifndef COMPILING_NBNS
@@ -1875,6 +1899,10 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		destroy_namecard(cache_namecard);
 	        /* failed */
 	      }
+#ifdef COMPILING_NBNS
+	      else
+		succedded = TRUE;
+#endif
 	    }
 
 	  } else {
@@ -1902,6 +1930,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
 				      addr_bigblock->ysgrp.recrd[i].addr);
 
+#ifdef COMPILING_NBNS
+		    succedded = TRUE;
+#endif
 		    break;
 		  } else {
 		    if (cache_namecard->addrs.recrd[j].node_type == 0) {
@@ -1910,12 +1941,15 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		      cache_namecard->addrs.recrd[j].addr =
 			addr_bigblock->ysgrp.recrd[i].addr;
 		      /* Delete the reference to the address
-		       * list so it does not get freed.*/
+		       * list so it does not get freed. */
 		      addr_bigblock->ysgrp.recrd[i].addr = 0;
 
 		      cache_namecard->node_types = cache_namecard->node_types |
 			addr_bigblock->ysgrp.recrd[i].node_type;
 
+#ifdef COMPILING_NBNS
+		      succedded = TRUE;
+#endif
 		      break;
 		    } /* else
 			 continue the loop */
@@ -1953,7 +1987,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		   sizeof(struct addrlst_grpblock));
 
 	    /* Delete the reference to the the address
-	     * lists so they do not get freed.*/
+	     * lists so they do not get freed. */
 	    memset(&(addr_bigblock->nogrp), 0, sizeof(struct addrlst_grpblock));
 
 #ifndef COMPILING_NBNS
@@ -1981,6 +2015,10 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		destroy_namecard(cache_namecard);
 	        /* failed */
 	      }
+#ifdef COMPILING_NBNS
+	      else
+		succedded = TRUE;
+#endif
 	    }
 
 	  } else {
@@ -2008,6 +2046,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			merge_addrlists(cache_namecard->addrs.recrd[j].addr,
 					addr_bigblock->nogrp.recrd[i].addr);
 
+#ifdef COMPILING_NBNS
+		      succedded = TRUE;
+#endif
 		      break;
 		    } else {
 		      if (cache_namecard->addrs.recrd[j].node_type == 0) {
@@ -2016,12 +2057,15 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			cache_namecard->addrs.recrd[j].addr =
 			  addr_bigblock->nogrp.recrd[i].addr;
 			/* Delete the reference to the address
-			 * list so it does not get freed.*/
+			 * list so it does not get freed. */
 			addr_bigblock->nogrp.recrd[i].addr = 0;
 
 			cache_namecard->node_types = cache_namecard->node_types |
 			  addr_bigblock->nogrp.recrd[i].node_type;
 
+#ifdef COMPILING_NBNS
+			succedded = TRUE;
+#endif
 			break;
 		      } /* else
 			   continue the loop */
@@ -2033,7 +2077,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      }
 	    }
 	    /* else: Sorry honey baby, you're cute, but that just ain't gonna work.
-	       MAYBE: send a NAME CONFLICT DEMAND packet. */
+	       MAYBE: send a NAME CONFLICT DEMAND packet (if I am not NBNS). */
 	  }
 	}
 
@@ -2041,8 +2085,65 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
       }
     }
 
+#ifdef COMPILING_NBNS
+    if (succedded) {
+      *last_answr = res;
+      last_answr = &(res->next);
+
+      *last_res = res->next;
+
+      numof_succedded++;
+      succedded = FALSE;
+    } else {
+      numof_failed++;
+      last_res = &(res->next);
+    }
+#endif
     res = res->next;
   }
+
+#ifdef COMPILING_NBNS
+  if (numof_succedded) {
+    *last_answr = 0;
+
+    pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (pckt) {
+
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
+      pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header->rcode = 0;
+      pckt->header->numof_answers = numof_succedded;
+
+      pckt->answers = answer;
+
+      pckt->for_del = TRUE;
+
+      ss_name_send_pckt(pckt, addr, trans);
+    }
+  }
+
+  if (numof_failed) {
+    *last_res = 0; /* superflous */
+
+    pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (pckt) {
+
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
+      pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header->rcode = RCODE_SRV_ERR; /* MAYBE: make this more verbose. */
+      pckt->header->numof_answers = numof_failed;
+
+      pckt->answers = outpckt->aditionals;
+      outpckt->aditionals = 0;
+
+      pckt->for_del = TRUE;
+
+      ss_name_send_pckt(pckt, addr, trans);
+    }
+  }
+#endif
 
   return;
 }
