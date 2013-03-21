@@ -1252,7 +1252,8 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   else
     last_will = 0;
 
-  
+  /* I have a felling this will be an epic function.
+   * Certainly waaay beyond anything I did up to this moment in my life. */
 
   if (last_will)
     last_will->dead = 218;
