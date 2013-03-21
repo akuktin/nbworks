@@ -25,6 +25,7 @@
 
 # ifdef COMPILING_NBNS
 struct latereg_args {
+  uint16_t pckt_flags;
   struct name_srvc_resource_lst *res;
   struct sockaddr_in *addr;
   struct ss_queue *trans;
@@ -37,6 +38,14 @@ struct latereg_args {
 struct laters_link {
   void *rdata;
   struct cache_namenode *namecard;
+  struct name_srvc_resource *res;
+  struct addrlst_bigblock addrblck;
+  uint32_t ttl;
+  struct name_srvc_packet *probe;
+  struct laters_link *next;
+  /* The below is to prevent malloc()ing and free()ing
+   * where it can be avoided. */
+  struct name_srvc_resource_lst *res_lst;
 };
 # endif /* COMPILING_NBNS */
 
@@ -95,6 +104,8 @@ uint32_t
                           struct ss_queue *trans,
                           uint32_t tid,
                           time_t cur_time);
+void
+  destroy_laters_list(struct laters_link *laters);
 void *
   name_srvc_NBNShndl_latereg(void *args);
 # endif /* COMPILING_NBNS */

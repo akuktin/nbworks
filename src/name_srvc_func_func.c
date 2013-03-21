@@ -221,7 +221,6 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      uint32_t listen_address,
 						      unsigned char name_flags,
 						      unsigned char recursive) {
-  struct timespec sleeptime;
   struct sockaddr_in addr;
   struct name_srvc_resource_lst *res, **last_res;
   struct nbnodename_list *authority;
@@ -236,9 +235,6 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
     return 0;
 
   walker = result = 0;
-  /* TODO: change this to a global setting. */
-  sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_250MS;
 
   addr.sin_family = AF_INET;
   /* VAXism below. */
@@ -267,7 +263,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
   for (i=0; i < BCAST_REQ_RETRY_COUNT; i++) {
     ss_name_send_pckt(pckt, &addr, trans);
 
-    nanosleep(&sleeptime, 0);
+    nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
 
     ss_set_inputdrop_name_tid(&tid);
 
@@ -557,7 +553,6 @@ int name_srvc_release_name(unsigned char *name,
 			   uint32_t my_ip_address,
 			   unsigned char group_flg,
 			   unsigned char recursion) {
-  struct timespec sleeptime;
   struct sockaddr_in addr;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outpckt;
@@ -577,9 +572,6 @@ int name_srvc_release_name(unsigned char *name,
 	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
     return -1;
 
-  /* TODO: change this to a global setting. */
-  sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_250MS;
   stop_yourself = FALSE;
 
   addr.sin_family = AF_INET;
@@ -636,7 +628,7 @@ int name_srvc_release_name(unsigned char *name,
       break;
 
     ss_name_send_pckt(pckt, &addr, trans);
-    nanosleep(&sleeptime, 0);
+    nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
 
     if (recursion) {
       ss_set_inputdrop_name_tid(&tid);
@@ -1182,12 +1174,15 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	 * be deleted by the name pruner, this is a match and this
 	 * resource has to be handled in a different manner. */
 
-	laters_pair = malloc(sizeof(struct laters_link));
+	laters_pair = calloc(1, sizeof(struct laters_link));
 	if (! laters_pair) {
 	  make_it_into_failed;
 	  empty_addrblock;
 	  continue;
 	}
+	memcpy(&(laters_pair->addrblck), &addrblck,
+	       sizeof(struct addrlst_bigblock));
+
 	laters_pair->rdata = res->res->rdata;
 	laters_pair->namecard = cache_namecard;
 	res->res->rdata = laters_pair;
@@ -1255,6 +1250,12 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   if (laters) {
     *last_later = 0;
 
+    laterargs.pckt_flags = outpckt->header->opcode;
+    laterargs.pckt_flags = laterargs.pckt_flags << 7;
+    laterargs.pckt_flags |= outpckt->header->nm_flags;
+    laterargs.pckt_flags = laterargs.pckt_flags << 4;
+    laterargs.pckt_flags |= outpckt->header->rcode;
+
     laterargs.res = later;
     laterargs.addr = addr;
     laterargs.trans = trans;
@@ -1273,10 +1274,22 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       while (later) {
 	laters_pair = later->res->rdata;
 	later->res->rdata = laters_pair->rdata;
+
+	for (i=0; i<4; i++) {
+	  if (laters_pair->addrblck.ysgrp.recrd[i].addr) {
+	    destroy_addrlist(laters_pair->addrblck.ysgrp.recrd[i].addr);
+	    laters_pair->addrblck.ysgrp.recrd[i].addr = 0;
+	  }
+	  if (laters_pair->addrblck.nogrp.recrd[i].addr) {
+	    destroy_addrlist(laters_pair->addrblck.nogrp.recrd[i].addr);
+	    laters_pair->addrblck.nogrp.recrd[i].addr = 0;
+	  }
+	}
 	free(laters_pair);
 
 	later = later->next;
       }
+
     }
   }
 
@@ -1306,16 +1319,81 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
     }
   }
 
+# undef make_it_into_failed
+# undef empty_addrblck
+
   return laters;
+}
+
+void destroy_laters_list(struct laters_link *laters) {
+  struct laters_link *next_later;
+  int i;
+
+  while (laters) {
+    if (laters->res) {
+      if (laters->rdata) {
+	laters->res->rdata = laters->rdata;
+      }
+
+      destroy_name_srvc_res_data(laters->res, TRUE, TRUE);
+
+      if (laters->res->name) {
+	destroy_nbnodename(laters->res->name);
+      }
+
+      free(laters->res);
+    }
+
+    for (i=0; i<4; i++) {
+      if (laters->addrblck.ysgrp.recrd[i].addr) {
+	destroy_addrlist(laters->addrblck.ysgrp.recrd[i].addr);
+	laters->addrblck.ysgrp.recrd[i].addr = 0;
+      }
+      if (laters->addrblck.nogrp.recrd[i].addr) {
+	destroy_addrlist(laters->addrblck.nogrp.recrd[i].addr);
+	laters->addrblck.nogrp.recrd[i].addr = 0;
+      }
+    }
+
+    if (laters->probe)
+      destroy_name_srvc_pckt(laters->probe, TRUE, TRUE);
+
+    if (laters->res_lst)
+      free(laters->res_lst);
+
+    next_later = laters->next;
+    free(laters);
+    laters = next_later;
+  }
+
+  return;
 }
 
 void *name_srvc_NBNShndl_latereg(void *args) {
   struct sockaddr_in addr;
+  struct nbaddress_list pckt_flags; /* I will SURELY burn in hell. */
   struct latereg_args laterargs, *release_lock;
+  struct name_srvc_packet *pckt;
+  struct addrlst_bigblock *addrblck;
   struct thread_node *last_will;
+  struct name_srvc_resource_lst *res, *next_res;
+  struct laters_link *laters, *cur_laters, **last_laters;
+  unsigned int i, numof_laters;
 
   if (! args)
     return 0;
+
+# define empty_addrblck							\
+  for (i=0; i<4; i++) {							\
+    if (addrblck->ysgrp.recrd[i].addr) {				\
+      destroy_addrlist(addrblck->ysgrp.recrd[i].addr);			\
+      addrblck->ysgrp.recrd[i].addr = 0;				\
+    }									\
+    if (addrblck->nogrp.recrd[i].addr) {				\
+      destroy_addrlist(addrblck->nogrp.recrd[i].addr);			\
+      addrblck->nogrp.recrd[i].addr = 0;				\
+    }									\
+  }
 
   memcpy(&laterargs, args, sizeof(struct latereg_args));
   memcpy(&addr, laterargs.addr, sizeof(struct sockaddr_in));
@@ -1327,16 +1405,75 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   else
     last_will = 0;
 
-  /* I have a felling this will be an epic function.
-   * Certainly waaay beyond anything I did up to this moment in my life. */
+  pckt_flags.flags = laterargs.pckt_flags;
+  pckt_flags.there_is_an_address = FALSE;
+  pckt_flags.address = 0;
+  pckt_flags.next_address = 0;
 
   /* The laters list contains resources whose names have at least one lease
    * in at least one relevant mode. Their rdata's have been changed to contain
    * the laters_pair which contains both the original rdata and the pointer to
    * the cache namecard. */
 
+  /* First, translate everything. */
+  numof_laters = 0;
+  last_laters = &laters;
+  res = laterargs.res;
+  while (res) {
+    numof_laters++;
+
+    cur_laters = *last_laters = res->res->rdata;
+    last_laters = &(cur_laters->next);
+
+    cur_laters->res = res->res;
+    cur_laters->ttl = res->res->ttl;
+
+    /* Get ready for sending WACKs. */
+    res->res->rdata = &pckt_flags;
+    res->res->rdata_t = nb_address_list;
+    res->res->rdata_len = 2;
+    res->res->ttl = (3 * (nbworks_namsrvc_cntrl.func_sleeptime.tv_sec +1));
+
+    cur_laters->res_lst = res;
+
+    res = res->next;
+  }
+  *last_laters = 0;
+
+  /* Second, send out WACKs. */
+  pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+  if (! pckt) {
+    destroy_laters_list(laters);
+    goto endof_function;
+  }
+  pckt->headers->transaction_id = laterargs.tid;
+  pckt->headers->opcode = (OPCODE_RESPONSE | OPCODE_WACK);
+  pckt->headers->nm_flags = FLG_RA | FLG_AA;
+  pckt->headers->rcode = 0;
+
+  pckt->headers->answers = numof_laters;
+  pckt->answers = laterargs.res;
+
+  ss_name_send_pckt(pckt, &addr, laterarg.trans);
+
+  /* Now that that is out of the way, lets focus on actual laters themselves. */
+  /* There are two basic cases that have to be handled.
+   * The FIRST case is when trying to register a group name. If an identical unique
+   * name is found to exist, we first have to challenge the unique node. If it
+   * succedes or if there is no unique name, we can register the group name.
+   * The SECOND case is when trying to register a unique name. If there is an
+   * identical unique name, challenge it, if it does not defend, register the name.
+   * However, if there is an identical group name, flat-out refuse to register the name.*/
+
+  cur_laters = laters;
+  while (cur_laters) {
+    
+  }
+
+ endof_function:
   if (last_will)
     last_will->dead = 218;
+# undef empty_addrblck
   return 0;
 }
 #endif /* COMPILING_NBNS */
