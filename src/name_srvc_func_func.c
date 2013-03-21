@@ -1373,12 +1373,15 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   struct sockaddr_in addr;
   struct nbaddress_list pckt_flags; /* I will SURELY burn in hell. */
   struct latereg_args laterargs, *release_lock;
-  struct name_srvc_packet *pckt;
+  struct cache_namenode *cache_namecard;
+  struct name_srvc_packet *pckt, *sendpckt;
   struct addrlst_bigblock *addrblck;
+  struct addrlst_grpblock *addrses;
   struct thread_node *last_will;
-  struct name_srvc_resource_lst *res, *next_res;
-  struct laters_link *laters, *cur_laters, **last_laters;
-  unsigned int i, numof_laters;
+  struct name_srvc_resource_lst *res, *next_res, *failed, **last_failed,
+    *succeded, **last_succeded;
+  struct laters_link *laters, *cur_laters, **last_laters, *killme, **last_killme;
+  unsigned int i, j, numof_laters, numof_succeded, numof_failed;
 
   if (! args)
     return 0;
@@ -1430,7 +1433,6 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 
     /* Get ready for sending WACKs. */
     res->res->rdata = &pckt_flags;
-    res->res->rdata_t = nb_address_list;
     res->res->rdata_len = 2;
     res->res->ttl = (3 * (nbworks_namsrvc_cntrl.func_sleeptime.tv_sec +1));
 
@@ -1451,7 +1453,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   pckt->headers->nm_flags = FLG_RA | FLG_AA;
   pckt->headers->rcode = 0;
 
-  pckt->headers->answers = numof_laters;
+  pckt->headers->numof_answers = numof_laters;
   pckt->answers = laterargs.res;
 
   ss_name_send_pckt(pckt, &addr, laterarg.trans);
@@ -1465,10 +1467,120 @@ void *name_srvc_NBNShndl_latereg(void *args) {
    * identical unique name, challenge it, if it does not defend, register the name.
    * However, if there is an identical group name, flat-out refuse to register the name.*/
 
-  cur_laters = laters;
+  cur_time = time(0);
+  numof_succeded = 0;
+  numof_failed = 0;
+  last_succeded = &succeded;
+  last_failed = &failed;
+  last_killme = &killme;
+  last_laters = &laters;
+  cur_laters = *last_laters;
   while (cur_laters) {
-    
+    if (cur_laters->namecard->group_flg & ISGROUP_YES) {
+      if (cur_laters->addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+	numof_failed++;
+	numof_laters--;
+
+	*last_failed = res = cur_laters->res_lst;
+	last_failed = &(res->next);
+
+	res->res->ttl = cur_laters->ttl;
+      } else {
+	numof_succeded++;
+	numof_laters--;
+
+	*last_succeded = res = cur_laters->res_lst;
+	last_succeded = &(res->next);
+
+	cache_namecard = cur_laters->namecard;
+	addrses = cur_laters->addrblck.ysgrp;
+	/* BUG: The below double loop doen't check that the sender
+	 *      lists itself in the requested IP addresses. */
+	for (i=0; i<4; i++) {
+	  for (j=0; j<4; j++) {
+	    if (cache_namecard->addrs.recrd[j].node_type ==
+		addrses->recrd[i].node_type) {
+	      cache_namecard->addrs.recrd[j].addr =
+		merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+				addrses->recrd[i].addr);
+	      break;
+	    } else {
+	      if (cache_namecard->addrs.recrd[j].node_type == 0) {
+		cache_namecard->addrs.recrd[j].node_type =
+		  addrses->recrd[i].node_type;
+		cache_namecard->addrs.recrd[j].addr =
+		  addrses->recrd[i].addr;
+		/* Delete the reference to the address
+		 * list so it does not get freed. */
+		addrses->recrd[i].addr = 0;
+
+		cache_namecard->node_types |= addrses->recrd[i].node_type;
+
+		break;
+	      }
+	    }
+	  }
+	}
+
+	res->res->ttl = cur_laters->ttl;
+	new_deathtime = cur_time + res->res->ttl;
+	if (new_deathtime > cache_namecard->timeof_death)
+	  cache_namecard->timeof_death = new_deathtime;
+	cache_namecard->refresh_ttl = res->res->ttl;
+
+      }
+      res->rdata = cur_laters->rdata;
+
+      cur_laters->rdata = 0;
+      cur_laters->res = 0;
+      cur_laters->res_lst = 0;
+
+      *last_killme = cur_laters;
+      last_killme = &(cur_laters->next);
+      *last_laters = cur_laters->next;
+    } else {
+      /* FIXME TODO DO_ME_NEXT */
+    }
+
+    cur_laters = *last_laters;
   }
+  *last_succeded = 0;
+  *last_failed = 0;
+  *last_killme = 0;
+  *last_laters = 0;
+  if (numof_succeded) {
+    sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (sendpckt) {
+      sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+      sendpckt->header->nm_flags = FLG_AA | FLG_RA;
+      sendpckt->header->rcode = 0;
+      sendpckt->header->numof_answers = numof_succeded;
+
+      sendpckt->answers = succeded;
+
+      sendpckt->for_del = TRUE;
+      ss_name_send_pckt(sendpckt, &addr, laterarg.trans);
+    } else {
+      destroy_name_srvc_res_lst(succeded, TRUE, TRUE);
+    }
+  }
+  if (numof_failed) {
+    sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (sendpckt) {
+      sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+      sendpckt->header->nm_flags = FLG_AA | FLG_RA;
+      sendpckt->header->rcode = RCODE_ACT_ERR;
+      sendpckt->header->numof_answers = numof_failed;
+
+      sendpckt->answers = failed;
+
+      sendpckt->for_del = TRUE;
+      ss_name_send_pckt(sendpckt, &addr, laterarg.trans);
+    } else {
+      destroy_name_srvc_res_lst(failed, TRUE, TRUE);
+    }
+  }
+
 
  endof_function:
   if (last_will)
