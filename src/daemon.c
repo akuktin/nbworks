@@ -59,6 +59,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_namsrvc_cntrl.retries_NBNS = 3;
   nbworks_namsrvc_cntrl.max_wack_sleeptime = 120;
   nbworks_namsrvc_cntrl.Ptimer_refresh_margin = 2; /* I will increase it later on. */
+  nbworks_namsrvc_cntrl.NBNS_threshold_ttl = 5; /* Ignore ultra-short leases. */
 
   /* RELEASE: This has to be changed, somehow. */
   /* No srsly, how do I do this? If the config file is empty? */

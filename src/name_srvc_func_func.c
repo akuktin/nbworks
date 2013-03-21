@@ -990,29 +990,225 @@ void name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 			     struct sockaddr_in *addr,
 			     struct ss_queue *trans,
 			     uint32_t tid,
-			     time_t cur_time) {
+			     time_t cur_time,
+			     unsigned char *ss_iosig_ptr) {
   struct name_srvc_packet *pckt;
-  struct name_srvc_resource_lst *res, **last_res;
+  struct name_srvc_resource_lst *res, **last_res, *fail, **last_fail,
+    *later, **last_later;
   struct nbaddress_list *nbaddr_list;
   struct cache_namenode *cache_namecard;
-  uint32_t in_addr, i;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+  struct addrlst_bigblock addrblck, *addrblck_ptr;
+  struct addrlst_grpblock *addrses;
+  uint32_t in_addr, i, succeded, failed, laters;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1], group_flg;
 
   if (! (outpckt && addr && trans))
     return;
 
+#define make_it_into_failed			\
+  failed++;					\
+						\
+  *last_fail = res;				\
+  last_fail = &(res->next);			\
+						\
+  *last_res = res->next;			\
+  res = *last_res;
+
+#define empty_addrblck						\
+  for (i=0; i<4; i++) {						\
+    if (addrblck.ysgrp.recrd[i].addr) {				\
+      destroy_addrlist(addrblck.ysgrp.recrd[i].addr);		\
+      addrblck.ysgrp.recrd[i].addr = 0;				\
+    }								\
+    if (addrblck.nogrp.recrd[i].addr) {				\
+      destroy_addrlist(addrblck.nogrp.recrd[i].addr);		\
+      addrblck.nogrp.recrd[i].addr = 0;				\
+    }								\
+  }
+
+  last_fail = &fail;
+  last_later = &later;
+  succeded = failed = laters = 0;
+
+  empty_addrblck;
+  addrblck_ptr = &addrblck;
+
   last_res = &(outpckt->aditionals);
   res = *last_res;
   while (res != 0) {
-    if (res->res &&
-	(res->res->name) &&
-	(res->res->name->name) &&
-	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
-	(res->res->rdata_t == nb_address_list)) {
-      decode_nbnodename(res->res->name->name, decoded_name);
-      nbaddr_list = res->res->rdata;
-      
+    if (res->res) {
+      if (!((res->res->name) &&
+	    (res->res->name->name) &&
+	    (res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
+	    (res->res->ttl > nbworks_namsrvc_cntrl.NBNS_threshold_ttl) &&
+	    (res->res->rdata_t == nb_address_list) &&
+	    (res->res->rdata))) {
+	make_it_into_failed;
+	continue;
+      }
+
+      if (! sort_nbaddrs(res->res->rdata, &addrblck_ptr)) {
+	make_it_into_failed;
+	continue;
+      }
+
+      /* Do not enter B node records into the cache. */
+      addrblck.node_types = addrblck.node_types &
+	(ONES ^ (CACHE_NODEGRPFLG_B | CACHE_NODEFLG_B));
+      if (! addrblck.node_types) {
+	make_it_into_failed;
+	empty_addrblck;
+	continue;
+      }
+
+      for (i=0; i<4; i++) {
+	if (addrblck.ysgrp.recrd[i].addr &&
+	    (addrblck.ysgrp.recrd[i].node_type == CACHE_NODEFLG_B)) {
+	  destroy_addrlist(addrblck.ysgrp.recrd[i].addr);
+	  addrblck.ysgrp.recrd[i].node_type = 0;
+	  addrblck.ysgrp.recrd[i].addr = 0;
+	}
+	if (addrblck.nogrp.recrd[i].addr &&
+	    (addrblck.nogrp.recrd[i].node_type == CACHE_NODEFLG_B)) {
+	  destroy_addrlist(addrblck.nogrp.recrd[i].addr);
+	  addrblck.nogrp.recrd[i].node_type = 0;
+	  addrblck.nogrp.recrd[i].addr = 0;
+	}
+      }
+
+      if ((addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) &&
+	  (addrblck.node_types & CACHE_ADDRBLCK_GRP_MASK)) {
+	make_it_into_failed;
+	empty_addrblck;
+	continue;
+      }
+
+      if (addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+	group_flg = ISGROUP_NO;
+	addrses = &(addrblck.nogrp);
+      } else {
+	if (addrblck.node_types & CACHE_ADDRBLCK_GRP_MASK) {
+	  group_flg = ISGROUP_YES;
+	  addrses = &(addrblck.ysgrp);
+	} else {
+	  make_it_into_failed;
+	  empty_addrblck;
+	  continue;
+	}
+      }
+
+      if (! decode_nbnodename(res->res->name->name, decoded_name)) {
+	make_it_into_failed;
+	empty_addrblck;
+	continue;
+      }
+
+      cache_namecard = find_nblabel(decoded_name, NETBIOS_NAME_LEN,
+				    ANY_NODETYPE, ANY_GROUP,
+				    res->res->rrtype, res->res->rrclass,
+				    res->res->name->next_name);
+
+      /* Now, I have to weed out any possible B-only records. */
+      if (cache_namecard) {
+	while (cache_namecard->node_types == CACHE_NODEFLG_B) {
+	  cache_namecard = find_nextcard(cache_namecard,
+					 ANY_NODETYPE, ANY_GROUP,
+					 res->res->rrtype, res->res->rrclass);
+
+	  if (! cache_namecard) {
+	    goto make_a_new_namecard;
+	  }
+	}
+	/* Getting here means there is at least one lease on the name which
+	 * includes a node type (mode) of other than B. Assuming this is not
+	 * a node which has expired and has yet to be deleted by the name pruner,
+	 * this is a match and this resource has to be handled in a different manner. */
+
+	laters++;
+
+	*last_later = res;
+	last_later = &(res->next);
+
+	*last_res = res->next;
+	res = *last_res;
+
+	continue;
+
+      } else {
+      make_a_new_namecard:
+	cache_namecard = add_nblabel(decoded_name, NETBIOS_NAME_LEN,
+				     ((group_flg == ISGROUP_YES) ?
+				      ((addrblck.node_types & CACHE_ADDRBLCK_GRP_MASK)
+				       >> 4) :
+				      addrblck.node_types),
+				     0, group_flg,
+				     res->res->rrtype,
+				     res->res->rrclass,
+				     addrses,
+				     res->res->name->next_name);
+
+	if (! cache_namecard) {
+	  make_it_into_failed;
+	  empty_addrblck;
+	  continue;
+	} else {
+	  memset(addrses, 0, sizeof(struct addrlst_grpblock));
+	  cache_namecard->timeof_death = cur_time + res->res->ttl;
+	  cache_namecard->refresh_ttl = res->res->ttl;
+
+	  succeded++;
+	}
+      }
     }
+
+    last_res = &(res->next);
+    res = *last_res;
+  }
+
+  if (succeded) {
+    pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (pckt) {
+
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+      pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header->rcode = 0;
+      pckt->header->numof_answers = outpckt->aditionals;
+      outpckt->aditionals = 0;
+
+      pckt->answers = succeded;
+
+      pckt->for_del = TRUE;
+
+      ss_name_send_pckt(pckt, addr, trans);
+    }
+  }
+
+  if (failed) {
+    *last_fail = 0;
+
+    pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (pckt) {
+
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+      pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header->rcode = RCODE_SRV_ERR;
+      pckt->header->numof_answers = failed;
+
+      pckt->answers = failed;
+
+      pckt->for_del = TRUE;
+
+      ss_name_send_pckt(pckt, addr, trans);
+    }
+  }
+
+  if (laters) {
+    *last_later = 0;
+    *ss_iosig_ptr |= SS_IOSIG_TAKEN;
+
+    
   }
 
   return;

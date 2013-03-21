@@ -35,6 +35,7 @@
 # ifdef COMPILING_NBNS
 extern unsigned char ss_iosig[(0xffff +1)];
 #  define SS_IOSIG_IN       0x10
+#  define SS_IOSIG_TAKEN    0x20
 #  define SS_IOSIG_OUT      0x01
 #  define SS_IOSIG_MASK_IN  0xf0
 #  define SS_IOSIG_MASK_OUT 0x0f

@@ -81,7 +81,6 @@ struct cache_scopenode {
 struct cache_namenode {
   void *name;
   unsigned char namelen;
-  //  unsigned char magic_char;
   unsigned short node_types; /* flag field */
   unsigned char isinconflict;
   uint64_t token; /* 0 if name not mine, 1 if name in

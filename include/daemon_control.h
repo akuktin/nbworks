@@ -38,6 +38,7 @@ extern struct nbworks_namsrvc_cntrl_t {
   int retries_NBNS;
   uint32_t max_wack_sleeptime;
   time_t Ptimer_refresh_margin;
+  uint32_t NBNS_threshold_ttl;
 } nbworks_namsrvc_cntrl;
 
 extern struct nbworks_dtg_srv_cntrl_t {
