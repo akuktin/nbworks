@@ -511,7 +511,8 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     } while (cur_res);
   }
 
-  if (frstaddrlst) {
+  if (frstaddrlst &&
+      (res->res->name->len == NETBIOS_CODED_NAME_LEN)) {
     new_name = alloc_namecard(decode_nbnodename(res->res->name->name,
                                                 decoded_name),
 			      NETBIOS_NAME_LEN,
@@ -520,6 +521,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     if (new_name) {
       new_name->addrs.recrd[0].node_type = nodetype;
       new_name->addrs.recrd[0].addr = frstaddrlst;
+      frstaddrlst = 0;
 
       if (add_scope(scope, new_name, nbworks__default_nbns) ||
 	  add_name(new_name, scope)) {
@@ -535,13 +537,13 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
       } else {
 	destroy_namecard(new_name);
       }
-    } else {
-      while (frstaddrlst) {
-	addrlst = frstaddrlst->next;
-	free(frstaddrlst);
-	frstaddrlst = addrlst;
-      }
     }
+  }
+
+  while (frstaddrlst) {
+    addrlst = frstaddrlst->next;
+    free(frstaddrlst);
+    frstaddrlst = addrlst;
   }
 
   destroy_name_srvc_res_lst(res, TRUE, TRUE);
@@ -751,7 +753,7 @@ void *refresh_scopes(void *i_ignore_this) {
 	    if (wack) {
 	      /* DOS_BUG: a malevolent NBNS can use this point to hose
 	       *          the daemon. */
-	      ss_set_inputdrop_name_tid(&tid);
+	      ss_set_normalstate_name_tid(&tid);
 
 	      if (wack > nbworks_namsrvc_cntrl.max_wack_sleeptime) {
 		wack = nbworks_namsrvc_cntrl.max_wack_sleeptime;
@@ -901,13 +903,16 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
   uint32_t in_addr, i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
+  if (! (outpckt && addr && trans))
+    return;
+
   for (res = outpckt->aditionals;
        res != 0;      /* Maybe test in questions too. */
        res = res->next) {
     if ((res->res) &&
 	(res->res->name) &&
 	(res->res->name->name) &&
-	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
+	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
       nbaddr_list = res->res->rdata;
 
@@ -981,6 +986,38 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
   return;
 }
 
+void name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
+			     struct sockaddr_in *addr,
+			     struct ss_queue *trans,
+			     uint32_t tid,
+			     time_t cur_time) {
+  struct name_srvc_packet *pckt;
+  struct name_srvc_resource_lst *res, **last_res;
+  struct nbaddress_list *nbaddr_list;
+  struct cache_namenode *cache_namecard;
+  uint32_t in_addr, i;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  if (! (outpckt && addr && trans))
+    return;
+
+  last_res = &(outpckt->aditionals);
+  res = *last_res;
+  while (res != 0) {
+    if (res->res &&
+	(res->res->name) &&
+	(res->res->name->name) &&
+	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
+	(res->res->rdata_t == nb_address_list)) {
+      decode_nbnodename(res->res->name->name, decoded_name);
+      nbaddr_list = res->res->rdata;
+      
+    }
+  }
+
+  return;
+}
+
 
 void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 				 struct sockaddr_in *addr,
@@ -1028,7 +1065,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
     if (qstn->qstn &&
 	qstn->qstn->name &&
 	qstn->qstn->name->name &&
-	(qstn->qstn->name->len >= NETBIOS_CODED_NAME_LEN)) {
+	(qstn->qstn->name->len == NETBIOS_CODED_NAME_LEN)) {
       if (numof_answers >= 0xffff) {
 	istruncated = TRUE;
 	break;
@@ -1407,7 +1444,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
     if (res->res &&
 	(res->res->name) &&
 	(res->res->name->name) &&
-	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
+	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list) &&
 	(res->res->rdata)) {
 
@@ -1646,7 +1683,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
     if ((res->res) &&
 	(res->res->name) &&
 	(res->res->name->name) &&
-	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
+	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
 
       if (in_addr == get_nbnsaddr(res->res->name->next_name))
@@ -1757,7 +1794,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
     if (res->res &&
 	res->res->name &&
 	res->res->name->name &&
-	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
+	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
 #ifndef COMPILING_NBNS
       if (in_addr == get_nbnsaddr(res->res->name->next_name))
@@ -1995,7 +2032,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
     if (res->res &&
 	res->res->name &&
 	res->res->name->name &&
-	(res->res->name->len >= NETBIOS_CODED_NAME_LEN) &&
+	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
 
 #ifndef COMPILING_NBNS

@@ -680,6 +680,10 @@ int rail_senddtg(int rail_sckt,
     normal_pyld->pyldpyld_delptr = buff;
     buff = 0;
 
+    if (normal_pyld->dst_name->len != NETBIOS_CODED_NAME_LEN) {
+      break;
+    }
+
     tid.name_scope = normal_pyld->src_name;
 
     trans = ss_find_queuestorage(&tid, DTG_SRVC);
