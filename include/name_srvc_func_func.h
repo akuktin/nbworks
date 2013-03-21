@@ -19,8 +19,21 @@
 #ifndef NBWORKS_NAMESRVCFUNCFUNC_H
 # define NBWORKS_NAMESRVCFUNCFUNC_H 1
 
+# include <pthread.h>
 # include <time.h>
 # include "service_sector.h"
+
+# ifdef COMPILING_NBNS
+struct latereg_args {
+  struct name_srvc_resource_lst *res;
+  struct sockaddr_in *addr;
+  struct ss_queue *trans;
+  uint32_t tid;
+  time_t cur_time;
+  unsigned char not_done;
+  pthread_t thread_id;
+};
+# endif /* COMPILING_NBNS */
 
 void *
   name_srvc_handle_newtid(void *input);
@@ -69,6 +82,7 @@ void
                          struct ss_queue *trans,
                          uint32_t tid,
                          time_t cur_time);
+# ifdef COMPILING_NBNS
 /* returns: numof_laters */
 uint32_t
   name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
@@ -76,6 +90,9 @@ uint32_t
                           struct ss_queue *trans,
                           uint32_t tid,
                           time_t cur_time);
+void *
+  name_srvc_NBNShndl_latereg(void *args);
+# endif /* COMPILING_NBNS */
 void
   name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
                               struct sockaddr_in *addr,

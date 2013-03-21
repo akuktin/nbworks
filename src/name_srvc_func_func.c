@@ -986,6 +986,7 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
   return;
 }
 
+#ifdef COMPILING_NBNS
 /* returns: numof_laters */
 uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 				 struct sockaddr_in *addr,
@@ -995,17 +996,17 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *res, **last_res, *fail, **last_fail,
     *later, **last_later;
-  struct nbaddress_list *nbaddr_list;
   struct cache_namenode *cache_namecard;
   struct addrlst_bigblock addrblck, *addrblck_ptr;
   struct addrlst_grpblock *addrses;
-  uint32_t in_addr, i, succeded, failed, laters;
+  struct latereg_args laterargs;
+  uint32_t i, succeded, failed, laters;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1], group_flg;
 
   if (! (outpckt && addr && trans))
     return 0;
 
-#define make_it_into_failed			\
+# define make_it_into_failed			\
   failed++;					\
 						\
   *last_fail = res;				\
@@ -1014,7 +1015,7 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   *last_res = res->next;			\
   res = *last_res;
 
-#define empty_addrblck						\
+# define empty_addrblck						\
   for (i=0; i<4; i++) {						\
     if (addrblck.ysgrp.recrd[i].addr) {				\
       destroy_addrlist(addrblck.ysgrp.recrd[i].addr);		\
@@ -1173,14 +1174,34 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
       pckt->header->nm_flags = FLG_AA | FLG_RA;
       pckt->header->rcode = 0;
-      pckt->header->numof_answers = outpckt->aditionals;
-      outpckt->aditionals = 0;
+      pckt->header->numof_answers = succeded;
 
-      pckt->answers = succeded;
+      pckt->answers = outpckt->aditionals;
+      outpckt->aditionals = 0;
 
       pckt->for_del = TRUE;
 
       ss_name_send_pckt(pckt, addr, trans);
+    }
+  }
+
+  if (laters) {
+    *last_later = 0;
+
+    laterargs.res = later;
+    laterargs.addr = addr;
+    laterargs.trans = trans;
+    laterargs.tid = tid;
+    laterargs.cur_time = cur_time;
+    laterargs.not_done = 0xda;
+
+    if (0 != pthread_create(&(laterargs.thread_id), 0,
+			    name_srvc_NBNShndl_latereg, &laterargs)) {
+      *last_fail = later;
+      last_fail = last_later;
+
+      failed = failed + laters;
+      laters = 0;
     }
   }
 
@@ -1196,7 +1217,7 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       pckt->header->rcode = RCODE_SRV_ERR;
       pckt->header->numof_answers = failed;
 
-      pckt->answers = failed;
+      pckt->answers = fail;
 
       pckt->for_del = TRUE;
 
@@ -1205,13 +1226,39 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   }
 
   if (laters) {
-    *last_later = 0;
-
-    
+    while (laterargs.not_done) {
+      /* busy-wait */
+    }
   }
 
   return laters;
 }
+
+void *name_srvc_NBNShndl_latereg(void *args) {
+  struct sockaddr_in addr;
+  struct latereg_args laterargs, *release_lock;
+  struct thread_node *last_will;
+
+  if (! args)
+    return 0;
+
+  memcpy(&laterargs, args, sizeof(struct latereg_args));
+  memcpy(&addr, laterargs.addr, sizeof(struct sockaddr_in));
+  release_lock = args;
+  release_lock->not_done = 0;
+
+  if (laterargs.thread_id)
+    last_will = add_thread(laterargs.thread_id);
+  else
+    last_will = 0;
+
+  
+
+  if (last_will)
+    last_will->dead = 218;
+  return 0;
+}
+#endif /* COMPILING_NBNS */
 
 
 void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
