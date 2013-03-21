@@ -1580,6 +1580,9 @@ void *name_srvc_NBNShndl_latereg(void *args) {
       destroy_name_srvc_res_lst(failed, TRUE, TRUE);
     }
   }
+  if (killme) {
+    destroy_laters_list(killme);
+  }
 
 
  endof_function:
