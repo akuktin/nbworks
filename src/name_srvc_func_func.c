@@ -986,12 +986,13 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
   return;
 }
 
-void name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
-			     struct sockaddr_in *addr,
-			     struct ss_queue *trans,
-			     uint32_t tid,
-			     time_t cur_time,
-			     unsigned char *ss_iosig_ptr) {
+/* returns: numof_laters */
+uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
+				 struct sockaddr_in *addr,
+				 struct ss_queue *trans,
+				 uint32_t tid,
+				 time_t cur_time,
+				 unsigned char *ss_iosig_ptr) {
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *res, **last_res, *fail, **last_fail,
     *later, **last_later;
@@ -1003,7 +1004,7 @@ void name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   unsigned char decoded_name[NETBIOS_NAME_LEN+1], group_flg;
 
   if (! (outpckt && addr && trans))
-    return;
+    return 0;
 
 #define make_it_into_failed			\
   failed++;					\
@@ -1211,7 +1212,7 @@ void name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
     
   }
 
-  return;
+  return laters;
 }
 
 

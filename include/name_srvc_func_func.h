@@ -69,6 +69,14 @@ void
                          struct ss_queue *trans,
                          uint32_t tid,
                          time_t cur_time);
+/* returns: numof_laters */
+uint32_t
+  name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
+                          struct sockaddr_in *addr,
+                          struct ss_queue *trans,
+                          uint32_t tid,
+                          time_t cur_time,
+                          unsigned char *ss_iosig_ptr);
 void
   name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
                               struct sockaddr_in *addr,
