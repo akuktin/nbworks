@@ -991,8 +991,7 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 				 struct sockaddr_in *addr,
 				 struct ss_queue *trans,
 				 uint32_t tid,
-				 time_t cur_time,
-				 unsigned char *ss_iosig_ptr) {
+				 time_t cur_time) {
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *res, **last_res, *fail, **last_fail,
     *later, **last_later;
@@ -1207,7 +1206,6 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 
   if (laters) {
     *last_later = 0;
-    *ss_iosig_ptr |= SS_IOSIG_TAKEN;
 
     
   }

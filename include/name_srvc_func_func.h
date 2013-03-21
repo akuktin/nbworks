@@ -75,8 +75,7 @@ uint32_t
                           struct sockaddr_in *addr,
                           struct ss_queue *trans,
                           uint32_t tid,
-                          time_t cur_time,
-                          unsigned char *ss_iosig_ptr);
+                          time_t cur_time);
 void
   name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
                               struct sockaddr_in *addr,
