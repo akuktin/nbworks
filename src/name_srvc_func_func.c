@@ -993,14 +993,16 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 				 struct ss_queue *trans,
 				 uint32_t tid,
 				 time_t cur_time) {
+  struct latereg_args laterargs;
+  struct addrlst_bigblock addrblck, *addrblck_ptr;
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *res, **last_res, *fail, **last_fail,
     *later, **last_later;
   struct cache_namenode *cache_namecard;
-  struct addrlst_bigblock addrblck, *addrblck_ptr;
   struct addrlst_grpblock *addrses;
-  struct latereg_args laterargs;
-  uint32_t i, succeded, failed, laters;
+  struct laters_link *laters_pair;
+  time_t new_deathtime;
+  uint32_t i, j, succeded, failed, laters;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1], group_flg;
 
   if (! (outpckt && addr && trans))
@@ -1117,13 +1119,78 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 					 res->res->rrtype, res->res->rrclass);
 
 	  if (! cache_namecard) {
-	    goto make_a_new_namecard;
+	    /* One may wonder why am I wasting cycles by looking everything
+	     * up from the beggining. And to them I say that, at this point
+	     * in processing, it is a real possibility that we will have to
+	     * callout and challenge nodes for their names. One name lookup
+	     * should not (emphasis on "*should* not") add a large cost. */
+	    /* That said, I should perhaps streamline this. */
+	    cache_namecard = find_nblabel(decoded_name, NETBIOS_NAME_LEN,
+					  ANY_NODETYPE, group_flg,
+					  res->res->rrtype, res->res->rrclass,
+					  res->res->name->next_name);
+	    if (! cache_namecard) {
+	      goto make_a_new_namecard;
+	    } else {
+	      /* BUG: The below double loop doen't check that the sender
+	       *      lists itself in the requested IP addresses. */
+	      for (i=0; i<4; i++) {
+		for (j=0; j<4; j++) {
+		  if (cache_namecard->addrs.recrd[j].node_type ==
+		      addrses->recrd[i].node_type) {
+		    cache_namecard->addrs.recrd[j].addr =
+		      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+				      addrses->recrd[i].addr);
+		    break;
+		  } else {
+		    if (cache_namecard->addrs.recrd[j].node_type == 0) {
+		      cache_namecard->addrs.recrd[j].node_type =
+			addrses->recrd[i].node_type;
+		      cache_namecard->addrs.recrd[j].addr =
+			addrses->recrd[i].addr;
+		      /* Delete the reference to the address
+		       * list so it does not get freed. */
+		      addrses->recrd[i].addr = 0;
+
+		      cache_namecard->node_types |= addrses->recrd[i].node_type;
+
+		      break;
+		    }
+		  }
+		}
+	      }
+
+	      new_deathtime = cur_time + res->res->ttl;
+	      if (new_deathtime > cache_namecard->timeof_death)
+		cache_namecard->timeof_death = new_deathtime;
+	      cache_namecard->refresh_ttl = res->res->ttl;
+
+	      succeded++;
+
+	      last_res = &(res->next);
+	      res = *last_res;
+
+	      empty_addrblck;
+
+	      continue;
+	    }
 	  }
 	}
-	/* Getting here means there is at least one lease on the name which
-	 * includes a node type (mode) of other than B. Assuming this is not
-	 * a node which has expired and has yet to be deleted by the name pruner,
-	 * this is a match and this resource has to be handled in a different manner. */
+	/* Getting here means there is at least one lease on the name in
+	 * at least one of the relevant modes.
+	 * Assuming this is not a node which has expired but has yet to
+	 * be deleted by the name pruner, this is a match and this
+	 * resource has to be handled in a different manner. */
+
+	laters_pair = malloc(sizeof(struct laters_link));
+	if (! laters_pair) {
+	  make_it_into_failed;
+	  empty_addrblock;
+	  continue;
+	}
+	laters_pair->rdata = res->res->rdata;
+	laters_pair->namecard = cache_namecard;
+	res->res->rdata = laters_pair;
 
 	laters++;
 
@@ -1202,6 +1269,14 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 
       failed = failed + laters;
       laters = 0;
+
+      while (later) {
+	laters_pair = later->res->rdata;
+	later->res->rdata = laters_pair->rdata;
+	free(laters_pair);
+
+	later = later->next;
+      }
     }
   }
 
@@ -1254,6 +1329,11 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 
   /* I have a felling this will be an epic function.
    * Certainly waaay beyond anything I did up to this moment in my life. */
+
+  /* The laters list contains resources whose names have at least one lease
+   * in at least one relevant mode. Their rdata's have been changed to contain
+   * the laters_pair which contains both the original rdata and the pointer to
+   * the cache namecard. */
 
   if (last_will)
     last_will->dead = 218;

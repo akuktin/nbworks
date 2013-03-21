@@ -33,6 +33,11 @@ struct latereg_args {
   unsigned char not_done;
   pthread_t thread_id;
 };
+
+struct laters_link {
+  void *rdata;
+  struct cache_namenode *namecard;
+};
 # endif /* COMPILING_NBNS */
 
 void *
