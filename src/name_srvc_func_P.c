@@ -89,7 +89,10 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
     return 0;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, ttl,
-				     my_ip_address, group_flg, CACHE_NODEFLG_P);
+				     my_ip_address,
+                                     ((group_flg & ISGROUP_YES) ?
+                                      CACHE_NODEGRPFLG_P :
+                                      CACHE_NODEFLG_P));
   if ((! pckt) ||
       (! pckt->aditionals) ||
       (! pckt->header)) {

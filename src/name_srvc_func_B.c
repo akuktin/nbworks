@@ -78,7 +78,10 @@ int name_srvc_B_add_name(unsigned char *name,
   fill_32field(get_inaddr(), (unsigned char *)&(addr.sin_addr.s_addr));
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, ttl,
-				     my_ip_address, group_flg, CACHE_NODEFLG_B);
+				     my_ip_address,
+                                     ((group_flg & ISGROUP_YES) ?
+                                      CACHE_NODEGRPFLG_B :
+                                      CACHE_NODEFLG_B));
   if (! pckt) {
     /* TODO: errno signaling stuff */
     return -1;

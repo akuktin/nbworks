@@ -191,7 +191,7 @@ void *handle_rail(void *args) {
   struct thread_node *last_will;
   struct ipv4_addr_list *cur_addr, **last_addr;
   uint32_t ipv4, i;
-  unsigned char buff[LEN_COMM_ONWIRE], *name_ptr;
+  unsigned char buff[LEN_COMM_ONWIRE], *name_ptr, node_type;
 
   if (! args)
     return 0;
@@ -249,13 +249,39 @@ void *handle_rail(void *args) {
     cache_namecard = find_namebytok(command.token, &scope);
 
     if (cache_namecard) {
+      switch (command.node_type) {
+      case 'h':
+	node_type = CACHE_NODEFLG_H;
+	break;
+      case 'm':
+	node_type = CACHE_NODEFLG_M;
+	break;
+      case 'p':
+	node_type = CACHE_NODEFLG_P;
+	break;
+      case 'b':
+	node_type = CACHE_NODEFLG_B;
+	break;
+      case 'H':
+	node_type = CACHE_NODEGRPFLG_H;
+	break;
+      case 'M':
+	node_type = CACHE_NODEGRPFLG_M;
+	break;
+      case 'P':
+	node_type = CACHE_NODEGRPFLG_P;
+	break;
+      case 'B':
+      default:
+	node_type = CACHE_NODEGRPFLG_B;
+	break;
+      }
       name_ptr = cache_namecard->name;
       ipv4 = my_ipv4_address();
       name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			     scope, ipv4, cache_namecard->group_flg,
-			     FALSE);
+			     scope, ipv4, node_type, FALSE);
 
-      for (i=0; i<4; i++) {
+      for (i=0; i<NUMOF_ADDRSES; i++) {
 	last_addr = &(cache_namecard->addrs.recrd[i].addr);
 	cur_addr = *last_addr;
 
@@ -488,7 +514,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   struct rail_name_data *namedata;
   struct ipv4_addr_list *new_addr, *cur_addr, **last_addr;
   int i;
-  unsigned char *data_buff;
+  unsigned char *data_buff, node_type;
 
   /* WRONG FOR GROUPS!!! */
 
@@ -522,10 +548,16 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 
   switch (command->node_type) {
   case 'B':
+  case 'b':
   default:
+    if (command->node_type == 'B') {
+      node_type = CACHE_NODEGRPFLG_B;
+    } else {
+      node_type = CACHE_NODEFLG_B;
+    }
     cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
-				    CACHE_NODEFLG_B, make_token(),
-				    namedata->group_flg, QTYPE_NB, QCLASS_IN);
+				    node_type, make_token(),
+				    QTYPE_NB, QCLASS_IN);
     if (! cache_namecard) {
       /* TODO: error handling */
       cleanup;
@@ -624,27 +656,12 @@ int rail_senddtg(int rail_sckt,
   struct ss_queue *queue;
   union trans_id tid;
   int i;
-  unsigned short node_type, group_flg;
+  unsigned short node_type;
   unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! command)
     return -1;
 
-  switch (command->node_type) {
-  case 'H':
-    node_type = CACHE_NODEFLG_H;
-    break;
-  case 'M':
-    node_type = CACHE_NODEFLG_M;
-    break;
-  case 'P':
-    node_type = CACHE_NODEFLG_P;
-    break;
-  case 'B':
-  default:
-    node_type = CACHE_NODEFLG_B;
-    break;
-  }
   decoded_name[NETBIOS_NAME_LEN] = 0;
   dst_addr.sin_family = AF_INET;
   /* VAXism below */
@@ -669,10 +686,47 @@ int rail_senddtg(int rail_sckt,
     return 1;
   }
 
-  if (pckt->type == DIR_GRP_DTG)
-    group_flg = ISGROUP_YES;
-  else
-    group_flg = ISGROUP_NO;
+  if (pckt->type == DIR_GRP_DTG) {
+    switch (command->node_type) {
+    case 'H':
+    case 'h':
+      node_type = CACHE_NODEGRPFLG_H;
+      break;
+    case 'M':
+    case 'm':
+      node_type = CACHE_NODEGRPFLG_M;
+      break;
+    case 'P':
+    case 'p':
+      node_type = CACHE_NODEGRPFLG_P;
+      break;
+    case 'B':
+    case 'b':
+    default:
+      node_type = CACHE_NODEGRPFLG_B;
+      break;
+    }
+  } else {
+    switch (command->node_type) {
+    case 'H':
+    case 'h':
+      node_type = CACHE_NODEFLG_H;
+      break;
+    case 'M':
+    case 'm':
+      node_type = CACHE_NODEFLG_M;
+      break;
+    case 'P':
+    case 'p':
+      node_type = CACHE_NODEFLG_P;
+      break;
+    case 'B':
+    case 'b':
+    default:
+      node_type = CACHE_NODEFLG_B;
+      break;
+    }
+  }
 
   switch (pckt->payload_t) {
   case normal:
@@ -714,22 +768,22 @@ int rail_senddtg(int rail_sckt,
 
     namecard = find_nblabel(decode_nbnodename(normal_pyld->dst_name->name,
 					      decoded_name),
-			    NETBIOS_NAME_LEN, node_type, group_flg,
+			    NETBIOS_NAME_LEN, node_type,
 			    QTYPE_NB, QCLASS_IN, normal_pyld->dst_name->next_name);
     if (! namecard)
       namecard = name_srvc_find_name(decoded_name,
 				     decoded_name[NETBIOS_NAME_LEN-1],
 				     normal_pyld->dst_name->next_name,
-				     node_type, group_flg, FALSE);
+				     node_type, FALSE);
     if (namecard) {
       /* FIXME: sending to another name on the same host */
-      for (i=0; i<4; i++) {
+      for (i=0; i<NUMOF_ADDRSES; i++) {
 	if (namecard->addrs.recrd[i].node_type == node_type)
 	  break;
       }
-      if ((i < 4) &&
+      if ((i<NUMOF_ADDRSES) &&
 	  (namecard->addrs.recrd[i].addr)) {
-	if (namecard->group_flg & ISGROUP_YES) {
+	if (namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_GRP_MASK) {
 	  group_addrs = namecard->addrs.recrd[i].addr;
 	  while (group_addrs->next) {
             /* VAXism below */
@@ -1376,20 +1430,46 @@ uint32_t rail_whatisaddrX(int rail_sckt,
   if (! command)
     return 0;
 
-  switch (command->node_type) {
-  case 'H':
-    node_type = CACHE_NODEFLG_H;
-    break;
-  case 'M':
-    node_type = CACHE_NODEFLG_M;
-    break;
-  case 'P':
-    node_type = CACHE_NODEFLG_P;
-    break;
-  case 'B':
-  default:
-    node_type = CACHE_NODEFLG_B;
-    break;
+  if (command->command == rail_addr_ofXgroup) {
+    switch (command->node_type) {
+    case 'H':
+    case 'h':
+      node_type = CACHE_NODEGRPFLG_H;
+      break;
+    case 'M':
+    case 'm':
+      node_type = CACHE_NODEGRPFLG_M;
+      break;
+    case 'P':
+    case 'p':
+      node_type = CACHE_NODEGRPFLG_P;
+      break;
+    case 'B':
+    case 'b':
+    default:
+      node_type = CACHE_NODEGRPFLG_B;
+      break;
+    }
+  } else {
+    switch (command->node_type) {
+    case 'H':
+    case 'h':
+      node_type = CACHE_NODEFLG_H;
+      break;
+    case 'M':
+    case 'm':
+      node_type = CACHE_NODEFLG_M;
+      break;
+    case 'P':
+    case 'p':
+      node_type = CACHE_NODEFLG_P;
+      break;
+    case 'B':
+    case 'b':
+    default:
+      node_type = CACHE_NODEFLG_B;
+      break;
+    }
   }
 
   buff = malloc(command->len);
@@ -1408,17 +1488,14 @@ uint32_t rail_whatisaddrX(int rail_sckt,
     return 0;
   }
 
-  namecard = find_nblabel(name->name, NETBIOS_NAME_LEN, node_type,
-			  (command->command == rail_addr_ofXgroup) ?
-			    ISGROUP_YES : ISGROUP_NO,
+  namecard = find_nblabel(name->name, NETBIOS_NAME_LEN,
+			  node_type,
 			  RRTYPE_NB, RRCLASS_IN,
 			  name->next_name);
 
   if (! namecard) {
     namecard = name_srvc_find_name(name->name, (name->name)[NETBIOS_NAME_LEN -1],
-				   name->next_name, node_type,
-				   ((command->command == rail_addr_ofXgroup) ?
-				    ISGROUP_YES : ISGROUP_NO), FALSE);
+				   name->next_name, node_type, FALSE);
   }
 
   destroy_nbnodename(name);

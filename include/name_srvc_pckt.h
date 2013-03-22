@@ -253,15 +253,13 @@ struct name_srvc_resource *
                      uint32_t ttl,
                      enum name_srvc_rdata_type rdata_t,
                      void *rdata_content,
-                 /* node_type and isgroup are ignored if rdata_t is neither
+                 /* node_type is ignored if rdata_t is neither
                   * nb_address_list nor nb_NBT_node_ip_address. */
-                     unsigned char node_type,
-                     unsigned char isgroup);
+                     unsigned char node_type);
 struct nbaddress_list *
   make_nbaddrlst(struct ipv4_addr_list *ipv4_list,
                  uint16_t *finallen,
                  enum name_srvc_rdata_type type,
-                 unsigned char isgroup,
                  unsigned char node_type);
 void
   destroy_name_srvc_pckt(void *packet,

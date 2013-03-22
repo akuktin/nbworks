@@ -24,6 +24,8 @@
 # include "nodename.h"
 # include "constdef.h"
 
+# define NUMOF_ADDRSES 8
+
 # define CONFLICT_TTL 1
 
 # define ANY_GROUP    ONES
@@ -61,14 +63,13 @@ struct addrlst_block {
   struct ipv4_addr_list *addr;
 };
 
-struct addrlst_grpblock {
-  struct addrlst_block recrd[4];
+struct addrlst_cardblock {
+  struct addrlst_block recrd[8];
 };
 
 struct addrlst_bigblock {
   unsigned char node_types; /* flag field */
-  struct addrlst_grpblock ysgrp;
-  struct addrlst_grpblock nogrp;
+  struct addrlst_cardblock addrs;
 };
 
 struct cache_scopenode {
@@ -85,13 +86,12 @@ struct cache_namenode {
   unsigned char isinconflict;
   uint64_t token; /* 0 if name not mine, 1 if name in
                      process of being registered */
-  unsigned char group_flg;
   uint16_t dns_type;
   uint16_t dns_class;
   time_t timeof_death;
   time_t endof_conflict_chance;
   uint32_t refresh_ttl;
-  struct addrlst_grpblock addrs;
+  struct addrlst_cardblock addrs;
   struct cache_namenode *next;
 };
 

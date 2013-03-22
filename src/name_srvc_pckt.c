@@ -1168,8 +1168,7 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
 					      uint32_t ttl,
 					      enum name_srvc_rdata_type rdata_t,
 					      void *rdata_content,
-					      unsigned char node_type,
-					      unsigned char isgroup) {
+					      unsigned char node_type) {
   struct name_srvc_resource *result;
 
   if (! label) {
@@ -1211,7 +1210,7 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
   case nb_address_list:
   case nb_NBT_node_ip_address:
     result->rdata = make_nbaddrlst(rdata_content, &(result->rdata_len),
-				   rdata_t, isgroup, node_type);
+				   rdata_t, node_type);
     break;
 
   case nb_nodename:
@@ -1231,7 +1230,6 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
 struct nbaddress_list *make_nbaddrlst(struct ipv4_addr_list *ipv4_list,
 				      uint16_t *finallen,
 				      enum name_srvc_rdata_type type,
-				      unsigned char isgroup,
 				      unsigned char node_type) {
   struct nbaddress_list *nbaddrs_frst, *nbaddrs;
   uint16_t len, lenstep = 4;
@@ -1243,22 +1241,41 @@ struct nbaddress_list *make_nbaddrlst(struct ipv4_addr_list *ipv4_list,
   switch (type) {
   case nb_address_list:
     lenstep = 6;
-    if (isgroup)
-      flags = NBADDRLST_GROUP_YES;
-    else
-      flags = NBADDRLST_GROUP_NO;
     switch (node_type) {
     case CACHE_NODEFLG_H:
+      flags = NBADDRLST_GROUP_NO;
       flags |= NBADDRLST_NODET_H;
       break;
+    case CACHE_NODEGRPFLG_H:
+      flags = NBADDRLST_GROUP_YES;
+      flags |= NBADDRLST_NODET_H;
+      break;
+
     case CACHE_NODEFLG_M:
+      flags = NBADDRLST_GROUP_NO;
       flags |= NBADDRLST_NODET_M;
       break;
+    case CACHE_NODEGRPFLG_M:
+      flags = NBADDRLST_GROUP_YES;
+      flags |= NBADDRLST_NODET_M;
+      break;
+
     case CACHE_NODEFLG_P:
+      flags = NBADDRLST_GROUP_NO;
       flags |= NBADDRLST_NODET_P;
       break;
+    case CACHE_NODEGRPFLG_P:
+      flags = NBADDRLST_GROUP_YES;
+      flags |= NBADDRLST_NODET_P;
+      break;
+
     case CACHE_NODEFLG_B:
+      flags = NBADDRLST_GROUP_NO;
+      flags |= NBADDRLST_NODET_B;
+      break;
+    case CACHE_NODEGRPFLG_B:
     default:
+      flags = NBADDRLST_GROUP_YES;
       flags |= NBADDRLST_NODET_B;
       break;
     }
@@ -1484,22 +1501,8 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
 
   cur_time = time(0);
   while (namecard) {
-    /* In the below if statement, a bunch of things are tested, including
-     * a number of critical tests which all nodes must pass.
-     * If it is found that any of the critical tests fail, the namecard is
-     * scheduled for deletion by the cache pruner and jumped over by this
-     * function. */
-        /* is the name in a NBNS dependant mode? */
-    if ((! (namecard->node_types & (CACHE_NODEFLG_P |
-				    CACHE_NODEFLG_M |
-				    CACHE_NODEFLG_H))) ||
-	/* is there at least one group flag set? */
-	((namecard->group_flg & (ISGROUP_YES | ISGROUP_NO)) ?
-	   FALSE : (namecard->timeof_death = 0, TRUE)) ||
-	/* is there only one group flag set? */
-	((((namecard->group_flg & ISGROUP_YES) ? 1 : 0) ^
-	  ((namecard->group_flg & ISGROUP_NO) ? 1 : 0)) ?
-	   FALSE : (namecard->timeof_death = 0, TRUE))) {
+      /* is the name in a NBNS dependant mode? */
+    if (namecard->node_types & (~(CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B))) {
       namecard = namecard->next;
       continue;
     }
@@ -1559,8 +1562,7 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
 					    namecard->refresh_ttl,
 					    nb_address_list,
 					    namecard->addrs.recrd[i].addr,
-					    namecard->addrs.recrd[i].node_type,
-					    namecard->group_flg);
+					    namecard->addrs.recrd[i].node_type);
       if (! ((*adit_ptr)->res)) {
 	(*adit_ptr)->next = 0;
 	destroy_name_srvc_pckt(pckt, 1, 1);
@@ -1583,8 +1585,7 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
 
 	  *last_nbaddrs = make_nbaddrlst(namecard->addrs.recrd[i].addr,
 					 &lenof_res, nb_address_list,
-					 namecard->addrs.recrd[i].node_type,
-					 namecard->group_flg);
+					 namecard->addrs.recrd[i].node_type);
 
 	  lenof_res = save_lenof_res + lenof_res;
 	}

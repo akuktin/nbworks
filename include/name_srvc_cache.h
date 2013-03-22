@@ -49,10 +49,9 @@ struct cache_namenode *
               unsigned char labellen,
               unsigned short node_types,
               uint64_t token,
-              unsigned char group_flg,
               uint16_t dns_type,
               uint16_t dns_class,
-              struct addrlst_grpblock *addrblock,
+              struct addrlst_cardblock *addrblock,
               struct nbnodename_list *scope);
 struct cache_namenode *
   replace_namecard(struct cache_namenode *name,
@@ -65,7 +64,6 @@ struct cache_namenode *
   find_nblabel(void *label,
                unsigned char labellen,
                unsigned short node_types,
-               unsigned char group_flg,
                uint16_t dns_type,
                uint16_t dns_class,
                struct nbnodename_list *scope);
@@ -75,7 +73,6 @@ struct cache_namenode *
 struct cache_namenode *
   find_nextcard(struct cache_namenode *prevcard,
                 unsigned short node_types,
-                unsigned char group_flg,
                 uint16_t dns_type,
                 uint16_t dns_class);
 
@@ -84,7 +81,6 @@ struct cache_namenode *
                  unsigned char labellen,
                  unsigned short node_types,
                  uint64_t token,
-                 unsigned char group_flg,
                  uint16_t dns_type,
                  uint16_t dns_class);
 void

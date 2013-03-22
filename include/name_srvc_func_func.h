@@ -65,7 +65,6 @@ struct cache_namenode *
                       unsigned char name_type,
                       struct nbnodename_list *scope,
                       unsigned short nodetype, /* Only one node type! */
-                      unsigned char group_flg,
                       unsigned char recursion);
 /* return: 0=success, >0=fail, <0=error */
 int
@@ -73,7 +72,7 @@ int
                          unsigned char name_type,
                          struct nbnodename_list *scope,
                          uint32_t my_ip_address,
-                         unsigned char group_flg,
+                         unsigned char node_types,
                          unsigned char recursion);
 void *
   refresh_scopes(void *i_ignore_this);

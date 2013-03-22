@@ -405,7 +405,6 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 					   unsigned char name_type,
 					   struct nbnodename_list *scope,
 					   unsigned short nodetype, /* Only one node type! */
-					   unsigned char group_flg,
 					   unsigned char recursion) {
   struct name_srvc_resource_lst *res, *cur_res;
   struct nbaddress_list *list;//, *cmpnd_lst;
@@ -416,32 +415,46 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   uint16_t target_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
-  if ((! name) ||
-      /* The explanation for the below test:
-       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
-       * 2. you can not set both bits at the same time. */
-      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
-	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
-	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+  if (! name)
     return 0;
 
   decoded_name[NETBIOS_NAME_LEN] = '\0';
 
-  if (group_flg & ISGROUP_YES)
-    target_flags = NBADDRLST_GROUP_YES;
-  else
-    target_flags = NBADDRLST_GROUP_NO;
   switch (nodetype) {
   case CACHE_NODEFLG_H:
+    target_flags = NBADDRLST_GROUP_NO;
     target_flags = target_flags | NBADDRLST_NODET_H;
     break;
+  case CACHE_NODEGRPFLG_H:
+    target_flags = NBADDRLST_GROUP_YES;
+    target_flags = target_flags | NBADDRLST_NODET_H;
+    break;
+
   case CACHE_NODEFLG_M:
+    target_flags = NBADDRLST_GROUP_NO;
     target_flags = target_flags | NBADDRLST_NODET_M;
     break;
+  case CACHE_NODEGRPFLG_M: 
+    target_flags = NBADDRLST_GROUP_YES;
+    target_flags = target_flags | NBADDRLST_NODET_M;
+    break;
+
   case CACHE_NODEFLG_P:
+    target_flags = NBADDRLST_GROUP_NO;
     target_flags = target_flags | NBADDRLST_NODET_P;
     break;
+  case CACHE_NODEGRPFLG_P:
+    target_flags = NBADDRLST_GROUP_YES;
+    target_flags = target_flags | NBADDRLST_NODET_P;
+    break;
+
   case CACHE_NODEFLG_B:
+    target_flags = NBADDRLST_GROUP_NO;
+    target_flags = target_flags | NBADDRLST_NODET_B;
+    break;
+  case CACHE_NODEGRPFLG_B:
+    target_flags = NBADDRLST_GROUP_YES;
+    target_flags = target_flags | NBADDRLST_NODET_B;
     break;
   default:
     /* TODO: errno signaling stuff */
@@ -512,7 +525,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     new_name = alloc_namecard(decode_nbnodename(res->res->name->name,
                                                 decoded_name),
 			      NETBIOS_NAME_LEN,
-			      nodetype, 0, group_flg,
+			      nodetype, 0,
 			      res->res->rrtype, res->res->rrclass);
     if (new_name) {
       new_name->addrs.recrd[0].node_type = nodetype;
@@ -551,7 +564,7 @@ int name_srvc_release_name(unsigned char *name,
 			   unsigned char name_type,
 			   struct nbnodename_list *scope,
 			   uint32_t my_ip_address,
-			   unsigned char group_flg,
+			   unsigned char node_types,
 			   unsigned char recursion) {
   struct sockaddr_in addr;
   struct ss_queue *trans;
@@ -563,13 +576,7 @@ int name_srvc_release_name(unsigned char *name,
   unsigned char stop_yourself;
   union trans_id tid;
 
-  if ((! name) ||
-      /* The explanation for the below test:
-       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
-       * 2. you can not set both bits at the same time. */
-      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
-	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
-	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+  if (! name)
     return -1;
 
   stop_yourself = FALSE;
@@ -587,9 +594,8 @@ int name_srvc_release_name(unsigned char *name,
     return -1;
 
   pckt = name_srvc_make_name_reg_big(name, name_type, scope, 0,
-				     my_ip_address, group_flg,
-				     (recursion ? CACHE_NODEFLG_P :
-				                  CACHE_NODEFLG_B));
+				     my_ip_address,
+				     node_types);
   if (! pckt) {
     /* TODO: errno signaling stuff */
     return -1;
@@ -888,15 +894,18 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 			    struct ss_queue *trans,
 			    uint32_t tid,
 			    time_t cur_time) {
+  struct addrlst_bigblock addrblock, *addrblock_ptr;
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *res;
-  struct nbaddress_list *nbaddr_list;
   struct cache_namenode *cache_namecard;
   uint32_t in_addr, i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! (outpckt && addr && trans))
     return;
+
+  addrblock_ptr = &addrblock;
+  memset(addrblock_ptr, 0, sizeof(struct addrlst_bigblock));
 
   for (res = outpckt->aditionals;
        res != 0;      /* Maybe test in questions too. */
@@ -905,24 +914,15 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	(res->res->name) &&
 	(res->res->name->name) &&
 	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
-	(res->res->rdata_t == nb_address_list)) {
-      nbaddr_list = res->res->rdata;
+	(res->res->rdata_t == nb_address_list) &&
+	(sort_nbaddrs(res->res->rdata, &addrblock_ptr))) {
 
-      while (nbaddr_list) {
-	if ((nbaddr_list->flags & NBADDRLST_GROUP_MASK) ||
-	    (! nbaddr_list->there_is_an_address)) {
-	  /* Jump over group addresses and empty fields. */
-	  nbaddr_list = nbaddr_list->next_address;
-	} else
-	  break;
-      }
-
-      if (nbaddr_list) {
+      if (addrblock.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
 	decode_nbnodename(res->res->name->name, decoded_name);
 
 	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
-				      ANY_NODETYPE, ISGROUP_NO,
+				      CACHE_ADDRBLCK_UNIQ_MASK,
 				      res->res->rrtype,
 				      res->res->rrclass,
 				      res->res->name->next_name);
@@ -947,19 +947,20 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	  /* Someone is trying to take my name. */
 
 	  in_addr = 0;
-	  for (i=0; i<4; i++) {
-	    if (cache_namecard->addrs.recrd[i].addr) {
+	  for (i=0; i<NUMOF_ADDRSES; i++) {
+	    if (cache_namecard->addrs.recrd[i].addr &&
+		(cache_namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_UNIQ_MASK)) {
 	      in_addr = cache_namecard->addrs.recrd[i].addr->ip_addr;
 	      break;
 	    }
 	  }
 
-	  if (i<4) {
+	  if (i<NUMOF_ADDRSES) {
 	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
 						 res->res->name->next_name,
 						 (cache_namecard->timeof_death
 						  - cur_time),
-						 in_addr, ISGROUP_NO,
+						 in_addr,
 						 cache_namecard->addrs.recrd[i].node_type);
 	    if (pckt) {
 	      pckt->header->transaction_id = tid;
@@ -991,11 +992,10 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   struct name_srvc_resource_lst *res, **last_res, *fail, **last_fail,
     *later, **last_later;
   struct cache_namenode *cache_namecard;
-  struct addrlst_grpblock *addrses;
   struct laters_link *laters_pair;
   time_t new_deathtime;
   uint32_t i, j, succeded, failed, laters;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1], group_flg;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! (outpckt && addr && trans))
     return 0;
@@ -1010,14 +1010,10 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   res = *last_res;
 
 # define empty_addrblck						\
-  for (i=0; i<4; i++) {						\
-    if (addrblck.ysgrp.recrd[i].addr) {				\
-      destroy_addrlist(addrblck.ysgrp.recrd[i].addr);		\
-      addrblck.ysgrp.recrd[i].addr = 0;				\
-    }								\
-    if (addrblck.nogrp.recrd[i].addr) {				\
-      destroy_addrlist(addrblck.nogrp.recrd[i].addr);		\
-      addrblck.nogrp.recrd[i].addr = 0;				\
+  for (i=0; i<NUMOF_ADDRSES; i++) {				\
+    if (addrblck.addrs.recrd[i].addr) {				\
+      destroy_addrlist(addrblck.addrs.recrd[i].addr);		\
+      addrblck.addrs.recrd[i].addr = 0;				\
     }								\
   }
 
@@ -1056,18 +1052,13 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	continue;
       }
 
-      for (i=0; i<4; i++) {
-	if (addrblck.ysgrp.recrd[i].addr &&
-	    (addrblck.ysgrp.recrd[i].node_type == CACHE_NODEFLG_B)) {
-	  destroy_addrlist(addrblck.ysgrp.recrd[i].addr);
-	  addrblck.ysgrp.recrd[i].node_type = 0;
-	  addrblck.ysgrp.recrd[i].addr = 0;
-	}
-	if (addrblck.nogrp.recrd[i].addr &&
-	    (addrblck.nogrp.recrd[i].node_type == CACHE_NODEFLG_B)) {
-	  destroy_addrlist(addrblck.nogrp.recrd[i].addr);
-	  addrblck.nogrp.recrd[i].node_type = 0;
-	  addrblck.nogrp.recrd[i].addr = 0;
+      for (i=0; i<NUMOF_ADDRSES; i++) {
+	if (addrblck.addrs.recrd[i].addr &&
+	    (addrblck.addrs.recrd[i].node_type & (CACHE_NODEGRPFLG_B |
+					    CACHE_NODEFLG_B))) {
+	  destroy_addrlist(addrblck.addrs.recrd[i].addr);
+	  addrblck.addrs.recrd[i].node_type = 0;
+	  addrblck.addrs.recrd[i].addr = 0;
 	}
       }
 
@@ -1078,20 +1069,6 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	continue;
       }
 
-      if (addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
-	group_flg = ISGROUP_NO;
-	addrses = &(addrblck.nogrp);
-      } else {
-	if (addrblck.node_types & CACHE_ADDRBLCK_GRP_MASK) {
-	  group_flg = ISGROUP_YES;
-	  addrses = &(addrblck.ysgrp);
-	} else {
-	  make_it_into_failed;
-	  empty_addrblck;
-	  continue;
-	}
-      }
-
       if (! decode_nbnodename(res->res->name->name, decoded_name)) {
 	make_it_into_failed;
 	empty_addrblck;
@@ -1099,15 +1076,16 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       }
 
       cache_namecard = find_nblabel(decoded_name, NETBIOS_NAME_LEN,
-				    ANY_NODETYPE, ANY_GROUP,
+				    ANY_NODETYPE,
 				    res->res->rrtype, res->res->rrclass,
 				    res->res->name->next_name);
 
       /* Now, I have to weed out any possible B-only records. */
       if (cache_namecard) {
-	while (cache_namecard->node_types == CACHE_NODEFLG_B) {
+	while (! (cache_namecard->node_types &
+		  (~(CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B)))) {
 	  cache_namecard = find_nextcard(cache_namecard,
-					 ANY_NODETYPE, ANY_GROUP,
+					 ANY_NODETYPE,
 					 res->res->rrtype, res->res->rrclass);
 
 	  if (! cache_namecard) {
@@ -1118,33 +1096,34 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	     * should not (emphasis on "*should* not") add a large cost. */
 	    /* That said, I should perhaps streamline this. */
 	    cache_namecard = find_nblabel(decoded_name, NETBIOS_NAME_LEN,
-					  ANY_NODETYPE, group_flg,
+					  ANY_NODETYPE,
 					  res->res->rrtype, res->res->rrclass,
 					  res->res->name->next_name);
 	    if (! cache_namecard) {
+	      /* Impossible. */
 	      goto make_a_new_namecard;
 	    } else {
 	      /* BUG: The below double loop doen't check that the sender
 	       *      lists itself in the requested IP addresses. */
-	      for (i=0; i<4; i++) {
-		for (j=0; j<4; j++) {
+	      for (i=0; i<NUMOF_ADDRSES; i++) {
+		for (j=0; j<NUMOF_ADDRSES; j++) {
 		  if (cache_namecard->addrs.recrd[j].node_type ==
-		      addrses->recrd[i].node_type) {
+		      addrblck.addrs.recrd[i].node_type) {
 		    cache_namecard->addrs.recrd[j].addr =
 		      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-				      addrses->recrd[i].addr);
+				      addrblck.addrs.recrd[i].addr);
 		    break;
 		  } else {
 		    if (cache_namecard->addrs.recrd[j].node_type == 0) {
 		      cache_namecard->addrs.recrd[j].node_type =
-			addrses->recrd[i].node_type;
+			addrblck.addrs.recrd[i].node_type;
 		      cache_namecard->addrs.recrd[j].addr =
-			addrses->recrd[i].addr;
+			addrblck.addrs.recrd[i].addr;
 		      /* Delete the reference to the address
 		       * list so it does not get freed. */
-		      addrses->recrd[i].addr = 0;
+		      addrblck.addrs.recrd[i].addr = 0;
 
-		      cache_namecard->node_types |= addrses->recrd[i].node_type;
+		      cache_namecard->node_types |= addrblck.addrs.recrd[i].node_type;
 
 		      break;
 		    }
@@ -1177,7 +1156,7 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	laters_pair = calloc(1, sizeof(struct laters_link));
 	if (! laters_pair) {
 	  make_it_into_failed;
-	  empty_addrblock;
+	  empty_addrblck;
 	  continue;
 	}
 	memcpy(&(laters_pair->addrblck), &addrblck,
@@ -1200,14 +1179,11 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       } else {
       make_a_new_namecard:
 	cache_namecard = add_nblabel(decoded_name, NETBIOS_NAME_LEN,
-				     ((group_flg == ISGROUP_YES) ?
-				      ((addrblck.node_types & CACHE_ADDRBLCK_GRP_MASK)
-				       >> 4) :
-				      addrblck.node_types),
-				     0, group_flg,
+				     addrblck.node_types,
+				     0,
 				     res->res->rrtype,
 				     res->res->rrclass,
-				     addrses,
+				     &(addrblck.addrs),
 				     res->res->name->next_name);
 
 	if (! cache_namecard) {
@@ -1215,7 +1191,7 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	  empty_addrblck;
 	  continue;
 	} else {
-	  memset(addrses, 0, sizeof(struct addrlst_grpblock));
+	  memset(&(addrblck.addrs), 0, sizeof(struct addrlst_cardblock));
 	  cache_namecard->timeof_death = cur_time + res->res->ttl;
 	  cache_namecard->refresh_ttl = res->res->ttl;
 
@@ -1275,14 +1251,10 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	laters_pair = later->res->rdata;
 	later->res->rdata = laters_pair->rdata;
 
-	for (i=0; i<4; i++) {
-	  if (laters_pair->addrblck.ysgrp.recrd[i].addr) {
-	    destroy_addrlist(laters_pair->addrblck.ysgrp.recrd[i].addr);
-	    laters_pair->addrblck.ysgrp.recrd[i].addr = 0;
-	  }
-	  if (laters_pair->addrblck.nogrp.recrd[i].addr) {
-	    destroy_addrlist(laters_pair->addrblck.nogrp.recrd[i].addr);
-	    laters_pair->addrblck.nogrp.recrd[i].addr = 0;
+	for (i=0; i<NUMOF_ADDRSES; i++) {
+	  if (laters_pair->addrblck.addrs.recrd[i].addr) {
+	    destroy_addrlist(laters_pair->addrblck.addrs.recrd[i].addr);
+	    laters_pair->addrblck.addrs.recrd[i].addr = 0;
 	  }
 	}
 	free(laters_pair);
@@ -1344,14 +1316,10 @@ void destroy_laters_list(struct laters_link *laters) {
       free(laters->res);
     }
 
-    for (i=0; i<4; i++) {
-      if (laters->addrblck.ysgrp.recrd[i].addr) {
-	destroy_addrlist(laters->addrblck.ysgrp.recrd[i].addr);
-	laters->addrblck.ysgrp.recrd[i].addr = 0;
-      }
-      if (laters->addrblck.nogrp.recrd[i].addr) {
-	destroy_addrlist(laters->addrblck.nogrp.recrd[i].addr);
-	laters->addrblck.nogrp.recrd[i].addr = 0;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (laters->addrblck.addrs.recrd[i].addr) {
+	destroy_addrlist(laters->addrblck.addrs.recrd[i].addr);
+	laters->addrblck.addrs.recrd[i].addr = 0;
       }
     }
 
@@ -1375,26 +1343,22 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   struct latereg_args laterargs, *release_lock;
   struct cache_namenode *cache_namecard;
   struct name_srvc_packet *pckt, *sendpckt;
-  struct addrlst_bigblock *addrblck;
-  struct addrlst_grpblock *addrses;
+  struct addrlst_cardblock *addrses;
   struct thread_node *last_will;
-  struct name_srvc_resource_lst *res, *next_res, *failed, **last_failed,
+  struct name_srvc_resource_lst *res, *failed, **last_failed,
     *succeded, **last_succeded;
   struct laters_link *laters, *cur_laters, **last_laters, *killme, **last_killme;
-  unsigned int i, j, numof_laters, numof_succeded, numof_failed;
+  time_t cur_time, new_deathtime;
+  long i, j, numof_laters, numof_succeded, numof_failed;
 
   if (! args)
     return 0;
 
 # define empty_addrblck							\
-  for (i=0; i<4; i++) {							\
-    if (addrblck->ysgrp.recrd[i].addr) {				\
-      destroy_addrlist(addrblck->ysgrp.recrd[i].addr);			\
-      addrblck->ysgrp.recrd[i].addr = 0;				\
-    }									\
-    if (addrblck->nogrp.recrd[i].addr) {				\
-      destroy_addrlist(addrblck->nogrp.recrd[i].addr);			\
-      addrblck->nogrp.recrd[i].addr = 0;				\
+  for (i=0; i<NUMOF_ADDRSES; i++) {					\
+    if (addrblck->addrs.recrd[i].addr) {					\
+      destroy_addrlist(addrblck->addrs.recrd[i].addr);			\
+      addrblck->addrs.recrd[i].addr = 0;					\
     }									\
   }
 
@@ -1448,15 +1412,15 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     destroy_laters_list(laters);
     goto endof_function;
   }
-  pckt->headers->transaction_id = laterargs.tid;
-  pckt->headers->opcode = (OPCODE_RESPONSE | OPCODE_WACK);
-  pckt->headers->nm_flags = FLG_RA | FLG_AA;
-  pckt->headers->rcode = 0;
+  pckt->header->transaction_id = laterargs.tid;
+  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_WACK);
+  pckt->header->nm_flags = FLG_RA | FLG_AA;
+  pckt->header->rcode = 0;
 
-  pckt->headers->numof_answers = numof_laters;
+  pckt->header->numof_answers = numof_laters;
   pckt->answers = laterargs.res;
 
-  ss_name_send_pckt(pckt, &addr, laterarg.trans);
+  ss_name_send_pckt(pckt, &addr, laterargs.trans);
 
   /* Now that that is out of the way, lets focus on actual laters themselves. */
   /* There are two basic cases that have to be handled.
@@ -1476,7 +1440,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   last_laters = &laters;
   cur_laters = *last_laters;
   while (cur_laters) {
-    if (cur_laters->namecard->group_flg & ISGROUP_YES) {
+    if (cur_laters->namecard->node_types & CACHE_ADDRBLCK_GRP_MASK) {
       if (cur_laters->addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
 	numof_failed++;
 	numof_laters--;
@@ -1486,6 +1450,9 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 
 	res->res->ttl = cur_laters->ttl;
       } else {
+	/* Note that there may also be a unique namecard somewhere down the line,
+	 * thus creating an undetected failure condition. For the time being, I will
+	 * ignore this. */
 	numof_succeded++;
 	numof_laters--;
 
@@ -1493,11 +1460,11 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	last_succeded = &(res->next);
 
 	cache_namecard = cur_laters->namecard;
-	addrses = cur_laters->addrblck.ysgrp;
-	/* BUG: The below double loop doen't check that the sender
+	addrses = &(cur_laters->addrblck.addrs);
+	/* BUG: The below double loop doesn't check that the sender
 	 *      lists itself in the requested IP addresses. */
-	for (i=0; i<4; i++) {
-	  for (j=0; j<4; j++) {
+	for (i=0; i<NUMOF_ADDRSES; i++) {
+	  for (j=0; j<NUMOF_ADDRSES; j++) {
 	    if (cache_namecard->addrs.recrd[j].node_type ==
 		addrses->recrd[i].node_type) {
 	      cache_namecard->addrs.recrd[j].addr =
@@ -1529,7 +1496,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	cache_namecard->refresh_ttl = res->res->ttl;
 
       }
-      res->rdata = cur_laters->rdata;
+      res->res->rdata = cur_laters->rdata;
 
       cur_laters->rdata = 0;
       cur_laters->res = 0;
@@ -1559,7 +1526,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
       sendpckt->answers = succeded;
 
       sendpckt->for_del = TRUE;
-      ss_name_send_pckt(sendpckt, &addr, laterarg.trans);
+      ss_name_send_pckt(sendpckt, &addr, laterargs.trans);
     } else {
       destroy_name_srvc_res_lst(succeded, TRUE, TRUE);
     }
@@ -1575,7 +1542,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
       sendpckt->answers = failed;
 
       sendpckt->for_del = TRUE;
-      ss_name_send_pckt(sendpckt, &addr, laterarg.trans);
+      ss_name_send_pckt(sendpckt, &addr, laterargs.trans);
     } else {
       destroy_name_srvc_res_lst(failed, TRUE, TRUE);
     }
@@ -1651,7 +1618,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
       if (qstn->qstn->qtype == QTYPE_NBSTAT) {
 	if ((((cache_namecard = find_nblabel(decoded_name,
 					     NETBIOS_NAME_LEN,
-					     ANY_NODETYPE, ANY_GROUP,
+					     ANY_NODETYPE,
 					     QTYPE_NB, qstn->qstn->qclass,
 					     qstn->qstn->name->next_name)) &&
 	      (cache_namecard->token) &&
@@ -1721,24 +1688,45 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	    names_list->nbnodename->len = NETBIOS_CODED_NAME_LEN;
 	    names_list->nbnodename->next_name = 0;
 
-	    if (cache_namecard->group_flg & ISGROUP_YES)
-	      names_list->name_flags = NBADDRLST_GROUP_YES;
-	    else
-	      names_list->name_flags = NBADDRLST_GROUP_NO;
-	    for (i=0; i<4; i++) {
+	    for (i=0; i<NUMOF_ADDRSES; i++) {
 	      if (cache_namecard->addrs.recrd[i].node_type) {
 		switch (cache_namecard->addrs.recrd[i].node_type) {
 		case CACHE_NODEFLG_H:
+		  names_list->name_flags = NBADDRLST_GROUP_NO;
 		  names_list->name_flags |= NBADDRLST_NODET_H;
 		  break;
+		case CACHE_NODEGRPFLG_H:
+		  names_list->name_flags = NBADDRLST_GROUP_YES;
+		  names_list->name_flags |= NBADDRLST_NODET_H;
+		  break;
+
 		case CACHE_NODEFLG_M:
+		  names_list->name_flags = NBADDRLST_GROUP_NO;
 		  names_list->name_flags |= NBADDRLST_NODET_M;
 		  break;
+		case CACHE_NODEGRPFLG_M:
+		  names_list->name_flags = NBADDRLST_GROUP_YES;
+		  names_list->name_flags |= NBADDRLST_NODET_M;
+		  break;
+
 		case CACHE_NODEFLG_P:
+		  names_list->name_flags = NBADDRLST_GROUP_NO;
 		  names_list->name_flags |= NBADDRLST_NODET_P;
 		  break;
-		default: /* B */
+		case CACHE_NODEGRPFLG_P:
+		  names_list->name_flags = NBADDRLST_GROUP_YES;
+		  names_list->name_flags |= NBADDRLST_NODET_P;
+		  break;
+
+		case CACHE_NODEFLG_B:
+		  names_list->name_flags = NBADDRLST_GROUP_NO;
 		  names_list->name_flags |= NBADDRLST_NODET_B;
+		  break;
+		case CACHE_NODEGRPFLG_B:
+		default:
+		  names_list->name_flags = NBADDRLST_GROUP_YES;
+		  names_list->name_flags |= NBADDRLST_NODET_B;
+		  break;
 		}
 
 		break;
@@ -1767,13 +1755,13 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	do {
 	  if (cache_namecard) {
 	    cache_namecard = find_nextcard(cache_namecard,
-					   ANY_NODETYPE, ANY_GROUP,
+					   ANY_NODETYPE,
 					   qstn->qstn->qtype,
 					   qstn->qstn->qclass);
 	  } else {
 	    cache_namecard = find_nblabel(decoded_name,
 					  NETBIOS_NAME_LEN,
-					  ANY_NODETYPE, ANY_GROUP,
+					  ANY_NODETYPE,
 					  qstn->qstn->qtype,
 					  qstn->qstn->qclass,
 					  qstn->qstn->name->next_name);
@@ -1790,24 +1778,45 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	      lowest_deathtime = cache_namecard->timeof_death;
 
 	    ipv4_addr_list = 0;
-	    for (i=0; i<4; i++) {
+	    for (i=0; i<NUMOF_ADDRSES; i++) {
 	      if (cache_namecard->addrs.recrd[i].addr) {
-		if (cache_namecard->group_flg & ISGROUP_YES)
-		  flags = NBADDRLST_GROUP_YES;
-		else
-		  flags = NBADDRLST_GROUP_NO;
 		switch (cache_namecard->addrs.recrd[i].node_type) {
 		case CACHE_NODEFLG_H:
+		  flags = NBADDRLST_GROUP_NO;
 		  flags = flags | NBADDRLST_NODET_H;
 		  break;
+		case CACHE_NODEGRPFLG_H:
+		  flags = NBADDRLST_GROUP_YES;
+		  flags = flags | NBADDRLST_NODET_H;
+		  break;
+
 		case CACHE_NODEFLG_M:
+		  flags = NBADDRLST_GROUP_NO;
 		  flags = flags | NBADDRLST_NODET_M;
 		  break;
+		case CACHE_NODEGRPFLG_M:
+		  flags = NBADDRLST_GROUP_YES;
+		  flags = flags | NBADDRLST_NODET_M;
+		  break;
+
 		case CACHE_NODEFLG_P:
+		  flags = NBADDRLST_GROUP_NO;
 		  flags = flags | NBADDRLST_NODET_P;
 		  break;
-		default: /* B */
+		case CACHE_NODEGRPFLG_P:
+		  flags = NBADDRLST_GROUP_YES;
+		  flags = flags | NBADDRLST_NODET_P;
+		  break;
+
+		case CACHE_NODEFLG_B:
+		  flags = NBADDRLST_GROUP_NO;
 		  flags = flags | NBADDRLST_NODET_B;
+		  break;
+		case CACHE_NODEGRPFLG_B:
+		default:
+		  flags = NBADDRLST_GROUP_YES;
+		  flags = flags | NBADDRLST_NODET_B;
+		  break;
 		}
 
 		ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
@@ -1998,92 +2007,44 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 				struct ss_queue *trans,
 				uint32_t tid,
 				time_t cur_time) {
+  struct addrlst_bigblock addrblock, *addrblock_ptr;
   struct name_srvc_packet *pckt;
   struct cache_namenode *cache_namecard, *cache_namecard_b;
   struct name_srvc_resource_lst *res;
-  struct nbaddress_list *nbaddr_list, **nbaddr_list_frst,
-    **nbaddr_list_last;
   struct ipv4_addr_list *ipv4_addr_list;
   uint32_t in_addr, status, i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
+  if (! (outpckt && addr && trans))
+    return;
+
   /* Make sure noone spoofs the response. */
   /* VAXism below. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+  addrblock_ptr = &addrblock;
 
   res = outpckt->answers;
   while (res) {
     status = STATUS_DID_NONE;
     cache_namecard = cache_namecard_b = 0;
 
+    memset(addrblock_ptr, 0, sizeof(struct addrlst_bigblock));
+
     if (res->res &&
 	(res->res->name) &&
 	(res->res->name->name) &&
 	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list) &&
-	(res->res->rdata)) {
+	(res->res->rdata) &&
+	(sort_nbaddrs(res->res->rdata, &addrblock_ptr))) {
+      decode_nbnodename(res->res->name->name, decoded_name);
 
-      nbaddr_list_last = nbaddr_list_frst = (struct nbaddress_list **)&(res->res->rdata);
-      nbaddr_list = *nbaddr_list_last;
-
-      /* Rearange the address list so that group names come first,
-	 unique names second and naked flags fields get deleted. */
-      while (nbaddr_list) {
-	if (! nbaddr_list->there_is_an_address) {
-	  *nbaddr_list_last = nbaddr_list->next_address;
-	  free(nbaddr_list);
-
-	} else {
-	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-	    *nbaddr_list_last = nbaddr_list->next_address;
-	    nbaddr_list->next_address = *nbaddr_list_frst;
-	    *nbaddr_list_frst = nbaddr_list;
-
-	  } else {
-	    nbaddr_list_last = &(nbaddr_list->next_address);
-	  }
-	}
-
-	nbaddr_list = *nbaddr_list_last;
-      }
-      nbaddr_list = res->res->rdata;
-
-      if (nbaddr_list) {
-	decode_nbnodename(res->res->name->name, decoded_name);
-	while (nbaddr_list->flags & NBADDRLST_GROUP_MASK) {
-	  if (! (status & STATUS_DID_GROUP)) {
-	    status = status | STATUS_DID_GROUP;
-	    cache_namecard_b = find_nblabel(decoded_name,
-					    NETBIOS_NAME_LEN,
-					    ANY_NODETYPE, ISGROUP_YES,
-					    res->res->rrtype,
-					    res->res->rrclass,
-					    res->res->name->next_name);
-
-	    if (cache_namecard_b)
-	      if (cache_namecard_b->endof_conflict_chance < cur_time)
-		cache_namecard_b = 0;
-	  }
-
-	  nbaddr_list = nbaddr_list->next_address;
-	  if (! nbaddr_list)
-	    break;
-	}
-
-	if (nbaddr_list) {
-	  cache_namecard = find_nblabel(decoded_name,
-					NETBIOS_NAME_LEN,
-					ANY_NODETYPE, ISGROUP_NO,
-					res->res->rrtype,
-					res->res->rrclass,
-					res->res->name->next_name);
-
-	  if (cache_namecard)
-	    if (cache_namecard->endof_conflict_chance < cur_time)
-	      cache_namecard = 0;
-
-	}
-	nbaddr_list = res->res->rdata;
+      cache_namecard = find_nblabel(decoded_name,
+				    NETBIOS_NAME_LEN,
+				    ANY_NODETYPE,
+				    res->res->rrtype,
+				    res->res->rrclass,
+				    res->res->name->next_name);
 
 	/*
 	 * DOS_BUG: It is interesting.
@@ -2105,22 +2066,29 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	 *           listened to.) (In this, node types are not
 	 *           taken into account.)
 	 */
-	if (cache_namecard || cache_namecard_b) {
 
-	  if ((cache_namecard_b) &&
-	      (cache_namecard_b->timeof_death > cur_time) &&
-	      (! cache_namecard_b->isinconflict)) {
-	    /* Verify the sender lists themselves as a member of the
-	       group being updated. */
-	    while (nbaddr_list) {
-	      if (!(nbaddr_list->flags & NBADDRLST_GROUP_MASK))
+      if ((cache_namecard) &&
+	  (cache_namecard->timeof_death > cur_time) &&
+	  (cache_namecard->endof_conflict_chance < cur_time) &&
+	  (! cache_namecard->isinconflict)) {
+	if (addrblock.node_types & CACHE_ADDRBLCK_GRP_MASK) {
+	  /* Verify the sender lists themselves as a member of the
+	     group being updated. */
+	  for (i=0; i<NUMOF_ADDRSES; i++) {
+	    if (addrblock.addrs.recrd[i].node_type & CACHE_ADDRBLCK_GRP_MASK) {
+	      ipv4_addr_list = addrblock.addrs.recrd[i].addr;
+	      while (ipv4_addr_list) {
+		if (ipv4_addr_list->ip_addr == in_addr)
+		  break;
+		else
+		  ipv4_addr_list = ipv4_addr_list->next;
+	      }
+	      if (ipv4_addr_list)
 		break;
-	      if (nbaddr_list->address == in_addr)
-		break;
-	      else
-		nbaddr_list = nbaddr_list->next_address;
 	    }
+	  }
 
+	  if ((i<NUMOF_ADDRSES) && ipv4_addr_list) {
 	    /* Note to self: this is here because RFC 1002 requires that
 	     * this be sent regardless of whether the name is group name
 	     * or unique name. */
@@ -2131,8 +2099,8 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	     * could experience various problems. */
 	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
 						 res->res->name->next_name,
-						 0, 0, ISGROUP_YES,
-						 cache_namecard->addrs.recrd[0].node_type);
+						 0, 0,
+						 addrblock.addrs.recrd[i].node_type);
 	    pckt->header->transaction_id = tid;
 	    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 	    pckt->header->nm_flags = FLG_AA;
@@ -2143,9 +2111,9 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 
 	    /* Verify that the name in question previously had
 	     * the IP address in question listed as it's member. */
-	    if ((nbaddr_list) &&
-		(nbaddr_list->flags & NBADDRLST_GROUP_MASK)) {
-	      for (i=0; i<4; i++) {
+
+	    for (i=0; i<NUMOF_ADDRSES; i++) {
+	      if (cache_namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_GRP_MASK) {
 		ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 		while (ipv4_addr_list) {
 		  if (ipv4_addr_list->ip_addr == in_addr)
@@ -2153,39 +2121,39 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 		  else
 		    ipv4_addr_list = ipv4_addr_list->next;
 		}
-		if (ipv4_addr_list)
-		  break;
 	      }
-	    } else
-	      ipv4_addr_list = 0;
+	      if (ipv4_addr_list) {
+		if (! cache_namecard->token)
+		  cache_namecard->timeof_death = 0;
+		else
+		  cache_namecard->isinconflict = 1;  /* WRONG! But how do I fix it? */
+		break;
+	      }
+	    }
 
-	    if (ipv4_addr_list) {
-	      if (! cache_namecard->token)
-		cache_namecard->timeof_death = 0;
-	      else
-		cache_namecard->isinconflict = 1;  /* WRONG! But how do I fix it? */
+	  }
+	}
+	if (addrblock.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+	  /* Verify the sender lists himself as the owner. */
+	  for (i=0; i<NUMOF_ADDRSES; i++) {
+	    if (addrblock.addrs.recrd[i].node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
+	      ipv4_addr_list = addrblock.addrs.recrd[i].addr;
+	      while (ipv4_addr_list) {
+		if (ipv4_addr_list->ip_addr == in_addr)
+		  break;
+		else
+		  ipv4_addr_list = ipv4_addr_list->next;
+	      }
+	      if (ipv4_addr_list)
+		break;
 	    }
 	  }
-	  if ((cache_namecard) &&
-	      (cache_namecard->timeof_death > cur_time) &&
-	      (! cache_namecard->isinconflict)) {
-	    /* Skip a bit, till we get to the unique names. */
-	    while (nbaddr_list)
-	      if (!(nbaddr_list->flags & NBADDRLST_GROUP_MASK))
-		break;
-	      else
-		nbaddr_list = nbaddr_list->next_address;
-	    /* Verify the sender lists himself as the owner. */
-	    while (nbaddr_list)
-	      if (nbaddr_list->address == in_addr)
-		break;
-	      else
-		nbaddr_list = nbaddr_list->next_address;
 
+	  if ((i<NUMOF_ADDRSES) && ipv4_addr_list) {
 	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
 						 res->res->name->next_name,
-						 0, 0, ISGROUP_NO,
-						 cache_namecard->addrs.recrd[0].node_type);
+						 0, 0,
+						 addrblock.addrs.recrd[i].node_type);
 	    pckt->header->transaction_id = tid;
 	    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
 	    pckt->header->nm_flags = FLG_AA;
@@ -2196,8 +2164,9 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 
 	    /* Verify that the name in question previously had
 	     * the IP address in question listed as it's owner. */
-	    if (nbaddr_list)
-	      for (i=0; i<4; i++) {
+
+	    for (i=0; i<NUMOF_ADDRSES; i++) {
+	      if (cache_namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
 		ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 		while (ipv4_addr_list) {
 		  if (ipv4_addr_list->ip_addr == in_addr)
@@ -2205,20 +2174,18 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 		  else
 		    ipv4_addr_list = ipv4_addr_list->next;
 		}
-		if (ipv4_addr_list)
-		  break;
 	      }
-	    else
-	      ipv4_addr_list = 0;
-
-	    if (ipv4_addr_list) {
-	      if (! cache_namecard->token)
-		cache_namecard->timeof_death = 0;
-	      else {
-		/* Impossible. */
-		cache_namecard->isinconflict = 1;
+	      if (ipv4_addr_list) {
+		if (! cache_namecard->token)
+		  cache_namecard->timeof_death = 0;
+		else {
+		  /* Impossible. */
+		  cache_namecard->isinconflict = 1;
+		}
+		break;
 	      }
 	    }
+
 	  }
 	}
 	/* TODO: THIS ISN'T OVER YET, DOS_BUG!!! */
@@ -2288,7 +2255,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
       if (status & STATUS_DID_GROUP) {
 	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
-				      ANY_NODETYPE, ISGROUP_YES,
+				      CACHE_ADDRBLCK_GRP_MASK,
 				      res->res->rrtype,
 				      res->res->rrclass,
 				      res->res->name->next_name);
@@ -2299,7 +2266,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
       if (status & STATUS_DID_UNIQ) {
 	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
-				      ANY_NODETYPE, ISGROUP_NO,
+				      CACHE_ADDRBLCK_UNIQ_MASK,
 				      res->res->rrtype,
 				      res->res->rrclass,
 				      res->res->name->next_name);
@@ -2427,7 +2394,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
       if (status & STATUS_DID_GROUP) {
 	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
-				      ANY_NODETYPE, ISGROUP_YES,
+				      CACHE_ADDRBLCK_GRP_MASK,
 				      res->res->rrtype,
 				      res->res->rrclass,
 				      res->res->name->next_name);
@@ -2438,12 +2405,12 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	    cache_namecard->token = 0;
 	  }
 
-	  for (i=0; i<4; i++) {
+	  for (i=0; i<NUMOF_ADDRSES; i++) {
 	    if (cache_namecard->addrs.recrd[i].addr)
 	      break;
 	  }
 
-	  if (! (i<4))
+	  if (i>=NUMOF_ADDRSES)
 	    cache_namecard->timeof_death = 0;
 
 #ifdef COMPILING_NBNS
@@ -2454,7 +2421,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
       if (status & STATUS_DID_UNIQ) {
 	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
-				      ANY_NODETYPE, ISGROUP_NO,
+				      CACHE_ADDRBLCK_UNIQ_MASK,
 				      res->res->rrtype,
 				      res->res->rrclass,
 				      res->res->name->next_name);
@@ -2469,9 +2436,13 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	    if (sender_is_nbns &&
 		(cache_namecard->node_types & (CACHE_NODEFLG_P |
 					       CACHE_NODEFLG_M |
-					       CACHE_NODEFLG_H))) {
-	      for (i=0; i<4; i++) {
-		if (cache_namecard->addrs.recrd[i].node_type != CACHE_NODEFLG_B) {
+					       CACHE_NODEFLG_H |
+					       CACHE_NODEGRPFLG_P |
+					       CACHE_NODEGRPFLG_M |
+					       CACHE_NODEGRPFLG_H))) {
+	      for (i=0; i<NUMOF_ADDRSES; i++) {
+		if (! (cache_namecard->addrs.recrd[i].node_type &
+		       (CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B))) {
 		  ipv4fordel = cache_namecard->addrs.recrd[i].addr;
 		  cache_namecard->addrs.recrd[i].addr = 0;
 		  destroy_addrlist(ipv4fordel);
@@ -2480,10 +2451,10 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 		    (~(cache_namecard->addrs.recrd[i].node_type));
 		  cache_namecard->addrs.recrd[i].node_type = 0;
 		}
-	      }
-
-	      if (! cache_namecard->node_types) {
-		cache_namecard->timeof_death = 0;
+		if (! cache_namecard->node_types) {
+		  cache_namecard->timeof_death = 0;
+		  break;
+		}
 	      }
 	    }
 #endif
@@ -2625,16 +2596,15 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
 	  cache_namecard = find_nblabel(decoded_name,
 					NETBIOS_NAME_LEN,
-					ANY_NODETYPE, ISGROUP_YES,
+					ANY_NODETYPE,
 					res->res->rrtype,
 					res->res->rrclass,
 					res->res->name->next_name);
 
 	  if (! cache_namecard) {
 	    cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
-					    ((addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK)
-					     >> 4), FALSE, ISGROUP_YES,
-					    res->res->rrtype, res->res->rrclass);
+					    (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK),
+					    FALSE, res->res->rrtype, res->res->rrclass);
 
 	    if (res->res->ttl) {
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
@@ -2645,22 +2615,25 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->ysgrp),
-		   sizeof(struct addrlst_grpblock));
+	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->addrs),
+		   sizeof(struct addrlst_cardblock));
 
 	    /* Delete the reference to the the address
 	     * lists so they do not get freed. */
-	    memset(&(addr_bigblock->ysgrp), 0, sizeof(struct addrlst_grpblock));
+	    memset(&(addr_bigblock->addrs), 0, sizeof(struct addrlst_cardblock));
 
 #ifndef COMPILING_NBNS
 	    if ((in_addr != nbns_addr) ||
 		(name_flags & FLG_B)) {
-	      for (i=0; i<4; i++) {
-		if (cache_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_P) {
+	      for (i=0; i<NUMOF_ADDRSES; i++) {
+		if (cache_namecard->addrs.recrd[i].node_type &
+		    (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) {
 		  destroy_addrlist(cache_namecard->addrs.recrd[i].addr);
 		  cache_namecard->addrs.recrd[i].addr = 0;
 		  cache_namecard->addrs.recrd[i].node_type = 0;
-		  cache_namecard->node_types = cache_namecard->node_types & (~CACHE_NODEFLG_P);
+		  cache_namecard->node_types = cache_namecard->node_types &
+		    (~(cache_namecard->addrs.recrd[i].node_type));
+
 		  if (! cache_namecard->node_types) {
 		    destroy_namecard(cache_namecard);
 		    cache_namecard = 0;
@@ -2694,19 +2667,20 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-	    for (i=0; i<4; i++) {
+	    for (i=0; i<NUMOF_ADDRSES; i++) {
 #ifndef COMPILING_NBNS
-	      if (addr_bigblock->ysgrp.recrd[i].addr &&
-		  ((addr_bigblock->ysgrp.recrd[i].node_type == CACHE_NODEFLG_P) ?
+	      if (addr_bigblock->addrs.recrd[i].addr &&
+		  ((addr_bigblock->addrs.recrd[i].node_type & (CACHE_NODEGRPFLG_P |
+							       CACHE_NODEFLG_P)) ?
 		   ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
 		   TRUE)) {
 #endif
-		for (j=0; j<4; j++) {
+		for (j=0; j<NUMOF_ADDRSES; j++) {
 		  if (cache_namecard->addrs.recrd[j].node_type ==
-		      addr_bigblock->ysgrp.recrd[i].node_type) {
+		      addr_bigblock->addrs.recrd[i].node_type) {
 		    cache_namecard->addrs.recrd[j].addr =
 		      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-				      addr_bigblock->ysgrp.recrd[i].addr);
+				      addr_bigblock->addrs.recrd[i].addr);
 
 #ifdef COMPILING_NBNS
 		    succedded = TRUE;
@@ -2715,15 +2689,14 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		  } else {
 		    if (cache_namecard->addrs.recrd[j].node_type == 0) {
 		      cache_namecard->addrs.recrd[j].node_type =
-			addr_bigblock->ysgrp.recrd[i].node_type;
+			addr_bigblock->addrs.recrd[i].node_type;
 		      cache_namecard->addrs.recrd[j].addr =
-			addr_bigblock->ysgrp.recrd[i].addr;
+			addr_bigblock->addrs.recrd[i].addr;
 		      /* Delete the reference to the address
 		       * list so it does not get freed. */
-		      addr_bigblock->ysgrp.recrd[i].addr = 0;
+		      addr_bigblock->addrs.recrd[i].addr = 0;
 
-		      cache_namecard->node_types = cache_namecard->node_types |
-			addr_bigblock->ysgrp.recrd[i].node_type;
+		      cache_namecard->node_types |= addr_bigblock->addrs.recrd[i].node_type;
 
 #ifdef COMPILING_NBNS
 		      succedded = TRUE;
@@ -2742,7 +2715,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	if (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
 	  cache_namecard = find_nblabel(decoded_name,
 					NETBIOS_NAME_LEN,
-					ANY_NODETYPE, ISGROUP_YES,
+					ANY_NODETYPE,
 					res->res->rrtype,
 					res->res->rrclass,
 					res->res->name->next_name);
@@ -2750,7 +2723,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	  if (! cache_namecard) {
 	    cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
 					    (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK),
-					    FALSE, ISGROUP_NO, res->res->rrtype, res->res->rrclass);
+					    FALSE, res->res->rrtype, res->res->rrclass);
 
 	    if (res->res->ttl) {
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
@@ -2761,22 +2734,25 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->nogrp),
-		   sizeof(struct addrlst_grpblock));
+	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->addrs),
+		   sizeof(struct addrlst_cardblock));
 
 	    /* Delete the reference to the the address
 	     * lists so they do not get freed. */
-	    memset(&(addr_bigblock->nogrp), 0, sizeof(struct addrlst_grpblock));
+	    memset(&(addr_bigblock->addrs), 0, sizeof(struct addrlst_cardblock));
 
 #ifndef COMPILING_NBNS
 	    if ((in_addr != nbns_addr) ||
 		(name_flags & FLG_B)) {
-	      for (i=0; i<4; i++) {
-		if (cache_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_P) {
+	      for (i=0; i<NUMOF_ADDRSES; i++) {
+		if (cache_namecard->addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
+								CACHE_NODEGRPFLG_P)) {
 		  destroy_addrlist(cache_namecard->addrs.recrd[i].addr);
 		  cache_namecard->addrs.recrd[i].addr = 0;
 		  cache_namecard->addrs.recrd[i].node_type = 0;
-		  cache_namecard->node_types = cache_namecard->node_types & (~CACHE_NODEFLG_P);
+		  cache_namecard->node_types = cache_namecard->node_types &
+		    (~(cache_namecard->addrs.recrd[i].node_type));
+
 		  if (! cache_namecard->node_types) {
 		    destroy_namecard(cache_namecard);
 		    cache_namecard = 0;
@@ -2810,19 +2786,20 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      }
 	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
 
-	      for (i=0; i<4; i++) {
+	      for (i=0; i<NUMOF_ADDRSES; i++) {
 #ifndef COMPILING_NBNS
-		if (addr_bigblock->nogrp.recrd[i].addr &&
-		    ((addr_bigblock->nogrp.recrd[i].node_type == CACHE_NODEFLG_P) ?
+		if (addr_bigblock->addrs.recrd[i].addr &&
+		    ((addr_bigblock->addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
+								 CACHE_NODEGRPFLG_P)) ?
 		     ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
 		     TRUE)) {
 #endif
-		  for (j=0; j<4; j++) {
+		  for (j=0; j<NUMOF_ADDRSES; j++) {
 		    if (cache_namecard->addrs.recrd[j].node_type ==
-			addr_bigblock->nogrp.recrd[i].node_type) {
+			addr_bigblock->addrs.recrd[i].node_type) {
 		      cache_namecard->addrs.recrd[j].addr =
 			merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-					addr_bigblock->nogrp.recrd[i].addr);
+					addr_bigblock->addrs.recrd[i].addr);
 
 #ifdef COMPILING_NBNS
 		      succedded = TRUE;
@@ -2831,15 +2808,14 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		    } else {
 		      if (cache_namecard->addrs.recrd[j].node_type == 0) {
 			cache_namecard->addrs.recrd[j].node_type =
-			  addr_bigblock->nogrp.recrd[i].node_type;
+			  addr_bigblock->addrs.recrd[i].node_type;
 			cache_namecard->addrs.recrd[j].addr =
-			  addr_bigblock->nogrp.recrd[i].addr;
+			  addr_bigblock->addrs.recrd[i].addr;
 			/* Delete the reference to the address
 			 * list so it does not get freed. */
-			addr_bigblock->nogrp.recrd[i].addr = 0;
+			addr_bigblock->addrs.recrd[i].addr = 0;
 
-			cache_namecard->node_types = cache_namecard->node_types |
-			  addr_bigblock->nogrp.recrd[i].node_type;
+			cache_namecard->node_types |= addr_bigblock->addrs.recrd[i].node_type;
 
 #ifdef COMPILING_NBNS
 			succedded = TRUE;

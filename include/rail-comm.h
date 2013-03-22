@@ -56,7 +56,8 @@ struct com_comm {
   unsigned char command;
   uint64_t token;
   struct sockaddr_in addr; /* on wire: uint16_t port, uint32_t ip_addr */
-  unsigned char node_type; /* one of {B, P, M, H}, flags are used internally */
+  unsigned char node_type; /* one of {B, P, M, H, b, p, m, h},
+                            * flags are used internally */
   uint32_t len;
   void *data;
 };

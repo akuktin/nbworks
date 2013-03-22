@@ -119,8 +119,6 @@ uint32_t get_nbnsaddr(struct nbnodename_list *scope) {
 void prune_scopes(time_t when) {
   struct cache_scopenode *cur_scope, **last_scope;
   struct cache_namenode *cur_name, **last_name;
-  struct ipv4_addr_list *cur_addr, *addr_fordel;
-  int i;
 
   cur_scope = nbworks_rootscope;
   last_scope = &(nbworks_rootscope);
@@ -132,16 +130,9 @@ void prune_scopes(time_t when) {
     while (cur_name) {
       if (cur_name->timeof_death < when) {
 	*last_name = cur_name->next;
-	for (i=0; i<4; i++) {
-	  cur_addr = cur_name->addrs.recrd[i].addr;
-	  while (cur_addr) {
-	    addr_fordel = cur_addr->next;
-	    free(cur_addr);
-	    cur_addr = addr_fordel;
-	  }
-	}
-	free(cur_name->name);
-	free(cur_name);
+
+	destroy_namecard(cur_name);
+
 	cur_name = *last_name;
       } else {
 	last_name = &(cur_name->next);
@@ -164,6 +155,7 @@ void prune_scopes(time_t when) {
 }
 
 
+/* MAYBE: make it discriminate between group and unique names. */
 /* returns: >0=succes, 0=fail (name exists), <0=error */
 struct cache_namenode *add_name(struct cache_namenode *name,
 				struct nbnodename_list *scope) {
@@ -187,7 +179,6 @@ struct cache_namenode *add_name(struct cache_namenode *name,
       if ((cur_name->namelen == name->namelen) &&
 	  (0 == memcmp(cur_name->name, name->name,
 		       name->namelen)) &&
-	  (cur_name->group_flg & name->group_flg) &&
 	  (cur_name->dns_type == name->dns_type) &&
 	  (cur_name->dns_class == name->dns_class)) {
 	if (cur_name != name) {
@@ -211,21 +202,13 @@ struct cache_namenode *add_nblabel(void *label,
 				   unsigned char labellen,
 				   unsigned short node_types,
 				   uint64_t token,
-				   unsigned char group_flg,
 				   uint16_t dns_type,
 				   uint16_t dns_class,
-				   struct addrlst_grpblock *addrblock,
+				   struct addrlst_cardblock *addrblock,
 				   struct nbnodename_list *scope) {
   struct cache_namenode *result;
-  int i;
 
-  if ((! label) ||
-      /* The explanation for the below test:
-       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
-       * 2. you can not set both bits at the same time. */
-      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
-	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
-	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+  if (! label)
     return 0;
 
   result = calloc(1, sizeof(struct cache_namenode));
@@ -243,13 +226,12 @@ struct cache_namenode *add_nblabel(void *label,
 
   memcpy(result->name, label, labellen);
 
-  memcpy(&(result->addrs), addrblock, sizeof(struct addrlst_grpblock));
+  memcpy(&(result->addrs), addrblock, sizeof(struct addrlst_cardblock));
 
   result->namelen = labellen;
   result->node_types = node_types;
   result->isinconflict = FALSE;
   result->token = token;
-  result->group_flg = group_flg;
   result->dns_type = dns_type;
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
@@ -267,15 +249,12 @@ struct cache_namenode *add_nblabel(void *label,
   } else {
     /* Failure. There is a duplicate. */
     /* TODO: errno signaling stuff */
-    for (i=0; i<4; i++) {
-      free(result->addrs.recrd[i].addr);
-    }
-    free(result->name);
-    free(result);
+    destroy_namecard(result);
     return 0;
   }
 }
 
+/* MAYBE: make it disriminate between group and unique names. */
 struct cache_namenode *replace_namecard(struct cache_namenode *name,
 					struct nbnodename_list *scope) {
   struct cache_scopenode *my_scope;
@@ -299,7 +278,6 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
     if ((cur_name->namelen == name->namelen) &&
 	(0 == memcmp(cur_name->name, name->name,
 		     name->namelen)) &&
-	(cur_name->group_flg & name->group_flg) &&
 	(cur_name->dns_type == name->dns_type) &&
 	(cur_name->dns_class == name->dns_class)) {
 
@@ -312,18 +290,17 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
       cur_name->node_types = name->node_types;
       cur_name->isinconflict = name->isinconflict;
       cur_name->token = name->token;
-      cur_name->group_flg = name->group_flg;
       cur_name->dns_type = name->dns_type;
       cur_name->dns_class = name->dns_class;
       cur_name->timeof_death = name->timeof_death;
       cur_name->endof_conflict_chance = name->endof_conflict_chance;
       cur_name->refresh_ttl = name->refresh_ttl;
-      for (i=0; i<4; i++) {
+      for (i=0; i<NUMOF_ADDRSES; i++) {
 	cur_name->addrs.recrd[i].node_type = name->addrs.recrd[i].node_type;
 	cur_name->addrs.recrd[i].addr = name->addrs.recrd[i].addr;
       }
 
-      for (i=0; i<4; i++) {
+      for (i=0; i<NUMOF_ADDRSES; i++) {
 	addrlist = for_del.addrs.recrd[i].addr;
 	while (addrlist) {
 	  nextaddrlist = addrlist->next;
@@ -365,7 +342,6 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
     if ((cur_name->namelen == namecard->namelen) &&
 	(0 == memcmp(cur_name->name, namecard->name,
 		     namecard->namelen)) &&
-	(cur_name->group_flg & namecard->group_flg) &&
 	(cur_name->node_types & namecard->node_types) &&
 	(cur_name->dns_type == namecard->dns_type) &&
 	(cur_name->dns_class == namecard->dns_class)) {
@@ -381,7 +357,6 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
 struct cache_namenode *find_nblabel(void *label,
 				    unsigned char labellen,
 				    unsigned short node_types,
-				    unsigned char group_flg,
 				    uint16_t dns_type,
 				    uint16_t dns_class,
 				    struct nbnodename_list *scope) {
@@ -402,7 +377,6 @@ struct cache_namenode *find_nblabel(void *label,
     if ((cur_name->namelen == labellen) &&
 	(0 == memcmp(cur_name->name, label,
 		     labellen)) &&
-	(cur_name->group_flg & group_flg) &&
 	(cur_name->node_types & node_types) &&
 	(cur_name->dns_type == dns_type) &&
 	(cur_name->dns_class == dns_class)) {
@@ -442,7 +416,6 @@ struct cache_namenode *find_namebytok(uint64_t token,
 
 struct cache_namenode *find_nextcard(struct cache_namenode *prevcard,
 				     unsigned short node_types,
-				     unsigned char group_flg,
 				     uint16_t dns_type,
 				     uint16_t dns_class) {
   struct cache_namenode *cur_name;
@@ -458,7 +431,6 @@ struct cache_namenode *find_nextcard(struct cache_namenode *prevcard,
     if ((cur_name->namelen == labellen) &&
 	(0 == memcmp(cur_name->name, prevcard->name,
 		     labellen)) &&
-	(cur_name->group_flg & group_flg) &&
 	(cur_name->node_types & node_types) &&
 	(cur_name->dns_type == dns_type) &&
 	(cur_name->dns_class == dns_class)) {
@@ -476,18 +448,11 @@ struct cache_namenode *alloc_namecard(void *label,
 				      unsigned char labellen,
 				      unsigned short node_types,
 				      uint64_t token,
-				      unsigned char group_flg,
 				      uint16_t dns_type,
 				      uint16_t dns_class) {
   struct cache_namenode *result;
 
-  if ((! label) ||
-      /* The explanation for the below test:
-       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
-       * 2. you can not set both bits at the same time. */
-      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
-	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
-	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
+  if (! label)
     return 0;
 
   result = calloc(1, sizeof(struct cache_namenode));
@@ -508,7 +473,6 @@ struct cache_namenode *alloc_namecard(void *label,
   result->node_types = node_types;
   result->isinconflict = FALSE;
   result->token = token;
-  result->group_flg = group_flg;
   result->dns_type = dns_type;
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
@@ -527,7 +491,7 @@ void destroy_namecard(struct cache_namenode *namecard) {
     return;
 
   free(namecard->name);
-  for (i=0; i<4; i++) {
+  for (i=0; i<NUMOF_ADDRSES; i++) {
     addrlist = namecard->addrs.recrd[i].addr;
     while (addrlist) {
       nextaddrlist = addrlist->next;
@@ -774,82 +738,82 @@ struct addrlst_bigblock *sort_nbaddrs(struct nbaddress_list *nbaddr_list,
 
 
   if (ipv4_addr_list_grpB_frst) {
-    result->node_types = result->node_types | CACHE_NODEGRPFLG_B;
-    for (i=0; i<4; i++) {
-      if (! result->ysgrp.recrd[i].node_type) {
-	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_B; /* not a typo */
-	result->ysgrp.recrd[i].addr = ipv4_addr_list_grpB_frst;
+    result->node_types |= CACHE_NODEGRPFLG_B;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (! result->addrs.recrd[i].node_type) {
+	result->addrs.recrd[i].node_type = CACHE_NODEGRPFLG_B;
+	result->addrs.recrd[i].addr = ipv4_addr_list_grpB_frst;
 	break;
       }
     }
   }
   if (ipv4_addr_list_grpP_frst) {
-    result->node_types = result->node_types | CACHE_NODEGRPFLG_P;
-    for (i=0; i<4; i++) {
-      if (! result->ysgrp.recrd[i].node_type) {
-	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_P; /* not a typo */
-	result->ysgrp.recrd[i].addr = ipv4_addr_list_grpP_frst;
+    result->node_types |= CACHE_NODEGRPFLG_P;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (! result->addrs.recrd[i].node_type) {
+	result->addrs.recrd[i].node_type = CACHE_NODEGRPFLG_P;
+	result->addrs.recrd[i].addr = ipv4_addr_list_grpP_frst;
 	break;
       }
     }
   }
   if (ipv4_addr_list_grpM_frst) {
-    result->node_types = result->node_types | CACHE_NODEGRPFLG_M;
-    for (i=0; i<4; i++) {
-      if (! result->ysgrp.recrd[i].node_type) {
-	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_M; /* not a typo */
-	result->ysgrp.recrd[i].addr = ipv4_addr_list_grpM_frst;
+    result->node_types |= CACHE_NODEGRPFLG_M;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (! result->addrs.recrd[i].node_type) {
+	result->addrs.recrd[i].node_type = CACHE_NODEGRPFLG_M;
+	result->addrs.recrd[i].addr = ipv4_addr_list_grpM_frst;
 	break;
       }
     }
   }
   if (ipv4_addr_list_grpH_frst) {
-    result->node_types = result->node_types | CACHE_NODEGRPFLG_H;
-    for (i=0; i<4; i++) {
-      if (! result->ysgrp.recrd[i].node_type) {
-	result->ysgrp.recrd[i].node_type = CACHE_NODEFLG_H; /* not a typo */
-	result->ysgrp.recrd[i].addr = ipv4_addr_list_grpH_frst;
+    result->node_types |= CACHE_NODEGRPFLG_H;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (! result->addrs.recrd[i].node_type) {
+	result->addrs.recrd[i].node_type = CACHE_NODEGRPFLG_H;
+	result->addrs.recrd[i].addr = ipv4_addr_list_grpH_frst;
 	break;
       }
     }
   }
 
   if (ipv4_addr_listB_frst) {
-    result->node_types = result->node_types | CACHE_NODEFLG_B;
-    for (i=0; i<4; i++) {
-      if (! result->nogrp.recrd[i].node_type) {
-	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_B;
-	result->nogrp.recrd[i].addr = ipv4_addr_listB_frst;
+    result->node_types |= CACHE_NODEFLG_B;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (! result->addrs.recrd[i].node_type) {
+	result->addrs.recrd[i].node_type = CACHE_NODEFLG_B;
+	result->addrs.recrd[i].addr = ipv4_addr_listB_frst;
 	break;
       }
     }
   }
   if (ipv4_addr_listP_frst) {
-    result->node_types = result->node_types | CACHE_NODEFLG_P;
-    for (i=0; i<4; i++) {
-      if (! result->nogrp.recrd[i].node_type) {
-	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_P;
-	result->nogrp.recrd[i].addr = ipv4_addr_listP_frst;
+    result->node_types |= CACHE_NODEFLG_P;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (! result->addrs.recrd[i].node_type) {
+	result->addrs.recrd[i].node_type = CACHE_NODEFLG_P;
+	result->addrs.recrd[i].addr = ipv4_addr_listP_frst;
 	break;
       }
     }
   }
   if (ipv4_addr_listM_frst) {
-    result->node_types = result->node_types | CACHE_NODEFLG_M;
-    for (i=0; i<4; i++) {
-      if (! result->nogrp.recrd[i].node_type) {
-	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_M;
-	result->nogrp.recrd[i].addr = ipv4_addr_listM_frst;
+    result->node_types |= CACHE_NODEFLG_M;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (! result->addrs.recrd[i].node_type) {
+	result->addrs.recrd[i].node_type = CACHE_NODEFLG_M;
+	result->addrs.recrd[i].addr = ipv4_addr_listM_frst;
 	break;
       }
     }
   }
   if (ipv4_addr_listH_frst) {
-    result->node_types = result->node_types | CACHE_NODEFLG_H;
-    for (i=0; i<4; i++) {
-      if (! result->nogrp.recrd[i].node_type) {
-	result->nogrp.recrd[i].node_type = CACHE_NODEFLG_H;
-	result->nogrp.recrd[i].addr = ipv4_addr_listH_frst;
+    result->node_types |= CACHE_NODEFLG_H;
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (! result->addrs.recrd[i].node_type) {
+	result->addrs.recrd[i].node_type = CACHE_NODEFLG_H;
+	result->addrs.recrd[i].addr = ipv4_addr_listH_frst;
 	break;
       }
     }
@@ -865,14 +829,8 @@ void destroy_bigblock(struct addrlst_bigblock *block) {
   if (! block)
     return;
 
-  for (i=0; i<4; i++) {
-    deltree = block->ysgrp.recrd[i].addr;
-    while (deltree) {
-      rm_rf = deltree->next;
-      free(deltree);
-      deltree = rm_rf;
-    }
-    deltree = block->nogrp.recrd[i].addr;
+  for (i=0; i<NUMOF_ADDRSES; i++) {
+    deltree = block->addrs.recrd[i].addr;
     while (deltree) {
       rm_rf = deltree->next;
       free(deltree);
@@ -907,12 +865,12 @@ int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
     return -1;
   }
 
-  for (i=0; i<4; i++) {
-    for (j=0; j<4; j++) {
-      if (addrblock.ysgrp.recrd[i].node_type ==
-	  namecard->addrs.recrd[j].node_type) {
+  for (i=0; i<NUMOF_ADDRSES; i++) {
+    for (j=0; j<NUMOF_ADDRSES; j++) {
+      if (addrblock.addrs.recrd[i].node_type == namecard->addrs.recrd[j].node_type) {
 	if ((namecard->addrs.recrd[j].node_type &
-	     (CACHE_NODEFLG_P | CACHE_NODEFLG_M | CACHE_NODEFLG_H)) &&
+	     (CACHE_NODEFLG_P | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
+	      CACHE_NODEGRPFLG_P | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H)) &&
 	    sender_is_nbns)
 	  do_force = TRUE;
 	else
@@ -922,10 +880,10 @@ int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
       }
     }
 
-    if (! (j<4))
+    if (j>=NUMOF_ADDRSES)
       continue;
 
-    last_addr = &(addrblock.ysgrp.recrd[i].addr);
+    last_addr = &(addrblock.addrs.recrd[i].addr);
     cur_addr = *last_addr;
 
     while (cur_addr) {
@@ -962,7 +920,7 @@ int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
 
 	if (! namecard->addrs.recrd[j].addr) {
 	  namecard->node_types = namecard->node_types &
-	    (~(addrblock.ysgrp.recrd[i].node_type));
+	    (~(addrblock.addrs.recrd[i].node_type));
 	  namecard->addrs.recrd[j].node_type = 0;
 
 	  while (*last_addr) {

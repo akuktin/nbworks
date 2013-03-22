@@ -25,7 +25,6 @@ struct name_srvc_packet *
                               struct nbnodename_list *scope,
                               uint32_t ttl,
                               uint32_t in_address,
-                              unsigned char group_flg,
                               unsigned char node_type);
 struct name_srvc_packet *
   name_srvc_make_name_reg_small(unsigned char *name,
@@ -33,7 +32,6 @@ struct name_srvc_packet *
                                struct nbnodename_list *scope,
                                uint32_t ttl,
                                uint32_t in_address,
-                               unsigned char group_flg,
                                unsigned char node_type);
 struct name_srvc_packet *
   name_srvc_make_name_qry_req(unsigned char *name,
