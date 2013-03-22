@@ -230,8 +230,16 @@ struct cache_namenode *add_nblabel(void *label,
 
   result->namelen = labellen;
   result->node_types = node_types;
-  result->isinconflict = FALSE;
-  result->token = token;
+  result->unq_isinconflict = FALSE;
+  result->grp_isinconflict = FALSE;
+  /* The below could backfire. */
+  if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+    result->unq_token = token;
+    result->grp_token = 0;
+  } else {
+    result->unq_token = 0;
+    result->grp_token = token;
+  }
   result->dns_type = dns_type;
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
@@ -288,8 +296,10 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
       cur_name->name = name->name;
       cur_name->namelen = name->namelen;
       cur_name->node_types = name->node_types;
-      cur_name->isinconflict = name->isinconflict;
-      cur_name->token = name->token;
+      cur_name->unq_isinconflict = name->unq_isinconflict;
+      cur_name->grp_isinconflict = name->grp_isinconflict;
+      cur_name->unq_token = name->unq_token;
+      cur_name->grp_token = name->grp_token;
       cur_name->dns_type = name->dns_type;
       cur_name->dns_class = name->dns_class;
       cur_name->timeof_death = name->timeof_death;
@@ -402,7 +412,8 @@ struct cache_namenode *find_namebytok(uint64_t token,
   while (scope) {
     result = scope->names;
     while (result)
-      if (result->token == token) {
+      if ((result->unq_token == token) ||
+	  (result->grp_token == token)) {
 	if (ret_scope)
 	  *ret_scope = clone_nbnodename(scope->scope);
 	return result;
@@ -471,8 +482,16 @@ struct cache_namenode *alloc_namecard(void *label,
   memcpy(result->name, label, labellen);
   result->namelen = labellen;
   result->node_types = node_types;
-  result->isinconflict = FALSE;
-  result->token = token;
+  result->unq_isinconflict = FALSE;
+  result->grp_isinconflict = FALSE;
+  /* The below could backfire. */
+  if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+    result->unq_token = token;
+    result->grp_token = 0;
+  } else {
+    result->unq_token = 0;
+    result->grp_token = token;
+  }
   result->dns_type = dns_type;
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */

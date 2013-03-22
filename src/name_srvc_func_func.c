@@ -938,9 +938,9 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	 */
 
 	if (cache_namecard &&
-	    (cache_namecard->token) &&
-	    (cache_namecard->timeof_death > cur_time) &&
-	    (! cache_namecard->isinconflict)) { /* Paired with the DOS_BUG in the
+	    ((cache_namecard->unq_token) && (! cache_namecard->unq_isinconflict)) &&
+	    (cache_namecard->timeof_death > cur_time)) {
+	                                        /* Paired with the DOS_BUG in the
 						 * POSITIVE NAME QUERY RESPONSE
 						 * section, this can be abused to
 						 * execute a hostile name takeover.
@@ -1622,9 +1622,9 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 					     ANY_NODETYPE,
 					     QTYPE_NB, qstn->qstn->qclass,
 					     qstn->qstn->name->next_name)) &&
-	      (cache_namecard->token) &&
-	      (cache_namecard->timeof_death > cur_time) &&
-	      (! cache_namecard->isinconflict))) &&
+	      ((cache_namecard->unq_token && (! cache_namecard->unq_isinconflict)) ||
+	       (cache_namecard->grp_token && (! cache_namecard->grp_isinconflict))) &&
+	      (cache_namecard->timeof_death > cur_time))) &&
 	    (this_scope = find_scope(qstn->qstn->name->next_name))) {
 
 	  if (res) {
@@ -1734,7 +1734,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	    }
 
 	    names_list->name_flags = names_list->name_flags | NODENAMEFLG_ACT;
-	    if (cache_namecard->isinconflict)
+	    if (cache_namecard->unq_isinconflict || cache_namecard->grp_isinconflict)
 	      names_list->name_flags = names_list->name_flags | NODENAMEFLG_CNF;
 
 	    cache_namecard = cache_namecard->next;
@@ -1769,10 +1769,10 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
 	  if (cache_namecard &&
 #ifndef COMPILING_NBNS
-	      (cache_namecard->token) &&
+	      ((cache_namecard->unq_token && (! cache_namecard->unq_isinconflict)) ||
+	       (cache_namecard->grp_token && (! cache_namecard->grp_isinconflict))) &&
 #endif
-	      (cache_namecard->timeof_death > cur_time) &&
-	      (! cache_namecard->isinconflict)) {
+	      (cache_namecard->timeof_death > cur_time)) {
 
 	    if (cache_namecard->timeof_death < lowest_deathtime)
 	      lowest_deathtime = cache_namecard->timeof_death;
@@ -2069,8 +2069,8 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 
       if ((cache_namecard) &&
 	  (cache_namecard->timeof_death > cur_time) &&
-	  (cache_namecard->endof_conflict_chance < cur_time) &&
-	  (! cache_namecard->isinconflict)) {
+	  (cache_namecard->endof_conflict_chance < cur_time)) {
+	/* NO conflict check. */
 	if (addrblock.node_types & CACHE_ADDRBLCK_GRP_MASK) {
 	  /* Verify the sender lists themselves as a member of the
 	     group being updated. */
@@ -2123,10 +2123,10 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 		}
 	      }
 	      if (ipv4_addr_list) {
-		if (! cache_namecard->token)
+		if (! cache_namecard->grp_token)
 		  cache_namecard->timeof_death = 0;
 		else
-		  cache_namecard->isinconflict = 1;  /* WRONG! But how do I fix it? */
+		  cache_namecard->grp_isinconflict = 1;  /* WRONG! But how do I fix it? */
 		break;
 	      }
 	    }
@@ -2176,11 +2176,11 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 		}
 	      }
 	      if (ipv4_addr_list) {
-		if (! cache_namecard->token)
+		if (! cache_namecard->unq_token)
 		  cache_namecard->timeof_death = 0;
 		else {
 		  /* Impossible. */
-		  cache_namecard->isinconflict = 1;
+		  cache_namecard->unq_isinconflict = 1;
 		}
 		break;
 	      }
@@ -2260,8 +2260,8 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 				      res->res->rrclass,
 				      res->res->name->next_name);
 	if (cache_namecard)
-	  if (cache_namecard->token)
-	    cache_namecard->isinconflict = TRUE; /* WRONG ? */
+	  if (cache_namecard->grp_token)
+	    cache_namecard->grp_isinconflict = TRUE; /* WRONG ? */
       }
       if (status & STATUS_DID_UNIQ) {
 	cache_namecard = find_nblabel(decoded_name,
@@ -2271,8 +2271,8 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 				      res->res->rrclass,
 				      res->res->name->next_name);
 	if (cache_namecard)
-	  if (cache_namecard->token)
-	    cache_namecard->isinconflict = TRUE;
+	  if (cache_namecard->unq_token)
+	    cache_namecard->unq_isinconflict = TRUE;
       }
     }
 
@@ -2402,7 +2402,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	  /* In NBNS mode, sender_is_nbns == FALSE. */
 	  if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard,
 				       my_ipv4_address(), sender_is_nbns)) {
-	    cache_namecard->token = 0;
+	    cache_namecard->grp_token = 0;
 	  }
 
 	  for (i=0; i<NUMOF_ADDRSES; i++) {
@@ -2426,7 +2426,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 				      res->res->rrclass,
 				      res->res->name->next_name);
 	if (cache_namecard) {
-	  if (! cache_namecard->token) {
+	  if (! cache_namecard->unq_token) {
 	    cache_namecard->timeof_death = 0;
 #ifdef COMPILING_NBNS
 	    succedded = TRUE;
@@ -2776,7 +2776,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    }
 
 	  } else {
-	    if (! cache_namecard->token) {
+	    if (! cache_namecard->unq_token) {
 	      if (res->res->ttl) {
 		cache_namecard->timeof_death = cur_time + res->res->ttl;
 		cache_namecard->refresh_ttl = res->res->ttl;

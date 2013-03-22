@@ -235,7 +235,11 @@ void *handle_rail(void *args) {
   case rail_regname:
     cache_namecard = do_rail_regname(params.rail_sckt, &command);
     if (cache_namecard) {
-      command.token = cache_namecard->token;
+      if (command.node_type > 'A') {
+	command.token = cache_namecard->grp_token;
+      } else {
+	command.token = cache_namecard->unq_token;
+      }
       command.len = 0;
       command.data = 0;
       fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
@@ -281,6 +285,14 @@ void *handle_rail(void *args) {
       name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
 			     scope, ipv4, node_type, FALSE);
 
+      if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
+	cache_namecard->unq_token = 0;
+	cache_namecard->unq_isinconflict = FALSE;
+      }
+      if (node_type & CACHE_ADDRBLCK_GRP_MASK) {
+	cache_namecard->grp_token = 0;
+	cache_namecard->grp_isinconflict = FALSE;
+      }
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	last_addr = &(cache_namecard->addrs.recrd[i].addr);
 	cur_addr = *last_addr;
@@ -300,10 +312,10 @@ void *handle_rail(void *args) {
 	  cache_namecard->node_types = cache_namecard->node_types &
 	    (~(cache_namecard->addrs.recrd[i].node_type));
 	}
-      }
 
-      if (! cache_namecard->node_types) {
-	cache_namecard->timeof_death = 0;
+	if (! cache_namecard->node_types) {
+	  cache_namecard->timeof_death = 0;
+	}
       }
 
       command.len = 0;
@@ -834,6 +846,7 @@ int rail_add_dtg_server(int rail_sckt,
   struct rail_list *new_rail, *cur_rail, **last_rail;
   struct dtg_srv_params params;
   union trans_id tid;
+  uint64_t token;
   time_t cur_time;
 
   if (! command)
@@ -853,11 +866,13 @@ int rail_add_dtg_server(int rail_sckt,
   }
 
   cur_time = time(0);
+  token = command->token;
 
-  namecard = find_namebytok(command->token, &(nbname->next_name));
+  namecard = find_namebytok(token, &(nbname->next_name));
   if ((! namecard) ||
       (namecard->timeof_death <= cur_time) ||
-      (namecard->isinconflict)) {
+      (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
+       ((namecard->grp_token == token) && namecard->grp_isinconflict))) {
     free(new_rail);
     free(nbname);
     return 1;
@@ -1061,17 +1076,20 @@ int rail_add_ses_server(int rail_sckt,
 			struct com_comm *command) {
   struct cache_namenode *namecard;
   struct nbnodename_list nbname;
+  uint64_t token;
   time_t cur_time;
 
   if (! command)
     return -1;
 
   cur_time = time(0);
+  token = command->token;
 
-  namecard = find_namebytok(command->token, &(nbname.next_name));
+  namecard = find_namebytok(token, &(nbname.next_name));
   if ((! namecard) ||
       (namecard->timeof_death <= cur_time) ||
-      (namecard->isinconflict)) {
+      (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
+       ((namecard->grp_token == token) && namecard->grp_isinconflict))) {
     return 1;
   }
 
