@@ -236,9 +236,11 @@ struct cache_namenode *add_nblabel(void *label,
   if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
     result->unq_token = token;
     result->grp_token = 0;
+    result->numof_grpholders = 0;
   } else {
     result->unq_token = 0;
     result->grp_token = token;
+    result->numof_grpholders = 1;
   }
   result->dns_type = dns_type;
   result->dns_class = dns_class;
@@ -300,6 +302,7 @@ struct cache_namenode *replace_namecard(struct cache_namenode *name,
       cur_name->grp_isinconflict = name->grp_isinconflict;
       cur_name->unq_token = name->unq_token;
       cur_name->grp_token = name->grp_token;
+      cur_name->numof_grpholders = name->numof_grpholders;
       cur_name->dns_type = name->dns_type;
       cur_name->dns_class = name->dns_class;
       cur_name->timeof_death = name->timeof_death;
@@ -488,9 +491,11 @@ struct cache_namenode *alloc_namecard(void *label,
   if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
     result->unq_token = token;
     result->grp_token = 0;
+    result->numof_grpholders = 0;
   } else {
     result->unq_token = 0;
     result->grp_token = token;
+    result->numof_grpholders = 1;
   }
   result->dns_type = dns_type;
   result->dns_class = dns_class;

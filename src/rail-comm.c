@@ -290,8 +290,13 @@ void *handle_rail(void *args) {
 	cache_namecard->unq_isinconflict = FALSE;
       }
       if (node_type & CACHE_ADDRBLCK_GRP_MASK) {
-	cache_namecard->grp_token = 0;
-	cache_namecard->grp_isinconflict = FALSE;
+	cache_namecard->numof_grpholders--;
+	if (cache_namecard->numof_grpholders <= 0) {
+	  cache_namecard->grp_token = 0;
+	  cache_namecard->grp_isinconflict = FALSE;
+	} else {
+	  goto jumpover;
+	}
       }
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	last_addr = &(cache_namecard->addrs.recrd[i].addr);
@@ -318,6 +323,7 @@ void *handle_rail(void *args) {
 	}
       }
 
+    jumpover:
       command.len = 0;
       fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
@@ -528,8 +534,6 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   int i;
   unsigned char *data_buff, node_type;
 
-  /* WRONG FOR GROUPS!!! */
-
   if (! command)
     return 0;
 
@@ -579,40 +583,50 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     if (grp_namecard) {
       destroy_namecard(cache_namecard);
 
-      if (command->command == rail_addr_ofXgroup) {
-	/* Tell the world (actually optional for B nodes). */
-	if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
-				      namedata->scope,
-				      my_ipv4_address(),
-				      namedata->group_flg, namedata->ttl)) {
-	  grp_namecard->timeof_death = time(0) + namedata->ttl;
+      if ((node_type & CACHE_ADDRBLCK_GRP_MASK) &&
+	  /* Tell the world (actually optional for B nodes). */
+	  (0 == name_srvc_B_add_name(namedata->name,
+				     namedata->name_type,
+				     namedata->scope,
+				     my_ipv4_address(),
+				     ISGROUP_YES,
+				     namedata->ttl))) {
+	if (! grp_namecard->grp_token) {
+	  grp_namecard->grp_token = make_token();
+	}
+	if (grp_namecard > 0)
+	  grp_namecard->numof_grpholders++;
+	else
+	  grp_namecard->numof_grpholders = 1;
+	grp_namecard->timeof_death = time(0) + namedata->ttl;
 
-	  for (i=0; i<NUMOF_ADDRSES; i++) {
-	    if (grp_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
-	      break;
+	for (i=0; i<NUMOF_ADDRSES; i++) {
+	  if ((grp_namecard->addrs.recrd[i].node_type == node_type) ||
+	      (grp_namecard->addrs.recrd[i].node_type == 0))
+	    break;
+	}
+	if (i<NUMOF_ADDRSES) {
+	  new_addr = malloc(sizeof(struct ipv4_addr_list));
+	  if (! new_addr) {
+	    cleanup;
+	    return 0;
 	  }
-	  if (i<NUMOF_ADDRSES) {
-	    new_addr = malloc(sizeof(struct ipv4_addr_list));
-	    if (! new_addr) {
-	      return 0;
-	    }
-	    new_addr->ip_addr = my_ipv4_address();
-	    new_addr->next = 0;
+	  new_addr->ip_addr = my_ipv4_address();
+	  new_addr->next = 0;
 
-	    while (0xd0) {
-	      last_addr = &(grp_namecard->addrs.recrd[i].addr);
+	  while (0xd0) {
+	    last_addr = &(grp_namecard->addrs.recrd[i].addr);
+	    cur_addr = *last_addr;
+
+	    while (cur_addr) {
+	      if (cur_addr == new_addr)
+		return grp_namecard;
+
+	      last_addr = &(cur_addr->next);
 	      cur_addr = *last_addr;
-
-	      while (cur_addr) {
-		if (cur_addr == new_addr)
-		  return grp_namecard;
-
-		last_addr = &(cur_addr->next);
-		cur_addr = *last_addr;
-	      }
-
-	      *last_addr = new_addr;
 	    }
+
+	    *last_addr = new_addr;
 	  }
 	}
       }
@@ -631,7 +645,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	  return 0;
 	}
 
-	cache_namecard->addrs.recrd[0].node_type = CACHE_NODEFLG_B;
+	cache_namecard->addrs.recrd[0].node_type = node_type;
 	cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));
 	if (! cache_namecard->addrs.recrd[0].addr) {
 	  /* TODO: error handling */

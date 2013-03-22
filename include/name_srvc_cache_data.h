@@ -87,6 +87,7 @@ struct cache_namenode {
   unsigned char grp_isinconflict;
   uint64_t unq_token; /* 0 if name not mine, 1 if name in */
   uint64_t grp_token; /* process of being registered */
+  long numof_grpholders;
   uint16_t dns_type;
   uint16_t dns_class;
   time_t timeof_death;
