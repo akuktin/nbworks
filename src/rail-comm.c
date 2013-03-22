@@ -575,11 +575,11 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 				      namedata->group_flg, namedata->ttl)) {
 	  grp_namecard->timeof_death = time(0) + namedata->ttl;
 
-	  for (i=0; i<4; i++) {
+	  for (i=0; i<NUMOF_ADDRSES; i++) {
 	    if (grp_namecard->addrs.recrd[i].node_type == CACHE_NODEFLG_B)
 	      break;
 	  }
-	  if (i<4) {
+	  if (i<NUMOF_ADDRSES) {
 	    new_addr = malloc(sizeof(struct ipv4_addr_list));
 	    if (! new_addr) {
 	      return 0;
@@ -1501,7 +1501,7 @@ uint32_t rail_whatisaddrX(int rail_sckt,
   destroy_nbnodename(name);
 
   if (namecard) {
-    for (i=0; i<4; i++) {
+    for (i=0; i<NUMOF_ADDRSES; i++) {
       if (namecard->addrs.recrd[i].node_type == node_type)
 	return namecard->addrs.recrd[i].addr->ip_addr;
     }

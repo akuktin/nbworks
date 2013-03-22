@@ -1501,8 +1501,7 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
 
   cur_time = time(0);
   while (namecard) {
-      /* is the name in a NBNS dependant mode? */
-    if (namecard->node_types & (~(CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B))) {
+    if (!(namecard->node_types & (~(CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B)))) {
       namecard = namecard->next;
       continue;
     }
@@ -1519,13 +1518,16 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
 	}
       }
 
-      for (i=0; i<4; i++) {
+      for (i=0; i<NUMOF_ADDRSES; i++) {
 	if (namecard->addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
 						  CACHE_NODEFLG_M |
-						  CACHE_NODEFLG_H))
+						  CACHE_NODEFLG_H |
+						  CACHE_NODEGRPFLG_P |
+						  CACHE_NODEGRPFLG_M |
+						  CACHE_NODEGRPFLG_H))
 	  break;
       }
-      if (i>=4) {
+      if (i>=NUMOF_ADDRSES) {
 	namecard = namecard->next;
 	continue;
       }
@@ -1573,10 +1575,13 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
       last_nbaddrs = (struct nbaddress_list **)&((*adit_ptr)->res->rdata);
       nbaddrs = *last_nbaddrs;
       /* continue scanning the addresses from where the last loop left off */
-      for (i++; i<4; i++) {
+      for (i++; i<NUMOF_ADDRSES; i++) {
 	if (namecard->addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
 						  CACHE_NODEFLG_M |
-						  CACHE_NODEFLG_H)) {
+						  CACHE_NODEFLG_H |
+						  CACHE_NODEGRPFLG_P |
+						  CACHE_NODEGRPFLG_M |
+						  CACHE_NODEGRPFLG_H)) {
 	  while (nbaddrs) {
 	    last_nbaddrs = &(nbaddrs->next_address);
 	    nbaddrs = *last_nbaddrs;

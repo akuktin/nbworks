@@ -434,7 +434,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     target_flags = NBADDRLST_GROUP_NO;
     target_flags = target_flags | NBADDRLST_NODET_M;
     break;
-  case CACHE_NODEGRPFLG_M: 
+  case CACHE_NODEGRPFLG_M:
     target_flags = NBADDRLST_GROUP_YES;
     target_flags = target_flags | NBADDRLST_NODET_M;
     break;
