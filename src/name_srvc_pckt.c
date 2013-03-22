@@ -399,22 +399,13 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       /* TODO: errno signaling stuff */
       return 0;
     }
-    weighted_companion_cube = *start_and_end_of_walk +1;
+    weighted_companion_cube = *start_and_end_of_walk;
 
     nbnodename = read_all_DNS_labels(start_and_end_of_walk,
 				     start_of_packet, end_of_packet,
 				     0, 0, 0, 0);
-    if (! nbnodename) {
-      /* TODO: errno signaling stuff */
-      return 0;
-    }
-    *start_and_end_of_walk = align(weighted_companion_cube, *start_and_end_of_walk, 4);
-    if (*start_and_end_of_walk > end_of_packet) {
-      /* OUT_OF_BOUNDS */
-      /* TODO: errno signaling stuff */
-      /* question: should you, and how exactly should you, signal this? */
-      *start_and_end_of_walk = end_of_packet;
-    }
+
+    *start_and_end_of_walk = weighted_companion_cube + resource->rdata_len;
     return nbnodename;
     break;
 
@@ -539,7 +530,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     walker = read_16field(walker, &(nbstat->max_total_sessions_possible));
     walker = read_16field(walker, &(nbstat->session_data_pckt_size));
 
-    *start_and_end_of_walk = walker;
+    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
 
     return nbstat;
     break;
@@ -586,11 +577,19 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     break;
 
   case nb_address_list:
-    return fill_nbaddress_list(content->rdata, walker, end_of_packet);
+    walker = fill_nbaddress_list(content->rdata, walker, end_of_packet);
+    if ((walker-field) < content->rdata_len) {
+      memset(walker, 0, (content->rdata_len - (walker - field)));
+      return (field + content->rdata_len);
+    } else {
+      /* This is ridiculous. */
+      return walker;
+    }
     break;
 
   case nb_type_null:
-    return walker;
+    memset(walker, 0, content->rdata_len);
+    return (walker + content->rdata_len);
     break;
 
   case nb_nodename:
@@ -605,12 +604,25 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       /* TODO: maybe do errno signaling stuff? */
       return end_of_packet;
     } else {
-      return walker;
+      if ((walker-field) < content->rdata_len) {
+	memset(walker, 0, (content->rdata_len - (walker - field)));
+	return (field + content->rdata_len);
+      } else {
+	/* This is ridiculous. */
+	return walker;
+      }
     }
     break;
 
   case nb_NBT_node_ip_address:
-    return fill_ipv4_address_list(content->rdata, walker, end_of_packet);
+    walker = fill_ipv4_address_list(content->rdata, walker, end_of_packet);
+    if ((walker-field) < content->rdata_len) {
+      memset(walker, 0, (content->rdata_len - (walker - field)));
+      return (field + content->rdata_len);
+    } else {
+      /* This is ridiculous. */
+      return walker;
+    }
     break;
 
   case nb_statistics_rfc1002:
@@ -675,7 +687,13 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     walker = fill_16field(nbstat->max_total_sessions_possible, walker);
     walker = fill_16field(nbstat->session_data_pckt_size, walker);
 
-    return walker;
+    if ((walker-field) < content->rdata_len) {
+      memset(walker, 0, (content->rdata_len - (walker - field)));
+      return (field + content->rdata_len);
+    } else {
+      /* This is ridiculous. */
+      return walker;
+    }
     break;
 
   default:

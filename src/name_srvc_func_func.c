@@ -456,6 +456,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     target_flags = NBADDRLST_GROUP_YES;
     target_flags = target_flags | NBADDRLST_NODET_B;
     break;
+
   default:
     /* TODO: errno signaling stuff */
     return 0;
@@ -1589,8 +1590,6 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
   numof_answers = 0;
   answer_lst = res = 0;
-  ipv4_addr_list = 0;
-  flags = 0;
   istruncated = FALSE;
   lowest_deathtime = ZEROONES;
 
@@ -1603,6 +1602,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   qstn = outpckt->questions;
   while (qstn) {
     ipv4_addr_list = 0;
+    flags = 0;
 
     if (qstn->qstn &&
 	qstn->qstn->name &&
@@ -1616,15 +1616,15 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
 #ifndef COMPILING_NBNS
       if (qstn->qstn->qtype == QTYPE_NBSTAT) {
-	if ((((cache_namecard = find_nblabel(decoded_name,
+	if (((0 == memcmp(JOKER_NAME, decoded_name, NETBIOS_NAME_LEN)) ||
+	     ((cache_namecard = find_nblabel(decoded_name,
 					     NETBIOS_NAME_LEN,
 					     ANY_NODETYPE,
 					     QTYPE_NB, qstn->qstn->qclass,
 					     qstn->qstn->name->next_name)) &&
 	      (cache_namecard->token) &&
 	      (cache_namecard->timeof_death > cur_time) &&
-	      (! cache_namecard->isinconflict)) ||
-	     (0 == memcmp(JOKER_NAME, decoded_name, NETBIOS_NAME_LEN))) &&
+	      (! cache_namecard->isinconflict))) &&
 	    (this_scope = find_scope(qstn->qstn->name->next_name))) {
 
 	  if (res) {
