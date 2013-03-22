@@ -1666,6 +1666,11 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  cache_namecard = this_scope->names;
 	  names_list_last = &(stats->listof_names);
 	  while (cache_namecard) {
+	    if (! (cache_namecard->unq_token || cache_namecard->grp_token)) {
+	      cache_namecard = cache_namecard->next;
+	      continue;
+	    }
+
 	    /* It is enough to only check for this overflow, as it is not possible
 	     * for RDATALEN to overflow if this one does not overflow first. */
 	    if (numof_names >= 0xff) {
