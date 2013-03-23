@@ -1045,9 +1045,16 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       }
 
       /* Do not enter B node records into the cache. */
-      addrblck.node_types = addrblck.node_types &
-	(ONES ^ (CACHE_NODEGRPFLG_B | CACHE_NODEFLG_B));
+      addrblck.node_types = addrblck.node_types & (~(CACHE_NODEGRPFLG_B |
+						     CACHE_NODEFLG_B));
       if (! addrblck.node_types) {
+	make_it_into_failed;
+	empty_addrblck;
+	continue;
+      }
+
+      if ((addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) &&
+	  (addrblck.node_types & CACHE_ADDRBLCK_GRP_MASK)) {
 	make_it_into_failed;
 	empty_addrblck;
 	continue;
@@ -1056,18 +1063,11 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if (addrblck.addrs.recrd[i].addr &&
 	    (addrblck.addrs.recrd[i].node_type & (CACHE_NODEGRPFLG_B |
-					    CACHE_NODEFLG_B))) {
+						  CACHE_NODEFLG_B))) {
 	  destroy_addrlist(addrblck.addrs.recrd[i].addr);
 	  addrblck.addrs.recrd[i].node_type = 0;
 	  addrblck.addrs.recrd[i].addr = 0;
 	}
-      }
-
-      if ((addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) &&
-	  (addrblck.node_types & CACHE_ADDRBLCK_GRP_MASK)) {
-	make_it_into_failed;
-	empty_addrblck;
-	continue;
       }
 
       if (! decode_nbnodename(res->res->name->name, decoded_name)) {
@@ -1303,18 +1303,16 @@ void destroy_laters_list(struct laters_link *laters) {
   int i;
 
   while (laters) {
-    if (laters->res) {
-      if (laters->rdata) {
-	laters->res->rdata = laters->rdata;
-      }
+    if (laters->res_lst) {
+      if (laters->rdata &&
+	  laters->res_lst->res) {
+	laters->res_lst->res->rdata = laters->rdata;
+      } /* else
+	 memory leak - I can not know how to destroy the RDATA without
+	 knowing its type beforehand */
 
-      destroy_name_srvc_res_data(laters->res, TRUE, TRUE);
-
-      if (laters->res->name) {
-	destroy_nbnodename(laters->res->name);
-      }
-
-      free(laters->res);
+      laters->res_lst->next = 0;
+      destroy_name_srvc_res_lst(laters->res_lst, 1, 1);
     }
 
     for (i=0; i<NUMOF_ADDRSES; i++) {
@@ -1325,10 +1323,7 @@ void destroy_laters_list(struct laters_link *laters) {
     }
 
     if (laters->probe)
-      destroy_name_srvc_pckt(laters->probe, TRUE, TRUE);
-
-    if (laters->res_lst)
-      free(laters->res_lst);
+      destroy_name_srvc_pckt(laters->probe, 1, 1);
 
     next_later = laters->next;
     free(laters);
@@ -1393,15 +1388,18 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     cur_laters = *last_laters = res->res->rdata;
     last_laters = &(cur_laters->next);
 
-    cur_laters->res = res->res;
+    cur_laters->res_lst = res;
+
     cur_laters->ttl = res->res->ttl;
+    cur_laters->rdata_len = res->res->rdata_len;
+    cur_laters->rdata_t = res->res->rdata_t;
+    /* cur_laters->rdata is already filled. */
 
     /* Get ready for sending WACKs. */
-    res->res->rdata = &pckt_flags;
-    res->res->rdata_len = 2;
     res->res->ttl = (3 * (nbworks_namsrvc_cntrl.func_sleeptime.tv_sec +1));
-
-    cur_laters->res_lst = res;
+    res->res->rdata_len = 2;
+    res->res->rdata_t = nb_address_list;
+    res->res->rdata = &pckt_flags;
 
     res = res->next;
   }
@@ -1422,6 +1420,12 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   pckt->answers = laterargs.res;
 
   ss_name_send_pckt(pckt, &addr, laterargs.trans);
+  /* At this point, the algorythm implicitly assumes that the packet
+   * has cleared the service sector by the time resources begin to be
+   * manipulated below. If that is not the case, strange bugs may crop up. */
+  /* Such bugs can only ever be cured by implementig a lock. Lock is set by
+   * ss_name_send_pckt() and cleared by fill_name_srvc_resource() after the
+   * resource data has been filled succesfully, or when it aborts. */
 
   /* Now that that is out of the way, lets focus on actual laters themselves. */
   /* There are two basic cases that have to be handled.
@@ -1444,21 +1448,24 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     if (cur_laters->namecard->node_types & CACHE_ADDRBLCK_GRP_MASK) {
       if (cur_laters->addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
 	numof_failed++;
-	numof_laters--;
 
 	*last_failed = res = cur_laters->res_lst;
 	last_failed = &(res->next);
 
-	res->res->ttl = cur_laters->ttl;
+	/* The resource is restored to its former state after the 'if' statement. */
+
+	/* The lists and pointers are rotated after the 'if' statement. */
       } else {
-	/* Note that there may also be a unique namecard somewhere down the line,
-	 * thus creating an undetected failure condition. For the time being, I will
-	 * ignore this. */
+	/* Note that there STILL may also be a unique namecard somewhere
+	 * down the line, thus creating an undetected failure condition.
+	 * (Even after I have merged the unique and group cards together.)
+	 * Again, for the time being, I will ignore this. */
 	numof_succeded++;
-	numof_laters--;
 
 	*last_succeded = res = cur_laters->res_lst;
 	last_succeded = &(res->next);
+
+	/* The resource is restored to its former state after the 'if' statement. */
 
 	cache_namecard = cur_laters->namecard;
 	addrses = &(cur_laters->addrblck.addrs);
@@ -1490,21 +1497,23 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	  }
 	}
 
-	res->res->ttl = cur_laters->ttl;
-	new_deathtime = cur_time + res->res->ttl;
+	new_deathtime = cur_time + cur_laters->ttl;
 	if (new_deathtime > cache_namecard->timeof_death)
 	  cache_namecard->timeof_death = new_deathtime;
-	cache_namecard->refresh_ttl = res->res->ttl;
+	cache_namecard->refresh_ttl = cur_laters->ttl;
 
       }
+      res->res->ttl = cur_laters->ttl;
+      res->res->rdata_len = cur_laters->rdata_len;
+      res->res->rdata_t = cur_laters->rdata_t;
       res->res->rdata = cur_laters->rdata;
 
       cur_laters->rdata = 0;
-      cur_laters->res = 0;
       cur_laters->res_lst = 0;
 
       *last_killme = cur_laters;
       last_killme = &(cur_laters->next);
+
       *last_laters = cur_laters->next;
     } else {
       /* FIXME TODO DO_ME_NEXT */

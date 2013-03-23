@@ -36,16 +36,20 @@ struct latereg_args {
 };
 
 struct laters_link {
-  void *rdata;
-  struct cache_namenode *namecard;
-  struct name_srvc_resource *res;
-  struct addrlst_bigblock addrblck;
-  uint32_t ttl;
-  struct name_srvc_packet *probe;
-  struct laters_link *next;
-  /* The below is to prevent malloc()ing and free()ing
-   * where it can be avoided. */
+  /* RESOURCE part */
   struct name_srvc_resource_lst *res_lst;
+  /* RDATA part */
+  uint32_t ttl;
+  uint32_t rdata_len;
+  enum name_srvc_rdata_type rdata_t;
+  void *rdata;
+  /* internal part */
+  struct cache_namenode *namecard;
+  struct addrlst_bigblock addrblck;
+  /* handle to the packet used for challenging */
+  struct name_srvc_packet *probe;
+  /* daisy-chain */
+  struct laters_link *next;
 };
 # endif /* COMPILING_NBNS */
 
