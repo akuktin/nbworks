@@ -1299,26 +1299,36 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 }
 
 void destroy_laters_list(struct laters_link *laters) {
+  struct name_srvc_resource dummyres;
   struct laters_link *next_later;
   int i;
 
+  memset(&dummyres, 0, sizeof(struct name_srvc_resource));
+
   while (laters) {
     if (laters->res_lst) {
-      if (laters->rdata &&
-	  laters->res_lst->res) {
+      if (laters->res_lst->res) {
+	laters->res_lst->res->rdata_t = laters->rdata_t;
 	laters->res_lst->res->rdata = laters->rdata;
-      } /* else
-	 memory leak - I can not know how to destroy the RDATA without
-	 knowing its type beforehand */
+	laters->res_lst->next = 0;
+	destroy_name_srvc_res_lst(laters->res_lst, 1, 1);
 
-      laters->res_lst->next = 0;
-      destroy_name_srvc_res_lst(laters->res_lst, 1, 1);
+	laters->rdata = 0;
+      } else {
+	free(laters->res_lst);
+      }
+    }
+
+    if (laters->rdata) {
+      dummyres.rdata_t = laters->rdata_t;
+      dummyres.rdata = laters->rdata;
+
+      destroy_name_srvc_res_data(&dummyres, 1, 1);
     }
 
     for (i=0; i<NUMOF_ADDRSES; i++) {
       if (laters->addrblck.addrs.recrd[i].addr) {
 	destroy_addrlist(laters->addrblck.addrs.recrd[i].addr);
-	laters->addrblck.addrs.recrd[i].addr = 0;
       }
     }
 
@@ -1346,15 +1356,16 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   struct laters_link *laters, *cur_laters, **last_laters, *killme, **last_killme;
   time_t cur_time, new_deathtime;
   long i, j, numof_laters, numof_succeded, numof_failed;
+  unsigned char you_may_succed, you_may_fail;
 
   if (! args)
     return 0;
 
 # define empty_addrblck							\
   for (i=0; i<NUMOF_ADDRSES; i++) {					\
-    if (addrblck->addrs.recrd[i].addr) {					\
+    if (addrblck->addrs.recrd[i].addr) {				\
       destroy_addrlist(addrblck->addrs.recrd[i].addr);			\
-      addrblck->addrs.recrd[i].addr = 0;					\
+      addrblck->addrs.recrd[i].addr = 0;				\
     }									\
   }
 
@@ -1435,6 +1446,9 @@ void *name_srvc_NBNShndl_latereg(void *args) {
    * The SECOND case is when trying to register a unique name. If there is an
    * identical unique name, challenge it, if it does not defend, register the name.
    * However, if there is an identical group name, flat-out refuse to register the name.*/
+  /* Note that these case groups have been inverted in the code below. */
+
+  /* loop starts here */
 
   cur_time = time(0);
   numof_succeded = 0;
@@ -1445,28 +1459,36 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   last_laters = &laters;
   cur_laters = *last_laters;
   while (cur_laters) {
+    you_may_succed = FALSE;
+    you_may_fail = FALSE;
+
     if (cur_laters->namecard->node_types & CACHE_ADDRBLCK_GRP_MASK) {
       if (cur_laters->addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+	you_may_fail = TRUE;
+      } else {
+	you_may_succed = TRUE;
+      }
+    }
+    if ((cur_laters->namecard->node_types & CACHE_ADDRBLCK_UNIQ_MASK) &&
+	(! you_may_fail)) {
+      you_may_succed = FALSE;
+      /* FIXME TODO DO_ME_NEXT */
+    }
+
+    if (you_may_succed || you_may_fail) {
+      if (you_may_fail) {
 	numof_failed++;
 
 	*last_failed = res = cur_laters->res_lst;
 	last_failed = &(res->next);
-
-	/* The resource is restored to its former state after the 'if' statement. */
-
-	/* The lists and pointers are rotated after the 'if' statement. */
-      } else {
-	/* Note that there STILL may also be a unique namecard somewhere
-	 * down the line, thus creating an undetected failure condition.
-	 * (Even after I have merged the unique and group cards together.)
-	 * Again, for the time being, I will ignore this. */
+      } else { /* Intentionately written like this, to prevent a later
+		* from both succeding and failing. */
 	numof_succeded++;
 
 	*last_succeded = res = cur_laters->res_lst;
 	last_succeded = &(res->next);
 
-	/* The resource is restored to its former state after the 'if' statement. */
-
+	/* -------------------- */
 	cache_namecard = cur_laters->namecard;
 	addrses = &(cur_laters->addrblck.addrs);
 	/* BUG: The below double loop doesn't check that the sender
@@ -1501,8 +1523,9 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	if (new_deathtime > cache_namecard->timeof_death)
 	  cache_namecard->timeof_death = new_deathtime;
 	cache_namecard->refresh_ttl = cur_laters->ttl;
-
+	/* -------------------- */
       }
+
       res->res->ttl = cur_laters->ttl;
       res->res->rdata_len = cur_laters->rdata_len;
       res->res->rdata_t = cur_laters->rdata_t;
@@ -1516,7 +1539,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 
       *last_laters = cur_laters->next;
     } else {
-      /* FIXME TODO DO_ME_NEXT */
+      last_laters = &(cur_laters->next);
     }
 
     cur_laters = *last_laters;
@@ -1561,6 +1584,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     destroy_laters_list(killme);
   }
 
+  /* loop ends here */
 
  endof_function:
   if (last_will)
