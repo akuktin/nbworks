@@ -779,13 +779,12 @@ void ss__prune_sessions(void) {
 #ifdef COMPILING_NBNS
 int fill_all_nametrans(struct ss_priv_trans **where) {
   struct ss_priv_trans *new_trans, **last_trans;
-  struct ss_queue_storage *new_stor, **last_stor;
   uint32_t index;
 
   last_trans = &(nbworks_all_transactions[NAME_SRVC]);
-  last_stor = &(nbworks_queue_storage[NAME_SRVC]);
+  memset(ss_alltrans, 0, (MAXNUMOF_TIDS * sizeof(struct ss_queue)));
 
-  for (index = 0; index < (0xffff +1); index++) {
+  for (index = 0; index < MAXNUMOF_TIDS; index++) {
 
     new_trans = malloc(sizeof(struct ss_priv_trans));
     if (! new_trans) {
@@ -817,30 +816,11 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
     *last_trans = new_trans;
     last_trans = &(new_trans->next);
 
-
-    new_stor = malloc(sizeof(struct ss_queue_storage));
-    if (! new_stor) {
-      *last_trans = 0;
-      *last_stor = 0;
-      /* TODO: errno signaling stuff */
-      return 0;
-    }
-
-    new_stor->branch = NAME_SRVC;
-    new_stor->id.tid = index;
-
-    new_stor->last_active = ZEROONES -1;
-    new_stor->rail = 0;
-    new_stor->queue.incoming = new_trans->in;
-    new_stor->queue.outgoing = new_trans->out;
-
-    *last_stor = new_stor;
-    last_stor = &(new_stor->next);
-
+    ss_alltrans[index].incoming = new_trans->in;
+    ss_alltrans[index].outgoing = new_trans->out;
   }
 
   *last_trans = 0;
-  *last_stor = 0;
 
   return 1;
 }

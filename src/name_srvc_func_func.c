@@ -182,11 +182,6 @@ void *name_srvc_handle_newtid(void *input) {
     }
 
     // NAME UPDATE REQUEST
-    /*
-     * The hardest one to date, because I had to COMPLETELY redo the cache
-     * records to make it work. I also had to implement linked list
-     * cross-checker.
-     */
 
     if (((outpckt->header->opcode == (OPCODE_REQUEST |
 				      OPCODE_REFRESH)) ||
@@ -211,6 +206,204 @@ void *name_srvc_handle_newtid(void *input) {
 
   return 0;
 }
+
+#ifdef COMPILING_NBNS
+unsigned int name_srvc_NBNStid_hndlr(unsigned int master,
+				     uint16_t frst_index,
+				     uint16_t last_index) {
+  union trans_id transid;
+  struct name_srvc_packet *outpckt;
+  struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
+  time_t cur_time;
+  uint16_t index;
+
+  if (master) {
+    if (last_index < frst_index)
+      return 0;
+
+    /* Reserve the index range and make sure some or all of the
+     * requested trans have not already been reserved. */
+    for (index=frst_index; index < last_index; index++) {
+      if ((ss_iosig[index] & SS_IOSIG_TIDED) ||
+	  (ss_iosig[index] & SS_IOSIG_TIDING)) {
+	for (; index > frst_index; index--) {
+	  ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+	}
+	ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+
+	return 0;
+      } else {
+	ss_iosig[index] |= SS_IOSIG_TIDING;
+      }
+    }
+    if ((ss_iosig[index] & SS_IOSIG_TIDED) ||
+	(ss_iosig[index] & SS_IOSIG_TIDING)) {
+      for (; index > frst_index; index--) {
+	ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+      }
+      ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+
+      return 0;
+    } else {
+      for (; index > frst_index; index--) {
+	ss_iosig[index] |= SS_IOSIG_TIDED;
+	ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+      }
+      ss_iosig[index] |= SS_IOSIG_TIDED;
+      ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+    }
+
+    transid.tid = frst_index;
+    ss_set_inputdrop_name_tid(&transid);
+  }
+
+  last_outpckt = 0;
+  index = frst_index;
+
+  while (! nbworks_all_port_cntl.all_stop) {
+    do {
+      outside_pckt = ss__recv_entry(&(ss_alltrans[index]));
+
+      if (outside_pckt == last_outpckt) {
+	/* No packet. */
+	if (master) {
+	  /* In all fairness, the below code is very poorly positioned. */
+
+	  transid.tid = index;
+	  ss_set_normalstate_name_tid(&transid);
+
+	  /* Note to self: this code will not create a memory leak because
+	   * it only ever gets executed during the NO_PACKET condition. */
+	  last_outpckt = 0;
+	  do {
+	    if (nbworks_all_port_cntl.all_stop) {
+	      goto endof_function;
+	    }
+
+	    index++;
+	    if ((index > last_index) ||
+		(index == 0)) {
+	      index = frst_index;
+	      nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
+	    }
+	    /* The below while is actually an exit guard, preventing the
+	     * exit from the loop in the event there is nothing in this
+	     * trans. */
+	  } while ((! (ss_iosig[index] & SS_IOSIG_IN)) ||
+		   (ss_iosig[index] & SS_IOSIG_TAKEN));
+
+	  transid.tid = index;
+	  ss_set_inputdrop_name_tid(&transid);
+
+	  continue;
+	} else {
+	  return 0;
+	}
+      } else {
+	if (last_outpckt)
+	  free(last_outpckt);
+	last_outpckt = outside_pckt;
+      }
+
+    } while (! outside_pckt->packet);
+
+    outpckt = outside_pckt->packet;
+    outside_pckt->packet = 0;
+
+    cur_time = time(0);
+
+    // NAME REGISTRATION REQUEST (UNIQUE)
+    // NAME REGISTRATION REQUEST (GROUP)
+
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				     OPCODE_REGISTRATION)) &&
+	(! outpckt->header->rcode)) {
+
+      if (master && name_srvc_do_NBNSnamreg(outpckt, &(outside_pckt->addr),
+					    trans, index, cur_time)) {
+	/* Funny. This is even thread-safe. */
+	ss_iosig[tid] |= SS_IOSIG_TAKEN;
+      } else {
+	/* If there is already a registration request pending on this
+	 * transaction number, then siletly ignore all new registration
+	 * requests until the original one is not resolved. */
+	destroy_name_srvc_pckt(outpckt, 1, 1);
+      }
+
+      continue;
+    }
+
+
+    // NAME QUERY REQUEST
+    // NODE STATUS REQUEST
+
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				     OPCODE_QUERY)) &&
+	(! outpckt->header->rcode)) {
+
+      name_srvc_do_namqrynodestat(outpckt, &(outside_pckt->addr),
+				  trans, index, cur_time);
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // POSITIVE NAME QUERY RESPONSE
+
+    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+				     OPCODE_QUERY)) &&
+	(outpckt->header->rcode == 0) &&
+	(outpckt->header->nm_flags & FLG_AA)) {
+
+      if (! master) {
+      } else
+	destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // NAME RELEASE REQUEST
+
+    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				     OPCODE_RELEASE)) &&
+	(outpckt->header->rcode == 0)) {
+
+      name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr),
+			     trans, index);
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // NAME UPDATE REQUEST
+
+    if (((outpckt->header->opcode == (OPCODE_REQUEST |
+				      OPCODE_REFRESH)) ||
+	 (outpckt->header->opcode == (OPCODE_REQUEST |
+				      OPCODE_REFRESH2))) &&
+	(outpckt->header->rcode == 0)) {
+
+      name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
+			   trans, index, cur_time);
+
+      destroy_name_srvc_pckt(outpckt, 1, 1);
+      continue;
+    }
+
+    // NOOP
+
+    destroy_name_srvc_pckt(outpckt, 1, 1);
+  }
+
+ endof_function:
+  if (master) {
+    for (index = frst_index; index > last_index; index++) {
+      ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDED);
+    }
+    ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDED);
+  }
+  return 0;
+}
+#endif
 
 
 
@@ -1344,7 +1537,8 @@ void destroy_laters_list(struct laters_link *laters) {
 }
 
 void *name_srvc_NBNShndl_latereg(void *args) {
-  struct sockaddr_in addr;
+  struct sockaddr_in addr, probeaddr;
+  union trans_id transid;
   struct nbaddress_list pckt_flags; /* I will SURELY burn in hell. */
   struct latereg_args laterargs, *release_lock;
   struct cache_namenode *cache_namecard;
@@ -1378,6 +1572,12 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     last_will = add_thread(laterargs.thread_id);
   else
     last_will = 0;
+
+  transid.tid = tid;
+
+  probeaddr.sin_family = AF_INET;
+  /* VAXism below */
+  fill_16field(137, (unsigned char *)&(probeaddr.sin_port));
 
   pckt_flags.flags = laterargs.pckt_flags;
   pckt_flags.there_is_an_address = FALSE;
@@ -1450,6 +1650,8 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 
   /* loop starts here */
 
+  ss_set_normalstate_name_tid(transid);
+
   cur_time = time(0);
   numof_succeded = 0;
   numof_failed = 0;
@@ -1472,7 +1674,37 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     if ((cur_laters->namecard->node_types & CACHE_ADDRBLCK_UNIQ_MASK) &&
 	(! you_may_fail)) {
       you_may_succed = FALSE;
-      /* FIXME TODO DO_ME_NEXT */
+
+      if (! cur_laters->probe) {
+	cur_laters->probe =
+	  name_srvc_make_name_qry_req(cur_laters->namecard->name,
+				      cur_laters->namecard->name[cur_laters->namecard->namelen -1],
+				      cur_laters->res_lst->res->name->next_name);
+
+	if (cur_laters->probe) {
+	  cur_laters->probe->header->transaction_id = laterargs.tid;
+	  cur_laters->probe->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
+	  cur_laters->probe->header->nm_flags = 0;
+	  cur_laters->probe->header->rcode = 0;
+
+	  goto jump_over_else_in_sendprobe;
+	}
+      } else {
+      jump_over_else_in_sendprobe:
+	for (i=0; i<NUMOF_ADDRSES; i++) {
+	  if (cur_later->addrblck.addrs.recrd[i].addr.node_type & (CACHE_NODEFLG_P |
+								   CACHE_NODEFLG_M |
+								   CACHE_NODEFLG_H)) {
+	    /* VAXism below */
+	    fill_32field(cur_later->addrblck.addrs.recrd[i].addr.ip_addr,
+			 (unsigned char *)&(probeaddr.sin_port));
+
+	    ss_name_send_pckt(cur_laters->probe, &probeaddr, laterargs.trans);
+
+	    /* Send one to EACH address. Hopefully we won't create a network meltdown. */
+	  }
+	}
+      }
     }
 
     if (you_may_succed || you_may_fail) {
@@ -1584,6 +1816,10 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     destroy_laters_list(killme);
   }
 
+  nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
+
+  ss_set_inputdrop_name_tid(&transid);
+
   /* loop ends here */
 
  endof_function:
@@ -1592,6 +1828,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 # undef empty_addrblck
   return 0;
 }
+
 #endif /* COMPILING_NBNS */
 
 

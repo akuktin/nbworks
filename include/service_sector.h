@@ -32,13 +32,22 @@
 # define TRANSIS_UDP 1
 # define TRANSIS_TCP 2
 
+# define MAXNUMOF_TIDS (0xffff +1)
+
 # ifdef COMPILING_NBNS
 extern unsigned char ss_iosig[(0xffff +1)];
 #  define SS_IOSIG_IN       0x10
 #  define SS_IOSIG_TAKEN    0x20
 #  define SS_IOSIG_OUT      0x01
-#  define SS_IOSIG_MASK_IN  0xf0
+
+#  define SS_IOSIG_TIDING   0x40 /* This trans is having a tid handler installed. */
+#  define SS_IOSIG_TIDED    0x80 /* This trans has a tid handler installed. */
+
+#  define SS_IOSIG_MASK_IN  0x30
 #  define SS_IOSIG_MASK_OUT 0x0f
+#  define SS_IOSIG_MASK_TID 0xc0
+
+extern struct ss_queue ss_alltrans[(0xffff +1)];
 # endif
 
 enum trans_status {

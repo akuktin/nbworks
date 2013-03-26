@@ -26,6 +26,7 @@
 # include "service_sector.h"
 
 unsigned char ss_iosig[(0xffff +1)];
+struct ss_queue ss_alltrans[(0xffff +1)];
 #endif
 
 nbworks_do_align_t nbworks_do_align;
