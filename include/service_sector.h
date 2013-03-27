@@ -34,26 +34,6 @@
 
 # define MAXNUMOF_TIDS (0xffff +1)
 
-# ifdef COMPILING_NBNS
-struct ss__NBNStrans {
-  unsigned char ss_iosig;
-  struct ss_priv_trans *privtrans;
-  struct ss_queue trans;
-};
-
-extern struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
-#  define SS_IOSIG_IN       0x10
-#  define SS_IOSIG_TAKEN    0x20
-#  define SS_IOSIG_OUT      0x01
-
-#  define SS_IOSIG_TIDING   0x40 /* This trans is having a tid handler installed. */
-#  define SS_IOSIG_TIDED    0x80 /* This trans has a tid handler installed. */
-
-#  define SS_IOSIG_MASK_IN  0x30
-#  define SS_IOSIG_MASK_OUT 0x0f
-#  define SS_IOSIG_MASK_TID 0xc0
-# endif
-
 enum trans_status {
   nmtrst_normal = 0,
   nmtrst_indrop,
@@ -143,6 +123,26 @@ struct ses_srv_sessions {
   unsigned int numof_passes;
   struct ses_srv_sessions *next;
 };
+
+# ifdef COMPILING_NBNS
+struct ss__NBNStrans {
+  unsigned char ss_iosig;
+  struct ss_priv_trans *privtrans;
+  struct ss_queue trans;
+};
+
+extern struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
+#  define SS_IOSIG_IN       0x10
+#  define SS_IOSIG_TAKEN    0x20
+#  define SS_IOSIG_OUT      0x01
+
+#  define SS_IOSIG_TIDING   0x40 /* This trans is having a tid handler installed. */
+#  define SS_IOSIG_TIDED    0x80 /* This trans has a tid handler installed. */
+
+#  define SS_IOSIG_MASK_IN  0x30
+#  define SS_IOSIG_MASK_OUT 0x0f
+#  define SS_IOSIG_MASK_TID 0xc0
+# endif
 
 void
   init_service_sector(void);

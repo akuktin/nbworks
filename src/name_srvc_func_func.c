@@ -319,11 +319,9 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 				     OPCODE_REGISTRATION)) &&
 	(! outpckt->header->rcode)) {
 
-      if (master && name_srvc_do_NBNSnamreg(outpckt, &(outside_pckt->addr),
-					    trans, index, cur_time)) {
-	/* Funny. This is even thread-safe. */
-	ss_alltrans[index].ss_iosig |= SS_IOSIG_TAKEN;
-      } else {
+      if (! (master && name_srvc_do_NBNSnamreg(outpckt, &(outside_pckt->addr),
+					       &(ss_alltrans[index].trans),
+					       index, cur_time))) {
 	/* If there is already a registration request pending on this
 	 * transaction number, then siletly ignore all new registration
 	 * requests until the original one is not resolved. */
@@ -342,7 +340,8 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 	(! outpckt->header->rcode)) {
 
       name_srvc_do_namqrynodestat(outpckt, &(outside_pckt->addr),
-				  trans, index, cur_time);
+				  &(ss_alltrans[index].trans),
+				  index, cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -375,7 +374,8 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 	(outpckt->header->rcode == 0)) {
 
       name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr),
-			     trans, index);
+			     &(ss_alltrans[index].trans),
+			     index);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -390,7 +390,8 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 	(outpckt->header->rcode == 0)) {
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
-			   trans, index, cur_time);
+			   &(ss_alltrans[index].trans),
+			   index, cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1490,6 +1491,9 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
     while (laterargs.not_done) {
       /* busy-wait */
     }
+
+    /* This is even thread-safe. */
+    ss_alltrans[tid].ss_iosig |= SS_IOSIG_TAKEN;
   }
 
 # undef make_it_into_failed
@@ -1580,7 +1584,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   else
     last_will = 0;
 
-  transid.tid = tid;
+  transid.tid = laterargs.tid;
 
   probeaddr.sin_family = AF_INET;
   /* VAXism below */
@@ -1659,11 +1663,16 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   last_failed = &failed;
   last_killme = &killme;
 
-  for (retries = 0; retries < retries_NBNS; retries++) {
+  numof_succeded = 0;
+  last_succeded = &succeded;
 
-    ss_set_normalstate_name_tid(transid);
+  cur_time = time(0);
 
-    cur_time = time(0);
+  for (retries = 0; retries < nbworks_namsrvc_cntrl.retries_NBNS; retries++) {
+    ss_set_normalstate_name_tid(&transid);
+
+    if (retries)
+      cur_time = time(0);
     numof_succeded = 0;
     last_succeded = &succeded;
     last_laters = &laters;
@@ -1700,11 +1709,11 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	} else {
 	jump_over_else_in_sendprobe:
 	  for (i=0; i<NUMOF_ADDRSES; i++) {
-	    if (cur_later->addrblck.addrs.recrd[i].addr.node_type & (CACHE_NODEFLG_P |
-								     CACHE_NODEFLG_M |
-								     CACHE_NODEFLG_H)) {
+	    if (cur_laters->addrblck.addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
+								 CACHE_NODEFLG_M |
+								 CACHE_NODEFLG_H)) {
 	      /* VAXism below */
-	      fill_32field(cur_later->addrblck.addrs.recrd[i].addr.ip_addr,
+	      fill_32field(cur_laters->addrblck.addrs.recrd[i].addr->ip_addr,
 			   (unsigned char *)&(probeaddr.sin_port));
 
 	      /* Send one to EACH address. Hopefully we won't create a network meltdown. */
@@ -1846,7 +1855,8 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	    /* Some node (I am not checking the senders IP address nor
 	     * that said address is properly registered) has responded
 	     * to a NAME QUERY REQUEST (or just sent the response of
-	     * it's own volition). Interpret this to mean that this name
+	     * it's own volition with the same transaction_id as the one
+	     * we are listening on). Interpret this to mean that this name
 	     * is active and thus off-limits. */
 	    numof_failed++;
 
@@ -1878,7 +1888,117 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 
   }
 
+  /* These have survived the killing fields and are to be registered. */
+  last_laters = &laters;
+  cur_laters = *last_laters;
+  while (cur_laters) {
+    numof_succeded++;
+
+    *last_succeded = res = cur_laters->res_lst;
+    last_succeded = &(res->next);
+
+    /* -------------------- */
+    cache_namecard = cur_laters->namecard;
+    addrses = &(cur_laters->addrblck.addrs);
+    /* BUG: The below double loop doesn't check that the sender
+     *      lists itself in the requested IP addresses. */
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      for (j=0; j<NUMOF_ADDRSES; j++) {
+	if (cache_namecard->addrs.recrd[j].node_type ==
+	    addrses->recrd[i].node_type) {
+	  cache_namecard->addrs.recrd[j].addr =
+	    merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+			    addrses->recrd[i].addr);
+	  break;
+	} else {
+	  if (cache_namecard->addrs.recrd[j].node_type == 0) {
+	    cache_namecard->addrs.recrd[j].node_type =
+	      addrses->recrd[i].node_type;
+	    cache_namecard->addrs.recrd[j].addr =
+	      addrses->recrd[i].addr;
+	    /* Delete the reference to the address
+	     * list so it does not get freed. */
+	    addrses->recrd[i].addr = 0;
+
+	    cache_namecard->node_types |= addrses->recrd[i].node_type;
+
+	    break;
+	  }
+	}
+      }
+    }
+
+    new_deathtime = cur_time + cur_laters->ttl;
+    if (new_deathtime > cache_namecard->timeof_death)
+      cache_namecard->timeof_death = new_deathtime;
+    cache_namecard->refresh_ttl = cur_laters->ttl;
+    /* -------------------- */
+
+    res->res->ttl = cur_laters->ttl;
+    res->res->rdata_len = cur_laters->rdata_len;
+    res->res->rdata_t = cur_laters->rdata_t;
+    res->res->rdata = cur_laters->rdata;
+
+    cur_laters->rdata = 0;
+    cur_laters->res_lst = 0;
+
+    *last_killme = cur_laters;
+    last_killme = &(cur_laters->next);
+
+    *last_laters = cur_laters->next;
+    cur_laters = *last_laters;
+  }
+
+  *last_succeded = 0;
+  *last_failed = 0;
+  *last_killme = 0;
+  *last_laters = 0;
+  if (numof_succeded) {
+    sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (sendpckt) {
+      sendpckt->header->transaction_id = laterargs.tid;
+      sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+      sendpckt->header->nm_flags = FLG_AA | FLG_RA;
+      sendpckt->header->rcode = 0;
+      sendpckt->header->numof_answers = numof_succeded;
+
+      sendpckt->answers = succeded;
+
+      sendpckt->for_del = TRUE;
+      ss_name_send_pckt(sendpckt, &addr, laterargs.trans);
+    } else {
+      destroy_name_srvc_res_lst(succeded, TRUE, TRUE);
+    }
+  }
+  if (numof_failed) {
+    sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+    if (sendpckt) {
+      sendpckt->header->transaction_id = laterargs.tid;
+      sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+      sendpckt->header->nm_flags = FLG_AA | FLG_RA;
+      sendpckt->header->rcode = RCODE_ACT_ERR;
+      sendpckt->header->numof_answers = numof_failed;
+
+      sendpckt->answers = failed;
+
+      sendpckt->for_del = TRUE;
+      ss_name_send_pckt(sendpckt, &addr, laterargs.trans);
+    } else {
+      destroy_name_srvc_res_lst(failed, TRUE, TRUE);
+    }
+  }
+  if (killme) {
+    destroy_laters_list(killme);
+  }
+
+  /* Destroy the long since forgotten WACK packet. */
+  pckt->answers = 0;
+  destroy_name_srvc_pckt(pckt, 1, 1);
+
  endof_function:
+  ss_set_normalstate_name_tid(&transid);
+  ss_alltrans[laterargs.tid].ss_iosig =
+    ss_alltrans[laterargs.tid].ss_iosig & (~SS_IOSIG_TAKEN);
   if (last_will)
     last_will->dead = 218;
 # undef empty_addrblck

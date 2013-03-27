@@ -790,14 +790,12 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
     if (! new_trans) {
       /* TODO: errno signaling stuff */
       *last_trans = 0;
-      *last_stor = 0;
       return 0;
     }
     new_trans->in = calloc(1, sizeof(struct ss_unif_pckt_list));
     if (! new_trans->in) {
       /* TODO: errno signaling stuff */
       *last_trans = 0;
-      *last_stor = 0;
       free(new_trans);
       return 0;
     }
@@ -805,7 +803,6 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
     if (! new_trans->out) {
       /* TODO: errno signaling stuff */
       *last_trans = 0;
-      *last_stor = 0;
       free(new_trans->in);
       free(new_trans);
       return 0;

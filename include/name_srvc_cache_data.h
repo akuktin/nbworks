@@ -80,7 +80,7 @@ struct cache_scopenode {
 };
 
 struct cache_namenode {
-  void *name;
+  unsigned char *name;
   unsigned char namelen;
   unsigned short node_types; /* flag field */
   unsigned char unq_isinconflict;
