@@ -1886,6 +1886,8 @@ void *name_srvc_NBNShndl_latereg(void *args) {
       }
     }
 
+    if (! laters)
+      break;
   }
 
   /* These have survived the killing fields and are to be registered. */
