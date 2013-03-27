@@ -208,9 +208,9 @@ void *name_srvc_handle_newtid(void *input) {
 }
 
 #ifdef COMPILING_NBNS
-unsigned int name_srvc_NBNStid_hndlr(unsigned int master,
-				     uint16_t frst_index,
-				     uint16_t last_index) {
+struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
+						 uint16_t frst_index,
+						 uint16_t last_index) {
   union trans_id transid;
   struct name_srvc_packet *outpckt;
   struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
@@ -356,6 +356,13 @@ unsigned int name_srvc_NBNStid_hndlr(unsigned int master,
 	(outpckt->header->nm_flags & FLG_AA)) {
 
       if (! master) {
+	if (last_outpckt)
+	  free(last_outpckt);
+	/* Make sure there are no memory leaks. */
+	if (outside_pckt->next)
+	  free(outside_pckt);
+
+	return outpckt;
       } else
 	destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1542,10 +1549,10 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   struct nbaddress_list pckt_flags; /* I will SURELY burn in hell. */
   struct latereg_args laterargs, *release_lock;
   struct cache_namenode *cache_namecard;
-  struct name_srvc_packet *pckt, *sendpckt;
+  struct name_srvc_packet *pckt, *sendpckt, *response_pckt;
   struct addrlst_cardblock *addrses;
   struct thread_node *last_will;
-  struct name_srvc_resource_lst *res, *failed, **last_failed,
+  struct name_srvc_resource_lst *res, *response_res, *failed, **last_failed,
     *succeded, **last_succeded;
   struct laters_link *laters, *cur_laters, **last_laters, *killme, **last_killme;
   time_t cur_time, new_deathtime;
@@ -1648,16 +1655,17 @@ void *name_srvc_NBNShndl_latereg(void *args) {
    * However, if there is an identical group name, flat-out refuse to register the name.*/
   /* Note that these case groups have been inverted in the code below. */
 
+  numof_failed = 0;
+  last_failed = &failed;
+  last_killme = &killme;
+
   /* loop starts here */
 
   ss_set_normalstate_name_tid(transid);
 
   cur_time = time(0);
   numof_succeded = 0;
-  numof_failed = 0;
   last_succeded = &succeded;
-  last_failed = &failed;
-  last_killme = &killme;
   last_laters = &laters;
   cur_laters = *last_laters;
   while (cur_laters) {
@@ -1699,9 +1707,8 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	    fill_32field(cur_later->addrblck.addrs.recrd[i].addr.ip_addr,
 			 (unsigned char *)&(probeaddr.sin_port));
 
-	    ss_name_send_pckt(cur_laters->probe, &probeaddr, laterargs.trans);
-
 	    /* Send one to EACH address. Hopefully we won't create a network meltdown. */
+	    ss_name_send_pckt(cur_laters->probe, &probeaddr, laterargs.trans);
 	  }
 	}
       }
@@ -1783,6 +1790,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   if (numof_succeded) {
     sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (sendpckt) {
+      sendpckt->header->transaction_id = laterargs.tid;
       sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
       sendpckt->header->nm_flags = FLG_AA | FLG_RA;
       sendpckt->header->rcode = 0;
@@ -1799,6 +1807,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   if (numof_failed) {
     sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (sendpckt) {
+      sendpckt->header->transaction_id = laterargs.tid;
       sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
       sendpckt->header->nm_flags = FLG_AA | FLG_RA;
       sendpckt->header->rcode = RCODE_ACT_ERR;
@@ -1819,6 +1828,53 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
 
   ss_set_inputdrop_name_tid(&transid);
+
+  numof_failed = 0;
+  last_failed = &failed;
+  last_killme = &killme;
+
+  while ((response_pckt = name_srvc_NBNStid_hndlr(FALSE, laterargs.tid,
+						  laterargs.tid))) {
+    response_res = response_pckt->answers;
+
+    while (response_res) {
+      last_laters = &laters;
+      cur_laters = *last_laters;
+      while (cur_laters) {
+	if (0 == cmp_nbnodename(cur_laters->res_lst->res->name,
+				response_res->res->name)) {
+	  /* Some node (I am not checking the senders IP address nor
+	   * that said address is properly registered) has responded
+	   * to a NAME QUERY REQUEST (or just sent the response of
+	   * it's own volition). Interpret this to mean that this name
+	   * is active and thus off-limits. */
+	  numof_failed++;
+
+	  *last_failed = res = cur_laters->res_lst;
+	  last_failed = &(res->next);
+
+	  res->res->ttl = cur_laters->ttl;
+	  res->res->rdata_len = cur_laters->rdata_len;
+	  res->res->rdata_t = cur_laters->rdata_t;
+	  res->res->rdata = cur_laters->rdata;
+
+	  cur_laters->rdata = 0;
+	  cur_laters->res_lst = 0;
+
+	  *last_killme = cur_laters;
+	  last_killme = &(cur_laters->next);
+
+	  *last_laters = cur_laters->next;
+	} else {
+	  last_laters = &(cur_laters->next);
+	}
+
+	cur_laters = *last_laters;
+      }
+
+      response_res = response_res->next;
+    }
+  }
 
   /* loop ends here */
 

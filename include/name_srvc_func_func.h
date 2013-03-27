@@ -55,7 +55,7 @@ struct laters_link {
 
 void *
   name_srvc_handle_newtid(void *input);
-unsigned int
+struct name_srvc_packet *
   name_srvc_NBNStid_hndlr(unsigned int master,
                           uint16_t frst_index,
                           uint16_t last_index);
