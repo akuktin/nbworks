@@ -1723,22 +1723,19 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	    cur_laters->probe->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
 	    cur_laters->probe->header->nm_flags = 0;
 	    cur_laters->probe->header->rcode = 0;
+	  } /* else
+	     ss_name_send_pckt() will handle the cur_laters->probe == 0 situation. */
+	}
+	for (i=0; i<NUMOF_ADDRSES; i++) {
+	  if (cur_laters->addrblck.addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
+							       CACHE_NODEFLG_M |
+							       CACHE_NODEFLG_H)) {
+	    /* VAXism below */
+	    fill_32field(cur_laters->addrblck.addrs.recrd[i].addr->ip_addr,
+			 (unsigned char *)&(probeaddr.sin_port));
 
-	    goto jump_over_else_in_sendprobe;
-	  }
-	} else {
-	jump_over_else_in_sendprobe:
-	  for (i=0; i<NUMOF_ADDRSES; i++) {
-	    if (cur_laters->addrblck.addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
-								 CACHE_NODEFLG_M |
-								 CACHE_NODEFLG_H)) {
-	      /* VAXism below */
-	      fill_32field(cur_laters->addrblck.addrs.recrd[i].addr->ip_addr,
-			   (unsigned char *)&(probeaddr.sin_port));
-
-	      /* Send one to EACH address. Hopefully we won't create a network meltdown. */
-	      ss_name_send_pckt(cur_laters->probe, &probeaddr, laterargs.trans);
-	    }
+	    /* Send one to EACH address. Hopefully we won't create a network meltdown. */
+	    ss_name_send_pckt(cur_laters->probe, &probeaddr, laterargs.trans);
 	  }
 	}
       }

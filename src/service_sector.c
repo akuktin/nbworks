@@ -399,6 +399,10 @@ void ss_set_inputdrop_tid(union trans_id *arg,
   if (! arg)
     return;
 
+#ifdef COMPILING_NBNS
+  if (branch == DTG_SRVC) {
+#endif
+
   if (! nbworks_all_transactions[branch])
     return;
 
@@ -417,6 +421,15 @@ void ss_set_inputdrop_tid(union trans_id *arg,
     }
     cur_trans = cur_trans->next;
   }
+#ifdef COMPILING_NBNS
+  } else {
+    cur_trans = ss_alltrans[arg->tid].privtrans;
+    if (cur_trans->status == nmtrst_normal) {
+      cur_trans->status = nmtrst_indrop;
+      return;
+    }
+  }
+#endif
 
   return;
 }
@@ -428,6 +441,10 @@ void ss_set_normalstate_tid(union trans_id *arg,
 
   if (! arg)
     return;
+
+#ifdef COMPILING_NBNS
+  if (branch == DTG_SRVC) {
+#endif
 
   if (! nbworks_all_transactions[branch])
     return;
@@ -447,6 +464,15 @@ void ss_set_normalstate_tid(union trans_id *arg,
     }
     cur_trans = cur_trans->next;
   }
+#ifdef COMPILING_NBNS
+  } else {
+    cur_trans = ss_alltrans[arg->tid].privtrans;
+    if (cur_trans->status != nmtrst_deregister) {
+      cur_trans->status = nmtrst_indrop;
+      return;
+    }
+  }
+#endif
 
   return;
 }
@@ -476,6 +502,10 @@ inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
       trans->outgoing->next = trans_pckt;
       /* Move the queue pointer. */
       trans->outgoing = trans_pckt;
+
+#ifdef COMPILING_NBNS
+      ss_alltrans[pckt->header->transaction_id].ss_iosig |= SS_IOSIG_OUT;
+#endif
     };
 
   return 1;
