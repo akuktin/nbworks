@@ -1556,7 +1556,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     *succeded, **last_succeded;
   struct laters_link *laters, *cur_laters, **last_laters, *killme, **last_killme;
   time_t cur_time, new_deathtime;
-  long i, j, numof_laters, numof_succeded, numof_failed;
+  long i, j, retries, numof_laters, numof_succeded, numof_failed;
   unsigned char you_may_succed, you_may_fail;
 
   if (! args)
@@ -1659,224 +1659,224 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   last_failed = &failed;
   last_killme = &killme;
 
-  /* loop starts here */
+  for (retries = 0; retries < retries_NBNS; retries++) {
 
-  ss_set_normalstate_name_tid(transid);
+    ss_set_normalstate_name_tid(transid);
 
-  cur_time = time(0);
-  numof_succeded = 0;
-  last_succeded = &succeded;
-  last_laters = &laters;
-  cur_laters = *last_laters;
-  while (cur_laters) {
-    you_may_succed = FALSE;
-    you_may_fail = FALSE;
-
-    if (cur_laters->namecard->node_types & CACHE_ADDRBLCK_GRP_MASK) {
-      if (cur_laters->addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
-	you_may_fail = TRUE;
-      } else {
-	you_may_succed = TRUE;
-      }
-    }
-    if ((cur_laters->namecard->node_types & CACHE_ADDRBLCK_UNIQ_MASK) &&
-	(! you_may_fail)) {
+    cur_time = time(0);
+    numof_succeded = 0;
+    last_succeded = &succeded;
+    last_laters = &laters;
+    cur_laters = *last_laters;
+    while (cur_laters) {
       you_may_succed = FALSE;
+      you_may_fail = FALSE;
 
-      if (! cur_laters->probe) {
-	cur_laters->probe =
-	  name_srvc_make_name_qry_req(cur_laters->namecard->name,
-				      cur_laters->namecard->name[cur_laters->namecard->namelen -1],
-				      cur_laters->res_lst->res->name->next_name);
-
-	if (cur_laters->probe) {
-	  cur_laters->probe->header->transaction_id = laterargs.tid;
-	  cur_laters->probe->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
-	  cur_laters->probe->header->nm_flags = 0;
-	  cur_laters->probe->header->rcode = 0;
-
-	  goto jump_over_else_in_sendprobe;
-	}
-      } else {
-      jump_over_else_in_sendprobe:
-	for (i=0; i<NUMOF_ADDRSES; i++) {
-	  if (cur_later->addrblck.addrs.recrd[i].addr.node_type & (CACHE_NODEFLG_P |
-								   CACHE_NODEFLG_M |
-								   CACHE_NODEFLG_H)) {
-	    /* VAXism below */
-	    fill_32field(cur_later->addrblck.addrs.recrd[i].addr.ip_addr,
-			 (unsigned char *)&(probeaddr.sin_port));
-
-	    /* Send one to EACH address. Hopefully we won't create a network meltdown. */
-	    ss_name_send_pckt(cur_laters->probe, &probeaddr, laterargs.trans);
-	  }
+      if (cur_laters->namecard->node_types & CACHE_ADDRBLCK_GRP_MASK) {
+	if (cur_laters->addrblck.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+	  you_may_fail = TRUE;
+	} else {
+	  you_may_succed = TRUE;
 	}
       }
-    }
+      if ((cur_laters->namecard->node_types & CACHE_ADDRBLCK_UNIQ_MASK) &&
+	  (! you_may_fail)) {
+	you_may_succed = FALSE;
 
-    if (you_may_succed || you_may_fail) {
-      if (you_may_fail) {
-	numof_failed++;
+	if (! cur_laters->probe) {
+	  cur_laters->probe =
+	    name_srvc_make_name_qry_req(cur_laters->namecard->name,
+					cur_laters->namecard->name[cur_laters->namecard->namelen -1],
+					cur_laters->res_lst->res->name->next_name);
 
-	*last_failed = res = cur_laters->res_lst;
-	last_failed = &(res->next);
-      } else { /* Intentionately written like this, to prevent a later
-		* from both succeding and failing. */
-	numof_succeded++;
+	  if (cur_laters->probe) {
+	    cur_laters->probe->header->transaction_id = laterargs.tid;
+	    cur_laters->probe->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
+	    cur_laters->probe->header->nm_flags = 0;
+	    cur_laters->probe->header->rcode = 0;
 
-	*last_succeded = res = cur_laters->res_lst;
-	last_succeded = &(res->next);
+	    goto jump_over_else_in_sendprobe;
+	  }
+	} else {
+	jump_over_else_in_sendprobe:
+	  for (i=0; i<NUMOF_ADDRSES; i++) {
+	    if (cur_later->addrblck.addrs.recrd[i].addr.node_type & (CACHE_NODEFLG_P |
+								     CACHE_NODEFLG_M |
+								     CACHE_NODEFLG_H)) {
+	      /* VAXism below */
+	      fill_32field(cur_later->addrblck.addrs.recrd[i].addr.ip_addr,
+			   (unsigned char *)&(probeaddr.sin_port));
 
-	/* -------------------- */
-	cache_namecard = cur_laters->namecard;
-	addrses = &(cur_laters->addrblck.addrs);
-	/* BUG: The below double loop doesn't check that the sender
-	 *      lists itself in the requested IP addresses. */
-	for (i=0; i<NUMOF_ADDRSES; i++) {
-	  for (j=0; j<NUMOF_ADDRSES; j++) {
-	    if (cache_namecard->addrs.recrd[j].node_type ==
-		addrses->recrd[i].node_type) {
-	      cache_namecard->addrs.recrd[j].addr =
-		merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-				addrses->recrd[i].addr);
-	      break;
-	    } else {
-	      if (cache_namecard->addrs.recrd[j].node_type == 0) {
-		cache_namecard->addrs.recrd[j].node_type =
-		  addrses->recrd[i].node_type;
-		cache_namecard->addrs.recrd[j].addr =
-		  addrses->recrd[i].addr;
-		/* Delete the reference to the address
-		 * list so it does not get freed. */
-		addrses->recrd[i].addr = 0;
-
-		cache_namecard->node_types |= addrses->recrd[i].node_type;
-
-		break;
-	      }
+	      /* Send one to EACH address. Hopefully we won't create a network meltdown. */
+	      ss_name_send_pckt(cur_laters->probe, &probeaddr, laterargs.trans);
 	    }
 	  }
 	}
-
-	new_deathtime = cur_time + cur_laters->ttl;
-	if (new_deathtime > cache_namecard->timeof_death)
-	  cache_namecard->timeof_death = new_deathtime;
-	cache_namecard->refresh_ttl = cur_laters->ttl;
-	/* -------------------- */
       }
 
-      res->res->ttl = cur_laters->ttl;
-      res->res->rdata_len = cur_laters->rdata_len;
-      res->res->rdata_t = cur_laters->rdata_t;
-      res->res->rdata = cur_laters->rdata;
-
-      cur_laters->rdata = 0;
-      cur_laters->res_lst = 0;
-
-      *last_killme = cur_laters;
-      last_killme = &(cur_laters->next);
-
-      *last_laters = cur_laters->next;
-    } else {
-      last_laters = &(cur_laters->next);
-    }
-
-    cur_laters = *last_laters;
-  }
-  *last_succeded = 0;
-  *last_failed = 0;
-  *last_killme = 0;
-  *last_laters = 0;
-  if (numof_succeded) {
-    sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
-    if (sendpckt) {
-      sendpckt->header->transaction_id = laterargs.tid;
-      sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
-      sendpckt->header->nm_flags = FLG_AA | FLG_RA;
-      sendpckt->header->rcode = 0;
-      sendpckt->header->numof_answers = numof_succeded;
-
-      sendpckt->answers = succeded;
-
-      sendpckt->for_del = TRUE;
-      ss_name_send_pckt(sendpckt, &addr, laterargs.trans);
-    } else {
-      destroy_name_srvc_res_lst(succeded, TRUE, TRUE);
-    }
-  }
-  if (numof_failed) {
-    sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
-    if (sendpckt) {
-      sendpckt->header->transaction_id = laterargs.tid;
-      sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
-      sendpckt->header->nm_flags = FLG_AA | FLG_RA;
-      sendpckt->header->rcode = RCODE_ACT_ERR;
-      sendpckt->header->numof_answers = numof_failed;
-
-      sendpckt->answers = failed;
-
-      sendpckt->for_del = TRUE;
-      ss_name_send_pckt(sendpckt, &addr, laterargs.trans);
-    } else {
-      destroy_name_srvc_res_lst(failed, TRUE, TRUE);
-    }
-  }
-  if (killme) {
-    destroy_laters_list(killme);
-  }
-
-  nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
-
-  ss_set_inputdrop_name_tid(&transid);
-
-  numof_failed = 0;
-  last_failed = &failed;
-  last_killme = &killme;
-
-  while ((response_pckt = name_srvc_NBNStid_hndlr(FALSE, laterargs.tid,
-						  laterargs.tid))) {
-    response_res = response_pckt->answers;
-
-    while (response_res) {
-      last_laters = &laters;
-      cur_laters = *last_laters;
-      while (cur_laters) {
-	if (0 == cmp_nbnodename(cur_laters->res_lst->res->name,
-				response_res->res->name)) {
-	  /* Some node (I am not checking the senders IP address nor
-	   * that said address is properly registered) has responded
-	   * to a NAME QUERY REQUEST (or just sent the response of
-	   * it's own volition). Interpret this to mean that this name
-	   * is active and thus off-limits. */
+      if (you_may_succed || you_may_fail) {
+	if (you_may_fail) {
 	  numof_failed++;
 
 	  *last_failed = res = cur_laters->res_lst;
 	  last_failed = &(res->next);
+	} else { /* Intentionately written like this, to prevent a later
+		  * from both succeding and failing. */
+	  numof_succeded++;
 
-	  res->res->ttl = cur_laters->ttl;
-	  res->res->rdata_len = cur_laters->rdata_len;
-	  res->res->rdata_t = cur_laters->rdata_t;
-	  res->res->rdata = cur_laters->rdata;
+	  *last_succeded = res = cur_laters->res_lst;
+	  last_succeded = &(res->next);
 
-	  cur_laters->rdata = 0;
-	  cur_laters->res_lst = 0;
+	  /* -------------------- */
+	  cache_namecard = cur_laters->namecard;
+	  addrses = &(cur_laters->addrblck.addrs);
+	  /* BUG: The below double loop doesn't check that the sender
+	   *      lists itself in the requested IP addresses. */
+	  for (i=0; i<NUMOF_ADDRSES; i++) {
+	    for (j=0; j<NUMOF_ADDRSES; j++) {
+	      if (cache_namecard->addrs.recrd[j].node_type ==
+		  addrses->recrd[i].node_type) {
+		cache_namecard->addrs.recrd[j].addr =
+		  merge_addrlists(cache_namecard->addrs.recrd[j].addr,
+				  addrses->recrd[i].addr);
+		break;
+	      } else {
+		if (cache_namecard->addrs.recrd[j].node_type == 0) {
+		  cache_namecard->addrs.recrd[j].node_type =
+		    addrses->recrd[i].node_type;
+		  cache_namecard->addrs.recrd[j].addr =
+		    addrses->recrd[i].addr;
+		  /* Delete the reference to the address
+		   * list so it does not get freed. */
+		  addrses->recrd[i].addr = 0;
 
-	  *last_killme = cur_laters;
-	  last_killme = &(cur_laters->next);
+		  cache_namecard->node_types |= addrses->recrd[i].node_type;
 
-	  *last_laters = cur_laters->next;
-	} else {
-	  last_laters = &(cur_laters->next);
+		  break;
+		}
+	      }
+	    }
+	  }
+
+	  new_deathtime = cur_time + cur_laters->ttl;
+	  if (new_deathtime > cache_namecard->timeof_death)
+	    cache_namecard->timeof_death = new_deathtime;
+	  cache_namecard->refresh_ttl = cur_laters->ttl;
+	  /* -------------------- */
 	}
 
-	cur_laters = *last_laters;
+	res->res->ttl = cur_laters->ttl;
+	res->res->rdata_len = cur_laters->rdata_len;
+	res->res->rdata_t = cur_laters->rdata_t;
+	res->res->rdata = cur_laters->rdata;
+
+	cur_laters->rdata = 0;
+	cur_laters->res_lst = 0;
+
+	*last_killme = cur_laters;
+	last_killme = &(cur_laters->next);
+
+	*last_laters = cur_laters->next;
+      } else {
+	last_laters = &(cur_laters->next);
       }
 
-      response_res = response_res->next;
+      cur_laters = *last_laters;
     }
-  }
+    *last_succeded = 0;
+    *last_failed = 0;
+    *last_killme = 0;
+    *last_laters = 0;
+    if (numof_succeded) {
+      sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+      if (sendpckt) {
+	sendpckt->header->transaction_id = laterargs.tid;
+	sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+	sendpckt->header->nm_flags = FLG_AA | FLG_RA;
+	sendpckt->header->rcode = 0;
+	sendpckt->header->numof_answers = numof_succeded;
 
-  /* loop ends here */
+	sendpckt->answers = succeded;
+
+	sendpckt->for_del = TRUE;
+	ss_name_send_pckt(sendpckt, &addr, laterargs.trans);
+      } else {
+	destroy_name_srvc_res_lst(succeded, TRUE, TRUE);
+      }
+    }
+    if (numof_failed) {
+      sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+      if (sendpckt) {
+	sendpckt->header->transaction_id = laterargs.tid;
+	sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+	sendpckt->header->nm_flags = FLG_AA | FLG_RA;
+	sendpckt->header->rcode = RCODE_ACT_ERR;
+	sendpckt->header->numof_answers = numof_failed;
+
+	sendpckt->answers = failed;
+
+	sendpckt->for_del = TRUE;
+	ss_name_send_pckt(sendpckt, &addr, laterargs.trans);
+      } else {
+	destroy_name_srvc_res_lst(failed, TRUE, TRUE);
+      }
+    }
+    if (killme) {
+      destroy_laters_list(killme);
+    }
+
+    nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
+
+    ss_set_inputdrop_name_tid(&transid);
+
+    numof_failed = 0;
+    last_failed = &failed;
+    last_killme = &killme;
+
+    while ((response_pckt = name_srvc_NBNStid_hndlr(FALSE, laterargs.tid,
+						    laterargs.tid))) {
+      response_res = response_pckt->answers;
+
+      while (response_res) {
+	last_laters = &laters;
+	cur_laters = *last_laters;
+	while (cur_laters) {
+	  if (0 == cmp_nbnodename(cur_laters->res_lst->res->name,
+				  response_res->res->name)) {
+	    /* Some node (I am not checking the senders IP address nor
+	     * that said address is properly registered) has responded
+	     * to a NAME QUERY REQUEST (or just sent the response of
+	     * it's own volition). Interpret this to mean that this name
+	     * is active and thus off-limits. */
+	    numof_failed++;
+
+	    *last_failed = res = cur_laters->res_lst;
+	    last_failed = &(res->next);
+
+	    res->res->ttl = cur_laters->ttl;
+	    res->res->rdata_len = cur_laters->rdata_len;
+	    res->res->rdata_t = cur_laters->rdata_t;
+	    res->res->rdata = cur_laters->rdata;
+
+	    cur_laters->rdata = 0;
+	    cur_laters->res_lst = 0;
+
+	    *last_killme = cur_laters;
+	    last_killme = &(cur_laters->next);
+
+	    *last_laters = cur_laters->next;
+	  } else {
+	    last_laters = &(cur_laters->next);
+	  }
+
+	  cur_laters = *last_laters;
+	}
+
+	response_res = response_res->next;
+      }
+    }
+
+  }
 
  endof_function:
   if (last_will)
