@@ -1061,7 +1061,9 @@ void *ss__udp_recver(void *sckts_ptr) {
   struct sockaddr_in his_addr, discard_addr;
   struct ss_unif_pckt_list *new_pckt;
   struct ss_priv_trans *cur_trans;
-#ifndef COMPILING_NBNS
+#ifdef COMPILING_NBNS
+  pthread_t threadid;
+#else
   struct ss_priv_trans **last_trans, *new_trans, *hold_nwtrns;
   struct ss_queue *newtid_queue;
 #endif
@@ -1084,6 +1086,14 @@ void *ss__udp_recver(void *sckts_ptr) {
 #ifdef COMPILING_NBNS
   if (sckts.branch == DTG_SRVC) {
     return 0;
+  }
+
+  if (0 != pthread_create(&threadid, 0,
+			  name_srvc_NBNS_newtid, &threadid)) {
+    return 0;
+  }
+  while (threadid) {
+    /* busy-wait */
   }
 #endif
 

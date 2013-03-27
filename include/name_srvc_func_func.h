@@ -104,6 +104,8 @@ void
                          uint32_t tid,
                          time_t cur_time);
 # ifdef COMPILING_NBNS
+void *
+  name_srvc_NBNS_newtid(void *threadid_ptr);
 /* returns: numof_laters */
 uint32_t
   name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,

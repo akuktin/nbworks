@@ -208,6 +208,26 @@ void *name_srvc_handle_newtid(void *input) {
 }
 
 #ifdef COMPILING_NBNS
+void *name_srvc_NBNS_newtid(void *threadid_ptr) {
+  pthread_t *tid;
+  struct thread_node *last_will;
+
+  tid = threadid_ptr;
+
+  if (tid) {
+    last_will = add_thread(*tid);
+    *tid = 0; /* Release the lock. */
+  } else
+    last_will = 0;
+
+  name_srvc_NBNStid_hndlr(TRUE, 0, ONES);
+
+  if (last_will)
+    last_will->dead = TRUE;
+  return 0;
+}
+
+
 struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 						 uint16_t frst_index,
 						 uint16_t last_index) {

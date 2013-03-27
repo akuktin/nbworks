@@ -213,6 +213,9 @@ void
 void
   ss__prune_sessions(void);
 
+int
+  fill_all_nametrans(struct ss_priv_trans **where);
+
 void *
   ss__port137(void *placeholder);
 void *
