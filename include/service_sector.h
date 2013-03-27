@@ -35,7 +35,13 @@
 # define MAXNUMOF_TIDS (0xffff +1)
 
 # ifdef COMPILING_NBNS
-extern unsigned char ss_iosig[(0xffff +1)];
+struct ss__NBNStrans {
+  unsigned char ss_iosig;
+  struct ss_priv_trans *privtrans;
+  struct ss_queue trans;
+};
+
+extern struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
 #  define SS_IOSIG_IN       0x10
 #  define SS_IOSIG_TAKEN    0x20
 #  define SS_IOSIG_OUT      0x01
@@ -46,8 +52,6 @@ extern unsigned char ss_iosig[(0xffff +1)];
 #  define SS_IOSIG_MASK_IN  0x30
 #  define SS_IOSIG_MASK_OUT 0x0f
 #  define SS_IOSIG_MASK_TID 0xc0
-
-extern struct ss_queue ss_alltrans[(0xffff +1)];
 # endif
 
 enum trans_status {

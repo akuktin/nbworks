@@ -224,33 +224,33 @@ unsigned int name_srvc_NBNStid_hndlr(unsigned int master,
     /* Reserve the index range and make sure some or all of the
      * requested trans have not already been reserved. */
     for (index=frst_index; index < last_index; index++) {
-      if ((ss_iosig[index] & SS_IOSIG_TIDED) ||
-	  (ss_iosig[index] & SS_IOSIG_TIDING)) {
+      if ((ss_alltrans[index].ss_iosig & SS_IOSIG_TIDED) ||
+	  (ss_alltrans[index].ss_iosig & SS_IOSIG_TIDING)) {
 	for (; index > frst_index; index--) {
-	  ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+	  ss_alltrans[index].ss_iosig = ss_alltrans[index].ss_iosig & (~SS_IOSIG_TIDING);
 	}
-	ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+	ss_alltrans[index].ss_iosig = ss_alltrans[index].ss_iosig & (~SS_IOSIG_TIDING);
 
 	return 0;
       } else {
-	ss_iosig[index] |= SS_IOSIG_TIDING;
+	ss_alltrans[index].ss_iosig |= SS_IOSIG_TIDING;
       }
     }
-    if ((ss_iosig[index] & SS_IOSIG_TIDED) ||
-	(ss_iosig[index] & SS_IOSIG_TIDING)) {
+    if ((ss_alltrans[index].ss_iosig & SS_IOSIG_TIDED) ||
+	(ss_alltrans[index].ss_iosig & SS_IOSIG_TIDING)) {
       for (; index > frst_index; index--) {
-	ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+	ss_alltrans[index].ss_iosig = ss_alltrans[index].ss_iosig & (~SS_IOSIG_TIDING);
       }
-      ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+      ss_alltrans[index].ss_iosig = ss_alltrans[index].ss_iosig & (~SS_IOSIG_TIDING);
 
       return 0;
     } else {
       for (; index > frst_index; index--) {
-	ss_iosig[index] |= SS_IOSIG_TIDED;
-	ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+	ss_alltrans[index].ss_iosig |= SS_IOSIG_TIDED;
+	ss_alltrans[index].ss_iosig = ss_alltrans[index].ss_iosig & (~SS_IOSIG_TIDING);
       }
-      ss_iosig[index] |= SS_IOSIG_TIDED;
-      ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDING);
+      ss_alltrans[index].ss_iosig |= SS_IOSIG_TIDED;
+      ss_alltrans[index].ss_iosig = ss_alltrans[index].ss_iosig & (~SS_IOSIG_TIDING);
     }
 
     transid.tid = frst_index;
@@ -262,7 +262,7 @@ unsigned int name_srvc_NBNStid_hndlr(unsigned int master,
 
   while (! nbworks_all_port_cntl.all_stop) {
     do {
-      outside_pckt = ss__recv_entry(&(ss_alltrans[index]));
+      outside_pckt = ss__recv_entry(&(ss_alltrans[index].trans));
 
       if (outside_pckt == last_outpckt) {
 	/* No packet. */
@@ -289,8 +289,8 @@ unsigned int name_srvc_NBNStid_hndlr(unsigned int master,
 	    /* The below while is actually an exit guard, preventing the
 	     * exit from the loop in the event there is nothing in this
 	     * trans. */
-	  } while ((! (ss_iosig[index] & SS_IOSIG_IN)) ||
-		   (ss_iosig[index] & SS_IOSIG_TAKEN));
+	  } while ((! (ss_alltrans[index].ss_iosig & SS_IOSIG_IN)) ||
+		   (ss_alltrans[index].ss_iosig & SS_IOSIG_TAKEN));
 
 	  transid.tid = index;
 	  ss_set_inputdrop_name_tid(&transid);
@@ -322,7 +322,7 @@ unsigned int name_srvc_NBNStid_hndlr(unsigned int master,
       if (master && name_srvc_do_NBNSnamreg(outpckt, &(outside_pckt->addr),
 					    trans, index, cur_time)) {
 	/* Funny. This is even thread-safe. */
-	ss_iosig[tid] |= SS_IOSIG_TAKEN;
+	ss_alltrans[index].ss_iosig |= SS_IOSIG_TAKEN;
       } else {
 	/* If there is already a registration request pending on this
 	 * transaction number, then siletly ignore all new registration
@@ -397,9 +397,9 @@ unsigned int name_srvc_NBNStid_hndlr(unsigned int master,
  endof_function:
   if (master) {
     for (index = frst_index; index > last_index; index++) {
-      ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDED);
+      ss_alltrans[index].ss_iosig = ss_alltrans[index].ss_iosig & (~SS_IOSIG_TIDED);
     }
-    ss_iosig[index] = ss_iosig[index] & (~SS_IOSIG_TIDED);
+    ss_alltrans[index].ss_iosig = ss_alltrans[index].ss_iosig & (~SS_IOSIG_TIDED);
   }
   return 0;
 }

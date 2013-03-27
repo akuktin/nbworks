@@ -25,8 +25,7 @@
 #ifdef COMPILING_NBNS
 # include "service_sector.h"
 
-unsigned char ss_iosig[(0xffff +1)];
-struct ss_queue ss_alltrans[(0xffff +1)];
+struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
 #endif
 
 nbworks_do_align_t nbworks_do_align;

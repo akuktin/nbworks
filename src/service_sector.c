@@ -782,7 +782,7 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
   uint32_t index;
 
   last_trans = &(nbworks_all_transactions[NAME_SRVC]);
-  memset(ss_alltrans, 0, (MAXNUMOF_TIDS * sizeof(struct ss_queue)));
+  memset(ss_alltrans, 0, (MAXNUMOF_TIDS * sizeof(struct ss__NBNStrans)));
 
   for (index = 0; index < MAXNUMOF_TIDS; index++) {
 
@@ -813,11 +813,13 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
     new_trans->id.tid = index;
     new_trans->status = nmtrst_normal;
 
+    ss_alltrans[index].privtrans = new_trans;
+
     *last_trans = new_trans;
     last_trans = &(new_trans->next);
 
-    ss_alltrans[index].incoming = new_trans->in;
-    ss_alltrans[index].outgoing = new_trans->out;
+    ss_alltrans[index].trans.incoming = new_trans->in;
+    ss_alltrans[index].trans.outgoing = new_trans->out;
   }
 
   *last_trans = 0;
@@ -1061,10 +1063,9 @@ void *ss__udp_recver(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
   struct sockaddr_in his_addr, discard_addr;
   struct ss_unif_pckt_list *new_pckt;
-#ifdef COMPILING_NBNS
-  struct ss_priv_trans *cur_trans[0xffff+1], *fillem_up;
-#else
-  struct ss_priv_trans *cur_trans, **last_trans, *new_trans, *hold_nwtrns;
+  struct ss_priv_trans *cur_trans;
+#ifndef COMPILING_NBNS
+  struct ss_priv_trans **last_trans, *new_trans, *hold_nwtrns;
   struct ss_queue *newtid_queue;
 #endif
   struct newtid_params params;
@@ -1086,15 +1087,6 @@ void *ss__udp_recver(void *sckts_ptr) {
 #ifdef COMPILING_NBNS
   if (sckts.branch == DTG_SRVC) {
     return 0;
-  }
-
-  memset(cur_trans, 0, (0xffff+1));
-
-  fillem_up = *(sckts.all_trans);
-  while (fillem_up) {
-    cur_trans[fillem_up->id.tid] = fillem_up;
-
-    fillem_up = fillem_up->next;
   }
 #endif
 
@@ -1236,11 +1228,12 @@ void *ss__udp_recver(void *sckts_ptr) {
       }
 
 #ifdef COMPILING_NBNS
-      if (cur_trans[tid]->status == nmtrst_normal) {
-	cur_trans[tid]->in->next = new_pckt;
-	cur_trans[tid]->in = new_pckt;
+      cur_trans = ss_alltrans[tid].privtrans;
+      if (cur_trans->status == nmtrst_normal) {
+	cur_trans->in->next = new_pckt;
+	cur_trans->in = new_pckt;
 
-	ss_iosig[tid] |= SS_IOSIG_IN;
+	ss_alltrans[tid].ss_iosig |= SS_IOSIG_IN;
       } else {
 	sckts.pckt_dstr(new_pckt->packet, 1, 1);
 	free(new_pckt);
@@ -1343,7 +1336,6 @@ void *ss__udp_sender(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
   struct ss_unif_pckt_list *for_del;
 #ifdef COMPILING_NBNS
-  struct ss_priv_trans *all_trans[0xffff+1], *fillem_up;
   uint32_t index;
 #else
   struct ss_priv_trans **last_trans, *for_del2;
@@ -1364,15 +1356,6 @@ void *ss__udp_sender(void *sckts_ptr) {
   if (sckts.branch == DTG_SRVC) {
     return 0;
   }
-
-  memset(all_trans, 0, (0xffff+1));
-
-  fillem_up = *(sckts.all_trans);
-  while (fillem_up) {
-    all_trans[fillem_up->id.tid] = fillem_up;
-
-    fillem_up = fillem_up->next;
-  }
 #endif
 
   memset(udp_pckt, 0, MAX_UDP_PACKET_LEN);
@@ -1380,9 +1363,9 @@ void *ss__udp_sender(void *sckts_ptr) {
 
   while (! nbworks_all_port_cntl.all_stop) {
 #ifdef COMPILING_NBNS
-    for (index = 0; index < (0xffff +1); index++) {
-      if (ss_iosig[index] & SS_IOSIG_MASK_OUT) {
-	cur_trans = all_trans[index];
+    for (index = 0; index < MAXNUMOF_TIDS; index++) {
+      if (ss_alltrans[index].ss_iosig & SS_IOSIG_MASK_OUT) {
+	cur_trans = ss_alltrans[index].privtrans;
 #else
     cur_trans = *(sckts.all_trans);
     last_trans = sckts.all_trans;
