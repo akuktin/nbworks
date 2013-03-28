@@ -184,6 +184,7 @@ void *poll_rail(void *args) {
 
 
 void *handle_rail(void *args) {
+  struct pollfd pfd;
   struct nbnodename_list *scope;
   struct rail_params params, *release_lock;
   struct com_comm command;
@@ -191,6 +192,8 @@ void *handle_rail(void *args) {
   struct thread_node *last_will;
   struct ipv4_addr_list *cur_addr, **last_addr;
   uint32_t ipv4, i;
+  unsigned int rail_isreusable;
+  int ret_val;
   unsigned char buff[LEN_COMM_ONWIRE], *name_ptr, node_type;
 
   if (! args)
@@ -212,186 +215,234 @@ void *handle_rail(void *args) {
     return 0;
   }
 
-  ipv4 = 0;
+  pfd.fd = params.rail_sckt;
+  pfd.events = POLLIN;
+  rail_isreusable = TRUE;
 
-  if (LEN_COMM_ONWIRE > recv(params.rail_sckt, buff,
-			     LEN_COMM_ONWIRE, MSG_WAITALL)) {
-    close(params.rail_sckt);
-    free(params.addr);
-    if (last_will)
-      last_will->dead = TRUE;
-    return 0;
-  }
-
-  if (! read_railcommand(buff, (buff+LEN_COMM_ONWIRE), &command)){
-    close(params.rail_sckt);
-    free(params.addr);
-    if (last_will)
-      last_will->dead = TRUE;
-    return 0;
-  }
-
-  switch (command.command) {
-  case rail_regname:
-    cache_namecard = do_rail_regname(params.rail_sckt, &command);
-    if (cache_namecard) {
-      if (command.node_type > 'A') {
-	command.token = cache_namecard->grp_token;
-      } else {
-	command.token = cache_namecard->unq_token;
-      }
-      command.len = 0;
-      command.data = 0;
-      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
-      /* no check */
+  while (rail_isreusable &&
+	 nbworks__rail_control.all_stop) {
+    ret_val = poll(&pfd, 1, nbworks__rail_control.poll_timeout);
+    if (ret_val == 0) {
+      continue;
     }
-    close(params.rail_sckt);
-    break;
+    if (ret_val < 0) {
+      /* TODO: error handling */
+      continue;
+    }
+    ipv4 = 0;
 
-  case rail_delname:
-    cache_namecard = find_namebytok(command.token, &scope);
+    if (LEN_COMM_ONWIRE > recv(params.rail_sckt, buff,
+			       LEN_COMM_ONWIRE, MSG_WAITALL)) {
+      close(params.rail_sckt);
+      free(params.addr);
+      if (last_will)
+	last_will->dead = TRUE;
+      return 0;
+    }
 
-    if (cache_namecard) {
-      switch (command.node_type) {
-      case 'h':
-	node_type = CACHE_NODEFLG_H;
-	break;
-      case 'm':
-	node_type = CACHE_NODEFLG_M;
-	break;
-      case 'p':
-	node_type = CACHE_NODEFLG_P;
-	break;
-      case 'b':
-	node_type = CACHE_NODEFLG_B;
-	break;
-      case 'H':
-	node_type = CACHE_NODEGRPFLG_H;
-	break;
-      case 'M':
-	node_type = CACHE_NODEGRPFLG_M;
-	break;
-      case 'P':
-	node_type = CACHE_NODEGRPFLG_P;
-	break;
-      case 'B':
-      default:
-	node_type = CACHE_NODEGRPFLG_B;
-	break;
-      }
-      name_ptr = cache_namecard->name;
-      ipv4 = my_ipv4_address();
-      name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			     scope, ipv4, node_type, FALSE);
+    if (! read_railcommand(buff, (buff+LEN_COMM_ONWIRE), &command)){
+      close(params.rail_sckt);
+      free(params.addr);
+      if (last_will)
+	last_will->dead = TRUE;
+      return 0;
+    }
 
-      if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
-	cache_namecard->unq_token = 0;
-	cache_namecard->unq_isinconflict = FALSE;
-      }
-      if (node_type & CACHE_ADDRBLCK_GRP_MASK) {
-	cache_namecard->numof_grpholders--;
-	if (cache_namecard->numof_grpholders <= 0) {
-	  cache_namecard->grp_token = 0;
-	  cache_namecard->grp_isinconflict = FALSE;
+    switch (command.command) {
+    case rail_regname:
+      cache_namecard = do_rail_regname(params.rail_sckt, &command);
+      if (cache_namecard) {
+	if (command.node_type > 'A') {
+	  command.token = cache_namecard->grp_token;
 	} else {
-	  goto jumpover;
+	  command.token = cache_namecard->unq_token;
 	}
-      }
-      for (i=0; i<NUMOF_ADDRSES; i++) {
-	last_addr = &(cache_namecard->addrs.recrd[i].addr);
-	cur_addr = *last_addr;
-
-	while (cur_addr) {
-	  if (cur_addr->ip_addr == ipv4) {
-	    *last_addr = cur_addr->next;
-	    free(cur_addr);
-	  } else {
-	    last_addr = &(cur_addr->next);
-	  }
-
-	  cur_addr = *last_addr;
-	}
-
-	if (! cache_namecard->addrs.recrd[i].addr) {
-	  cache_namecard->node_types = cache_namecard->node_types &
-	    (~(cache_namecard->addrs.recrd[i].node_type));
-	}
-
-	if (! cache_namecard->node_types) {
-	  cache_namecard->timeof_death = 0;
-	}
-      }
-
-    jumpover:
-      command.len = 0;
-      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
-    }
-
-    close(params.rail_sckt);
-    destroy_nbnodename(scope);
-    break;
-
-  case rail_send_dtg:
-    if (find_namebytok(command.token, 0)) {
-      if (0 == rail_senddtg(params.rail_sckt, &command)) {
 	command.len = 0;
 	command.data = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-	send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
+	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	  rail_isreusable = FALSE;
+	}
       }
-    }
-    close(params.rail_sckt);
-    break;
+      break;
 
-  case rail_dtg_sckt:
-    if (0 == rail_add_dtg_server(params.rail_sckt,
-				 &command)) {
-      command.len = 0;
-      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
-      shutdown(params.rail_sckt, SHUT_RD);
-    } else {
+    case rail_delname:
+      cache_namecard = find_namebytok(command.token, &scope);
+
+      if (cache_namecard) {
+	switch (command.node_type) {
+	case 'h':
+	  node_type = CACHE_NODEFLG_H;
+	  break;
+	case 'm':
+	  node_type = CACHE_NODEFLG_M;
+	  break;
+	case 'p':
+	  node_type = CACHE_NODEFLG_P;
+	  break;
+	case 'b':
+	  node_type = CACHE_NODEFLG_B;
+	  break;
+	case 'H':
+	  node_type = CACHE_NODEGRPFLG_H;
+	  break;
+	case 'M':
+	  node_type = CACHE_NODEGRPFLG_M;
+	  break;
+	case 'P':
+	  node_type = CACHE_NODEGRPFLG_P;
+	  break;
+	case 'B':
+	default:
+	  node_type = CACHE_NODEGRPFLG_B;
+	  break;
+	}
+	name_ptr = cache_namecard->name;
+	ipv4 = my_ipv4_address();
+	name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
+			       scope, ipv4, node_type, FALSE);
+
+	if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
+	  cache_namecard->unq_token = 0;
+	  cache_namecard->unq_isinconflict = FALSE;
+	}
+	if (node_type & CACHE_ADDRBLCK_GRP_MASK) {
+	  cache_namecard->numof_grpholders--;
+	  if (cache_namecard->numof_grpholders <= 0) {
+	    cache_namecard->grp_token = 0;
+	    cache_namecard->grp_isinconflict = FALSE;
+	  } else {
+	    goto jumpover;
+	  }
+	}
+	for (i=0; i<NUMOF_ADDRSES; i++) {
+	  last_addr = &(cache_namecard->addrs.recrd[i].addr);
+	  cur_addr = *last_addr;
+
+	  while (cur_addr) {
+	    if (cur_addr->ip_addr == ipv4) {
+	      *last_addr = cur_addr->next;
+	      free(cur_addr);
+	    } else {
+	      last_addr = &(cur_addr->next);
+	    }
+
+	    cur_addr = *last_addr;
+	  }
+
+	  if (! cache_namecard->addrs.recrd[i].addr) {
+	    cache_namecard->node_types = cache_namecard->node_types &
+	      (~(cache_namecard->addrs.recrd[i].node_type));
+	  }
+
+	  if (! cache_namecard->node_types) {
+	    cache_namecard->timeof_death = 0;
+	    break;
+	  }
+	}
+
+      jumpover:
+	command.len = 0;
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	  rail_isreusable = FALSE;
+	}
+      }
+
+      destroy_nbnodename(scope); /* This removes the copy of scope, type
+				  * (struct nbnodename_list *) that was used
+				  * in operation. */
+      break;
+
+    case rail_send_dtg:
+      if (find_namebytok(command.token, 0)) {
+	if (0 == rail_senddtg(params.rail_sckt, &command)) {
+	  command.len = 0;
+	  command.data = 0;
+	  fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	  if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	    close(params.rail_sckt);
+	    rail_isreusable = FALSE;
+	  }
+	}
+      }
+      break;
+
+    case rail_dtg_sckt:
+      rail_isreusable = FALSE;
+      if (0 == rail_add_dtg_server(params.rail_sckt,
+				   &command)) {
+	command.len = 0;
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	} else {
+	  shutdown(params.rail_sckt, SHUT_RD);
+	}
+      } else {
+	close(params.rail_sckt);
+      }
+      break;
+
+    case rail_stream_sckt:
+      rail_isreusable = FALSE;
+      if (0 == rail_add_ses_server(params.rail_sckt,
+				   &command)) {
+	command.len = 0;
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	}
+      } else {
+	close(params.rail_sckt);
+      }
+      break;
+
+    case rail_stream_take:
+      rail_isreusable = FALSE;
+      rail_setup_session(params.rail_sckt,
+			 command.token);
+      break;
+
+    case rail_addr_ofXuniq:
+    case rail_addr_ofXgroup:
+      ipv4 = rail_whatisaddrX(params.rail_sckt,
+			      &command);
+      if (ipv4) {
+	command.len = 4;
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	  rail_isreusable = FALSE;
+	  break;
+	}
+	fill_32field(ipv4, buff);
+	if (4 > send(params.rail_sckt, buff, 4, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	  rail_isreusable = FALSE;
+	}
+      }
+      break;
+
+    default:
+      /* Unknown command. */
       close(params.rail_sckt);
+      rail_isreusable = FALSE;
+      break;
     }
-    break;
 
-  case rail_stream_sckt:
-    if (0 == rail_add_ses_server(params.rail_sckt,
-				 &command)) {
-      command.len = 0;
-      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
-    } else {
-      close(params.rail_sckt);
-    }
-    break;
-
-  case rail_stream_take:
-    rail_setup_session(params.rail_sckt,
-		       command.token);
-    break;
-
-  case rail_addr_ofXuniq:
-  case rail_addr_ofXgroup:
-    ipv4 = rail_whatisaddrX(params.rail_sckt,
-			    &command);
-    if (ipv4) {
-      command.len = 4;
-      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
-      fill_32field(ipv4, buff);
-      send(params.rail_sckt, buff, 4, MSG_NOSIGNAL);
-    }
-    close(params.rail_sckt);
-    break;
-
-  default:
-    /* Unknown command. */
-    close(params.rail_sckt);
-    break;
   }
+
+  if (rail_isreusable)
+    close(params.rail_sckt);
 
   free(params.addr);
   if (last_will)
