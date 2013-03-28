@@ -976,7 +976,6 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
-      result = 0;
       goto endof_function;
     }
     cur_qstn = cur_qstn->next;
@@ -989,7 +988,6 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
-      result = 0;
       goto endof_function;
     }
     cur_res = cur_res->next;
@@ -1002,7 +1000,6 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
-      result = 0;
       goto endof_function;
     }
     cur_res = cur_res->next;
@@ -1015,7 +1012,6 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
-      result = 0;
       goto endof_function;
     }
     cur_res = cur_res->next;
