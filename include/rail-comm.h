@@ -51,7 +51,7 @@ enum rail_commands {
   rail_addr_ofXgroup   /* what is the address of X (group)? */
 };
 
-# define LEN_COMM_ONWIRE (1+8+(2+4)+1+4)
+# define LEN_COMM_ONWIRE (1+8+(2+4)+1+4+4)
 /* The below structure is used to ferry information between the multiplexing
  * daemon (and later nbworks NS) on one side and the library on the other side.
  * Fields are used only as they are needed. If a field is not needed, it is
