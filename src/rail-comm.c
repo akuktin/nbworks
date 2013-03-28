@@ -89,7 +89,6 @@ int open_rail(void) {
   }
 }
 
-/* returns: !0 = success, 0 = error */
 uint32_t rail_flushrail(uint32_t len,
 			int rail) {
   uint32_t drained;
