@@ -937,20 +937,25 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   struct name_srvc_resource_lst *cur_res;
   unsigned char *result, *walker, *endof_pckt, overflow;
 
-  if (! (packet_ptr && pckt_len)) {
+  if (! packet_ptr) {
     /* TODO: errno signaling stuff */
     return 0;
   }
 
   packet = packet_ptr;
 
+  if (! pckt_len) {
+    result = 0;
+    goto endof_function;
+  }
   if (packet_field) {
     result = packet_field;
   } else {
     result = calloc(1, *pckt_len);
     if (! result) {
       /* TODO: errno signaling stuff */
-      return 0;
+      result = 0;
+      goto endof_function;
     }
   }
 
@@ -971,7 +976,8 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
-      return result;
+      result = 0;
+      goto endof_function;
     }
     cur_qstn = cur_qstn->next;
   }
@@ -983,7 +989,8 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
-      return result;
+      result = 0;
+      goto endof_function;
     }
     cur_res = cur_res->next;
   }
@@ -995,7 +1002,8 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
-      return result;
+      result = 0;
+      goto endof_function;
     }
     cur_res = cur_res->next;
   }
@@ -1007,7 +1015,8 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
     if (walker >= endof_pckt) {
       /* TODO: errno signaling stuff */
       *pckt_len = walker - result;
-      return result;
+      result = 0;
+      goto endof_function;
     }
     cur_res = cur_res->next;
   }
@@ -1018,6 +1027,8 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   }
 
   *pckt_len = walker - result;
+ endof_function:
+  packet->stuck_in_transit = FALSE;
   return (void *)result;
 }
 

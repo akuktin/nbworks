@@ -1662,12 +1662,6 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   pckt->answers = laterargs.res;
 
   ss_name_send_pckt(pckt, &addr, laterargs.trans);
-  /* At this point, the algorythm implicitly assumes that the packet
-   * has cleared the service sector by the time resources begin to be
-   * manipulated below. If that is not the case, strange bugs may crop up. */
-  /* Such bugs can only ever be cured by implementig a lock. Lock is set by
-   * ss_name_send_pckt() and cleared by fill_name_srvc_resource() after the
-   * resource data has been filled succesfully, or when it aborts. */
 
   /* Now that that is out of the way, lets focus on actual laters themselves. */
   /* There are two basic cases that have to be handled.
@@ -1687,6 +1681,9 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   last_succeded = &succeded;
 
   cur_time = time(0);
+  while (pckt->stuck_in_transit) {
+    /* busy-wait */
+  }
 
   for (retries = 0; retries < nbworks_namsrvc_cntrl.retries_NBNS; retries++) {
     ss_set_normalstate_name_tid(&transid);
