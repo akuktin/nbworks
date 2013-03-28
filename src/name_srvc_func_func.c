@@ -1683,6 +1683,8 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   cur_time = time(0);
   while (pckt->stuck_in_transit) {
     /* busy-wait */
+    /* Prevents the resources being manipulated before
+     * the WACK packet clears the service sector. */
   }
 
   for (retries = 0; retries < nbworks_namsrvc_cntrl.retries_NBNS; retries++) {
