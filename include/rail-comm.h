@@ -110,7 +110,7 @@ void
 int
   open_rail(void);
 /* returns: >=0 = success, <0 = error */
-unsigned int
+uint32_t
   rail_flushrail(uint32_t len,
                  int rail);
 void *

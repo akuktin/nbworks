@@ -90,27 +90,32 @@ int open_rail(void) {
 }
 
 /* returns: !0 = success, 0 = error */
-unsigned int rail_flushrail(uint32_t leng,
-			    int rail) {
+uint32_t rail_flushrail(uint32_t len,
+			int rail) {
+  uint32_t drained;
   unsigned char bucket[0xff];
 
-  while (leng) {
-    if (leng > 0xff) {
+  drained = 0;
+
+  while (len) {
+    if (len > 0xff) {
       if (0xff > recv(rail, bucket, 0xff, MSG_WAITALL)) {
 	return FALSE;
       } else {
-	leng = leng - 0xff;
+	len = len - 0xff;
+	drained = drained + 0xff;
       }
     } else {
-      if (leng > recv(rail, bucket, leng, MSG_WAITALL)) {
+      if (len > recv(rail, bucket, len, MSG_WAITALL)) {
 	return FALSE;
       } else {
-	return TRUE;
+	drained = drained + len;
+	return drained;
       }
     }
   }
 
-  return TRUE;
+  return drained;
 }
 
 void *poll_rail(void *args) {
