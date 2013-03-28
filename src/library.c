@@ -1759,7 +1759,7 @@ void *lib_ses_srv(void *arg) {
 
     if (combuff[0] != SESSION_REQUEST) {
       command.command = rail_stream_error;
-      command.command = 0;
+      command.command = 0; /* ? EXPLAIN */
       command.node_type = SES_ERR_UNSPEC;
 
       if (! fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE))) {

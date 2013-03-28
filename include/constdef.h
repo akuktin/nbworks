@@ -82,8 +82,10 @@
 #  undef align
 # endif
 
-typedef int nbworks_errno_t;
+typedef uint32_t nbworks_errno_t;
 extern nbworks_errno_t nbworks_errno;
+# define ADD_MEANINGFULL_ERRNO ONES
+
 typedef unsigned char nbworks_do_align_t;
 extern nbworks_do_align_t nbworks_do_align;
 

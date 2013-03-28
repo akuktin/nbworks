@@ -52,12 +52,17 @@ enum rail_commands {
 };
 
 # define LEN_COMM_ONWIRE (1+8+(2+4)+1+4)
+/* The below structure is used to ferry information between the multiplexing
+ * daemon (and later nbworks NS) on one side and the library on the other side.
+ * Fields are used only as they are needed. If a field is not needed, it is
+ * ignored. */
 struct com_comm {
   unsigned char command;
   uint64_t token;
   struct sockaddr_in addr; /* on wire: uint16_t port, uint32_t ip_addr */
   unsigned char node_type; /* one of {B, P, M, H, b, p, m, h},
                             * flags are used internally */
+  uint32_t nbworks_errno;
   uint32_t len;
   void *data;
 };
@@ -83,7 +88,6 @@ struct rail_params {
   unsigned char isbusy;
   pthread_t thread_id;
   int rail_sckt;
-  struct sockaddr_un *addr;
 };
 
 struct stream_connector_args {

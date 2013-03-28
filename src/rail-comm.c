@@ -116,7 +116,7 @@ unsigned int rail_flushrail(uint32_t leng,
 void *poll_rail(void *args) {
   struct rail_params params, new_params, *release_lock;
   struct pollfd pfd;
-  struct sockaddr_un *address;
+  struct sockaddr_un address;
   struct thread_node *last_will;
   socklen_t scktlen;
   int ret_val, new_sckt;
@@ -134,7 +134,6 @@ void *poll_rail(void *args) {
   else
     last_will = 0;
 
-  scktlen = sizeof(struct sockaddr_un);
   pfd.fd = params.rail_sckt;
   pfd.events = POLLIN;
 
@@ -155,17 +154,13 @@ void *poll_rail(void *args) {
       continue;
     }
 
-    address = calloc(1, sizeof(struct sockaddr_un));
-    /* no calloc check */
-    new_sckt = accept(params.rail_sckt, (struct sockaddr *)address,
-		      &scktlen);
+    scktlen = sizeof(struct sockaddr_un);
+    new_sckt = accept(params.rail_sckt, (struct sockaddr *)&address, &scktlen);
     if (new_sckt < 0) {
       if ((errno == EAGAIN) ||
 	  (errno == EWOULDBLOCK)) {
-	free(address);
       } else {
 	/* TODO: error handling */
-	free(address);
       }
     } else {
       while (new_params.isbusy) {
@@ -173,7 +168,6 @@ void *poll_rail(void *args) {
       }
       new_params.isbusy = 0xda;
       new_params.rail_sckt = new_sckt;
-      new_params.addr = address;
       if (0 != pthread_create(&(new_params.thread_id), 0,
 			      handle_rail, &new_params)) {
 	new_params.isbusy = 0;
@@ -209,7 +203,6 @@ void *handle_rail(void *args) {
     last_will = 0;
 
   if (params.rail_sckt < 0) {
-    free(params.addr);
     if (last_will)
       last_will->dead = TRUE;
     return 0;
@@ -225,50 +218,56 @@ void *handle_rail(void *args) {
     if (ret_val == 0) {
       continue;
     }
-    if (ret_val < 0) {
-      /* TODO: error handling */
-      continue;
+    if ((ret_val < 0) ||
+	(pfd.revents & (POLLERR | POLLHUP | POLLNVAL))) {
+      break;
     }
-    ipv4 = 0;
 
     if (LEN_COMM_ONWIRE > recv(params.rail_sckt, buff,
 			       LEN_COMM_ONWIRE, MSG_WAITALL)) {
-      close(params.rail_sckt);
-      free(params.addr);
-      if (last_will)
-	last_will->dead = TRUE;
-      return 0;
+      break;
     }
 
     if (! read_railcommand(buff, (buff+LEN_COMM_ONWIRE), &command)){
-      close(params.rail_sckt);
-      free(params.addr);
-      if (last_will)
-	last_will->dead = TRUE;
-      return 0;
+      break;
     }
 
     switch (command.command) {
     case rail_regname:
+      /* Rail is flushed by do_rail_regname(). */
+
       cache_namecard = do_rail_regname(params.rail_sckt, &command);
+      if (nbworks_errno) {
+	close(params.rail_sckt);
+	rail_isreusable = FALSE;
+	break;
+      }
       if (cache_namecard) {
 	if (command.node_type > 'A') {
 	  command.token = cache_namecard->grp_token;
 	} else {
 	  command.token = cache_namecard->unq_token;
 	}
-	command.len = 0;
-	command.data = 0;
-	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
-				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
-	  close(params.rail_sckt);
-	  rail_isreusable = FALSE;
-	}
+	command.nbworks_errno = 0;
+      } else {
+	command.token = 0;
+	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
+      }
+
+      command.len = 0;
+      command.data = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	close(params.rail_sckt);
+	rail_isreusable = FALSE;
       }
       break;
 
     case rail_delname:
+      if (command.len)
+	rail_flushrail(command.len, params.rail_sckt);
+
       cache_namecard = find_namebytok(command.token, &scope);
 
       if (cache_namecard) {
@@ -344,7 +343,20 @@ void *handle_rail(void *args) {
 	}
 
       jumpover:
+	command.nbworks_errno = 0;
 	command.len = 0;
+	command.data = 0;
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	  rail_isreusable = FALSE;
+	}
+      } else {
+	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
+
+	command.len = 0;
+	command.data = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -360,7 +372,10 @@ void *handle_rail(void *args) {
 
     case rail_send_dtg:
       if (find_namebytok(command.token, 0)) {
-	if (0 == rail_senddtg(params.rail_sckt, &command)) {
+	ret_val = rail_senddtg(params.rail_sckt, &command);
+	/* Rail is flushed by rail_senddtg(). */
+	if (ret_val == 0) {
+	  command.nbworks_errno = 0;
 	  command.len = 0;
 	  command.data = 0;
 	  fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
@@ -369,15 +384,38 @@ void *handle_rail(void *args) {
 	    close(params.rail_sckt);
 	    rail_isreusable = FALSE;
 	  }
+	} else {
+	  if (ret_val < 0) {
+	    close(params.rail_sckt);
+	    rail_isreusable = FALSE;
+	  } else {
+	    goto failed_to_send_dtg;
+	  }
+	}
+      } else {
+	rail_flushrail(command.len, params.rail_sckt);
+      failed_to_send_dtg:
+	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
+
+	command.len = 0;
+	command.data = 0;
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	  rail_isreusable = FALSE;
 	}
       }
       break;
 
     case rail_dtg_sckt:
       rail_isreusable = FALSE;
+      /* No flushing. */
       if (0 == rail_add_dtg_server(params.rail_sckt,
 				   &command)) {
+	command.nbworks_errno = 0;
 	command.len = 0;
+	command.data = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -392,9 +430,12 @@ void *handle_rail(void *args) {
 
     case rail_stream_sckt:
       rail_isreusable = FALSE;
+      /* No flushing. */
       if (0 == rail_add_ses_server(params.rail_sckt,
 				   &command)) {
+	command.nbworks_errno = 0;
 	command.len = 0;
+	command.data = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -407,15 +448,18 @@ void *handle_rail(void *args) {
 
     case rail_stream_take:
       rail_isreusable = FALSE;
+      /* No flushing. */
       rail_setup_session(params.rail_sckt,
 			 command.token);
       break;
 
     case rail_addr_ofXuniq:
     case rail_addr_ofXgroup:
-      ipv4 = rail_whatisaddrX(params.rail_sckt,
-			      &command);
+      /* Rail is flushed by rail_whatisaddrX(). */
+      ipv4 = rail_whatisaddrX(params.rail_sckt, &command);
+
       if (ipv4) {
+	command.nbworks_errno = 0;
 	command.len = 4;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
@@ -429,11 +473,33 @@ void *handle_rail(void *args) {
 	  close(params.rail_sckt);
 	  rail_isreusable = FALSE;
 	}
+      } else {
+	if (nbworks_errno) {
+	  close(params.rail_sckt);
+	  rail_isreusable = FALSE;
+	} else {
+	  command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
+	  command.len = 0;
+	  command.data = 0;
+	  fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	  if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	    close(params.rail_sckt);
+	    rail_isreusable = FALSE;
+	    break;
+	  }
+	}
       }
       break;
 
     default:
       /* Unknown command. */
+      command.nbworks_errno = EINVAL;
+      command.len = 0;
+      command.data = 0;
+
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
       close(params.rail_sckt);
       rail_isreusable = FALSE;
       break;
@@ -444,7 +510,6 @@ void *handle_rail(void *args) {
   if (rail_isreusable)
     close(params.rail_sckt);
 
-  free(params.addr);
   if (last_will)
     last_will->dead = TRUE;
   return 0;
@@ -478,6 +543,7 @@ struct com_comm *read_railcommand(unsigned char *packet,
   walker = read_32field(walker, &(result->addr.sin_addr.s_addr));
   result->node_type = *walker;
   walker++;
+  walker = read_32field(walker, &(result->nbworks_errno));
   walker = read_32field(walker, &(result->len));
 
   result->addr.sin_family = AF_INET;
@@ -508,6 +574,7 @@ unsigned char *fill_railcommand(struct com_comm *command,
   walker = fill_32field(command->addr.sin_addr.s_addr, walker);
   *walker = command->node_type;
   walker++;
+  walker = fill_32field(command->nbworks_errno, walker);
   walker = fill_32field(command->len, walker);
 
   return walker;
@@ -577,6 +644,8 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
 }
 
 
+/* nbworks_errno is used as a simple signaling instrument that signals
+ * back the usability of the rail: 0 = usable; !0 = not usable */
 struct cache_namenode *do_rail_regname(int rail_sckt,
 				       struct com_comm *command) {
   struct cache_namenode *cache_namecard, *grp_namecard;
@@ -585,17 +654,23 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   int i;
   unsigned char *data_buff, node_type;
 
-  if (! command)
+  if (! command) {
+    nbworks_errno = 1;
     return 0;
+  } else {
+    nbworks_errno = 0;
+  }
 
   data_buff = malloc(command->len);
   if (! data_buff) {
+    rail_flushrail(command->len, rail_sckt);
     return 0;
   }
 
   if (command->len > recv(rail_sckt, data_buff,
 			  command->len, MSG_WAITALL)) {
     /* TODO: error handling */
+    nbworks_errno = 1;
     free(data_buff);
     return 0;
   }
@@ -753,7 +828,7 @@ int rail_senddtg(int rail_sckt,
   if (command->len > recv(rail_sckt, buff, command->len, MSG_WAITALL)) {
     /* TODO: errno signaling stuff */
     free(buff);
-    return 9008;
+    return -1;
   }
 
   pckt = partial_dtg_srvc_pckt_reader(buff, command->len, 0);
@@ -1160,6 +1235,7 @@ int rail_add_ses_server(int rail_sckt,
 
   nbname.name = encode_nbnodename(namecard->name, 0);
   nbname.len = NETBIOS_CODED_NAME_LEN;
+  /* nbname.next_name is already set */
 
   if (command->len)
     rail_flushrail(command->len, rail_sckt);
@@ -1502,6 +1578,7 @@ void *tunnel_stream_sockets(void *arg) {
 /* WRONG FOR GROUPS! */
 /* Except not really - this is only used by the session
    service which never uses more than one address. */
+/* nbworks_errno is used to signal that the rail is broken. */
 uint32_t rail_whatisaddrX(int rail_sckt,
 			  struct com_comm *command) {
   struct cache_namenode *namecard;
@@ -1512,6 +1589,8 @@ uint32_t rail_whatisaddrX(int rail_sckt,
 
   if (! command)
     return 0;
+  else
+    nbworks_errno = 0;
 
   if (command->command == rail_addr_ofXgroup) {
     switch (command->node_type) {
@@ -1557,27 +1636,32 @@ uint32_t rail_whatisaddrX(int rail_sckt,
 
   buff = malloc(command->len);
   if (! buff) {
+    rail_flushrail(command->len, rail_sckt);
     return 0;
   }
 
   if (command->len > recv(rail_sckt, buff, command->len, MSG_WAITALL)) {
+    nbworks_errno = ONES;
     return 0;
   }
 
   walker = buff;
   name = read_all_DNS_labels(&walker, buff, buff + command->len, 0, 0, 0, 0);
+  if (walker < (buff + command->len)) {
+    rail_flushrail(((buff + command->len) - walker), rail_sckt);
+  }
   free(buff);
   if (! name) {
     return 0;
   }
 
-  namecard = find_nblabel(name->name, NETBIOS_NAME_LEN,
+  namecard = find_nblabel(name->name, name->len,
 			  node_type,
 			  RRTYPE_NB, RRCLASS_IN,
 			  name->next_name);
 
   if (! namecard) {
-    namecard = name_srvc_find_name(name->name, (name->name)[NETBIOS_NAME_LEN -1],
+    namecard = name_srvc_find_name(name->name, (name->name)[name->len -1],
 				   name->next_name, node_type, FALSE);
   }
 
