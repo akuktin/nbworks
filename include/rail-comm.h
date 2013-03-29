@@ -67,12 +67,11 @@ struct com_comm {
   void *data;
 };
 
-# define LEN_NAMEDT_ONWIREMIN ((NETBIOS_NAME_LEN+1)+1+4)
+# define LEN_NAMEDT_ONWIREMIN ((NETBIOS_NAME_LEN+1)+4)
 struct rail_name_data {
   unsigned char *name; /* whole name, the entire NETBIOS_NAME_LEN */
   unsigned char name_type;
   struct nbnodename_list *scope;
-  unsigned char group_flg;
   uint32_t ttl;
 };
 

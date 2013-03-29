@@ -618,7 +618,6 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
 
   result->scope = read_all_DNS_labels(&walker, walker, endof_buff, 0, 0, 0, 0);
 
-  result->group_flg = *walker;
   walker++;
   read_32field(walker, &(result->ttl));
 
@@ -640,7 +639,6 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
 
   walker = mempcpy(startof_buff, data->name, NETBIOS_NAME_LEN);
   walker = fill_all_DNS_labels(data->scope, walker, endof_buff, 0);
-  *walker = data->group_flg;
   walker++;
   walker = fill_32field(data->ttl, walker);
 
@@ -692,115 +690,140 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   free(namedata);
 
   switch (command->node_type) {
-  case 'B':
+  case 'h':
+    node_type = CACHE_NODEFLG_H;
+    break;
+  case 'H':
+    node_type = CACHE_NODEGRPFLG_H;
+    break;
+  case 'm':
+    node_type = CACHE_NODEFLG_M;
+    break;
+  case 'M':
+    node_type = CACHE_NODEGRPFLG_M;
+    break;
+  case 'p':
+    node_type = CACHE_NODEFLG_P;
+    break;
+  case 'P':
+    node_type = CACHE_NODEGRPFLG_P;
+    break;
   case 'b':
+    node_type = CACHE_NODEFLG_B;
+    break;
+  case 'B':
+    node_type = CACHE_NODEGRPFLG_B;
+    break;
+
   default:
-    if (command->node_type == 'B') {
-      node_type = CACHE_NODEGRPFLG_B;
-    } else {
-      node_type = CACHE_NODEFLG_B;
-    }
-    cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
-				    node_type, make_token(),
-				    QTYPE_NB, QCLASS_IN);
-    if (! cache_namecard) {
-      /* TODO: error handling */
-      cleanup;
-      return 0;
-    }
-    grp_namecard = find_name(cache_namecard, namedata->scope);
-    if (grp_namecard) {
-      destroy_namecard(cache_namecard);
+    cleanup;
+    return 0;
+  }
 
-      if ((node_type & CACHE_ADDRBLCK_GRP_MASK) &&
-	  /* Tell the world (actually optional for B nodes). */
-	  (0 == name_srvc_B_add_name(namedata->name,
-				     namedata->name_type,
-				     namedata->scope,
-				     my_ipv4_address(),
-				     ISGROUP_YES,
-				     namedata->ttl))) {
-	if (! grp_namecard->grp_token) {
-	  grp_namecard->grp_token = make_token();
+  cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
+				  node_type, make_token(),
+				  QTYPE_NB, QCLASS_IN);
+  if (! cache_namecard) {
+    /* TODO: error handling */
+    cleanup;
+    return 0;
+  }
+  grp_namecard = find_name(cache_namecard, namedata->scope);
+  if (grp_namecard) {
+    destroy_namecard(cache_namecard);
+
+    if ((node_type & CACHE_ADDRBLCK_GRP_MASK) &&
+	/* Tell the world (actually optional for B nodes). */
+	(0 == name_srvc_B_add_name(namedata->name,
+				   namedata->name_type,
+				   namedata->scope,
+				   my_ipv4_address(),
+				   ISGROUP_YES,
+				   namedata->ttl))) {
+      if (! grp_namecard->grp_token) {
+	grp_namecard->grp_token = make_token();
+      }
+      if (grp_namecard > 0)
+	grp_namecard->numof_grpholders++;
+      else
+	grp_namecard->numof_grpholders = 1;
+      grp_namecard->timeof_death = time(0) + namedata->ttl;
+
+      for (i=0; i<NUMOF_ADDRSES; i++) {
+	if ((grp_namecard->addrs.recrd[i].node_type == node_type) ||
+	    (grp_namecard->addrs.recrd[i].node_type == 0))
+	  break;
+      }
+      if (i<NUMOF_ADDRSES) {
+	cleanup;
+
+	grp_namecard->addrs.recrd[i].node_type = node_type;
+	grp_namecard->node_types |= node_type;
+
+	new_addr = malloc(sizeof(struct ipv4_addr_list));
+	if (! new_addr) {
+	  return 0;
 	}
-	if (grp_namecard > 0)
-	  grp_namecard->numof_grpholders++;
-	else
-	  grp_namecard->numof_grpholders = 1;
-	grp_namecard->timeof_death = time(0) + namedata->ttl;
+	new_addr->ip_addr = my_ipv4_address();
+	new_addr->next = 0;
 
-	for (i=0; i<NUMOF_ADDRSES; i++) {
-	  if ((grp_namecard->addrs.recrd[i].node_type == node_type) ||
-	      (grp_namecard->addrs.recrd[i].node_type == 0))
-	    break;
-	}
-	if (i<NUMOF_ADDRSES) {
-	  cleanup;
+	while (0xd0) {
+	  last_addr = &(grp_namecard->addrs.recrd[i].addr);
+	  cur_addr = *last_addr;
 
-	  grp_namecard->addrs.recrd[i].node_type = node_type;
-	  grp_namecard->node_types |= node_type;
+	  while (cur_addr) {
+	    if (cur_addr == new_addr)
+	      return grp_namecard;
 
-	  new_addr = malloc(sizeof(struct ipv4_addr_list));
-	  if (! new_addr) {
-	    return 0;
-	  }
-	  new_addr->ip_addr = my_ipv4_address();
-	  new_addr->next = 0;
-
-	  while (0xd0) {
-	    last_addr = &(grp_namecard->addrs.recrd[i].addr);
+	    last_addr = &(cur_addr->next);
 	    cur_addr = *last_addr;
-
-	    while (cur_addr) {
-	      if (cur_addr == new_addr)
-		return grp_namecard;
-
-	      last_addr = &(cur_addr->next);
-	      cur_addr = *last_addr;
-	    }
-
-	    *last_addr = new_addr;
 	  }
+
+	  *last_addr = new_addr;
 	}
       }
+    }
 
-      cleanup;
-      return 0;
-    } else {
-      if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
-				    namedata->scope,
-				    my_ipv4_address(),
-				    namedata->group_flg, namedata->ttl)) {
-	if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
-	       add_name(cache_namecard, namedata->scope))) {
-	  destroy_namecard(cache_namecard);
-	  cleanup;
-	  return 0;
-	}
-
-	cache_namecard->addrs.recrd[0].node_type = node_type;
-	cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));
-	if (! cache_namecard->addrs.recrd[0].addr) {
-	  /* TODO: error handling */
-	  cache_namecard->timeof_death = 0;
-	  cleanup;
-	  return 0;
-	}
-	cache_namecard->addrs.recrd[0].addr->ip_addr = my_ipv4_address();
-	cache_namecard->timeof_death = time(0) + namedata->ttl;
-
-	cleanup;
-	return cache_namecard;
-      } else {
-	/* TODO: error handling */
+    cleanup;
+    return 0;
+  } else {
+    if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
+				  namedata->scope,
+				  my_ipv4_address(),
+				  ((node_type & CACHE_ADDRBLCK_GRP_MASK) ?
+				   ISGROUP_YES : ISGROUP_NO),
+				  namedata->ttl)) {
+      if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
+	     add_name(cache_namecard, namedata->scope))) {
 	destroy_namecard(cache_namecard);
 	cleanup;
 	return 0;
       }
+
+      cache_namecard->addrs.recrd[0].node_type = node_type;
+      cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));
+      if (! cache_namecard->addrs.recrd[0].addr) {
+	/* TODO: error handling */
+	cache_namecard->timeof_death = 0;
+	cleanup;
+	return 0;
+      }
+      cache_namecard->addrs.recrd[0].addr->ip_addr = my_ipv4_address();
+      cache_namecard->timeof_death = time(0) + namedata->ttl;
+
+      cleanup;
+      return cache_namecard;
+    } else {
+      /* TODO: error handling */
+      destroy_namecard(cache_namecard);
+      cleanup;
+      return 0;
     }
-    break;
   }
+
 #undef cleanup
+  /* Never reached. */
+  return 0;
 }
 
 /* returns: 0 = success, >0 = fail, <0 = error */

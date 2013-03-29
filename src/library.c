@@ -119,19 +119,28 @@ struct name_state *lib_regname(unsigned char *name,
   command.command = rail_regname;
   switch (node_type) {
   case CACHE_NODEFLG_B:
-    command.node_type = 'B';
+    if (group_flg)
+      command.node_type = 'B';
+    else
+      command.node_type = 'b';
     break;
-
   case CACHE_NODEFLG_P:
-    command.node_type = 'P';
+    if (group_flg)
+      command.node_type = 'P';
+    else
+      command.node_type = 'p';
     break;
-
   case CACHE_NODEFLG_M:
-    command.node_type = 'M';
+    if (group_flg)
+      command.node_type = 'M';
+    else
+      command.node_type = 'm';
     break;
-
   case CACHE_NODEFLG_H:
-    command.node_type = 'H';
+    if (group_flg)
+      command.node_type = 'H';
+    else
+      command.node_type = 'h';
     break;
 
   default:
@@ -143,7 +152,6 @@ struct name_state *lib_regname(unsigned char *name,
   namedt.name = name;
   namedt.name_type = name_type;
   namedt.scope = scope;
-  namedt.group_flg = group_flg;
   namedt.ttl = ttl;
 
   fill_railcommand(&command, commbuff, (commbuff + LEN_COMM_ONWIRE));
