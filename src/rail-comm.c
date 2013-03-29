@@ -663,32 +663,6 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     nbworks_errno = 0;
   }
 
-  data_buff = malloc(command->len);
-  if (! data_buff) {
-    rail_flushrail(command->len, rail_sckt);
-    return 0;
-  }
-
-  if (command->len > recv(rail_sckt, data_buff,
-			  command->len, MSG_WAITALL)) {
-    /* TODO: error handling */
-    nbworks_errno = 1;
-    free(data_buff);
-    return 0;
-  }
-
-  namedata = read_rail_name_data(data_buff, data_buff+command->len);
-  free(data_buff);
-  if (! namedata) {
-    /* TODO: error handling */
-    return 0;
-  }
-
-#define cleanup                        \
-  free(namedata->name);                \
-  destroy_nbnodename(namedata->scope); \
-  free(namedata);
-
   switch (command->node_type) {
   case 'h':
     node_type = CACHE_NODEFLG_H;
@@ -716,9 +690,35 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     break;
 
   default:
-    cleanup;
+    rail_flushrail(command->len, rail_sckt);
     return 0;
   }
+
+  data_buff = malloc(command->len);
+  if (! data_buff) {
+    rail_flushrail(command->len, rail_sckt);
+    return 0;
+  }
+
+  if (command->len > recv(rail_sckt, data_buff,
+			  command->len, MSG_WAITALL)) {
+    /* TODO: error handling */
+    nbworks_errno = 1;
+    free(data_buff);
+    return 0;
+  }
+
+  namedata = read_rail_name_data(data_buff, data_buff+command->len);
+  free(data_buff);
+  if (! namedata) {
+    /* TODO: error handling */
+    return 0;
+  }
+
+#define cleanup                        \
+  free(namedata->name);                \
+  destroy_nbnodename(namedata->scope); \
+  free(namedata);
 
   cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
 				  node_type, make_token(),
