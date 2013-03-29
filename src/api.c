@@ -117,7 +117,7 @@ int nbworks_poll(unsigned char service,
 	}
       }
     } else {
-      for (count = timeout / 12; count >= 0; count--) {
+      for (count = timeout / 12; count > 0; count--) {
 
 	for (i=0; i<numof_pfd; i++) {
 	  trgt = handles[i].handle->in_library;
@@ -588,8 +588,10 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	if (*hndllen_left >= notrecved) {
 	  *hndllen_left = *hndllen_left - notrecved;
 	  len_left = notrecved;
-	} /* else
-	     len_left is already filled before the master while loop. */
+	} else {
+	  len_left = *hndllen_left;
+	  *hndllen_left = 0;
+	}
 
 	if (flags & MSG_OOB) {
 	  if (! ses->oob_tmpstor) {
@@ -630,6 +632,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    }
 	    notrecved = notrecved - ret_val;
 	    recved = recved + ret_val;
+	    len_left = len_left - ret_val;
 
 
 	    if (ses->cancel_recv) {
