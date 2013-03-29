@@ -21,7 +21,8 @@
 
 # include "name_srvc_pckt.h"
 
-int
+/* return: >0=success (return is ttl), 0=fail */
+uint32_t
   name_srvc_B_add_name(unsigned char *name,
                        unsigned char name_type,
                        struct nbnodename_list *scope,

@@ -35,6 +35,7 @@
 #include "name_srvc_cnst.h"
 #include "name_srvc_cache.h"
 #include "name_srvc_func_B.h"
+#include "name_srvc_func_P.h"
 #include "name_srvc_func_func.h"
 #include "randomness.h"
 #include "service_sector.h"
@@ -434,6 +435,47 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 #endif
 
 
+/* return: >0=success (return is ttl), 0=fail */
+uint32_t name_srvc_add_name(unsigned short node_type,
+			    unsigned char *name,
+			    unsigned char name_type,
+			    struct nbnodename_list *scope,
+			    uint32_t my_ip_address,
+			    uint32_t ttl) {
+  unsigned char group_flg;
+
+  switch (node_type) {
+  case CACHE_NODEFLG_B:
+    group_flg = ISGROUP_NO;
+    goto B_mode_jumpover;
+  case CACHE_NODEGRPFLG_B:
+    group_flg = ISGROUP_YES;
+
+  B_mode_jumpover:
+    return name_srvc_B_add_name(name, name_type, scope,
+				my_ip_address, group_flg,
+				ttl);
+    break;
+
+  case CACHE_NODEFLG_P:
+    group_flg = ISGROUP_NO;
+    goto P_mode_jumpover;
+  case CACHE_NODEGRPFLG_P:
+    group_flg = ISGROUP_YES;
+
+  P_mode_jumpover:
+    return name_srvc_P_add_name(name, name_type, scope,
+				my_ip_address, group_flg,
+				ttl);
+    break;
+
+  default:
+    return 0;
+    break;
+  }
+
+  return 0;
+}
 
 struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      unsigned char name_type,

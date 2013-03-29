@@ -55,11 +55,23 @@ struct laters_link {
 
 void *
   name_srvc_handle_newtid(void *input);
+# ifdef COMPILING_NBNS
+void *
+  name_srvc_NBNS_newtid(void *threadid_ptr);
 struct name_srvc_packet *
   name_srvc_NBNStid_hndlr(unsigned int master,
                           uint16_t frst_index,
                           uint16_t last_index);
+# endif
 
+/* return: >0=success (return is ttl), 0=fail */
+uint32_t
+  name_srvc_add_name(unsigned short node_type,
+                     unsigned char *name,
+                     unsigned char name_type,
+                     struct nbnodename_list *scope,
+                     uint32_t my_ip_address,
+                     uint32_t ttl);
 struct name_srvc_resource_lst *
   name_srvc_callout_name(unsigned char *name,
                          unsigned char name_type,
@@ -104,8 +116,6 @@ void
                          uint32_t tid,
                          time_t cur_time);
 # ifdef COMPILING_NBNS
-void *
-  name_srvc_NBNS_newtid(void *threadid_ptr);
 /* returns: numof_laters */
 uint32_t
   name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
@@ -118,6 +128,7 @@ void
 void *
   name_srvc_NBNShndl_latereg(void *args);
 # endif /* COMPILING_NBNS */
+
 void
   name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
                               struct sockaddr_in *addr,
@@ -140,7 +151,7 @@ void
                          ,struct ss_queue *trans,
                          uint32_t tid
 #endif
-);
+                         );
 void
   name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
                        struct sockaddr_in *addr,

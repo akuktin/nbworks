@@ -734,12 +734,9 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 
     if ((node_type & CACHE_ADDRBLCK_GRP_MASK) &&
 	/* Tell the world (actually optional for B nodes). */
-	(0 == name_srvc_B_add_name(namedata->name,
-				   namedata->name_type,
-				   namedata->scope,
-				   my_ipv4_address(),
-				   ISGROUP_YES,
-				   namedata->ttl))) {
+	(name_srvc_add_name(node_type, namedata->name,
+			    namedata->name_type, namedata->scope,
+			    my_ipv4_address(), namedata->ttl))) {
       if (! grp_namecard->grp_token) {
 	grp_namecard->grp_token = make_token();
       }
@@ -787,12 +784,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     cleanup;
     return 0;
   } else {
-    if (0 == name_srvc_B_add_name(namedata->name, namedata->name_type,
-				  namedata->scope,
-				  my_ipv4_address(),
-				  ((node_type & CACHE_ADDRBLCK_GRP_MASK) ?
-				   ISGROUP_YES : ISGROUP_NO),
-				  namedata->ttl)) {
+    if (name_srvc_add_name(node_type, namedata->name, namedata->name_type,
+			   namedata->scope, my_ipv4_address(), namedata->ttl)) {
       if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
 	     add_name(cache_namecard, namedata->scope))) {
 	destroy_namecard(cache_namecard);

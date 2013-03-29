@@ -43,19 +43,19 @@
 #include "service_sector_threads.h"
 
 
-/* return: 0=success, >0=fail, -1=error */
-int name_srvc_B_add_name(unsigned char *name,
-			 unsigned char name_type,
-			 struct nbnodename_list *scope,
-			 uint32_t my_ip_address,
-			 unsigned char group_flg,
-			 uint32_t ttl) {
+/* return: >0=success (return is ttl), 0=fail */
+uint32_t name_srvc_B_add_name(unsigned char *name,
+			      unsigned char name_type,
+			      struct nbnodename_list *scope,
+			      uint32_t my_ip_address,
+			      unsigned char group_flg,
+			      uint32_t ttl) {
   struct timespec sleeptime;
   struct sockaddr_in addr;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
   struct name_srvc_resource_lst *res;
-  int result, i;
+  uint32_t result, i;
   union trans_id tid;
 
   if ((! name) ||
@@ -65,7 +65,7 @@ int name_srvc_B_add_name(unsigned char *name,
       (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
 	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
 	   ((group_flg & ISGROUP_NO) ? 1 : 0)))))
-    return -1;
+    return 0;
 
   result = 0;
   /* TODO: change this to a global setting. */
@@ -84,7 +84,7 @@ int name_srvc_B_add_name(unsigned char *name,
                                       CACHE_NODEFLG_B));
   if (! pckt) {
     /* TODO: errno signaling stuff */
-    return -1;
+    return 0;
   }
 
   tid.tid = make_weakrandom();
@@ -93,7 +93,7 @@ int name_srvc_B_add_name(unsigned char *name,
   if (! trans) {
     /* TODO: errno signaling stuff */
     destroy_name_srvc_pckt(pckt, 1, 1);
-    return -1;
+    return 0;
   }
 
   pckt->header->transaction_id = tid.tid;
@@ -149,8 +149,12 @@ int name_srvc_B_add_name(unsigned char *name,
     pckt->header->opcode = OPCODE_REQUEST | OPCODE_REFRESH;
     pckt->for_del = TRUE;
     ss_name_send_pckt(pckt, &addr, trans);
+
+    result = ttl;
   } else {
     destroy_name_srvc_pckt(pckt, 1, 1);
+
+    result = 0;
   }
 
   ss_deregister_name_tid(&tid);

@@ -16,12 +16,12 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NBWORKS_NAMESRVCFUNCB_H
-# define NBWORKS_NAMESRVCFUNCB_H 1
+#ifndef NBWORKS_NAMESRVCFUNCP_H
+# define NBWORKS_NAMESRVCFUNCP_H 1
 
 # include "name_srvc_pckt.h"
 
-/* return: >0=success (return is ttl), 0=fail, <0=error */
+/* return: >0=success (return is ttl), 0=fail */
 uint32_t
   name_srvc_P_add_name(unsigned char *name,
                        unsigned char name_type,
@@ -30,4 +30,4 @@ uint32_t
                        unsigned char group_flg,
                        uint32_t ttl);
 
-#endif /* NBWORKS_NAMESRVCFUNCB_H */
+#endif /* NBWORKS_NAMESRVCFUNCP_H */
