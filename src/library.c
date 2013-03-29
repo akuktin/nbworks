@@ -903,13 +903,13 @@ void *lib_assemble_frags(struct dtg_frag *frags,
   if (! result)
     return 0;
 
+  tmp = frags;
   done = 0;
   while (frags) {
     if (done + frags->len > len) {
       /* OUT_OF_BOUNDS */
       free(result);
-      /* There is a memory leak here, in the event
-       * the pointer to the first frags is forfeit. */
+      lib_destroy_frags(tmp);
       return 0;
     }
     memcpy((result + done), frags->data, frags->len);
@@ -917,6 +917,7 @@ void *lib_assemble_frags(struct dtg_frag *frags,
     frags = frags->next;
   }
 
+  lib_destroy_frags(tmp);
   return result;
 }
 
