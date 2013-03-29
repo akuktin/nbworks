@@ -680,14 +680,13 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   }
 
   namedata = read_rail_name_data(data_buff, data_buff+command->len);
+  free(data_buff);
   if (! namedata) {
     /* TODO: error handling */
-    free(data_buff);
     return 0;
   }
 
 #define cleanup                        \
-  free(data_buff);                     \
   free(namedata->name);                \
   destroy_nbnodename(namedata->scope); \
   free(namedata);
@@ -736,9 +735,13 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	    break;
 	}
 	if (i<NUMOF_ADDRSES) {
+	  cleanup;
+
+	  grp_namecard->addrs.recrd[i].node_type = node_type;
+	  grp_namecard->node_types |= node_type;
+
 	  new_addr = malloc(sizeof(struct ipv4_addr_list));
 	  if (! new_addr) {
-	    cleanup;
 	    return 0;
 	  }
 	  new_addr->ip_addr = my_ipv4_address();
