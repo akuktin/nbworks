@@ -162,13 +162,12 @@ struct name_state *lib_regname(unsigned char *name,
   }
   fill_rail_name_data(&namedt, namedtbuff, (namedtbuff + command.len));
 
-  result = malloc(sizeof(struct name_state));
+  result = calloc(1, sizeof(struct name_state));
   if (! result) {
     free(namedtbuff);
     nbworks_errno = ENOMEM;
     return 0;
   }
-  memset(result, 0, sizeof(struct name_state));
   result->name = malloc(sizeof(struct nbnodename_list));
   if (! result->name) {
     free(result);
@@ -187,6 +186,8 @@ struct name_state *lib_regname(unsigned char *name,
   result->name->next_name = 0;
   result->name->len = NETBIOS_NAME_LEN;
   memcpy(result->name->name, name, NETBIOS_NAME_LEN);
+  /* Tramp stamp. */
+  result->name->name[NETBIOS_NAME_LEN] = 0;
 
   result->scope = clone_nbnodename(scope);
   if ((! result->scope) &&
@@ -249,7 +250,8 @@ struct name_state *lib_regname(unsigned char *name,
   read_railcommand(commbuff, (commbuff + LEN_COMM_ONWIRE), &command);
 
   if ((command.command != rail_regname) ||
-      (command.token < 2)) {
+      (command.token < 2) ||
+      (command.nbworks_errno)) {
     destroy_nbnodename(result->scope);
     free(result->name->name);
     free(result->name);
@@ -270,7 +272,6 @@ struct name_state *lib_regname(unsigned char *name,
 
 /* returns: >0 = success, 0 = fail, <0 = error */
 int lib_delname(struct name_state *handle) {
-  struct timespec sleeptime;
   struct com_comm command;
   int daemon;
   unsigned char combuff[LEN_COMM_ONWIRE];
@@ -289,27 +290,11 @@ int lib_delname(struct name_state *handle) {
   if (handle->dtg_srv_tid) {
     handle->dtg_srv_stop = TRUE;
 
-    sleeptime.tv_nsec = (nbworks_libcntl.dtg_srv_polltimeout * T_1MS) + T_12MS;
-    if (sleeptime.tv_nsec > 999999999) {
-      sleeptime.tv_sec = 1;
-      sleeptime.tv_nsec = sleeptime.tv_nsec - 999999999;
-    } else {
-      sleeptime.tv_sec = 0;
-    }
-
     pthread_join(handle->dtg_srv_tid, 0);
   }
 
   if (handle->ses_srv_tid) {
     handle->ses_srv_stop = TRUE;
-
-    sleeptime.tv_nsec = (nbworks_libcntl.ses_srv_polltimeout * T_1MS) + T_12MS;
-    if (sleeptime.tv_nsec > 999999999) {
-      sleeptime.tv_sec = 1;
-      sleeptime.tv_nsec = sleeptime.tv_nsec - 999999999;
-    } else {
-      sleeptime.tv_sec = 0;
-    }
 
     pthread_join(handle->ses_srv_tid, 0);
   }
@@ -354,7 +339,6 @@ int lib_delname(struct name_state *handle) {
 int lib_start_dtg_srv(struct name_state *handle,
 		      unsigned char takes_field,
 		      struct nbnodename_list *listento) {
-  struct timespec sleeptime;
   struct com_comm command;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
@@ -378,14 +362,6 @@ int lib_start_dtg_srv(struct name_state *handle,
 
   if (handle->dtg_srv_tid) {
     handle->dtg_srv_stop = TRUE;
-
-    sleeptime.tv_nsec = (nbworks_libcntl.dtg_srv_polltimeout * T_1MS) + T_12MS;
-    if (sleeptime.tv_nsec > 999999999) {
-      sleeptime.tv_sec = 1;
-      sleeptime.tv_nsec = sleeptime.tv_nsec - 999999999;
-    } else {
-      sleeptime.tv_sec = 0;
-    }
 
     pthread_join(handle->dtg_srv_tid, 0);
   }
@@ -417,7 +393,8 @@ int lib_start_dtg_srv(struct name_state *handle,
   }
 
   if (!((command.command == rail_dtg_sckt) &&
-	(command.token == handle->token))) {
+	(command.token == handle->token) &&
+	(command.nbworks_errno == 0))) {
     close(daemon);
     return -1;
   }
@@ -513,7 +490,8 @@ int lib_start_ses_srv(struct name_state *handle,
   }
 
   if (!((command.command == rail_stream_sckt) &&
-	(command.token == handle->token))) {
+	(command.token == handle->token) &&
+	(command.nbworks_errno == 0))) {
     close(daemon);
     return -1;
   }
@@ -930,6 +908,8 @@ void *lib_assemble_frags(struct dtg_frag *frags,
     if (done + frags->len > len) {
       /* OUT_OF_BOUNDS */
       free(result);
+      /* There is a memory leak here, in the event
+       * the pointer to the first frags is forfeit. */
       return 0;
     }
     memcpy((result + done), frags->data, frags->len);
@@ -1041,7 +1021,8 @@ uint32_t lib_whatisaddrX(struct nbnodename_list *X,
   }
 
   if ((command.command != rail_addr_ofXuniq) ||
-      (command.len < 4)) {
+      (command.len < 4) ||
+      (command.nbworks_errno)) {
     close(daemon_sckt);
     nbworks_errno = EPIPE; /* What do I put here? */
     return 0;
@@ -1194,6 +1175,18 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   free(readypacket);
   destroy_dtg_srvc_pckt(pckt, 1, 1);
 
+  if (0 == read_railcommand(readycommand, (readycommand +LEN_COMM_ONWIRE),
+			    &command)) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  if ((command.command != rail_send_dtg) ||
+      (command.nbworks_errno)) {
+    nbworks_errno = command.nbworks_errno;
+    return 0;
+  }
+
   return len;
 }
 
@@ -1245,6 +1238,8 @@ void *lib_dtgserver(void *arg) {
 
     if (last_pruned < killtime) {
       lib_prune_fragbckbone(&(handle->dtg_frags), killtime);
+      /* Save us a call to time(). */
+      last_pruned = killtime + nbworks_libcntl.dtg_frag_keeptime;
     }
 
     if (0 >= poll(&pfd, 1, nbworks_libcntl.dtg_srv_polltimeout)) {
@@ -1317,6 +1312,8 @@ void *lib_dtgserver(void *arg) {
 	  break;
 	}
       }
+
+      /* This is the only point in the code where take_dtg can be TRUE. */
 
       if (take_dtg == TRUE) {
 	take_dtg = FALSE;
@@ -1644,9 +1641,11 @@ int lib_open_session(struct name_state *handle,
 
   case NEG_SESSION_RESPONSE:
     free(mypckt_buff);
-    if (1 > recv(ses_sckt, herpckt_buff, 1, MSG_WAITALL)) {
-      close(ses_sckt);
-      return -1;
+    if (pckt.len) {
+      if (1 > recv(ses_sckt, herpckt_buff, 1, MSG_WAITALL)) {
+	close(ses_sckt);
+	return -1;
+      }
     }
     close(ses_sckt);
     // session_error = *herpckt_buff;
@@ -1654,6 +1653,11 @@ int lib_open_session(struct name_state *handle,
     break;
 
   case RETARGET_SESSION:
+    if (pckt.len < (4+2)) {
+      close(ses_sckt);
+      free(mypckt_buff);
+      return -1;
+    }
     if ((4+2) > recv(ses_sckt, herpckt_buff, (4+2), MSG_WAITALL)) {
       close(ses_sckt);
       free(mypckt_buff);
@@ -1767,7 +1771,6 @@ void *lib_ses_srv(void *arg) {
 
     if (combuff[0] != SESSION_REQUEST) {
       command.command = rail_stream_error;
-      command.command = 0; /* ? EXPLAIN */
       command.node_type = SES_ERR_UNSPEC;
 
       if (! fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE))) {
@@ -1821,13 +1824,8 @@ void *lib_ses_srv(void *arg) {
       destroy_nbnodename(caller);
     }
 
-    /* In orded to not change too much of the existing code, I will utilize a hack
-     * with a dangling pointer. I will use caller, which has a value and points to
-     * unallocated (freed) memory to signal the code below. */
-
     if (! (handle->ses_takes & HANDLE_TAKES_ALL)) {
-      if (! (lib_doeslistento(&decoded_nbnodename, handle->ses_listento) &&
-	     caller)) { /* Note that this (using caller) doesn't actually make any sense. */
+      if (! (lib_doeslistento(&decoded_nbnodename, handle->ses_listento))) {
 	command.command = rail_stream_error;
 	command.node_type = SES_ERR_NOTLISCALLING;
 
@@ -1866,13 +1864,13 @@ void *lib_ses_srv(void *arg) {
       break;
     }
 
-    new_ses = lib_make_session(new_sckt, &decoded_nbnodename, handle, FALSE);
-    if (! new_ses) {
+    if (4 > send(new_sckt, ok, 4, MSG_NOSIGNAL)) {
       close(new_sckt);
       break;
     }
 
-    if (4 > send(new_sckt, ok, 4, MSG_NOSIGNAL)) {
+    new_ses = lib_make_session(new_sckt, &decoded_nbnodename, handle, FALSE);
+    if (! new_ses) {
       close(new_sckt);
       break;
     }
@@ -1917,7 +1915,7 @@ void *lib_caretaker(void *arg) {
   }
 
   sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_250MS;
+  sleeptime.tv_nsec = T_500MS;
 
   pfd.fd = handle->socket;
   pfd.events = POLLOUT;

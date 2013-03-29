@@ -1164,6 +1164,7 @@ void *dtg_server(void *arg) {
 	if (queue->last_active < ZEROONES)
 	  queue->last_active = time(0);
 
+	/* VAXism below */
 	fill_32field(pckt->len, buff);
 
 	cur_rail = queue->rail;
