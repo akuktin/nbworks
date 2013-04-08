@@ -1800,6 +1800,8 @@ void *lib_ses_srv(void *arg) {
       break;
     }
 
+    /* The first SES_HEADER_LEN octets of buff are allocated only to allow
+     * ses_srvc_get_callingname() to be consistent in operation. */
     buff = malloc(pckt.len + SES_HEADER_LEN);
     if (! buff) {
       close(new_sckt);
@@ -1814,12 +1816,11 @@ void *lib_ses_srv(void *arg) {
     }
 
     caller = ses_srvc_get_callingname(buff, (pckt.len +SES_HEADER_LEN));
+    free(buff);
     if (! caller) {
       close(new_sckt);
       continue;
     }
-
-    free(buff);
 
     if (caller->len != NETBIOS_CODED_NAME_LEN) {
       destroy_nbnodename(caller);
@@ -2070,6 +2071,8 @@ struct nbworks_session *lib_take_session(struct name_state *handle) {
 			      lib_caretaker, handle)) {
 	result->caretaker_tid = 0;
       }
+    } else {
+      result->caretaker_tid = 0;
     }
 
     return result;
@@ -2131,11 +2134,12 @@ void lib_dstry_session(struct nbworks_session *ses) {
 }
 
 
+#define ARBITRARY_VALUE 0xff
 ssize_t lib_flushsckt(int socket,
 		      ssize_t len,
 		      int flags) {
   ssize_t ret_val, count;
-  unsigned char buff[0xff];
+  unsigned char buff[ARBITRARY_VALUE];
 
   if (len <= 0) {
     nbworks_errno = EINVAL;
@@ -2145,8 +2149,8 @@ ssize_t lib_flushsckt(int socket,
     count = 0;
   }
 
-  while (len > 0xff) {
-    ret_val = recv(socket, buff, 0xff, flags);
+  while (len > ARBITRARY_VALUE) {
+    ret_val = recv(socket, buff, ARBITRARY_VALUE, flags);
     if (ret_val <= 0) {
       if (ret_val == 0) {
 	return 0;
@@ -2185,3 +2189,4 @@ ssize_t lib_flushsckt(int socket,
 
   return count;
 }
+#undef ARBITRARY_VALUE
