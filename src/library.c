@@ -1445,7 +1445,7 @@ int lib_open_session(struct name_state *handle,
 		     struct nbnodename_list *dst) {
   struct nbnodename_list *name_id, *her; /* To vary names a bit. */
   struct ses_srvc_packet pckt;
-  struct ses_pckt_pyld_two_names *twins;
+  struct ses_pckt_pyld_two_names twins;
   struct sockaddr_in addr;
   int ses_sckt, retry_count;;
   unsigned int lenof_pckt, wrotelenof_pckt;
@@ -1471,7 +1471,8 @@ int lib_open_session(struct name_state *handle,
     /* TODO: errno signaling stuff */
     return -1;
   }
-  destroy_nbnodename(her->next_name);
+  if (her->next_name)
+    destroy_nbnodename(her->next_name);
   her->next_name = clone_nbnodename(handle->scope);
   if ((! her->next_name) && handle->scope) {
     /* TODO: errno signaling stuff */
@@ -1480,6 +1481,7 @@ int lib_open_session(struct name_state *handle,
   }
 
 
+  /* I don't really understand why I put this here like this. */
   fill_32field(lib_whatisaddrX(her, (1+ NETBIOS_NAME_LEN+ handle->lenof_scope)),
                (unsigned char *)&(addr.sin_addr.s_addr));
   if (! addr.sin_addr.s_addr) {
@@ -1507,7 +1509,8 @@ int lib_open_session(struct name_state *handle,
     destroy_nbnodename(her);
     return -1;
   }
-  destroy_nbnodename(name_id->next_name);
+  if (name_id->next_name)
+    destroy_nbnodename(name_id->next_name);
   name_id->next_name = clone_nbnodename(handle->scope);
   if ((! name_id->next_name) && handle->scope) {
     /* TODO: errno signaling stuff */
@@ -1529,17 +1532,9 @@ int lib_open_session(struct name_state *handle,
 
   memset(&pckt, 0, sizeof(struct ses_srvc_packet));
   pckt.payload_t = two_names;
-  pckt.payload = malloc(sizeof(struct ses_pckt_pyld_two_names));
-  if (! pckt.payload) {
-    /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
-    destroy_nbnodename(name_id);
-    return -1;
-  }
-
-  twins = pckt.payload;
-  twins->called_name = her;
-  twins->calling_name = name_id;
+  pckt.payload = &twins;
+  twins.called_name = her;
+  twins.calling_name = name_id;
 
   lenof_pckt = (2 * (1+ NETBIOS_CODED_NAME_LEN)) +
     (2 * handle->lenof_scope);
@@ -1559,6 +1554,7 @@ int lib_open_session(struct name_state *handle,
   mypckt_buff = malloc(wrotelenof_pckt);
   if (! mypckt_buff) {
     /* TODO: errno signaling stuff */
+    destroy_nbnodename(her);
     destroy_nbnodename(name_id);
     return -1;
   }
@@ -1566,7 +1562,8 @@ int lib_open_session(struct name_state *handle,
 
   master_ses_srvc_pckt_writer(&pckt, &wrotelenof_pckt, mypckt_buff);
 
-  destroy_ses_srvc_pcktpyld(&pckt);
+  destroy_nbnodename(twins.called_name);
+  destroy_nbnodename(twins.calling_name);
 
   /* Now I have allocated: mypckt_buff. */
   /* Other that that, I will need: addr, wrotelenof_pckt,
