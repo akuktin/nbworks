@@ -416,6 +416,7 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
   result = malloc(sizeof(struct dtg_srvc_recvpckt));
   if (! result)
     return 0;
+  result->for_del = 0;
 
   readhead = startof_pckt;
   readhead = readhead + (DTG_HDR_LEN +2+2);
@@ -484,6 +485,39 @@ void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 
   *pckt_len = walker - result;
   return (void *)result;
+}
+
+void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
+				   unsigned int *pckt_len,
+				   void *packt_field,
+				   unsigned char placeholder) {
+  struct dtg_srvc_recvpckt *packet;
+
+  if (! (packet_ptr && pckt_len)) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  packet = packet_ptr;
+
+  if (packet->len > *pckt_len) {
+    /* TODO: errno signaling stuff */
+    return packet_field;
+  }
+
+  if (packet_field) {
+    result = packet_field;
+  } else {
+    result = calloc(1, *pckt_len);
+    if (! result) {
+      /* TODO: errno signaling stuff */
+      return 0;
+    }
+  }
+
+  walker = result;
+
+  return (void *)mempcpy(result, packet->packetbuff, packet->len);
 }
 
 

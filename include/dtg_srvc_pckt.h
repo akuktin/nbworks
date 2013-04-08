@@ -88,6 +88,7 @@ struct dtg_srvc_packet {
 };
 
 struct dtg_srvc_recvpckt {
+  unsigned char for_del;
   struct nbnodename_list *dst;
   void *packetbuff;
   uint32_t len;
@@ -131,6 +132,11 @@ void *
                               unsigned int *pckt_len,
                               void *packet_field,
                               unsigned char placeholder);
+void *
+  sending_dtg_srvc_pckt_writer(void *packet_ptr,
+                               unsigned int *pckt_len,
+                               void *packt_field,
+                               unsigned char placeholder);
 
 void
   destroy_dtg_srvc_pckt(void *packet,

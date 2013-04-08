@@ -100,6 +100,7 @@ struct name_state *lib_regname(unsigned char *name,
   struct com_comm command;
   struct rail_name_data namedt;
   int daemon;
+  unsigned int lenof_scope;
   unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff;
 
   if ((! name) ||
@@ -148,7 +149,9 @@ struct name_state *lib_regname(unsigned char *name,
     return 0;
   }
 
-  command.len = (LEN_NAMEDT_ONWIREMIN -1) + nbnodenamelen(scope);
+  lenof_scope = nbnodenamelen(scope);
+
+  command.len = (LEN_NAMEDT_ONWIREMIN -1) + lenof_scope;
   namedt.name = name;
   namedt.name_type = name_type;
   namedt.scope = scope;
@@ -199,6 +202,13 @@ struct name_state *lib_regname(unsigned char *name,
     nbworks_errno = ENOMEM;
     return 0;
   }
+
+  result->lenof_scope = lenof_scope;
+  result->label_type = name_type;
+  result->node_type = node_type;
+  result->group_flg = group_flg;
+
+  /* ----------------------- */
 
   daemon = lib_daemon_socket();
   if (daemon < 0) {
@@ -261,11 +271,6 @@ struct name_state *lib_regname(unsigned char *name,
   }
 
   result->token = command.token;
-
-  result->lenof_scope = nbnodenamelen(scope);
-  result->label_type = name_type;
-  result->node_type = node_type;
-  result->group_flg = group_flg;
 
   return result;
 }
@@ -802,8 +807,6 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
 	   * fortunately), there is no way for the NetBIOS layer
 	   * to detect that the data does not make any sense.
 	   * It is up to the application to not trust datagrams. */
-	  /* Implementors note: we should add a new flag to the
-	   * datagram header flags field: DO_NOT_FRAGMENT. */
 	  *last = remove->next;
 	  free(remove->data);
 	  free(remove);
@@ -1077,28 +1080,48 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   }
 
   pckt->for_del = 0;
-  /* Yes, but what if I want to send a broadcast datagram to a group name? */
+  /* Is this datagram sent to everyone, all members
+   * of a group or only to a single node? */
   pckt->type = (isbroadcast) ? BRDCST_DTG :
                                ((group_flg & ISGROUP_YES) ? DIR_GRP_DTG :
                                                             DIR_UNIQ_DTG);
   pckt->flags = DTG_FIRST_FLAG; /* stub */
   switch (handle->node_type) {
-  case CACHE_NODEFLG_B:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_B);
-    command.node_type = 'B';
+  case CACHE_NODEFLG_H:
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
+    command.node_type = 'h';
     break;
-  case CACHE_NODEFLG_P:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_P);
-    command.node_type = 'P';
+  case CACHE_NODEGRPFLG_H:
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
+    command.node_type = 'H';
     break;
+
   case CACHE_NODEFLG_M:
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
+    command.node_type = 'm';
+    break;
+  case CACHE_NODEGRPFLG_M:
     pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
     command.node_type = 'M';
     break;
-  case CACHE_NODEFLG_H:
+
+  case CACHE_NODEFLG_P:
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_P);
+    command.node_type = 'p';
+    break;
+  case CACHE_NODEGRPFLG_P:
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_P);
+    command.node_type = 'P';
+    break;
+
+  case CACHE_NODEFLG_B:
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_B);
+    command.node_type = 'b';
+    break;
+  case CACHE_NODEGRPFLG_B:
   default:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
-    command.node_type = 'H';
+    pckt->flags = (pckt->flags | DTG_NODE_TYPE_B);
+    command.node_type = 'B';
     break;
   }
   pckt->id = make_weakrandom() & 0xffff;
@@ -1108,8 +1131,8 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   pckt->payload_t = normal;
   /* FIXME: the below is a stub. I have to implement datagram fragmentation. */
   pckt->payload = dtg_srvc_make_pyld_normal(handle->name->name, handle->label_type,
-					    recepient, recepient_type, handle->scope,
-					    data, len, 0);
+					    recepient, recepient_type,
+					    handle->scope, data, len, 0);
   if (! pckt->payload) {
     nbworks_errno = ZEROONES; /* FIXME */
     free(pckt);
@@ -1120,6 +1143,9 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   pckt_len = DTG_HDR_LEN + 2 + 2 +
     ((1+NETBIOS_CODED_NAME_LEN) *2) + (handle->lenof_scope *2) +
     (2 * 4) /* extra space for name alignment, if performed */ + len;
+
+  /* pckt_len is fixed by master_dtg_srvc_pckt_writer() below
+   * to be the real length of the packet in the call below. */
 
   readypacket = master_dtg_srvc_pckt_writer(pckt, &pckt_len, 0, 0);
   if (! readypacket) {

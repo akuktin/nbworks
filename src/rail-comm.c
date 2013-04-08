@@ -720,8 +720,10 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   destroy_nbnodename(namedata->scope); \
   free(namedata);
 
+  /* Call alloc_namecard() with ONES instead of name_type because
+   * of the call to find_name() later on. */
   cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
-				  node_type, make_token(),
+				  ONES, make_token(),
 				  QTYPE_NB, QCLASS_IN);
   if (! cache_namecard) {
     /* TODO: error handling */
@@ -784,6 +786,9 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     cleanup;
     return 0;
   } else {
+    /* Revert the node_types field into what is should be. */
+    cache_namecard->node_types = node_type;
+
     if (name_srvc_add_name(node_type, namedata->name, namedata->name_type,
 			   namedata->scope, my_ipv4_address(), namedata->ttl)) {
       if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
@@ -824,6 +829,7 @@ int rail_senddtg(int rail_sckt,
 		 struct com_comm *command) {
   struct sockaddr_in dst_addr;
   struct dtg_srvc_packet *pckt;
+  struct dtg_srvc_recvpckt *sendpckt;
   struct dtg_pckt_pyld_normal *normal_pyld;
   struct cache_namenode *namecard;
   struct ss_queue_storage *trans;
@@ -837,6 +843,7 @@ int rail_senddtg(int rail_sckt,
   if (! command)
     return -1;
 
+  sendpckt = 0;
   decoded_name[NETBIOS_NAME_LEN] = 0;
   dst_addr.sin_family = AF_INET;
   /* VAXism below */
@@ -906,12 +913,20 @@ int rail_senddtg(int rail_sckt,
   switch (pckt->payload_t) {
   case normal:
     normal_pyld = pckt->payload;
-    normal_pyld->pyldpyld_delptr = buff;
-    buff = 0;
 
     if (normal_pyld->dst_name->len != NETBIOS_CODED_NAME_LEN) {
       break;
     }
+
+    sendpckt = malloc(sizeof(struct dtg_srvc_recvpckt ));
+    if (! sendpckt) {
+      break;
+    }
+    sendpckt->for_del = 0;
+    sendpckt->dst = 0;
+    sendpckt->packetbuff = buff;
+    sendpckt->len = command->len;
+    buff = 0;
 
     tid.name_scope = normal_pyld->src_name;
 
@@ -929,14 +944,12 @@ int rail_senddtg(int rail_sckt,
     if ((pckt->type == BRDCST_DTG) ||
 	(0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name,
 		     NETBIOS_CODED_NAME_LEN))) {
-
       /* VAXism below. */
       fill_32field(get_inaddr(), (unsigned char *)&(dst_addr.sin_addr.s_addr));
 
-      pckt->for_del = TRUE;
-      ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
-
-      pckt = 0;
+      sendpckt->for_del = TRUE;
+      ss_dtg_send_pckt(sendpckt, &dst_addr, &(trans->queue));
+      sendpckt = 0;
 
       break;
     }
@@ -965,7 +978,7 @@ int rail_senddtg(int rail_sckt,
 	    fill_32field(group_addrs->ip_addr,
 			 (unsigned char *)&(dst_addr.sin_addr.s_addr));
 
-	    ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
+	    ss_dtg_send_pckt(sendpckt, &dst_addr, &(trans->queue));
 
 	    group_addrs = group_addrs->next;
 	  }
@@ -979,10 +992,9 @@ int rail_senddtg(int rail_sckt,
 		       (unsigned char *)&(dst_addr.sin_addr.s_addr));
 	}
 
-	pckt->for_del = TRUE;
-	ss_dtg_send_pckt(pckt, &dst_addr, &(trans->queue));
-
-	pckt = 0;
+	sendpckt->for_del = TRUE;
+	ss_dtg_send_pckt(sendpckt, &dst_addr, &(trans->queue));
+	sendpckt = 0;
       }
     } /* else
 	 FU(); */
@@ -996,6 +1008,10 @@ int rail_senddtg(int rail_sckt,
     destroy_dtg_srvc_pckt(pckt, 1, 1);
   if (buff)
     free(buff);
+  if (sendpckt) {
+    free(sendpckt->packetbuff);
+    free(sendpckt);
+  }
   return 0;
 }
 

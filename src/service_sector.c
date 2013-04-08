@@ -529,7 +529,7 @@ inline int ss_dtg_send_pckt(struct dtg_srvc_packet *pckt,
       trans_pckt->for_del = pckt->for_del;
       trans_pckt->packet = pckt;
       memcpy(&(trans_pckt->addr), addr, sizeof(struct sockaddr_in));
-      trans_pckt->dstry = &destroy_dtg_srvc_pckt;
+      trans_pckt->dstry = &destroy_dtg_srvc_recvpckt;
       trans_pckt->next = 0;
 
       trans->outgoing->next = trans_pckt;
@@ -1019,7 +1019,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
   sckts.all_trans = &(nbworks_all_transactions[DTG_SRVC]);
   sckts.newtid_handler = 0; /* FIXME */
   sckts.pckt_dstr = &destroy_dtg_srvc_recvpckt;
-  sckts.master_writer = &master_dtg_srvc_pckt_writer;
+  sckts.master_writer = &sending_dtg_srvc_pckt_writer;
   sckts.master_reader = &recving_dtg_srvc_pckt_reader;
   sckts.branch = DTG_SRVC;
   sckts.udp_sckt = socket(PF_INET, SOCK_DGRAM, 0);
@@ -1065,8 +1065,6 @@ void *ss__port138(void *i_dont_actually_use_this) {
     /* busy-wait */
   }
   sckts.isbusy = 0xda;
-
-  sckts.pckt_dstr = &destroy_dtg_srvc_pckt;
 
   if (pthread_create(&(thread[1]), 0,
 		     &ss__udp_sender, &sckts)) {
@@ -1401,6 +1399,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 
   while (! nbworks_all_port_cntl.all_stop) {
 #ifdef COMPILING_NBNS
+    /* In NBNS mode of operation, it is not possible to deregister a transaction. */
     for (index = 0; index < MAXNUMOF_TIDS; index++) {
       if (ss_alltrans[index].ss_iosig & SS_IOSIG_MASK_OUT) {
 	cur_trans = ss_alltrans[index].privtrans;
@@ -1441,7 +1440,6 @@ void *ss__udp_sender(void *sckts_ptr) {
 	free(for_del2);
       } else {
 #endif
-	/* In NBNS mode of operation, it is not possible to deregister a transaction. */
 	while (cur_trans->out->next) {
 	  if (cur_trans->out->packet) {
 	    ptr = cur_trans->out->packet;
