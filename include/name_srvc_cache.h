@@ -53,9 +53,6 @@ struct cache_namenode *
               uint16_t dns_class,
               struct addrlst_cardblock *addrblock,
               struct nbnodename_list *scope);
-struct cache_namenode *
-  replace_namecard(struct cache_namenode *name,
-                   struct nbnodename_list *scope);
 
 struct cache_namenode *
   find_name(struct cache_namenode *namecard,
