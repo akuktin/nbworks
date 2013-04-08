@@ -409,13 +409,15 @@ int lib_start_dtg_srv(struct name_state *handle,
   handle->dtg_listento = clone_nbnodename(listento);
   handle->dtg_takes = takes_field;
   handle->dtg_srv_stop = FALSE;
-  if (handle->dtg_frags)
+  if (handle->dtg_frags) {
     lib_destroy_fragbckbone(handle->dtg_frags);
-  handle->dtg_frags = 0;
+    handle->dtg_frags = 0;
+  }
   handle->in_server = 0;
-  if (handle->in_library)
+  if (handle->in_library) {
     lib_dstry_packets(handle->in_library);
-  handle->in_library = 0;
+    handle->in_library = 0;
+  }
 
   if (0 != pthread_create(&(handle->dtg_srv_tid), 0,
 			  lib_dtgserver, handle)) {
@@ -751,10 +753,6 @@ struct dtg_frag_bckbone *lib_add_frag_tobone(uint16_t id,
     while (cur_frag) {
       if (cur_frag == result)
 	return bone;
-      else {
-	free(result);
-	return 0;
-      }
 
       last_frag = &(cur_frag->next);
       cur_frag = *last_frag;
@@ -1319,28 +1317,31 @@ void *lib_dtgserver(void *arg) {
       if (take_dtg == TRUE) {
 	take_dtg = FALSE;
 
-	destroy_nbnodename(nrml_pyld->src_name->next_name);
-	nrml_pyld->src_name->next_name = 0;
+	/* BUG: the datagram server can only handle fragments if the first datagram
+	 *      fragment is the first fragment coming in AND the last datagram
+	 *      fragment is the last fragment coming in. */
 
 	if (! (dtg->flags & DTG_FIRST_FLAG)) {
-	  if (lib_add_frag_tobone(dtg->id, nrml_pyld->src_name,
+	  /* FIXME: what if the last fragment of the datagram is the first fragment
+	   *        to come in? */
+	  if (lib_add_frag_tobone(dtg->id, &(decoded_nbnodename),
 				  nrml_pyld->offset, nrml_pyld->len,
 				  nrml_pyld->payload, handle->dtg_frags)) {
 	    nrml_pyld->payload = 0;
 	  } else {
-	    lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
+	    lib_del_fragbckbone(dtg->id, &(decoded_nbnodename),
 				&(handle->dtg_frags));
 	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    continue;
 	  }
 	} else {
 	  if (dtg->flags & DTG_MORE_FLAG) {
-	    if (lib_add_fragbckbone(dtg->id, nrml_pyld->src_name,
+	    if (lib_add_fragbckbone(dtg->id, &(decoded_nbnodename),
 				    nrml_pyld->offset, nrml_pyld->len,
 				    nrml_pyld->payload, &(handle->dtg_frags))) {
 	      nrml_pyld->payload = 0;
 	    } else {
-	      lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
+	      lib_del_fragbckbone(dtg->id, &(decoded_nbnodename),
 				  &(handle->dtg_frags));
 	      destroy_dtg_srvc_pckt(dtg, 1, 1);
 	      continue;
@@ -1348,10 +1349,11 @@ void *lib_dtgserver(void *arg) {
 	  }
 	}
 
+	/* Again, this is a problem with out of order incoming of fragments. */
 	if (! (dtg->flags & DTG_MORE_FLAG)) {
 	  toshow = malloc(sizeof(struct packet_cooked));
 	  if (! toshow) {
-	    lib_del_fragbckbone(dtg->id, nrml_pyld->src_name,
+	    lib_del_fragbckbone(dtg->id, &(decoded_nbnodename),
 				&(handle->dtg_frags));
 	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    continue;
@@ -1363,11 +1365,14 @@ void *lib_dtgserver(void *arg) {
 	      nrml_pyld->payload = 0;
 
 	      toshow->len = nrml_pyld->len;
-
-	      toshow->src = nrml_pyld->src_name;
-	      nrml_pyld->src_name = 0;
-
-	      toshow->next = 0;
+	      toshow->src = clone_nbnodename(&(decoded_nbnodename));
+	      if (! toshow->src) {
+		free(toshow->data);
+		free(toshow);
+		toshow = 0;
+	      } else {
+		toshow->next = 0;
+	      }
 	    } else {
 	      /* Now, interestingly, I might be able to interpret the
 	       * offset as meaning that the offsetted part is filled with
@@ -1378,7 +1383,7 @@ void *lib_dtgserver(void *arg) {
 	      toshow = 0;
 	    }
 	  } else {
-	    fragbone = lib_take_fragbckbone(dtg->id, nrml_pyld->src_name,
+	    fragbone = lib_take_fragbckbone(dtg->id, &(decoded_nbnodename),
 					    &(handle->dtg_frags));
 	    if (fragbone) {
 	      /* A spooky statement. */
@@ -1389,7 +1394,10 @@ void *lib_dtgserver(void *arg) {
 		lib_assemble_frags(lib_order_frags(fragbone->frags,
 						   &(toshow->len)),
 				   toshow->len);
+
 	      toshow->src = fragbone->src;
+	      fragbone->src = 0;
+
 	      toshow->next = 0;
 
 	      free(fragbone);
@@ -1398,7 +1406,7 @@ void *lib_dtgserver(void *arg) {
 	      toshow = 0;
 	    }
 	  }
-	}
+        }
 
 	if (toshow) {
 	  if (handle->in_server) {
@@ -1456,7 +1464,6 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
-  ones = ONES;
   retry_count = 0;
 
   her = clone_nbnodename(dst);
@@ -1630,9 +1637,10 @@ int lib_open_session(struct name_state *handle,
     /* --------------------------------------------------------------- */
     /* Looks like I will HAVE to implement some sort of errno,
        because a failure here is not fatal, but requires special care. */
+    ones = ONES;
     setsockopt(ses_sckt, SOL_SOCKET, SO_KEEPALIVE,
 	       &ones, sizeof(unsigned int));
-    ones = 75;
+    ones = ONES;
     setsockopt(ses_sckt, IPPROTO_TCP, TCP_KEEPIDLE,
 	       &ones, sizeof(unsigned int));
     /* --------------------------------------------------------------- */
