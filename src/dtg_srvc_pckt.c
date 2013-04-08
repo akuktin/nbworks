@@ -489,9 +489,10 @@ void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 
 void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
 				   unsigned int *pckt_len,
-				   void *packt_field,
+				   void *packet_field,
 				   unsigned char placeholder) {
   struct dtg_srvc_recvpckt *packet;
+  unsigned char *result;
 
   if (! (packet_ptr && pckt_len)) {
     /* TODO: errno signaling stuff */
@@ -514,8 +515,6 @@ void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
       return 0;
     }
   }
-
-  walker = result;
 
   return (void *)mempcpy(result, packet->packetbuff, packet->len);
 }
