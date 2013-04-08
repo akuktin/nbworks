@@ -33,6 +33,6 @@ inline struct nbnodename_list *
 inline struct nbnodename_list *
   dtg_srvc_get_srcnam_recvpckt(struct dtg_srvc_recvpckt *pckt);
 
-void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt);
+/* void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt); */
 
 #endif /* NBWORKS_DTGSRVCFUNC_H */

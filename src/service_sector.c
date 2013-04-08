@@ -513,7 +513,7 @@ inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
 }
 
 /* returns: 1=success, 0=failure, -1=error */
-inline int ss_dtg_send_pckt(struct dtg_srvc_packet *pckt,
+inline int ss_dtg_send_pckt(struct dtg_srvc_recvpckt *pckt,
 			    struct sockaddr_in *addr,
 			    struct ss_queue *trans) {
   struct ss_unif_pckt_list *trans_pckt;

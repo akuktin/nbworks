@@ -96,7 +96,7 @@ inline struct nbnodename_list *dtg_srvc_get_srcnam_recvpckt(struct dtg_srvc_recv
     return pckt->dst;
 }
 
-
+/*
 void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
   struct dtg_srvc_packet *packet;
   struct dtg_pckt_pyld_normal *normal_pyld;
@@ -130,13 +130,13 @@ void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
     packet->type = DTG_ERROR;
     packet->error_code = DTG_ERR_DSTNAM_NOTHERE;
 
-    packet->src_port = 138; /* >< */
+    packet->src_port = 138; /_* >< *_/
     packet->src_address = my_ipv4_address();
 
-    /* This will occationally produce some weird effects. */
+    /_* This will occationally produce some weird effects. *_/
     packet->flags = (packet->flags & DTG_NODE_TYPE_MASK) | DTG_FIRST_FLAG;
 
-    /* This is inefficient. TODO: think of a better way. */
+    /_* This is inefficient. TODO: think of a better way. *_/
     trans = ss_register_dtg_tid(&tid);
     if (trans) {
       ss_dtg_send_pckt(packet, &(pckt->addr), trans);
@@ -151,3 +151,4 @@ void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
   }
   return;
 }
+*/

@@ -181,7 +181,7 @@ inline int
                     struct sockaddr_in *addr,
                     struct ss_queue *trans);
 inline int
-  ss_dtg_send_pckt(struct dtg_srvc_packet *pckt,
+  ss_dtg_send_pckt(struct dtg_srvc_recvpckt *pckt,
                    struct sockaddr_in *addr,
                    struct ss_queue *trans);
 inline void *
