@@ -311,7 +311,7 @@ int lib_delname(struct name_state *handle) {
   if (handle->dtg_listento)
     destroy_nbnodename(handle->dtg_listento);
   if (handle->dtg_frags)
-    lib_destroy_fragbckbone(handle->dtg_frags);
+    lib_destroy_allfragbckbone(handle->dtg_frags);
   if (handle->in_library)
     lib_dstry_packets(handle->in_library);
 
@@ -415,7 +415,7 @@ int lib_start_dtg_srv(struct name_state *handle,
   handle->dtg_takes = takes_field;
   handle->dtg_srv_stop = FALSE;
   if (handle->dtg_frags) {
-    lib_destroy_fragbckbone(handle->dtg_frags);
+    lib_destroy_allfragbckbone(handle->dtg_frags);
     handle->dtg_frags = 0;
   }
   handle->in_server = 0;
@@ -572,6 +572,21 @@ void lib_destroy_fragbckbone(struct dtg_frag_bckbone *bone) {
   return;
 }
 
+void lib_destroy_allfragbckbone(struct dtg_frag_bckbone *frags) {
+  struct dtg_frag_bckbone *for_del;
+
+  if (! frags)
+    return;
+
+  while (frags) {
+    for_del = frags->next;
+    lib_destroy_fragbckbone(frags);
+    frags = for_del;
+  }
+
+  return;
+}
+
 struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
 					     struct nbnodename_list *src,
 					     uint16_t offsetof_first,
@@ -701,19 +716,47 @@ void lib_del_fragbckbone(uint16_t id,
   return;
 }
 
+/* This function prunes fragment backbones, while taking care to assemble
+ * any datagrams that may have had all their pieces arrive in the meantime. */
 void lib_prune_fragbckbone(struct dtg_frag_bckbone **frags,
-			   time_t killtime) {
+			   time_t killtime,
+			   struct packet_cooked **anchor) {
   struct dtg_frag_bckbone *cur_frag, **last_frag;
+  struct packet_cooked **cooked_pckt, *toshow;
+  uint32_t len;
 
   if (! frags)
     return;
 
+  cooked_pckt = anchor;
   last_frag = frags;
   cur_frag = *last_frag;
 
   while (cur_frag) {
     if (cur_frag->last_active < killtime) {
       *last_frag = cur_frag->next;
+
+      if (anchor) {
+	if (lib_order_frags(&(cur_frag->frags), &len)) {
+	  toshow = malloc(sizeof(struct packet_cooked));
+	  if (! toshow) {
+	    lib_destroy_fragbckbone(cur_frag);
+	    cur_frag = *last_frag;
+	    continue;
+	  }
+
+	  toshow->data = lib_assemble_frags(cur_frag->frags, len);
+	  cur_frag->frags = 0;
+
+	  toshow->len = len;
+	  toshow->src = cur_frag->src;
+	  cur_frag->src = 0;
+
+	  *cooked_pckt = toshow;
+	  cooked_pckt = &(toshow->next);
+	}
+      }
+
       lib_destroy_fragbckbone(cur_frag);
     } else {
       last_frag = &(cur_frag->next);
@@ -721,6 +764,9 @@ void lib_prune_fragbckbone(struct dtg_frag_bckbone **frags,
 
     cur_frag = *last_frag;
   }
+
+  if (cooked_pckt)
+    *cooked_pckt = 0;
 
   return;
 }
@@ -767,7 +813,7 @@ struct dtg_frag_bckbone *lib_add_frag_tobone(uint16_t id,
   }
 }
 
-struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
+struct dtg_frag *lib_order_frags(struct dtg_frag **frags,
 				 uint32_t *len) {
   /* Regarding the brute forcing happening below:
    * I am sorry.
@@ -779,7 +825,7 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
     *master, *sorted;
   uint32_t size_todate, offer, offered_len;
 
-  if (! frags)
+  if (! (frags && (*frags)))
     return 0;
 
   size_todate = 0;
@@ -787,8 +833,8 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
   sorted = 0;
   master = 0;
 
-  while (frags) {
-    last = &(frags);
+  while (*frags) {
+    last = frags;
     remove = *last;
 
     best_offer = 0;
@@ -823,11 +869,12 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
 	   * crackers this year? Gosh, following propaganda sure
 	   * is a full time job. */
 	  if (sorted) {
-	    sorted->next = frags;
+	    sorted->next = *frags;
 	    lib_destroy_frags(master);
 	  } else {
-	    lib_destroy_frags(frags);
+	    lib_destroy_frags(*frags);
 	  }
+	  *frags = 0;
 	  return 0;
 	}
       }
@@ -845,11 +892,11 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
 
     if (offer != size_todate) {
       /* IP has lost a fragment or two. */
+      /* Alternatively, fragments are coming in out of order and I simply
+       * have to wait a bit longer to get the missing pieces. */
       if (sorted) {
-	sorted->next = frags;
-	lib_destroy_frags(master);
-      } else {
-	lib_destroy_frags(frags);
+	sorted->next = *frags;
+	*frags = master;
       }
       return 0;
     } else
@@ -866,11 +913,12 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
       }
     } else {
       if (sorted) {
-	sorted->next = frags;
+	sorted->next = *frags;
 	lib_destroy_frags(master);
       } else {
-	lib_destroy_frags(frags);
+	lib_destroy_frags(*frags);
       }
+      *frags = 0;
       return 0;
     }
   }
@@ -880,6 +928,7 @@ struct dtg_frag *lib_order_frags(struct dtg_frag *frags,
   if (len)
     *len = size_todate;
 
+  *frags = master;
   return master;
 }
 
@@ -1262,7 +1311,19 @@ void *lib_dtgserver(void *arg) {
     killtime = time(0) - nbworks_libcntl.dtg_frag_keeptime;
 
     if (last_pruned < killtime) {
-      lib_prune_fragbckbone(&(handle->dtg_frags), killtime);
+      /* toshow equals zero */
+      lib_prune_fragbckbone(&(handle->dtg_frags), killtime, &toshow);
+      if (toshow) {
+	if (handle->in_server) {
+	  handle->in_server->next = toshow;
+	  handle->in_server = toshow;
+	} else {
+	  handle->in_server = toshow;
+	  handle->in_library = toshow;
+	}
+
+	toshow = 0;
+      }
       /* Save us a call to time(). */
       last_pruned = killtime + nbworks_libcntl.dtg_frag_keeptime;
     }
@@ -1343,25 +1404,17 @@ void *lib_dtgserver(void *arg) {
       if (take_dtg == TRUE) {
 	take_dtg = FALSE;
 
-	/* BUG: the datagram server can only handle fragments if the first datagram
-	 *      fragment is the first fragment coming in AND the last datagram
-	 *      fragment is the last fragment coming in. */
-
 	if (! (dtg->flags & DTG_FIRST_FLAG)) {
-	  /* FIXME: what if the last fragment of the datagram is the first fragment
-	   *        to come in? */
+	attempt_to_add_a_fragment:
 	  if (lib_add_frag_tobone(dtg->id, &(decoded_nbnodename),
 				  nrml_pyld->offset, nrml_pyld->len,
 				  nrml_pyld->payload, handle->dtg_frags)) {
 	    nrml_pyld->payload = 0;
 	  } else {
-	    lib_del_fragbckbone(dtg->id, &(decoded_nbnodename),
-				&(handle->dtg_frags));
-	    destroy_dtg_srvc_pckt(dtg, 1, 1);
-	    continue;
-	  }
-	} else {
-	  if (dtg->flags & DTG_MORE_FLAG) {
+	    /* Either there was an internal error in lib_add_frag_tobone() or
+	     * this is the first fragment of the datagram that was received,
+	     * in the event of fragments coming in out of order. */
+	    /* Assume the latter is true and attempt to add a new fragbone. */
 	    if (lib_add_fragbckbone(dtg->id, &(decoded_nbnodename),
 				    nrml_pyld->offset, nrml_pyld->len,
 				    nrml_pyld->payload, &(handle->dtg_frags))) {
@@ -1373,14 +1426,16 @@ void *lib_dtgserver(void *arg) {
 	      continue;
 	    }
 	  }
+	} else {
+	  if (dtg->flags & DTG_MORE_FLAG) {
+	    /* I am using this goto to reduce the amount of code. It is somewhat ineficient. */
+	    goto attempt_to_add_a_fragment;
+	  }
 	}
 
-	/* Again, this is a problem with out of order incoming of fragments. */
 	if (! (dtg->flags & DTG_MORE_FLAG)) {
 	  toshow = malloc(sizeof(struct packet_cooked));
 	  if (! toshow) {
-	    lib_del_fragbckbone(dtg->id, &(decoded_nbnodename),
-				&(handle->dtg_frags));
 	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    continue;
 	  }
@@ -1412,17 +1467,32 @@ void *lib_dtgserver(void *arg) {
 	    fragbone = lib_take_fragbckbone(dtg->id, &(decoded_nbnodename),
 					    &(handle->dtg_frags));
 	    if (fragbone) {
-	      /* A spooky statement. */
-	      /* Question: what if the compiler does not update the second
-	       * argument to lib_assemble_frags() after calling
-	       * lib_order_frags(), hmmm? */
-	      toshow->data =
-		lib_assemble_frags(lib_order_frags(fragbone->frags,
-						   &(toshow->len)),
-				   toshow->len);
+
+	      if (lib_order_frags(&(fragbone->frags), &(toshow->len))) {
+		toshow->data = lib_assemble_frags(fragbone->frags, toshow->len);
+	      } else {
+		if (! fragbone->frags) {
+		  /* lib_order_frags() has detected an unrecoverable error.
+		   * Fragbckbone is unusable. */
+		  destroy_nbnodename(fragbone->src);
+		  free(fragbone);
+		} else {
+		  /* lib_order_frags() has detected a recoverable error.
+		   * Fragbckbone is still usable but not in this iteration of the loop.*/
+		  /* This only works because only one datagram server can be used per
+		   * nodename handle and said server is single-threaded. */
+		  fragbone->next = handle->dtg_frags;
+		  handle->dtg_frags = fragbone;
+		}
+
+		free(toshow);
+		toshow = 0;
+
+		destroy_dtg_srvc_pckt(dtg, 1, 1);
+		continue;
+	      }
 
 	      toshow->src = fragbone->src;
-	      fragbone->src = 0;
 
 	      toshow->next = 0;
 
@@ -1456,7 +1526,7 @@ void *lib_dtgserver(void *arg) {
   destroy_nbnodename(handle->dtg_listento);
   handle->dtg_listento = 0;
 
-  lib_destroy_fragbckbone(handle->dtg_frags);
+  lib_destroy_allfragbckbone(handle->dtg_frags);
   handle->dtg_frags = 0;
 
   handle->dtg_srv_stop = TRUE;

@@ -145,6 +145,8 @@ void
   lib_destroy_frags(struct dtg_frag *flesh);
 void
   lib_destroy_fragbckbone(struct dtg_frag_bckbone *bone);
+void
+  lib_destroy_allfragbckbone(struct dtg_frag_bckbone *frags);
 struct dtg_frag_bckbone *
   lib_add_fragbckbone(uint16_t id,
                       struct nbnodename_list *src,
@@ -166,7 +168,8 @@ void
                       struct dtg_frag_bckbone **frags);
 void
   lib_prune_fragbckbone(struct dtg_frag_bckbone **frags,
-                        time_t killtime);
+                        time_t killtime,
+                        struct packet_cooked **anchor);
 struct dtg_frag_bckbone *
   lib_add_frag_tobone(uint16_t id,
                       struct nbnodename_list *src,
@@ -175,7 +178,7 @@ struct dtg_frag_bckbone *
                       void *data,
                       struct dtg_frag_bckbone *frags);
 struct dtg_frag *
-  lib_order_frags(struct dtg_frag *frags,
+  lib_order_frags(struct dtg_frag **frags,
                   uint32_t *len);
 void *
   lib_assemble_frags(struct dtg_frag *frags,

@@ -918,7 +918,7 @@ int rail_senddtg(int rail_sckt,
       break;
     }
 
-    sendpckt = malloc(sizeof(struct dtg_srvc_recvpckt ));
+    sendpckt = malloc(sizeof(struct dtg_srvc_recvpckt));
     if (! sendpckt) {
       break;
     }
