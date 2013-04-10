@@ -575,9 +575,6 @@ void lib_destroy_fragbckbone(struct dtg_frag_bckbone *bone) {
 void lib_destroy_allfragbckbone(struct dtg_frag_bckbone *frags) {
   struct dtg_frag_bckbone *for_del;
 
-  if (! frags)
-    return;
-
   while (frags) {
     for_del = frags->next;
     lib_destroy_fragbckbone(frags);
@@ -891,14 +888,28 @@ struct dtg_frag *lib_order_frags(struct dtg_frag **frags,
     }
 
     if (offer != size_todate) {
-      /* IP has lost a fragment or two. */
-      /* Alternatively, fragments are coming in out of order and I simply
-       * have to wait a bit longer to get the missing pieces. */
-      if (sorted) {
-	sorted->next = *frags;
-	*frags = master;
+      if (offer > size_todate) {
+	/* IP has lost a fragment or two. Alternatively, fragments are
+	 * coming in out of order and I simply have to wait a bit longer
+	 * to get the missing pieces. In both cases, the pruner function
+	 * will take care of it. */
+	if (sorted) {
+	  sorted->next = *frags;
+	  *frags = master;
+	}
+	return 0;
+      } else {
+	/* offer < size_todate */
+	/* Big fuckup, see second comment up. */
+	if (sorted) {
+	  sorted->next = *frags;
+	  lib_destroy_frags(master);
+	} else {
+	  lib_destroy_frags(*frags);
+	}
+	*frags = 0;
+	return 0;
       }
-      return 0;
     } else
       size_todate = size_todate + offered_len;
 
