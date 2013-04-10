@@ -32,6 +32,8 @@ extern struct nbworks_libcntl_t {
   time_t keepalive_interval;
 
   time_t dtg_frag_keeptime;
+
+  unsigned int dtg_max_wholefrag_len;
 } nbworks_libcntl;
 
 #endif /* NBWORKS_LIBRARYCONTROL_H */

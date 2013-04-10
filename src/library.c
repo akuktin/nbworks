@@ -1113,9 +1113,12 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 			unsigned char group_flg,
 			int isbroadcast) {
   struct dtg_srvc_packet *pckt;
+  struct dtg_pckt_pyld_normal *pyld;
   struct com_comm command;
   int daemon_sckt;
-  unsigned int pckt_len;
+  uint32_t basic_pckt_flags;
+  uint32_t pckt_len, hdr_len, max_wholefrag_len;
+  uint32_t frag_len, max_frag_len, numof_frags, frag_offset;
   unsigned char readycommand[LEN_COMM_ONWIRE];
   void *readypacket;
 
@@ -1133,6 +1136,43 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     nbworks_errno = 0;
   }
 
+  hdr_len = DTG_HDR_LEN + 2 + 2 + ((1+NETBIOS_CODED_NAME_LEN) *2) +
+    (handle->lenof_scope *2) + (2 * 4); /* extra space for name alignment,
+					   if performed */
+
+  max_wholefrag_len = nbworks_libcntl.dtg_max_wholefrag_len;
+  if (max_wholefrag_len > MAX_UDP_PACKET_LEN) {
+    /* Be generous to evil users and don't throw a sissy fit here. */
+    max_wholefrag_len = MAX_UDP_PACKET_LEN;
+  }
+
+  if (hdr_len >= max_wholefrag_len) {
+    nbworks_errno = EOVERFLOW;
+    return -1;
+  }
+
+  max_frag_len = max_wholefrag_len - hdr_len;
+
+  /* Check if we can send the data with overloading.
+   * Actually, see if the data is so big that not even
+   * overloading can save our sorry asses. */
+  if (len > (DTG_MAXOFFSET + max_frag_len)) {
+    nbworks_errno = EMSGSIZE;
+    return -1;
+  }
+
+  /* The scheme we use is to have the last fragment as big as possible, in order
+   * to utilize overloading. Consequently, the first fragment is used to adjust
+   * that which needs adjustments. */
+  pckt_len = len;
+  numof_frags = 1;
+  while (pckt_len > max_frag_len) {
+    numof_frags++;
+    pckt_len = pckt_len - max_frag_len;
+  }
+  /* Hold on to this frag_len, as it will be reused below. */
+  frag_len = pckt_len;
+
   pckt = malloc(sizeof(struct dtg_srvc_packet));
   if (! pckt) {
     nbworks_errno = ENOBUFS;
@@ -1145,42 +1185,41 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   pckt->type = (isbroadcast) ? BRDCST_DTG :
                                ((group_flg & ISGROUP_YES) ? DIR_GRP_DTG :
                                                             DIR_UNIQ_DTG);
-  pckt->flags = DTG_FIRST_FLAG; /* stub */
   switch (handle->node_type) {
   case CACHE_NODEFLG_H:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
+    basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = 'h';
     break;
   case CACHE_NODEGRPFLG_H:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
+    basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = 'H';
     break;
 
   case CACHE_NODEFLG_M:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
+    basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = 'm';
     break;
   case CACHE_NODEGRPFLG_M:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_M);
+    basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = 'M';
     break;
 
   case CACHE_NODEFLG_P:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_P);
+    basic_pckt_flags = DTG_NODE_TYPE_P;
     command.node_type = 'p';
     break;
   case CACHE_NODEGRPFLG_P:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_P);
+    basic_pckt_flags = DTG_NODE_TYPE_P;
     command.node_type = 'P';
     break;
 
   case CACHE_NODEFLG_B:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_B);
+    basic_pckt_flags = DTG_NODE_TYPE_B;
     command.node_type = 'b';
     break;
   case CACHE_NODEGRPFLG_B:
   default:
-    pckt->flags = (pckt->flags | DTG_NODE_TYPE_B);
+    basic_pckt_flags = DTG_NODE_TYPE_B;
     command.node_type = 'B';
     break;
   }
@@ -1189,88 +1228,120 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   pckt->src_port = 138;
 
   pckt->payload_t = normal;
-  /* FIXME: the below is a stub. I have to implement datagram fragmentation. */
   pckt->payload = dtg_srvc_make_pyld_normal(handle->name->name, handle->label_type,
 					    recepient, recepient_type,
-					    handle->scope, data, len, 0);
+					    handle->scope, 0, 0, 0);
   if (! pckt->payload) {
-    nbworks_errno = ZEROONES; /* FIXME */
+    nbworks_errno = ADD_MEANINGFULL_ERRNO;
     free(pckt);
     return -1;
   }
   pckt->error_code = 0;
 
-  pckt_len = DTG_HDR_LEN + 2 + 2 +
-    ((1+NETBIOS_CODED_NAME_LEN) *2) + (handle->lenof_scope *2) +
-    (2 * 4) /* extra space for name alignment, if performed */ + len;
-
-  /* pckt_len is fixed by master_dtg_srvc_pckt_writer() below
-   * to be the real length of the packet in the call below. */
-
-  readypacket = master_dtg_srvc_pckt_writer(pckt, &pckt_len, 0, 0);
+  readypacket = calloc(1, max_wholefrag_len);
   if (! readypacket) {
-    nbworks_errno = ZEROONES; /* FIXME */
+    nbworks_errno = ENOBUFS;
     destroy_dtg_srvc_pckt(pckt, 1, 1);
     return -1;
   }
 
   daemon_sckt = lib_daemon_socket();
   if (daemon_sckt == -1) {
-    nbworks_errno = ZEROONES; /* FIXME */
+    nbworks_errno = ADD_MEANINGFULL_ERRNO;
     free(readypacket);
     destroy_dtg_srvc_pckt(pckt, 1, 1);
     return -1;
   }
+  /* --------------------------------- */
 
-  memset(&(command), 0, sizeof(struct com_comm));
-  command.command = rail_send_dtg;
-  command.token = handle->token;
-  command.len = pckt_len;
-  command.data = readypacket;
+  pckt->flags = basic_pckt_flags | DTG_FIRST_FLAG;
 
-  fill_railcommand(&command, readycommand, (readycommand + LEN_COMM_ONWIRE));
+  len = 0;
+  pyld = pckt->payload;
+  frag_offset = 0;
+  while (numof_frags) {
+    numof_frags--;
 
-  if (LEN_COMM_ONWIRE > send(daemon_sckt, readycommand, LEN_COMM_ONWIRE,
-			     MSG_NOSIGNAL)) {
-    nbworks_errno = errno;
-    close(daemon_sckt);
-    free(readypacket);
-    destroy_dtg_srvc_pckt(pckt, 1, 1);
-    return -1;
-  }
+    pyld->len = frag_len;
+    pyld->offset = frag_offset;
+    pyld->payload = data + frag_offset;
 
-  if (pckt_len > send(daemon_sckt, readypacket, pckt_len, MSG_NOSIGNAL)) {
-    nbworks_errno = errno;
-    close(daemon_sckt);
-    free(readypacket);
-    destroy_dtg_srvc_pckt(pckt, 1, 1);
-    return -1;
-  }
+    pckt_len = hdr_len + frag_len;
 
-  if (LEN_COMM_ONWIRE > recv(daemon_sckt, readycommand, LEN_COMM_ONWIRE,
-			     MSG_WAITALL)) {
-    nbworks_errno = ZEROONES; /* FIXME */
-    close(daemon_sckt);
-    free(readypacket);
-    destroy_dtg_srvc_pckt(pckt, 1, 1);
-    return -1;
+    /* pckt_len is fixed by master_dtg_srvc_pckt_writer() below
+     * to be the real length of the packet in the call below. */
+
+    if (! master_dtg_srvc_pckt_writer(pckt, &pckt_len, readypacket, 0)) {
+      nbworks_errno = ADD_MEANINGFULL_ERRNO;
+      destroy_dtg_srvc_pckt(pckt, 1, 1);
+      return -1;
+    }
+
+    memset(&(command), 0, sizeof(struct com_comm));
+    command.command = rail_send_dtg;
+    command.token = handle->token;
+    command.len = pckt_len;
+    command.data = readypacket;
+
+    fill_railcommand(&command, readycommand, (readycommand + LEN_COMM_ONWIRE));
+
+    if (LEN_COMM_ONWIRE > send(daemon_sckt, readycommand, LEN_COMM_ONWIRE,
+			       MSG_NOSIGNAL)) {
+      nbworks_errno = errno;
+      close(daemon_sckt);
+      free(readypacket);
+      destroy_dtg_srvc_pckt(pckt, 1, 1);
+      return -1;
+    }
+
+    if (pckt_len > send(daemon_sckt, readypacket, pckt_len, MSG_NOSIGNAL)) {
+      nbworks_errno = errno;
+      close(daemon_sckt);
+      free(readypacket);
+      destroy_dtg_srvc_pckt(pckt, 1, 1);
+      return -1;
+    }
+
+    if (LEN_COMM_ONWIRE > recv(daemon_sckt, readycommand, LEN_COMM_ONWIRE,
+			       MSG_WAITALL)) {
+      nbworks_errno = ADD_MEANINGFULL_ERRNO;
+      close(daemon_sckt);
+      free(readypacket);
+      destroy_dtg_srvc_pckt(pckt, 1, 1);
+      return -1;
+    }
+
+    if (0 == read_railcommand(readycommand, (readycommand +LEN_COMM_ONWIRE),
+			      &command)) {
+      close(daemon_sckt);
+      nbworks_errno = ENOBUFS;
+      return -1;
+    }
+
+    if ((command.command != rail_send_dtg) ||
+	(command.nbworks_errno)) {
+      close(daemon_sckt);
+      nbworks_errno = command.nbworks_errno;
+      return 0;
+    } else {
+      len = len + frag_len;
+    }
+
+    if (numof_frags) {
+      frag_offset = frag_offset + frag_len;
+      /* Only the first fragment has a variable size, others are as big as possible. */
+      frag_len = max_frag_len;
+
+      if (numof_frags > 1) {
+	pckt->flags = basic_pckt_flags | DTG_MORE_FLAG;
+      } else {
+	pckt->flags = basic_pckt_flags;
+      }
+    }
   }
 
   close(daemon_sckt);
-  free(readypacket);
   destroy_dtg_srvc_pckt(pckt, 1, 1);
-
-  if (0 == read_railcommand(readycommand, (readycommand +LEN_COMM_ONWIRE),
-			    &command)) {
-    nbworks_errno = ENOBUFS;
-    return -1;
-  }
-
-  if ((command.command != rail_send_dtg) ||
-      (command.nbworks_errno)) {
-    nbworks_errno = command.nbworks_errno;
-    return 0;
-  }
 
   return len;
 }

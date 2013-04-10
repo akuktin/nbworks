@@ -46,13 +46,12 @@
 # define DTG_ERR_SRCNAM_BADFORM 0x83 /* Invalid format of the source name. */
 # define DTG_ERR_DSTNAM_BADFORM 0x84 /* Invalid format of the destination name. */
 
-# define DTG_MAXLEN (0xffff - (4+2 +2+2 +(2*(NETBIOS_CODED_NAME_LEN+1))+2))
-/* for when I implement sender datagram fragmentation.
-   /...* Datagram overloading. The offset field contains 0xffff and the
-    * datagram length field contains 0xffff, meaning that the last octet of
-    * the datagram is the (0xffff + 0xffff)'th. *.../
-   # define DTG_MAXLEN (0xffff + 0xffff)
-*/
+/* Datagram overloading. The offset field contains 0xffff and the
+ * datagram length field contains 0xffff, meaning that the last octet of
+ * the datagram is the (0xffff + 0xffff)'th. */
+# define DTG_MAXLEN (0xffff + 0xffff)
+/* Maximum offset the datagram can handle. */
+# define DTG_MAXOFFSET (0xffff)
 
 # define FRAG_TIMEOUT  1 /* seconds */
 
