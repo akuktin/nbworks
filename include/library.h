@@ -48,6 +48,7 @@ struct dtg_frag_bckbone {
   time_t last_active;
   struct nbnodename_list *src;
   struct dtg_frag *frags;
+  unsigned char last_ishere;
   struct dtg_frag_bckbone *next;
 };
 
