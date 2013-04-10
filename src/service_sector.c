@@ -1017,7 +1017,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
 
   sckts.isbusy = 0xda;
   sckts.all_trans = &(nbworks_all_transactions[DTG_SRVC]);
-  sckts.newtid_handler = 0; /* FIXME */
+  sckts.newtid_handler = 0; /* Datagram service does not use newtid handlers. */
   sckts.pckt_dstr = &destroy_dtg_srvc_recvpckt;
   sckts.master_writer = &sending_dtg_srvc_pckt_writer;
   sckts.master_reader = &recving_dtg_srvc_pckt_reader;

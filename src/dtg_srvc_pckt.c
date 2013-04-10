@@ -164,8 +164,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       return 0;
     }
 
-    /* However, maybe I should ignore alignment things
-       and instead focus on the PACKET_OFFSET field. */
+    /* However, maybe I should ignore alignment things. */
 
     walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->len) > end_of_packet) {
@@ -447,7 +446,8 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
   if (tid) {
     readhead = result->packetbuff;
     readhead = readhead +1+1;
-    *tid = *((uint16_t *)readhead);
+    /* VAXism below */
+    read_16field(readhead, tid);
   }
 
   return result;
@@ -516,7 +516,9 @@ void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
     }
   }
 
-  return (void *)mempcpy(result, packet->packetbuff, packet->len);
+  mempcpy(result, packet->packetbuff, packet->len);
+
+  return result;
 }
 
 

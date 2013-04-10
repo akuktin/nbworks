@@ -610,6 +610,7 @@ struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
   result->id = id;
   result->last_active = time(0);
   result->src = clone_nbnodename(src);
+  result->last_ishere = FALSE;
 
   result->frags->offset = offsetof_first;
   result->frags->len = lenof_first;
@@ -733,7 +734,7 @@ void lib_prune_fragbckbone(struct dtg_frag_bckbone **frags,
     if (cur_frag->last_active < killtime) {
       *last_frag = cur_frag->next;
 
-      if (anchor) {
+      if (anchor && cur_frag->last_ishere) {
 	if (lib_order_frags(&(cur_frag->frags), &len)) {
 	  toshow = malloc(sizeof(struct packet_cooked));
 	  if (! toshow) {
@@ -1565,6 +1566,7 @@ void *lib_dtgserver(void *arg) {
 		   * nodename handle and said server is single-threaded. */
 		  fragbone->next = handle->dtg_frags;
 		  handle->dtg_frags = fragbone;
+		  fragbone->last_ishere = TRUE;
 		}
 
 		free(toshow);
@@ -1777,7 +1779,8 @@ int lib_open_session(struct name_state *handle,
     }
   }
 
-  /* FIXME: a timeout must be implemented here. */
+  /* TCP layer implements it's own timeout here.
+   * We will leachingly use that instead of using our own timeout. */
   if (SES_HEADER_LEN > recv(ses_sckt, small_buff, SES_HEADER_LEN,
 			    MSG_WAITALL)) {
     close(ses_sckt);
