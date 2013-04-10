@@ -964,7 +964,6 @@ int rail_senddtg(int rail_sckt,
 				     normal_pyld->dst_name->next_name,
 				     node_type, FALSE);
     if (namecard) {
-      /* FIXME: sending to another name on the same host */
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if (namecard->addrs.recrd[i].node_type == node_type)
 	  break;
