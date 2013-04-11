@@ -1176,6 +1176,9 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
   uint32_t in_addr, i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
+  /* This function fully shadows the difference
+   * between B mode and P mode operation. */
+
   if (! (outpckt && addr && trans))
     return;
 
@@ -3218,7 +3221,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 							       CACHE_NODEFLG_P)) ?
 		   ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
 		   TRUE)) {
-		/* Inser the new data only if a bunch of conditions are met. */
+		/* Insert the new data only if a bunch of conditions are met. */
 #endif
 		for (j=0; j<NUMOF_ADDRSES; j++) {
 		  if (cache_namecard->addrs.recrd[j].node_type ==
@@ -3341,7 +3344,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 								 CACHE_NODEGRPFLG_P)) ?
 		     ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
 		     TRUE)) {
-		  /* Inser the new data only if a bunch of conditions are met. */
+		  /* Insert the new data only if a bunch of conditions are met. */
 #endif
 		  for (j=0; j<NUMOF_ADDRSES; j++) {
 		    if (cache_namecard->addrs.recrd[j].node_type ==
