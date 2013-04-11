@@ -54,6 +54,10 @@ void lib_init(void) {
   nbworks_libcntl.keepalive_interval = 120; /* seconds */
 
   nbworks_libcntl.dtg_frag_keeptime = 60; /* seconds */
+
+  /* It's a little sad to write an algorithm that can
+   * handle hell and heaven and then cripple it like this. */
+  nbworks_libcntl.dtg_max_wholefrag_len = MAX_DATAGRAM_LENGTH;
 }
 
 

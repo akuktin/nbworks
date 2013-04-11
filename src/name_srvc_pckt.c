@@ -261,7 +261,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   /* Fields in the packet are aligned to 32-bit boundaries. */
   walker = align(remember_walker, *master_packet_walker, 4);
 
-  if ((walker + 5 * sizeof(uint16_t)) > end_of_packet) {
+  if ((walker + ((2*2)+4+2)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
     destroy_nbnodename(resource->name);
@@ -373,6 +373,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     weighted_companion_cube = malloc(resource->rdata_len);
     if (! weighted_companion_cube) {
       /* TODO: errno signaling stuff */
+      *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
       return 0;
     }
     *start_and_end_of_walk = mempcpy(weighted_companion_cube, *start_and_end_of_walk,
@@ -433,7 +434,6 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
 
   case nb_statistics_rfc1002:
-    listof_names = 0;
     resource->rdata_t = nb_statistics_rfc1002;
     if (! resource->rdata_len) {
       /* BULLSHIT_IN_PACKET */
@@ -441,6 +441,10 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       return 0;
     }
     walker = *start_and_end_of_walk;
+    /* Instead of adjusting *start_and_end_of_walk before
+     * every return, just do it once. Here. */
+    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
+
     nbstat = malloc(sizeof(struct name_srvc_statistics_rfc1002));
     if (! nbstat) {
       /* TODO: errno signaling stuff */
@@ -450,6 +454,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     nbstat->numof_names = num_names;
     weighted_companion_cube = walker +1;
     walker++;
+    /* ********************************************************** */
+    /*                                                            */
     if (num_names > 0) {
       listof_names = malloc(sizeof(struct nbnodename_list_backbone));
       if (! listof_names) {
@@ -493,20 +499,20 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	}
       }
     } else {
+      listof_names = 0;
       nbstat->listof_names = 0;
     }
-
     walker = align(weighted_companion_cube, walker, 4);
+    /*                                                            */
+    /* ********************************************************** */
 
-    if ((walker + 23 * sizeof(uint16_t)) > end_of_packet) {
+    if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       abort_stats;
       return 0;
     }
 
-    /* I am interpreting the RFC 1002 to mean the statistics blob is aligned
-       to 32-bit boundaries. */ /* Or not... */
     walker = read_48field(walker, &(nbstat->unique_id));
     nbstat->jumpers = *walker;
     walker++;
@@ -530,7 +536,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     walker = read_16field(walker, &(nbstat->max_total_sessions_possible));
     walker = read_16field(walker, &(nbstat->session_data_pckt_size));
 
-    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
+    /* *start_and_end_of_walk is already adjusted. */
 
     return nbstat;
     break;
@@ -559,6 +565,21 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       (field > end_of_packet))
     return field;
 
+#define return_adjusted_pointer						\
+  if ((walker-field) == content->rdata_len) {				\
+    return walker;							\
+  } else {								\
+    if ((walker-field) < content->rdata_len) {				\
+      memset(walker, 0, (content->rdata_len - (walker - field)));	\
+      return (field + content->rdata_len);				\
+    } else  {								\
+      /* In reality, this is a fatal error. However, roll a saving throw     \
+       * v. importance-of-data table and hope to God nothing bad happens. */ \
+      return (field + content->rdata_len);				\
+    }									\
+  }									\
+
+
   walker = field;
 
   if ((walker + content->rdata_len) > end_of_packet) {
@@ -578,13 +599,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 
   case nb_address_list:
     walker = fill_nbaddress_list(content->rdata, walker, end_of_packet);
-    if ((walker-field) < content->rdata_len) {
-      memset(walker, 0, (content->rdata_len - (walker - field)));
-      return (field + content->rdata_len);
-    } else {
-      /* This is ridiculous. */
-      return walker;
-    }
+    return_adjusted_pointer;
     break;
 
   case nb_type_null:
@@ -599,41 +614,34 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       memset(field, 0, content->rdata_len);
       return (field + content->rdata_len);
     }
+    save_walker = walker;
     walker = align(field, walker, 4);
     if (walker > end_of_packet) {
-      /* TODO: maybe do errno signaling stuff? */
+      /* MAYBE: do errno signaling stuff? */
+      memset(save_walker, 0, (end_of_packet - save_walker));
       return end_of_packet;
     } else {
-      if ((walker-field) < content->rdata_len) {
-	memset(walker, 0, (content->rdata_len - (walker - field)));
-	return (field + content->rdata_len);
-      } else {
-	/* This is ridiculous. */
-	return walker;
-      }
+      return_adjusted_pointer;
     }
     break;
 
   case nb_NBT_node_ip_address:
     walker = fill_ipv4_address_list(content->rdata, walker, end_of_packet);
-    if ((walker-field) < content->rdata_len) {
-      memset(walker, 0, (content->rdata_len - (walker - field)));
-      return (field + content->rdata_len);
-    } else {
-      /* This is ridiculous. */
-      return walker;
-    }
+    return_adjusted_pointer;
     break;
 
   case nb_statistics_rfc1002:
     nbstat = content->rdata;
-    if ((walker +1+3+6+2+19*2) > end_of_packet) {
+    if ((walker + SIZEOF_STATRFC1002_BLOCK +
+	 (nbstat->numof_names * (1+NETBIOS_CODED_NAME_LEN +2)))
+	> end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       memset(field, 0, content->rdata_len);
       return (field + content->rdata_len);
     }
     *walker = nbstat->numof_names;
+    walker++;
     names = nbstat->listof_names;
     while (names) {
       walker = fill_all_DNS_labels(names->nbnodename, walker, end_of_packet, 0);
@@ -646,7 +654,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 
       save_walker = walker;
       walker = align(field, walker, 4);
-      if ((walker +2+6+2+19*2) > end_of_packet) {
+      if ((walker + 2 + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
 	/* OUT_OF_BOUNDS */
 	/* TODO: errno signaling stuff */
 	memset(field, 0, (((save_walker-field) > content->rdata_len) ?
@@ -657,7 +665,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       //      walker = align(field, walker, 4);
       names = names->next_nbnodename;
     }
-    if ((walker +6+2+19*2) > end_of_packet) {
+    if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       memset(field, 0, (((walker-field) > content->rdata_len) ?
@@ -687,13 +695,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     walker = fill_16field(nbstat->max_total_sessions_possible, walker);
     walker = fill_16field(nbstat->session_data_pckt_size, walker);
 
-    if ((walker-field) < content->rdata_len) {
-      memset(walker, 0, (content->rdata_len - (walker - field)));
-      return (field + content->rdata_len);
-    } else {
-      /* This is ridiculous. */
-      return walker;
-    }
+    return_adjusted_pointer;
     break;
 
   default:

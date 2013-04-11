@@ -427,6 +427,10 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
   *field = '\0';
   field++;
 
+  /* Be carefull about the memory leaks. */
+  if (state)
+    *state = 0;
+
   return field;
 }
 

@@ -134,6 +134,7 @@ struct name_srvc_question {
   uint16_t qclass;
 };
 
+# define SIZEOF_STATRFC1002_BLOCK (1+0+6+1+1+(6*2)+(2*4)+(9*2))
 struct name_srvc_statistics_rfc1002 {
   unsigned char numof_names;
   struct nbnodename_list_backbone *listof_names;
