@@ -30,6 +30,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
+#include "daemon_control.h"
 #include "constdef.h"
 #include "nodename.h"
 #include "pckt_routines.h"

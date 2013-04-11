@@ -524,7 +524,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
   pckt->header->nm_flags = name_flags;
 
-  retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count
+  retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count;
   for (i=0; i < retry_count; i++) {
     ss_name_send_pckt(pckt, &addr, trans);
 

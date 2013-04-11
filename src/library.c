@@ -1631,7 +1631,8 @@ int lib_open_session(struct name_state *handle,
   struct ses_srvc_packet pckt;
   struct ses_pckt_pyld_two_names twins;
   struct sockaddr_in addr;
-  int ses_sckt, retry_count;;
+  int ses_sckt, retry_count;
+  unsigned int max_retries;
   unsigned int lenof_pckt, wrotelenof_pckt;
   unsigned int ones;
   unsigned char *mypckt_buff, *herpckt_buff;
@@ -1753,6 +1754,8 @@ int lib_open_session(struct name_state *handle,
   /* Other that that, I will need: addr, wrotelenof_pckt,
                                    *herpckt_buff, pckt,
 				   small_buff[] */
+  max_retries = nbworks_libcntl.max_ses_retarget_retries;
+
  try_to_connect:
   ses_sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (ses_sckt == -1) {
@@ -1762,7 +1765,7 @@ int lib_open_session(struct name_state *handle,
 
   if (0 != connect(ses_sckt, (struct sockaddr *)&addr, sizeof(struct sockaddr_in))) {
     close(ses_sckt);
-    if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
+    if (retry_count < max_retries) {
       retry_count++;
       goto try_to_connect;
     } else {
@@ -1774,7 +1777,7 @@ int lib_open_session(struct name_state *handle,
   if (wrotelenof_pckt > send(ses_sckt, mypckt_buff, wrotelenof_pckt,
 			     (MSG_DONTWAIT | MSG_NOSIGNAL))) {
     close(ses_sckt);
-    if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
+    if (retry_count < max_retries) {
       retry_count++;
       goto try_to_connect;
     } else {
@@ -1788,7 +1791,7 @@ int lib_open_session(struct name_state *handle,
   if (SES_HEADER_LEN > recv(ses_sckt, small_buff, SES_HEADER_LEN,
 			    MSG_WAITALL)) {
     close(ses_sckt);
-    if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
+    if (retry_count < max_retries) {
       retry_count++;
       goto try_to_connect;
     } else {
@@ -1861,7 +1864,7 @@ int lib_open_session(struct name_state *handle,
     /* fall-through! */
   default:
     close(ses_sckt);
-    if (retry_count < nbworks_libcntl.max_ses_retarget_retries) {
+    if (retry_count < max_retries) {
       retry_count++;
       goto try_to_connect;
     } else {

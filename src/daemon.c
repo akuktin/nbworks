@@ -64,7 +64,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_namsrvc_cntrl.NBNS_threshold_ttl = 5; /* Ignore ultra-short leases. */
   nbworks_namsrvc_cntrl.func_sleeptime.tv_sec = 0;
   nbworks_namsrvc_cntrl.func_sleeptime.tv_nsec = T_250MS;
-  
+
 
   /* RELEASE: This has to be changed, somehow. */
   /* No srsly, how do I do this? If the config file is empty? */
