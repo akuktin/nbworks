@@ -1380,7 +1380,7 @@ void *ss__udp_sender(void *sckts_ptr) {
   struct ss_priv_trans **last_trans, *for_del2;
 #endif
   struct ss_priv_trans *cur_trans;
-  unsigned int len, prev_len;
+  unsigned int len, prev_len, sendlen;
   unsigned char udp_pckt[MAX_UDP_PACKET_LEN];
   void *ptr;
 
@@ -1402,11 +1402,21 @@ void *ss__udp_sender(void *sckts_ptr) {
 
   while (! nbworks_all_port_cntl.all_stop) {
 #ifdef COMPILING_NBNS
-    /* In NBNS mode of operation, it is not possible to deregister a transaction. */
+    sendlen = nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len;
+    if (sendlen > MAX_UDP_PACKET_LEN)
+      sendlen = MAX_UDP_PACKET_LEN;
+      /* In NBNS mode of operation, it is not possible to deregister a transaction. */
     for (index = 0; index < MAXNUMOF_TIDS; index++) {
       if (ss_alltrans[index].ss_iosig & SS_IOSIG_MASK_OUT) {
 	cur_trans = ss_alltrans[index].privtrans;
 #else
+    if (sckts.branch == DTG_SRVC)
+      sendlen = MAX_UDP_PACKET_LEN;
+    else {
+      sendlen = nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len;
+      if (sendlen > MAX_UDP_PACKET_LEN)
+	sendlen = MAX_UDP_PACKET_LEN;
+    }
     cur_trans = *(sckts.all_trans);
     last_trans = sckts.all_trans;
     while (cur_trans) {
@@ -1417,7 +1427,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 	while (cur_trans->out) {
 	  if (cur_trans->out->packet) {
 	    ptr = cur_trans->out->packet;
-	    len = MAX_UDP_PACKET_LEN;
+	    len = sendlen;
 	    sckts.master_writer(ptr, &len, udp_pckt, TRANSIS_UDP);
 	    if (prev_len > len) {
 	      memset((udp_pckt + prev_len), 0, (prev_len - len));
@@ -1446,7 +1456,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 	while (cur_trans->out->next) {
 	  if (cur_trans->out->packet) {
 	    ptr = cur_trans->out->packet;
-	    len = MAX_UDP_PACKET_LEN;
+	    len = sendlen;
 	    sckts.master_writer(ptr, &len, udp_pckt, TRANSIS_UDP);
 	    if (prev_len > len) {
 	      memset((udp_pckt + prev_len), 0, (prev_len - len));
@@ -1468,7 +1478,7 @@ void *ss__udp_sender(void *sckts_ptr) {
 
 	if (cur_trans->out->packet) {
 	  ptr = cur_trans->out->packet;
-	  len = MAX_UDP_PACKET_LEN;
+	  len = sendlen;
 	  sckts.master_writer(ptr, &len, udp_pckt, TRANSIS_UDP);
 	  if (prev_len > len) {
 	    memset((udp_pckt + prev_len), 0, (prev_len - len));

@@ -27,6 +27,7 @@
 #include "pckt_routines.h"
 #include "dtg_srvc_pckt.h"
 
+
 struct dtg_srvc_packet *read_dtg_packet_header(unsigned char **master_packet_walker,
                                                unsigned char *end_of_packet) {
   struct dtg_srvc_packet *packet;
@@ -101,6 +102,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
   if (! (packet && master_packet_walker))
     return 0;
 
+  /* There must be at least one octet for us to read. */
   if (*master_packet_walker > end_of_packet ||
       *master_packet_walker < start_of_packet) {
     /* OUT_OF_BOUNDS */
@@ -113,7 +115,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
   switch (understand_dtg_pckt_type(packet->type)) {
   case normal:
     packet->payload_t = normal;
-    if ((walker + 2 + (2*sizeof(uint16_t))) > end_of_packet) {
+    if ((walker + 2 + (2*2)) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       return 0;
@@ -201,8 +203,10 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
   case error_code:
     packet->payload_t = error_code;
-    packet->error_code = *walker;
-    *master_packet_walker = walker +1;
+    if (walker < end_of_packet) {
+      packet->error_code = *walker;
+      *master_packet_walker = walker +1;
+    }
     return 0;
     break;
 
@@ -467,6 +471,11 @@ void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 
   packet = packet_ptr;
 
+  if (*pckt_len < DTG_HDR_LEN) {
+    /* TODO: errno signaling stuff */
+    *pckt_len = 0;
+    return packet_field;
+  }
   if (packet_field) {
     result = packet_field;
   } else {
@@ -481,8 +490,12 @@ void *master_dtg_srvc_pckt_writer(void *packet_ptr,
   endof_pckt = result + *pckt_len;
 
   walker = fill_dtg_packet_header(packet, walker, endof_pckt);
+  if (walker == result) {
+    goto endof_function;
+  }
   walker = fill_dtg_srvc_pckt_payload_data(packet, walker, endof_pckt);
 
+ endof_function:
   *pckt_len = walker - result;
   return (void *)result;
 }
@@ -503,9 +516,10 @@ void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
 
   if (packet->len > *pckt_len) {
     /* TODO: errno signaling stuff */
+    *pckt_len = 0;
     return packet_field;
   }
-
+  
   if (packet_field) {
     result = packet_field;
   } else {

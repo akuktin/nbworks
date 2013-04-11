@@ -801,7 +801,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
       if (add_scope(scope, new_name, nbworks__default_nbns) ||
 	  add_name(new_name, scope)) {
 	curtime = time(0);
-	new_name->endof_conflict_chance = curtime + CONFLICT_TTL;
+	new_name->endof_conflict_chance = curtime + nbworks_namsrvc_cntrl.conflict_timer;
 	/* Fun fact: the below can overflow. No,
 	 * I'm not gonna make a test for that. */
 	new_name->timeof_death = curtime + ttl;
@@ -3135,7 +3135,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
 	      cache_namecard->refresh_ttl = ONES;
 	    }
-	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
 
 	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->addrs),
 		   sizeof(struct addrlst_cardblock));
@@ -3187,7 +3187,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
 	      cache_namecard->refresh_ttl = ONES;
 	    }
-	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
 
 	    for (i=0; i<NUMOF_ADDRSES; i++) {
 #ifndef COMPILING_NBNS
@@ -3254,7 +3254,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
 	      cache_namecard->refresh_ttl = ONES;
 	    }
-	    cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
 
 	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->addrs),
 		   sizeof(struct addrlst_cardblock));
@@ -3306,7 +3306,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		cache_namecard->timeof_death = ZEROONES; /* infinity */
 		cache_namecard->refresh_ttl = ONES;
 	      }
-	      cache_namecard->endof_conflict_chance = cur_time + CONFLICT_TTL;
+	      cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
 
 	      for (i=0; i<NUMOF_ADDRSES; i++) {
 #ifndef COMPILING_NBNS

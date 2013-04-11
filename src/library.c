@@ -48,12 +48,10 @@ void lib_init(void) {
   nbworks_libcntl.dtg_srv_polltimeout = TP_100MS;
   nbworks_libcntl.ses_srv_polltimeout = TP_100MS;
 
-  nbworks_libcntl.max_ses_retarget_retries = 5; /*
-	      What do I know? Just choose a random number,
-	      it oughta work. I guess. */
-  nbworks_libcntl.keepalive_interval = 120; /* seconds */
+  nbworks_libcntl.max_ses_retarget_retries = SSN_RETRY_COUNT;
+  nbworks_libcntl.keepalive_interval = SSN_KEEP_ALIVE_TIMEOUT;
 
-  nbworks_libcntl.dtg_frag_keeptime = 60; /* seconds */
+  nbworks_libcntl.dtg_frag_keeptime = FRAGMENT_TO;
 
   /* It's a little sad to write an algorithm that can
    * handle hell and heaven and then cripple it like this. */

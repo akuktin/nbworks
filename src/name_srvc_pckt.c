@@ -43,7 +43,7 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_
     return 0;
 
   if ((! *master_packet_walker) ||
-      ((*master_packet_walker + 6 * sizeof(uint16_t)) > end_of_packet)) {
+      ((*master_packet_walker + 6 * 2) > end_of_packet)) {
     /* OUT_OF_BOUNDS */
     //    *do_kill_yourself = TRUE;
     return 0;
@@ -930,6 +930,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   struct name_srvc_packet *packet;
   struct name_srvc_question_lst *cur_qstn;
   struct name_srvc_resource_lst *cur_res;
+  uint16_t save_flags;
   unsigned char *result, *walker, *endof_pckt, overflow;
 
   if (! packet_ptr) {
@@ -940,19 +941,25 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   packet = packet_ptr;
 
   if (! pckt_len) {
-    result = 0;
-    goto endof_function;
+    packet->stuck_in_transit = FALSE;
+    return 0;
+  } else {
+    if (*pckt_len < SIZEOF_NAMEHDR_ONWIRE) {
+      packet->stuck_in_transit = FALSE;
+      return 0;
+    }
   }
   if (packet_field) {
     result = packet_field;
   } else {
     result = calloc(1, *pckt_len);
     if (! result) {
-      /* TODO: errno signaling stuff */
-      result = 0;
-      goto endof_function;
+      packet->stuck_in_transit = FALSE;
+      return 0;
     }
   }
+
+  overflow = 0;
 
   walker = result;
   endof_pckt = result + *pckt_len;
@@ -968,9 +975,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   while (cur_qstn) {
     walker = fill_name_srvc_pckt_question(cur_qstn->qstn, walker,
 					  endof_pckt, &overflow);
-    if (walker >= endof_pckt) {
-      /* TODO: errno signaling stuff */
-      *pckt_len = walker - result;
+    if (overflow) {
       goto endof_function;
     }
     cur_qstn = cur_qstn->next;
@@ -980,9 +985,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
 				     endof_pckt, &overflow);
-    if (walker >= endof_pckt) {
-      /* TODO: errno signaling stuff */
-      *pckt_len = walker - result;
+    if (overflow) {
       goto endof_function;
     }
     cur_res = cur_res->next;
@@ -992,9 +995,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
 				     endof_pckt, &overflow);
-    if (walker >= endof_pckt) {
-      /* TODO: errno signaling stuff */
-      *pckt_len = walker - result;
+    if (overflow) {
       goto endof_function;
     }
     cur_res = cur_res->next;
@@ -1004,21 +1005,26 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   while (cur_res) {
     walker = fill_name_srvc_resource(cur_res->res, walker,
 				     endof_pckt, &overflow);
-    if (walker >= endof_pckt) {
-      /* TODO: errno signaling stuff */
-      *pckt_len = walker - result;
+    if (overflow) {
       goto endof_function;
     }
     cur_res = cur_res->next;
   }
 
+ endof_function:
   if (transport == TRANSIS_UDP) {
-    fill_name_srvc_pckt_header(packet->header, result,
-			       endof_pckt);
+    if (overflow) {
+      save_flags = packet->header->nm_flags;
+      packet->header->nm_flags |= FLG_TC;
+      fill_name_srvc_pckt_header(packet->header, result,
+				 endof_pckt);
+      packet->header->nm_flags = save_flags;
+    } else
+      fill_name_srvc_pckt_header(packet->header, result,
+				 endof_pckt);
   }
 
   *pckt_len = walker - result;
- endof_function:
   packet->stuck_in_transit = FALSE;
   return (void *)result;
 }

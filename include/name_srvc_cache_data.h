@@ -26,8 +26,6 @@
 
 # define NUMOF_ADDRSES 8
 
-# define CONFLICT_TTL 1
-
 # define ANY_GROUP    ONES
 # define ANY_NODETYPE ONES
 

@@ -74,6 +74,17 @@
 # define UCAST_REQ_RETRY_COUNT   3
 # define MAX_DATAGRAM_LENGTH     576 /* bytes, that is, octets */
 
+# define REFRESH_TIMER 2 /* seconds */ /* Is supposed to be name-specific. */
+# define CONFLICT_TTL  1 /* as per RFC1002 */
+
+# define INFINITE_TTL NULL
+
+# define SSN_RETRY_COUNT        4
+# define SSN_CLOSE_TIMEOUT      30
+# define SSN_KEEP_ALIVE_TIMEOUT 60
+
+# define FRAGMENT_TO 2
+
 
 # ifdef align_incr
 #  undef align_incr

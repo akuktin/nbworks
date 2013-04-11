@@ -177,14 +177,16 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
 
   case error_code_ses:
     packet->payload_t = error_code_ses;
-    packet->error_code = *walker;
-    *master_packet_walker = walker +1;
+    if (walker < end_of_packet) {
+      packet->error_code = *walker;
+      *master_packet_walker = walker +1;
+    }
     return 0;
     break;
 
   case retarget_blob_rfc1002:
     packet->payload_t = retarget_blob_rfc1002;
-    if ((walker + sizeof(uint32_t) + sizeof(uint16_t)) > end_of_packet) {
+    if ((walker + 4 + 2) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       return 0;
@@ -282,7 +284,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
   case retarget_blob_rfc1002:
     if (! content->payload)
       return walker;
-    if ((walker +3*2) > endof_pckt) {
+    if ((walker +4+2) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       return walker;

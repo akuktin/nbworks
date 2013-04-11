@@ -44,6 +44,9 @@ extern struct nbworks_namsrvc_cntrl_t {
   uint32_t NBNS_threshold_ttl;
 
   struct timespec func_sleeptime;
+
+  unsigned int name_srvc_max_udppckt_len;
+  unsigned int conflict_timer;
 } nbworks_namsrvc_cntrl;
 
 extern struct nbworks_dtg_srv_cntrl_t {
