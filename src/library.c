@@ -288,12 +288,6 @@ int lib_delname(struct name_state *handle) {
     return -1;
   }
 
-  daemon = lib_daemon_socket();
-  if (daemon < 0) {
-    nbworks_errno = EPIPE;
-    return -1;
-  }
-
   if (handle->dtg_srv_tid) {
     handle->dtg_srv_stop = TRUE;
 
@@ -321,6 +315,12 @@ int lib_delname(struct name_state *handle) {
     destroy_nbnodename(handle->ses_listento);
   if (handle->sesin_library)
     lib_dstry_sesslist(handle->sesin_library);
+
+  daemon = lib_daemon_socket();
+  if (daemon < 0) {
+    nbworks_errno = EPIPE;
+    return -1;
+  }
 
   memset(&command, 0, sizeof(struct com_comm));
 

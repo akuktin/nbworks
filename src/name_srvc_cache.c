@@ -821,16 +821,17 @@ int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
 
   for (i=0; i<NUMOF_ADDRSES; i++) {
     for (j=0; j<NUMOF_ADDRSES; j++) {
-      if (addrblock.addrs.recrd[i].node_type == namecard->addrs.recrd[j].node_type) {
+      if (addrblock.addrs.recrd[i].node_type ==
+          namecard->addrs.recrd[j].node_type) {
 	if ((namecard->addrs.recrd[j].node_type &
 	     (CACHE_NODEFLG_P | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
 	      CACHE_NODEGRPFLG_P | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H)) &&
 	    sender_is_nbns)
 	  do_force = TRUE;
-	else
+        else
 	  do_force = FALSE;
 
-	break;
+        break;
       }
     }
 

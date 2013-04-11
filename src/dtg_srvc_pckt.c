@@ -519,7 +519,7 @@ void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
     *pckt_len = 0;
     return packet_field;
   }
-  
+
   if (packet_field) {
     result = packet_field;
   } else {

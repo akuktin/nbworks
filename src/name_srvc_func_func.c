@@ -728,13 +728,16 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     break;
   }
 
-  nbns_addr = get_nbnsaddr(scope);
+  if (recursion) {
+    nbns_addr = get_nbnsaddr(scope);
+    res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
+				 nbns_addr, FLG_RD, recursion);
+  } else {
+    nbns_addr = 0;
+    res = name_srvc_callout_name(name, name_type, scope, get_inaddr(),
+				 0, FLG_B, recursion);
+  }
 
-  res = name_srvc_callout_name(name, name_type, scope,
-			       (recursion ? nbns_addr : get_inaddr()),
-			       (recursion ? nbns_addr : 0),
-			       (recursion ? FLG_RD : FLG_B),
-			       recursion);
   if (! res)
     return 0;
   else {
@@ -1189,12 +1192,12 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	(res->res->rdata_t == nb_address_list) &&
 	(sort_nbaddrs(res->res->rdata, &addrblock_ptr))) {
 
-      if (addrblock.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+      if (addrblock.node_types & (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P))) {
 	decode_nbnodename(res->res->name->name, decoded_name);
 
 	cache_namecard = find_nblabel(decoded_name,
 				      NETBIOS_NAME_LEN,
-				      CACHE_ADDRBLCK_UNIQ_MASK,
+				      (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P)),
 				      res->res->rrtype,
 				      res->res->rrclass,
 				      res->res->name->next_name);
@@ -1221,7 +1224,8 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	  in_addr = 0;
 	  for (i=0; i<NUMOF_ADDRSES; i++) {
 	    if (cache_namecard->addrs.recrd[i].addr &&
-		(cache_namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_UNIQ_MASK)) {
+		(cache_namecard->addrs.recrd[i].node_type &
+		 (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P)))) {
 	      in_addr = cache_namecard->addrs.recrd[i].addr->ip_addr;
 	      break;
 	    }
@@ -2531,11 +2535,14 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 				time_t cur_time) {
   struct addrlst_bigblock addrblock, *addrblock_ptr;
   struct name_srvc_packet *pckt;
-  struct cache_namenode *cache_namecard, *cache_namecard_b;
+  struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
   struct ipv4_addr_list *ipv4_addr_list;
   uint32_t in_addr, status, i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  /* This function fully shadows the difference
+   * between B mode and P mode operation. */
 
   if (! (outpckt && addr && trans))
     return;
@@ -2548,7 +2555,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
   res = outpckt->answers;
   while (res) {
     status = STATUS_DID_NONE;
-    cache_namecard = cache_namecard_b = 0;
+    cache_namecard = 0;
 
     memset(addrblock_ptr, 0, sizeof(struct addrlst_bigblock));
 
@@ -2559,11 +2566,17 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	(res->res->rdata_t == nb_address_list) &&
 	(res->res->rdata) &&
 	(sort_nbaddrs(res->res->rdata, &addrblock_ptr))) {
+      if (! (addrblock.node_types & (~(CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)))) {
+	res = res->next;
+	continue;
+      }
+
       decode_nbnodename(res->res->name->name, decoded_name);
 
       cache_namecard = find_nblabel(decoded_name,
 				    NETBIOS_NAME_LEN,
-				    ANY_NODETYPE,
+				    (ANY_NODETYPE & (~(CACHE_NODEFLG_P |
+						       CACHE_NODEGRPFLG_P))),
 				    res->res->rrtype,
 				    res->res->rrclass,
 				    res->res->name->next_name);
@@ -2593,11 +2606,12 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	  (cache_namecard->timeof_death > cur_time) &&
 	  (cache_namecard->endof_conflict_chance < cur_time)) {
 	/* NO conflict check. */
-	if (addrblock.node_types & CACHE_ADDRBLCK_GRP_MASK) {
+	if (addrblock.node_types & (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_P))) {
 	  /* Verify the sender lists themselves as a member of the
 	     group being updated. */
 	  for (i=0; i<NUMOF_ADDRSES; i++) {
-	    if (addrblock.addrs.recrd[i].node_type & CACHE_ADDRBLCK_GRP_MASK) {
+	    if (addrblock.addrs.recrd[i].node_type &
+		(CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_P))) {
 	      ipv4_addr_list = addrblock.addrs.recrd[i].addr;
 	      while (ipv4_addr_list) {
 		if (ipv4_addr_list->ip_addr == in_addr)
@@ -2635,7 +2649,8 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	     * the IP address in question listed as it's member. */
 
 	    for (i=0; i<NUMOF_ADDRSES; i++) {
-	      if (cache_namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_GRP_MASK) {
+	      if (cache_namecard->addrs.recrd[i].node_type &
+		  (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_P))) {
 		ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 		while (ipv4_addr_list) {
 		  if (ipv4_addr_list->ip_addr == in_addr)
@@ -2655,10 +2670,11 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 
 	  }
 	}
-	if (addrblock.node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+	if (addrblock.node_types & (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P))) {
 	  /* Verify the sender lists himself as the owner. */
 	  for (i=0; i<NUMOF_ADDRSES; i++) {
-	    if (addrblock.addrs.recrd[i].node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
+	    if (addrblock.addrs.recrd[i].node_type &
+		(CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P))) {
 	      ipv4_addr_list = addrblock.addrs.recrd[i].addr;
 	      while (ipv4_addr_list) {
 		if (ipv4_addr_list->ip_addr == in_addr)
@@ -2688,7 +2704,8 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 	     * the IP address in question listed as it's owner. */
 
 	    for (i=0; i<NUMOF_ADDRSES; i++) {
-	      if (cache_namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
+	      if (cache_namecard->addrs.recrd[i].node_type &
+		  (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P))) {
 		ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 		while (ipv4_addr_list) {
 		  if (ipv4_addr_list->ip_addr == in_addr)
@@ -2731,6 +2748,9 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
   struct nbaddress_list *nbaddr_list;
   uint32_t status, in_addr, sender_is_nbns, name_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  /* This function fully shadows the difference
+   * between B mode and P mode operation. */
 
   if (! (outpckt && addr))
     return;
@@ -2827,6 +2847,9 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   uint32_t name_flags;
 #endif
 
+  /* This function fully shadows the difference
+   * between B mode and P mode operation. */
+
   if (! (outpckt && addr))
     return;
 
@@ -2881,7 +2904,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	     /* Only read this if the packet was not broadcast. That is, if the packet
 	      * does not have the broadcast flag set - we will still process a broadcast
 	      * packet with the broadcast flag off. Unless we are NBNS. */
-	     (((name_flags ^ FLG_B) & FLG_B) && sender_is_nbns) :
+	     (sender_is_nbns && ((name_flags ^ FLG_B) & FLG_B)) :
 #endif
 	     (nbaddr_list->address == in_addr)
 #ifndef COMPILING_NBNS
@@ -3026,8 +3049,6 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   }
 
   if (numof_failed) {
-    *last_res = 0; /* superflous */
-
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
@@ -3075,6 +3096,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   uint32_t name_flags, nbns_addr;
 #endif
 
+  /* This function fully shadows the difference
+   * between B mode and P mode operation. */
+
   if (! (outpckt && addr))
     return;
 
@@ -3103,16 +3127,11 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
 
-#ifndef COMPILING_NBNS
-      nbns_addr = get_nbnsaddr(res->res->name->next_name);
-#endif
-
       addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
-      if (addr_bigblock
+      if (addr_bigblock) {
 #ifndef COMPILING_NBNS
-	  && nbns_addr
+	nbns_addr = get_nbnsaddr(res->res->name->next_name);
 #endif
-	  ) {
 	decode_nbnodename(res->res->name->name, decoded_name);
 
 	if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
@@ -3145,6 +3164,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    memset(&(addr_bigblock->addrs), 0, sizeof(struct addrlst_cardblock));
 
 #ifndef COMPILING_NBNS
+	    /* This cachenode is not yet in the cache. It is maybe having its
+	     * P mode records removed if a bunch of conditions is not right.
+	     * After that, it will be inserted into the cache. */
 	    if ((in_addr != nbns_addr) ||
 		(name_flags & FLG_B)) {
 	      for (i=0; i<NUMOF_ADDRSES; i++) {
@@ -3196,6 +3218,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 							       CACHE_NODEFLG_P)) ?
 		   ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
 		   TRUE)) {
+		/* Inser the new data only if a bunch of conditions are met. */
 #endif
 		for (j=0; j<NUMOF_ADDRSES; j++) {
 		  if (cache_namecard->addrs.recrd[j].node_type ==
@@ -3264,6 +3287,9 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    memset(&(addr_bigblock->addrs), 0, sizeof(struct addrlst_cardblock));
 
 #ifndef COMPILING_NBNS
+	    /* This cachenode is not yet in the cache. It is maybe having its
+	     * P mode records removed if a bunch of conditions is not right.
+	     * After that, it will be inserted into the cache. */
 	    if ((in_addr != nbns_addr) ||
 		(name_flags & FLG_B)) {
 	      for (i=0; i<NUMOF_ADDRSES; i++) {
@@ -3315,6 +3341,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 								 CACHE_NODEGRPFLG_P)) ?
 		     ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
 		     TRUE)) {
+		  /* Inser the new data only if a bunch of conditions are met. */
 #endif
 		  for (j=0; j<NUMOF_ADDRSES; j++) {
 		    if (cache_namecard->addrs.recrd[j].node_type ==
