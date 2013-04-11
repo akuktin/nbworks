@@ -217,7 +217,7 @@ void *handle_rail(void *args) {
   rail_isreusable = TRUE;
 
   while (rail_isreusable &&
-	 nbworks__rail_control.all_stop) {
+	 (! nbworks__rail_control.all_stop)) {
     ret_val = poll(&pfd, 1, nbworks__rail_control.poll_timeout);
     if (ret_val == 0) {
       continue;

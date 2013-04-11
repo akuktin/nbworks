@@ -492,6 +492,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
   struct name_srvc_packet *pckt, *outside_pckt;
   struct name_srvc_resource_lst *result, *walker;
   int i;
+  unsigned int retry_count;
   union trans_id tid;
 
   if (! (name && ask_address))
@@ -523,7 +524,8 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
   pckt->header->nm_flags = name_flags;
 
-  for (i=0; i < BCAST_REQ_RETRY_COUNT; i++) {
+  retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count
+  for (i=0; i < retry_count; i++) {
     ss_name_send_pckt(pckt, &addr, trans);
 
     nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
@@ -837,6 +839,7 @@ int name_srvc_release_name(unsigned char *name,
   uint32_t listento;
   uint16_t type, class;
   int i;
+  unsigned int retry_count;
   unsigned char stop_yourself;
   union trans_id tid;
 
@@ -890,7 +893,12 @@ int name_srvc_release_name(unsigned char *name,
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_RELEASE;
   pckt->header->nm_flags = (recursion ? FLG_RD : FLG_B);
 
-  for (i=BCAST_REQ_RETRY_COUNT; i>0; i--) {
+  if (recursion)
+    retry_count = nbworks_namsrvc_cntrl.ucast_req_retry_count;
+  else
+    retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count;
+
+  for (i = retry_count; i>0; i--) {
     if (i == 1)
       pckt->for_del = TRUE;
 
@@ -969,7 +977,7 @@ void *refresh_scopes(void *i_ignore_this) {
   /* VAXism below! */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
 
-  while (nbworks_all_port_cntl.all_stop) {
+  while (! nbworks_all_port_cntl.all_stop) {
     cur_scope = nbworks_rootscope;
     trans = 0;
 
@@ -1554,7 +1562,6 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       /* busy-wait */
     }
 
-    /* This is even thread-safe. */
     ss_alltrans[tid].ss_iosig |= SS_IOSIG_TAKEN;
   }
 
@@ -1623,6 +1630,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   struct laters_link *laters, *cur_laters, **last_laters, *killme, **last_killme;
   time_t cur_time, new_deathtime;
   long i, j, retries, numof_laters, numof_succeded, numof_failed;
+  unsigned int retry_count;
   unsigned char you_may_succed, you_may_fail;
 
   if (! args)
@@ -1729,7 +1737,8 @@ void *name_srvc_NBNShndl_latereg(void *args) {
      * the WACK packet clears the service sector. */
   }
 
-  for (retries = 0; retries < nbworks_namsrvc_cntrl.retries_NBNS; retries++) {
+  retry_count = nbworks_namsrvc_cntrl.retries_NBNS;
+  for (retries = 0; retries < retry_count; retries++) {
     ss_set_normalstate_name_tid(&transid);
 
     if (retries)
@@ -2470,6 +2479,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
       last_res = &(pckt->answers);
 
+      *last_unknown = 0;
       qstn = unknown;
       while (qstn) {
 	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
@@ -2479,6 +2489,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	}
 	res->res = malloc(sizeof(struct name_srvc_resource));
 	if (! res->res) {
+	  free(res);
 	  break;
 	}
 

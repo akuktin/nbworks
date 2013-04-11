@@ -33,8 +33,6 @@
 #define OVERFLOW_BUF      1
 #define OVERFLOW_RDATALEN 2
 
-unsigned int do_kill_yourself;
-
 
 struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_packet_walker,
 							 unsigned char *end_of_packet) {
@@ -47,13 +45,13 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_
   if ((! *master_packet_walker) ||
       ((*master_packet_walker + 6 * sizeof(uint16_t)) > end_of_packet)) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return 0;
   }
 
   header = malloc(sizeof(struct name_srvc_pckt_header));
   if (! header) {
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return 0;
   }
 
@@ -90,7 +88,7 @@ unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *he
 
   if ((walker + 6*2) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return walker;
   }
 
@@ -124,7 +122,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
       (*master_packet_walker < start_of_packet) ||
       (*master_packet_walker >= end_of_packet)) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return 0;
   }
 
@@ -141,7 +139,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
    * fixing a bunch of errors, I can still not make the bug go away. */
   question = malloc(sizeof(struct name_srvc_question));
   if (! question) {
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return 0;
   }
 
@@ -154,7 +152,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
 				       start_of_packet, end_of_packet,
 				       0, 0, 0, 0);
   if (! question->name) {
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return 0;
   }
 
@@ -163,7 +161,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
 
   if ((walker + 2 * 2) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     destroy_nbnodename(question->name);
     free(question);
     return 0;
@@ -186,7 +184,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
   if (! (question && field))
     return field;
   else {
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = FALSE;
     walker = field;
@@ -194,7 +192,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 
   if ((walker +1 +1 +4) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
     return field;
@@ -203,7 +201,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
   walker = fill_all_DNS_labels(question->name, walker, end_of_packet, 0);
   if (walker == field) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
     return field;
@@ -215,7 +213,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 
   if ((walker +4) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
     memset(field, 0, (save_walker-field));
@@ -242,13 +240,13 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
       (*master_packet_walker < start_of_packet) ||
       (*master_packet_walker >= end_of_packet)) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return 0;
   }
 
   resource = malloc(sizeof(struct name_srvc_resource));
   if (! resource) {
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return 0;
   }
 
@@ -259,7 +257,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
 				       start_of_packet, end_of_packet,
 				       0, 0, 0, 0);
   if (! resource->name) {
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     free(resource);
     return 0;
   }
@@ -269,7 +267,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
 
   if ((walker + ((2*2)+4+2)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     destroy_nbnodename(resource->name);
     free(resource);
 
@@ -307,7 +305,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
   walker = fill_all_DNS_labels(resource->name, walker, end_of_packet, 0);
   if (walker == field) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
     return field;
@@ -319,7 +317,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 
   if ((walker +3*2+4+ resource->rdata_len) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
     memset(field, 0, (save_walker-field));
@@ -372,7 +370,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       (*start_and_end_of_walk < start_of_packet) ||
       (*start_and_end_of_walk + resource->rdata_len) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return 0;
   }
 
@@ -381,7 +379,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     resource->rdata_t = unknown_important_resource;
     weighted_companion_cube = malloc(resource->rdata_len);
     if (! weighted_companion_cube) {
-      do_kill_yourself = TRUE;
+      //      *do_kill_yourself = TRUE;
       *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
       return 0;
     }
@@ -394,8 +392,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     resource->rdata_t = nb_address_list;
     result = read_nbaddress_list(start_and_end_of_walk, resource->rdata_len,
 				 end_of_packet);
-    if (! result)
-      do_kill_yourself = TRUE;
+    //    if (! result)
+    //      *do_kill_yourself = TRUE;
     return result;
     break;
 
@@ -416,8 +414,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     nbnodename = read_all_DNS_labels(start_and_end_of_walk,
 				     start_of_packet, end_of_packet,
 				     0, 0, 0, 0);
-    if (! nbnodename)
-      do_kill_yourself = TRUE;
+    //    if (! nbnodename)
+    //      *do_kill_yourself = TRUE;
 
     *start_and_end_of_walk = weighted_companion_cube + resource->rdata_len;
     return nbnodename;
@@ -427,8 +425,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     resource->rdata_t = nb_NBT_node_ip_address;
     result = read_ipv4_address_list(start_and_end_of_walk, resource->rdata_len,
 				    end_of_packet);
-    if (! result)
-      do_kill_yourself = TRUE;
+    //    if (! result)
+    //      *do_kill_yourself = TRUE;
     return result;
     break;
 
@@ -463,7 +461,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     nbstat = malloc(sizeof(struct name_srvc_statistics_rfc1002));
     if (! nbstat) {
       /* TODO: errno signaling stuff */
-      do_kill_yourself = TRUE;
+      //      *do_kill_yourself = TRUE;
       return 0;
     }
     num_names = *walker;
@@ -475,7 +473,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     if (num_names > 0) {
       listof_names = malloc(sizeof(struct nbnodename_list_backbone));
       if (! listof_names) {
-	do_kill_yourself = TRUE;
+	//	*do_kill_yourself = TRUE;
 	free(nbstat);
 	return 0;
       }
@@ -484,7 +482,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       while (0xbeefbeef) {
 	if (walker >= end_of_packet) {
 	  /* OUT_OF_BOUNDS */
-	  do_kill_yourself = TRUE;
+	  //	  *do_kill_yourself = TRUE;
 	  abort_stats;
 	  return 0;
 	}
@@ -494,7 +492,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	walker = align(weighted_companion_cube, walker, 4);
 	if ((walker + 2) > end_of_packet) {
 	  /* OUT_OF_BOUNDS */
-	  do_kill_yourself = TRUE;
+	  //	  *do_kill_yourself = TRUE;
 	  abort_stats;
 	  return 0;
 	}
@@ -504,7 +502,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	if (num_names > 0) {
 	  listof_names->next_nbnodename = malloc(sizeof(struct nbnodename_list_backbone));
 	  if (! listof_names->next_nbnodename) {
-	    do_kill_yourself = TRUE;
+	    //	    *do_kill_yourself = TRUE;
 	    abort_stats;
 	    return 0;
 	  }
@@ -524,7 +522,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
     if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
       /* OUT_OF_BOUNDS */
-      do_kill_yourself = TRUE;
+      //      *do_kill_yourself = TRUE;
       abort_stats;
       return 0;
     }
@@ -600,7 +598,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 
   if ((walker + content->rdata_len) > end_of_packet) {
     /* OUT_OF_BOUNDS */
-    do_kill_yourself = TRUE;
+    //    *do_kill_yourself = TRUE;
     return walker;
   }
   if (! content->rdata) {
@@ -651,7 +649,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 	 (nbstat->numof_names * (1+NETBIOS_CODED_NAME_LEN +2)))
 	> end_of_packet) {
       /* OUT_OF_BOUNDS */
-      do_kill_yourself = TRUE;
+      //      *do_kill_yourself = TRUE;
       memset(field, 0, content->rdata_len);
       return (field + content->rdata_len);
     }
@@ -662,7 +660,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       walker = fill_all_DNS_labels(names->nbnodename, walker, end_of_packet, 0);
       if (walker == field) {
 	/* OUT_OF_BOUNDS */
-	do_kill_yourself = TRUE;
+	//	*do_kill_yourself = TRUE;
 	memset(field, 0, (((walker-field) > content->rdata_len) ?
 			  (walker-field) : content->rdata_len));
 	return (field + content->rdata_len);
@@ -672,7 +670,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       walker = align(field, walker, 4);
       if ((walker + 2 + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
 	/* OUT_OF_BOUNDS */
-	do_kill_yourself = TRUE;
+	//	*do_kill_yourself = TRUE;
 	memset(field, 0, (((save_walker-field) > content->rdata_len) ?
 			  (save_walker-field) : content->rdata_len));
 	return (field + content->rdata_len);
@@ -683,7 +681,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     }
     if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
       /* OUT_OF_BOUNDS */
-      do_kill_yourself = TRUE;
+      //      *do_kill_yourself = TRUE;
       memset(field, 0, (((walker-field) > content->rdata_len) ?
 			(walker-field) : content->rdata_len));
       return (field + content->rdata_len);

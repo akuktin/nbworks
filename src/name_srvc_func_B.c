@@ -50,12 +50,12 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
 			      uint32_t my_ip_address,
 			      unsigned char group_flg,
 			      uint32_t ttl) {
-  struct timespec sleeptime;
   struct sockaddr_in addr;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
   struct name_srvc_resource_lst *res;
   uint32_t result, i;
+  unsigned int retry_count;
   union trans_id tid;
 
   if ((! name) ||
@@ -68,9 +68,6 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
     return 0;
 
   result = 0;
-  /* TODO: change this to a global setting. */
-  sleeptime.tv_sec = 0;
-  sleeptime.tv_nsec = T_250MS;
 
   addr.sin_family = AF_INET;
   /* VAXism below. */
@@ -102,10 +99,11 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
   /* Do not ask for recursion, because
      there are no NBNS in our scope. */
 
-  for (i=0; i < BCAST_REQ_RETRY_COUNT; i++) {
+  retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count;
+  for (i=0; i < retry_count; i++) {
     ss_name_send_pckt(pckt, &addr, trans);
 
-    nanosleep(&sleeptime, 0);
+    nanosleep(&nbworks_namsrvc_cntrl.func_sleeptime, 0);
   }
 
   ss_set_inputdrop_name_tid(&tid);
