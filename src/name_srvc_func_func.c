@@ -2773,7 +2773,8 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
 
-      if (in_addr == get_nbnsaddr(res->res->name->next_name))
+      if ((in_addr == get_nbnsaddr(res->res->name->next_name)) &&
+	  ((name_flags ^ FLG_B) & FLG_B))
         sender_is_nbns = TRUE;
       else
         sender_is_nbns = FALSE;
@@ -2783,7 +2784,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
       while (nbaddr_list) {
 	if (((nbaddr_list->flags & NBADDRLST_NODET_MASK) ==
 	        NBADDRLST_NODET_P) ?
-	    (sender_is_nbns && ((name_flags ^ FLG_B) & FLG_B)) :
+	    (sender_is_nbns) :
 	    TRUE) {
 	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
 	    status = status | STATUS_DID_GROUP;
@@ -2887,7 +2888,12 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->res->rdata_t == nb_address_list)) {
 #ifndef COMPILING_NBNS
-      if (in_addr == get_nbnsaddr(res->res->name->next_name))
+      /* For P mode, only read this if the packet was not broadcast. That is,
+       * if the packet does not have the broadcast flag set - we will still
+       * process a broadcast packet with the broadcast flag off.
+       * Unless we are NBNS. */
+      if ((in_addr == get_nbnsaddr(res->res->name->next_name)) &&
+	  ((name_flags ^ FLG_B) & FLG_B))
         sender_is_nbns = TRUE;
       else
         sender_is_nbns = FALSE;
@@ -2904,10 +2910,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	if ((nbaddr_list->there_is_an_address) &&
 #ifndef COMPILING_NBNS
 	    (((nbaddr_list->flags & NBADDRLST_NODET_MASK) == NBADDRLST_NODET_P) ?
-	     /* Only read this if the packet was not broadcast. That is, if the packet
-	      * does not have the broadcast flag set - we will still process a broadcast
-	      * packet with the broadcast flag off. Unless we are NBNS. */
-	     (sender_is_nbns && ((name_flags ^ FLG_B) & FLG_B)) :
+	     (sender_is_nbns) :
 #endif
 	     (nbaddr_list->address == in_addr)
 #ifndef COMPILING_NBNS
