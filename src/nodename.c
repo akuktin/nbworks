@@ -141,8 +141,9 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name,
 }
 
 
-unsigned char *make_nbnodename(const unsigned char *string,
-			       const unsigned char type_char) {
+unsigned char *nbworks_make_nbnodename(const unsigned char *string,
+				       const unsigned char type_char,
+				       unsigned char *field) {
   int j, len;
   /* Array below is to save a call to malloc()
      and give us a wonderfull pleasure of not having to
@@ -162,18 +163,19 @@ unsigned char *make_nbnodename(const unsigned char *string,
 
   strncpy((char *)prepared_name, (char *)string, NETBIOS_NAME_LEN -1);
 
-  for (j = len; j < (NETBIOS_NAME_LEN -1); j++) {
-    prepared_name[j] = ' '; /* a space character */
-  }
-
   for (j = 0; j < len; j++) {
     prepared_name[j] = toupper(prepared_name[j]);
+  }
+
+  /* j is inherited from the previous loop */
+  for (; j < (NETBIOS_NAME_LEN -1); j++) {
+    prepared_name[j] = ' '; /* a space character */
   }
 
   prepared_name[NETBIOS_NAME_LEN -1] = type_char;
   prepared_name[NETBIOS_NAME_LEN] = '\0';
 
-  return(encode_nbnodename(prepared_name, 0));
+  return(encode_nbnodename(prepared_name, field));
 }
 
 

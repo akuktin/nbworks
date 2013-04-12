@@ -52,10 +52,6 @@ unsigned char *
   encode_nbnodename(const unsigned char *decoded_name,
                     unsigned char *result_buf);
 
-unsigned char *
-  make_nbnodename(const unsigned char *string,
-                  const unsigned char type_char);
-
 void
   destroy_nbnodename(struct nbnodename_list *nbnodename);
 struct nbnodename_list *

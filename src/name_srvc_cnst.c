@@ -28,6 +28,8 @@
 #include "name_srvc_pckt.h"
 #include "name_srvc_cnst.h"
 #include "name_srvc_cache.h"
+/* For nbworks_make_nbnodename(). */
+#include "api.h"
 
 
 /* All of these functions return half-baked packets
@@ -51,7 +53,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(complete_name);
@@ -174,7 +176,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(complete_name);
@@ -275,7 +277,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(complete_name);
@@ -323,7 +325,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(complete_name);
@@ -371,7 +373,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(complete_name);
@@ -421,7 +423,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(complete_name);
@@ -489,7 +491,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(complete_name);
@@ -537,7 +539,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(complete_name);
@@ -629,7 +631,7 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
     free(rdata);
     return 0;
   }
-  complete_name->name = make_nbnodename(name, name_type);
+  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
   if (! complete_name->name) {
     /* TODO: errno signaling stuff */
     free(rdata);

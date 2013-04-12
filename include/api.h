@@ -29,6 +29,11 @@ struct nbworks_pollfd {
   short int revents;
 };
 
+unsigned char *
+  nbworks_make_nbnodename(const unsigned char *string,
+                          const unsigned char type_char,
+                          unsigned char *field);
+
 void nbworks_libinit(void);
 
 struct name_state *

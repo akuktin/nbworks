@@ -26,6 +26,8 @@
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "dtg_srvc_pckt.h"
+/* For nbworks_make_nbnodename(). */
+#include "api.h"
 
 
 struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
@@ -41,13 +43,13 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
   int lenof_names;
   unsigned char *label_src, *label_dst;
 
-  label_src = make_nbnodename(src, src_type);
+  label_src = nbworks_make_nbnodename(src, src_type, 0);
   if (! label_src) {
     /* TODO: errno signaling stuff */
     return 0;
   }
 
-  label_dst = make_nbnodename(dst, dst_type);
+  label_dst = nbworks_make_nbnodename(dst, dst_type, 0);
   if (! label_dst) {
     /* TODO: errno signaling stuff */
     free(label_src);
