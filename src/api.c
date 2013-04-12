@@ -1350,6 +1350,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
     }
 
     return recved;
+#undef handle_timeout
 #undef handle_cancel
 
   default:
