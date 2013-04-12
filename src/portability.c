@@ -20,6 +20,8 @@
 
 #include <stdint.h>
 
+#include "daemon_control.h"
+
 uint32_t init_default_nbns(void) {
   /* FORRELEASE: This has to be changed, somehow. */
   /* No srsly, how do I do this? If the config file is empty? */

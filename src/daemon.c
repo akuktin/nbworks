@@ -31,6 +31,7 @@
 #include "service_sector_threads.h"
 #include "daemon.h"
 #include "rail-comm.h"
+#include "portability.h"
 
 
 struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
@@ -49,6 +50,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   init_rail();
   init_service_sector();
   init_name_srvc_cache();
+  init_default_nbns();
 
   nbworks_pruners_cntrl.all_stop = 0;
   nbworks_pruners_cntrl.timeout.tv_sec = 0;
@@ -74,8 +76,6 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len = MAX_DATAGRAM_LENGTH;
   nbworks_namsrvc_cntrl.conflict_timer = CONFLICT_TTL;
 
-
-  init_default_nbns();
 
   railparams.isbusy = 0xda;
   railparams.rail_sckt = open_rail();

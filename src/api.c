@@ -36,6 +36,7 @@
 #include "ses_srvc_pckt.h"
 #include "dtg_srvc_pckt.h"
 #include "dtg_srvc_cnst.h"
+#include "rail-flush.h"
 
 
 void nbworks_libinit(void) {

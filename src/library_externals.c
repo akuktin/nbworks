@@ -16,24 +16,17 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NBWORKS_DAEMON_H
-# define NBWORKS_DAEMON_H 1
+#include "c_lang_extensions.h"
 
-# include <pthread.h>
+#include <stdint.h>
 
-struct thread_cache {
-  pthread_t pruners_tid;
-  pthread_t ss__port137_tid;
-  pthread_t ss__port138_tid;
-  pthread_t ss__port139_tid;
-  pthread_t refresh_scopes_tid;
-};
+#include "library_control.h"
+#include "constdef.h"
 
+/* The below extern exists only to enable me to link src/portability.c. */
+uint32_t nbworks__default_nbns;
 
-struct thread_cache *
-  daemon_internal_initializer(struct thread_cache *tcache);
+nbworks_do_align_t nbworks_do_align;
+nbworks_errno_t nbworks_errno;
 
-void *
-  pruners(void *arg_ignored);
-
-#endif /* NBWORKS_DAEMON_H */
+struct nbworks_libcntl_t nbworks_libcntl;

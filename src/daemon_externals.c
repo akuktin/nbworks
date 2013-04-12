@@ -18,8 +18,9 @@
 
 #include "c_lang_extensions.h"
 
+#include <stdint.h>
+
 #include "daemon_control.h"
-#include "library_control.h"
 #include "constdef.h"
 
 #ifdef COMPILING_NBNS
@@ -28,14 +29,15 @@
 struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
 #endif
 
+uint32_t nbworks__default_nbns;
+struct cache_scopenode *nbworks_rootscope;
+
 nbworks_do_align_t nbworks_do_align;
 nbworks_errno_t nbworks_errno;
+
 struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
 struct nbworks__rail_control_t nbworks__rail_control;
 struct nbworks_namsrvc_cntrl_t nbworks_namsrvc_cntrl;
 struct nbworks_dtg_srv_cntrl_t nbworks_dtg_srv_cntrl;
 struct nbworks_ses_srv_cntrl_t nbworks_ses_srv_cntrl;
 struct nbworks_pruners_cntrl_t nbworks_pruners_cntrl;
-struct nbworks_libcntl_t nbworks_libcntl;
-uint32_t nbworks__default_nbns;
-struct cache_scopenode *nbworks_rootscope;

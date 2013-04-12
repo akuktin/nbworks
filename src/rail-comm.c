@@ -45,6 +45,7 @@
 #include "dtg_srvc_pckt.h"
 #include "ses_srvc_pckt.h"
 #include "randomness.h"
+#include "rail-flush.h"
 
 
 void init_rail(void) {

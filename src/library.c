@@ -40,6 +40,7 @@
 #include "dtg_srvc_cnst.h"
 #include "ses_srvc_pckt.h"
 #include "randomness.h"
+#include "rail-flush.h"
 
 
 int lib_daemon_socket(void) {
