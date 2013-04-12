@@ -1056,6 +1056,7 @@ void *lib_dtgserver(void *arg) {
   }
 
   close(handle->dtg_srv_sckt);
+  handle->dtg_srv_sckt = -1;
 
   destroy_nbnodename(handle->dtg_listento);
   handle->dtg_listento = 0;
@@ -1526,6 +1527,7 @@ void *lib_ses_srv(void *arg) {
   }
 
   close(handle->ses_srv_sckt);
+  handle->ses_srv_sckt = -1;
 
   destroy_nbnodename(handle->ses_listento);
   handle->ses_listento = 0;

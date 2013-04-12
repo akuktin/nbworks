@@ -253,6 +253,12 @@ int nbworks_delname(struct name_state *handle) {
     return -1;
   }
 
+  daemon = lib_daemon_socket();
+  if (daemon < 0) {
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
   if (handle->dtg_srv_tid) {
     handle->dtg_srv_stop = TRUE;
 
@@ -280,12 +286,6 @@ int nbworks_delname(struct name_state *handle) {
     destroy_nbnodename(handle->ses_listento);
   if (handle->sesin_library)
     lib_dstry_sesslist(handle->sesin_library);
-
-  daemon = lib_daemon_socket();
-  if (daemon < 0) {
-    nbworks_errno = EPIPE;
-    return -1;
-  }
 
   memset(&command, 0, sizeof(struct com_comm));
 
@@ -397,6 +397,7 @@ int nbworks_listen_dtg(struct name_state *handle,
     handle->dtg_srv_tid = 0;
 
     close(daemon);
+    handle->dtg_srv_sckt = -1;
     destroy_nbnodename(handle->dtg_listento);
     handle->dtg_listento = 0;
 
@@ -484,6 +485,7 @@ int nbworks_listen_ses(struct name_state *handle,
 			  lib_ses_srv, handle)) {
     nbworks_errno = errno;
     close(daemon);
+    handle->ses_srv_sckt = -1;
 
     destroy_nbnodename(handle->ses_listento);
     handle->ses_listento = 0;
@@ -1014,7 +1016,6 @@ ssize_t nbworks_sendto(unsigned char service,
   }
 }
 
-
 ssize_t nbworks_recvfrom(unsigned char service,
 			 struct nbworks_session *ses,
 			 void **buff,
@@ -1357,6 +1358,25 @@ ssize_t nbworks_recvfrom(unsigned char service,
     nbworks_errno = EINVAL;
     return -1;
   }
+}
+
+void nbworks_cancel(struct nbworks_session *ses,
+		    unsigned char what) {
+  if (! (ses && what)) {
+    nbworks_errno = EINVAL;
+    return;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  if (what & NBWORKS_CANCEL_SEND) {
+    ses->cancel_send = TRUE;
+  }
+  if (what & NBWORKS_CANCEL_RECV) {
+    ses->cancel_recv = TRUE;
+  }
+
+  return;
 }
 
 
