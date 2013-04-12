@@ -514,9 +514,9 @@ struct nbworks_session *nbworks_accept_ses(struct name_state *handle) {
 	(result->socket < 0)) {
       if (result->next) {
 	handle->sesin_library = result->next;
-	lib_dstry_session(result);
+	nbworks_hangup_ses(result);
 
-	return lib_take_session(handle);
+	return nbworks_accept_ses(handle);
       } else {
 	nbworks_errno = EAGAIN;
 	return 0;
@@ -1337,6 +1337,31 @@ ssize_t nbworks_recvfrom(unsigned char service,
     nbworks_errno = EINVAL;
     return -1;
   }
+}
+
+
+void nbworks_hangup_ses(struct nbworks_session *ses) {
+  if (! ses)
+    return;
+
+  if (ses->socket >= 0)
+    close(ses->socket);
+
+  if (ses->caretaker_tid) {
+    ses->kill_caretaker = TRUE;
+
+    pthread_join(ses->caretaker_tid, 0);
+  }
+
+  pthread_mutex_destroy(&(ses->mutex));
+
+  if (ses->peer)
+    destroy_nbnodename(ses->peer);
+  if (ses->oob_tmpstor)
+    free(ses->oob_tmpstor);
+  free(ses);
+
+  return;
 }
 
 

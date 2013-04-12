@@ -1685,30 +1685,6 @@ void lib_dstry_sesslist(struct nbworks_session *ses) {
   return;
 }
 
-void lib_dstry_session(struct nbworks_session *ses) {
-  if (! ses)
-    return;
-
-  if (ses->socket >= 0)
-    close(ses->socket);
-
-  if (ses->caretaker_tid) {
-    ses->kill_caretaker = TRUE;
-
-    pthread_join(ses->caretaker_tid, 0);
-  }
-
-  pthread_mutex_destroy(&(ses->mutex));
-
-  if (ses->peer)
-    destroy_nbnodename(ses->peer);
-  if (ses->oob_tmpstor)
-    free(ses->oob_tmpstor);
-  free(ses);
-
-  return;
-}
-
 
 #define ARBITRARY_VALUE 0xff
 ssize_t lib_flushsckt(int socket,

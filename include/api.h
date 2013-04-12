@@ -80,6 +80,10 @@ ssize_t
                    struct nbnodename_list **src);
 # define nbworks_recv(a, b, c, d, e) nbworks_recvfrom(a, b, c, d, e, 0)
 
+void
+  nbworks_hangup_ses(struct nbworks_session *ses);
+# define nbworks_destroy_ses(a) nbworks_hangup_ses(a)
+
 uint32_t
   nbworks_whatisaddrX(struct nbnodename_list *X,
                       unsigned int len);

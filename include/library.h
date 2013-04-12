@@ -192,12 +192,8 @@ struct nbworks_session *
                    struct nbnodename_list *caller,
                    struct name_state *handle,
                    unsigned char keepalive);
-struct nbworks_session *
-  lib_take_session(struct name_state *handle);
 void
   lib_dstry_sesslist(struct nbworks_session *ses);
-void
-  lib_dstry_session(struct nbworks_session *ses);
 
 ssize_t
   lib_flushsckt(int socket,
