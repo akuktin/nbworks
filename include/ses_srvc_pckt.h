@@ -90,15 +90,15 @@ inline enum ses_packet_payload_t
 
 struct ses_srvc_packet *
   master_ses_srvc_pckt_reader(void *packet,
-			      long len);
+			      unsigned long len);
 /* Call with whole packet, len is total len of whole packet. */
 struct nbnodename_list *
   ses_srvc_get_calledname(void *packet,
-                          long len);
+                          unsigned long len);
 /* Call with whole packet, len is total len of whole packet. */
 struct nbnodename_list *
   ses_srvc_get_callingname(void *packet,
-                           long len);
+                           unsigned long len);
 void *
   master_ses_srvc_pckt_writer(void *packet_ptr,
                               unsigned long *pckt_len,

@@ -354,7 +354,7 @@ inline enum ses_packet_payload_t understand_ses_pckt_type(unsigned char type_oct
 
 
 struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
-						    long len) {
+						    unsigned long len) {
   struct ses_srvc_packet *result;
   unsigned char *startof_pckt, *endof_pckt, *walker;
 
@@ -380,7 +380,7 @@ struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
 
 /* Call with whole packet, len is total len of whole packet. */
 struct nbnodename_list *ses_srvc_get_calledname(void *packet,
-						long len) {
+						unsigned long len) {
   unsigned char *walker;
 
   if ((! packet) ||
@@ -394,7 +394,7 @@ struct nbnodename_list *ses_srvc_get_calledname(void *packet,
 
 /* Call with whole packet, len is total len of whole packet. */
 struct nbnodename_list *ses_srvc_get_callingname(void *packet_ptr,
-						 long len) {
+						 unsigned long len) {
   unsigned char *packet;
   unsigned char *walker;
 

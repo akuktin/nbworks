@@ -760,7 +760,7 @@ inline enum name_srvc_rdata_type name_srvc_understand_resource(uint16_t rrtype,
 
 
 void *master_name_srvc_pckt_reader(void *packet,
-				   long len,
+				   unsigned long len,
 				   uint16_t *tid) {
   struct name_srvc_packet *result;
   struct name_srvc_question_lst *cur_qstn;

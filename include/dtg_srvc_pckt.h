@@ -116,15 +116,15 @@ inline enum dtg_packet_payload_t
 
 void *
   master_dtg_srvc_pckt_reader(void *packet,
-                              long len,
+                              unsigned long len,
                               uint16_t *tid);
 void *
   partial_dtg_srvc_pckt_reader(void *packet,
-                               long len,
+                               unsigned long len,
                                uint16_t *tid);
 void *
   recving_dtg_srvc_pckt_reader(void *packet,
-                               long len,
+                               unsigned long len,
                                uint16_t *tid);
 void *
   master_dtg_srvc_pckt_writer(void *packet_ptr,
