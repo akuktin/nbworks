@@ -44,6 +44,7 @@ extern struct nbworks_namsrvc_cntrl_t {
 
   uint32_t max_wack_sleeptime;
   uint32_t NBNS_threshold_ttl;
+  uint32_t refresh_threshold;
 
   unsigned int name_srvc_max_udppckt_len;
   unsigned int conflict_timer;

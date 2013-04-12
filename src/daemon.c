@@ -69,6 +69,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
 
   nbworks_namsrvc_cntrl.max_wack_sleeptime = 120;
   nbworks_namsrvc_cntrl.NBNS_threshold_ttl = 5; /* Ignore ultra-short leases. */
+  nbworks_namsrvc_cntrl.refresh_threshold = 4;
 
   nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len = MAX_DATAGRAM_LENGTH;
   nbworks_namsrvc_cntrl.conflict_timer = CONFLICT_TTL;

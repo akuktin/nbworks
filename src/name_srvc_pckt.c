@@ -1532,7 +1532,7 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
       namecard = namecard->next;
       continue;
     }
-    if ((namecard->timeof_death - cur_time) < namecard->refresh_ttl) {
+    if ((namecard->timeof_death - cur_time) < nbworks_namsrvc_cntrl.refresh_threshold) {
       if (! pckt) {
 	pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
 	if (! pckt)
