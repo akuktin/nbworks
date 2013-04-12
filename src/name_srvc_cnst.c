@@ -530,7 +530,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
   struct nbnodename_list *complete_name;
   struct nbnodename_list_backbone *cur_names;
   struct name_srvc_statistics_rfc1002 *stats;
-  int numof_names, lenof_names;
+  uint32_t numof_names, lenof_names;
 
   complete_name = malloc(sizeof(struct nbnodename_list));
   if (! complete_name) {

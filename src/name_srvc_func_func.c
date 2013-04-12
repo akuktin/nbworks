@@ -1656,7 +1656,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     *succeded, **last_succeded;
   struct laters_link *laters, *cur_laters, **last_laters, *killme, **last_killme;
   time_t cur_time, new_deathtime;
-  long i, j, retries, numof_laters, numof_succeded, numof_failed;
+  uint32_t i, j, retries, numof_laters, numof_succeded, numof_failed;
   unsigned int retry_count;
   unsigned char you_may_succed, you_may_fail;
 
@@ -2116,15 +2116,15 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   struct nbaddress_list *nbaddr_list, *nbaddr_list_frst, **nbaddr_list_last;
   struct ipv4_addr_list *ipv4_addr_list;
   unsigned long i, lenof_addresses;
-  uint16_t numof_answers, flags;
+  uint32_t numof_answers, flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1], istruncated;
   time_t lowest_deathtime;
 #ifdef COMPILING_NBNS
-  unsigned int numof_failed, succedded;
+  uint32_t numof_failed, succedded;
   struct name_srvc_question_lst **last_qstn, *unknown, **last_unknown;
   struct name_srvc_resource_lst **last_res;
 #else
-  unsigned char numof_names;
+  unsigned int numof_names;
   struct nbnodename_list_backbone *names_list, **names_list_last;
   struct name_srvc_statistics_rfc1002 *stats;
   struct cache_scopenode *this_scope;
@@ -2864,7 +2864,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 #ifdef COMPILING_NBNS
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst **last_res, *answer, **last_answr;
-  unsigned int numof_succedded, numof_failed;
+  uint32_t numof_succedded, numof_failed;
   unsigned char succedded;
 #else
   struct ipv4_addr_list *ipv4fordel;
@@ -3116,7 +3116,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 #ifdef COMPILING_NBNS
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst **last_res, *answer, **last_answr;
-  unsigned int numof_succedded, numof_failed;
+  uint32_t numof_succedded, numof_failed;
   unsigned char succedded;
 #else
   uint32_t name_flags, nbns_addr;

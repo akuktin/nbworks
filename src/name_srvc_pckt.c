@@ -1511,7 +1511,8 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
   struct name_srvc_question_lst **qstn_ptr;
   struct name_srvc_resource_lst **adit_ptr;
   struct nbaddress_list *nbaddrs, **last_nbaddrs;
-  unsigned int numof_refresh, i;
+  uint32_t numof_refresh
+  unsigned int i;
   uint64_t nbaddrs_len;
   uint16_t lenof_res, save_lenof_res;
   time_t cur_time;

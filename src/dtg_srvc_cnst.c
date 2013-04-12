@@ -38,7 +38,7 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
 						       uint16_t offset) {
   struct dtg_pckt_pyld_normal *result;
   struct nbnodename_list *complete_src, *complete_dst;
-  int lenof_names;
+  long lenof_names;
   unsigned char *label_src, *label_dst;
 
   label_src = nbworks_make_nbnodename(src, src_type, 0);
