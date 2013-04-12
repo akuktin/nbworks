@@ -46,6 +46,7 @@ void nbworks_libinit(void) {
   nbworks_libcntl.ses_srv_polltimeout = TP_100MS;
 
   nbworks_libcntl.max_ses_retarget_retries = SSN_RETRY_COUNT;
+  nbworks_libcntl.close_timeout = SSN_CLOSE_TIMEOUT;
   nbworks_libcntl.keepalive_interval = SSN_KEEP_ALIVE_TIMEOUT;
 
   nbworks_libcntl.dtg_frag_keeptime = FRAGMENT_TO;
@@ -737,6 +738,7 @@ ssize_t nbworks_sendto(unsigned char service,
 		       struct nbnodename_list *dst) {
   struct nbnodename_list *peer;
   struct ses_srvc_packet pckt;
+  time_t start_time;
   ssize_t ret_val, sent, notsent;
   int flags;
   unsigned char pcktbuff[SES_HEADER_LEN];
@@ -803,7 +805,14 @@ ssize_t nbworks_sendto(unsigned char service,
       nbworks_errno = ECANCELED;		\
       return -1;				\
     }
+#define handle_timeout							\
+    if ((start_time + nbworks_libcntl.close_timeout) > time(0)) {	\
+      close(ses->socket);						\
+      nbworks_errno = ETIME;						\
+      return -1;							\
+    }
 
+    start_time = time(0);
     pckt.type = SESSION_MESSAGE;
     pckt.flags = 0;
 
@@ -864,7 +873,7 @@ ssize_t nbworks_sendto(unsigned char service,
 	  notsent = notsent - ret_val;
 	}
 
-	/* TIMEOUT */
+	handle_timeout;
 	handle_cancel;
       }
 
@@ -885,7 +894,7 @@ ssize_t nbworks_sendto(unsigned char service,
 	  } else {
 	    if ((errno == EAGAIN) ||
 		(errno == EWOULDBLOCK)) {
-	      /* TIMEOUT */
+	      handle_timeout;
 	      handle_cancel else continue;
 	    }
 	    pthread_mutex_unlock(&(ses->mutex));
@@ -897,7 +906,7 @@ ssize_t nbworks_sendto(unsigned char service,
 	  notsent = notsent - ret_val;
 	}
 
-	/* TIMEOUT */
+	handle_timeout;
 	handle_cancel;
       }
 
@@ -954,7 +963,7 @@ ssize_t nbworks_sendto(unsigned char service,
 	notsent = notsent - ret_val;
       }
 
-      /* TIMEOUT */
+      handle_timeout;
       handle_cancel;
     }
 
@@ -975,7 +984,7 @@ ssize_t nbworks_sendto(unsigned char service,
 	} else {
 	  if ((errno == EAGAIN) ||
 	      (errno == EWOULDBLOCK)) {
-	    /* TIMEOUT */
+	    handle_timeout;
 	    handle_cancel else continue;
 	  }
 	  pthread_mutex_unlock(&(ses->mutex));
@@ -987,7 +996,7 @@ ssize_t nbworks_sendto(unsigned char service,
 	notsent = notsent - ret_val;
       }
 
-      /* TIMEOUT */
+      handle_timeout;
       handle_cancel;
     }
     /* --> end sending normal stuff */
@@ -996,6 +1005,7 @@ ssize_t nbworks_sendto(unsigned char service,
     sent = sent + len;
 
     return sent;
+#undef handle_timeout
 #undef handle_cancel
 
   default:
@@ -1014,6 +1024,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
   struct timespec sleeptime;
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
+  time_t start_time;
   ssize_t recved, notrecved, ret_val, torecv;
   size_t *hndllen_left, len_left;
   int flags;
@@ -1115,8 +1126,15 @@ ssize_t nbworks_recvfrom(unsigned char service,
       nbworks_errno = ECANCELED;		\
       return -1;				\
     }
+#define handle_timeout							\
+    if ((start_time + nbworks_libcntl.close_timeout) > time(0)) {	\
+      *hndllen_left = *hndllen_left + len_left;				\
+      nbworks_errno = ETIME;						\
+      return recved;							\
+    }
 
     /* --> begin setup */
+    start_time = time(0);
     if (! *buff) {
       *buff = malloc(len);
       if (! *buff) {
@@ -1187,7 +1205,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    recved = recved + ret_val;
 	    len_left = len_left - ret_val;
 
-	    /* TIMEOUT */
+	    handle_timeout;
 	    handle_cancel;
 	  } while (len_left);
 	}
@@ -1241,7 +1259,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    return ret_val;
 	  }
 	}
-	/* TIMEOUT */
+	/* no timeouts here */
 	handle_cancel else continue;
       }
       if (hdr.len > notrecved) {
@@ -1271,7 +1289,14 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	notrecved = notrecved - ret_val;
 	recved = recved + ret_val;
 
-	/* TIMEOUT */
+	if (! (flags & MSG_OOB)) {
+	  handle_timeout;
+	} else {
+	  if ((start_time + nbworks_libcntl.close_timeout) > time(0)) {
+	    *hndllen_left = *hndllen_left + len_left;
+	    break; /* and enter the below if block */
+	  }
+	}
 	handle_cancel;
       }
 

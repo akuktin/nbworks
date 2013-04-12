@@ -31,6 +31,7 @@ extern struct nbworks_libcntl_t {
   int max_ses_retarget_retries;
   time_t keepalive_interval;
 
+  time_t close_timeout;
   time_t dtg_frag_keeptime;
 
   unsigned int dtg_max_wholefrag_len;

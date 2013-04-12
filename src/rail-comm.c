@@ -793,8 +793,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     /* Revert the node_types field into what is should be. */
     cache_namecard->node_types = node_type;
 
-    if (refresh_ttl = name_srvc_add_name(node_type, namedata->name, namedata->name_type,
-					 namedata->scope, my_ipv4_address(), namedata->ttl)) {
+    if ((refresh_ttl = name_srvc_add_name(node_type, namedata->name, namedata->name_type,
+					  namedata->scope, my_ipv4_address(), namedata->ttl))) {
       if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
 	     add_name(cache_namecard, namedata->scope))) {
 	destroy_namecard(cache_namecard);
