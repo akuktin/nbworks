@@ -68,14 +68,14 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_namsrvc_cntrl.ucast_req_retry_count = UCAST_REQ_RETRY_COUNT;
 
   nbworks_namsrvc_cntrl.max_wack_sleeptime = 120;
-  nbworks_namsrvc_cntrl.Ptimer_refresh_margin = REFRESH_TIMER;
   nbworks_namsrvc_cntrl.NBNS_threshold_ttl = 5; /* Ignore ultra-short leases. */
+
   nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len = MAX_DATAGRAM_LENGTH;
   nbworks_namsrvc_cntrl.conflict_timer = CONFLICT_TTL;
 
 
 
-  /* RELEASE: This has to be changed, somehow. */
+  /* FORRELEASE: This has to be changed, somehow. */
   /* No srsly, how do I do this? If the config file is empty? */
   /* Maybe: do whatever get_inaddr() will do to get the network prefix,
    *        then call host 1 in that network prefix. */

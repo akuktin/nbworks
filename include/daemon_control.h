@@ -43,7 +43,6 @@ extern struct nbworks_namsrvc_cntrl_t {
   unsigned int ucast_req_retry_count;
 
   uint32_t max_wack_sleeptime;
-  time_t Ptimer_refresh_margin;
   uint32_t NBNS_threshold_ttl;
 
   unsigned int name_srvc_max_udppckt_len;

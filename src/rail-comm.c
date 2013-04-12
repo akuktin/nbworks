@@ -653,6 +653,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   struct cache_namenode *cache_namecard, *grp_namecard;
   struct rail_name_data *namedata;
   struct ipv4_addr_list *new_addr, *cur_addr, **last_addr;
+  uint32_t refresh_ttl;
   int i;
   unsigned char *data_buff, node_type;
 
@@ -733,12 +734,13 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   grp_namecard = find_name(cache_namecard, namedata->scope);
   if (grp_namecard) {
     destroy_namecard(cache_namecard);
+    node_type = node_type & CACHE_ADDRBLCK_GRP_MASK;
 
-    if ((node_type & CACHE_ADDRBLCK_GRP_MASK) &&
+    if (node_type &&
 	/* Tell the world (actually optional for B nodes). */
-	(name_srvc_add_name(node_type, namedata->name,
-			    namedata->name_type, namedata->scope,
-			    my_ipv4_address(), namedata->ttl))) {
+	(refresh_ttl = name_srvc_add_name(node_type, namedata->name,
+					  namedata->name_type, namedata->scope,
+					  my_ipv4_address(), namedata->ttl))) {
       if (! grp_namecard->grp_token) {
 	grp_namecard->grp_token = make_token();
       }
@@ -747,6 +749,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       else
 	grp_namecard->numof_grpholders = 1;
       grp_namecard->timeof_death = time(0) + namedata->ttl;
+      if (node_type & CACHE_NODEGRPFLG_P)
+	grp_namecard->refresh_ttl = refresh_ttl;
 
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if ((grp_namecard->addrs.recrd[i].node_type == node_type) ||
@@ -789,8 +793,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     /* Revert the node_types field into what is should be. */
     cache_namecard->node_types = node_type;
 
-    if (name_srvc_add_name(node_type, namedata->name, namedata->name_type,
-			   namedata->scope, my_ipv4_address(), namedata->ttl)) {
+    if (refresh_ttl = name_srvc_add_name(node_type, namedata->name, namedata->name_type,
+					 namedata->scope, my_ipv4_address(), namedata->ttl)) {
       if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
 	     add_name(cache_namecard, namedata->scope))) {
 	destroy_namecard(cache_namecard);
@@ -808,6 +812,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       }
       cache_namecard->addrs.recrd[0].addr->ip_addr = my_ipv4_address();
       cache_namecard->timeof_death = time(0) + namedata->ttl;
+      if (node_type & (CACHE_NODEGRPFLG_P | CACHE_NODEFLG_P))
+	cache_namecard->refresh_ttl = refresh_ttl;
 
       cleanup;
       return cache_namecard;

@@ -1774,13 +1774,13 @@ void ss_check_all_ses_server_rails(void) {
 
 
 uint32_t get_inaddr(void) {
-  // FIXME: stub
+  // FORRELEASE: stub
   //        192.168.1.255/24
   return 0xc0a801ff;
 }
 
 uint32_t my_ipv4_address(void) {
-  // FIXME: stub
+  // FORRELEASE: stub
   //        192.168.1.8/24
   return 0xc0a80108;
 }

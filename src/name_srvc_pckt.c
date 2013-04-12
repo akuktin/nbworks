@@ -1513,7 +1513,7 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
   unsigned int numof_refresh, i;
   uint64_t nbaddrs_len;
   uint16_t lenof_res, save_lenof_res;
-  time_t cur_time, diff;
+  time_t cur_time;
 
   if (! namecard)
     return 0;
@@ -1527,13 +1527,12 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
 
   cur_time = time(0);
   while (namecard) {
-    if (!(namecard->node_types & (~(CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B)))) {
+    if ((!(namecard->node_types & (~(CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B)))) ||
+	(! namecard->refresh_ttl)) {
       namecard = namecard->next;
       continue;
     }
-    diff = (namecard->timeof_death) - cur_time;
-    if ((diff < nbworks_namsrvc_cntrl.Ptimer_refresh_margin) &&
-	(namecard->refresh_ttl)) {
+    if ((namecard->timeof_death - cur_time) < namecard->refresh_ttl) {
       if (! pckt) {
 	pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
 	if (! pckt)

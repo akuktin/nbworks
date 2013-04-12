@@ -78,7 +78,7 @@
 
 # define MAX_DATAGRAM_LENGTH     576 /* bytes, that is, octets */
 
-# define REFRESH_TIMER 2 /* seconds */ /* Is supposed to be name-specific. */
+/* REFRESH_TIMER is name-specific */
 # define CONFLICT_TTL  1 /* as per RFC1002 */
 
 # define INFINITE_TTL NULL

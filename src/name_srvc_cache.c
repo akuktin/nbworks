@@ -246,7 +246,7 @@ struct cache_namenode *add_nblabel(void *label,
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
   result->endof_conflict_chance = 0;
-  result->refresh_ttl = ONES;
+  result->refresh_ttl = 0;
   result->next = 0;
 
   /* The below code GUARANTEES insertion
@@ -431,7 +431,7 @@ struct cache_namenode *alloc_namecard(void *label,
   result->dns_class = dns_class;
   result->timeof_death = ZEROONES; /* AKA infinity. */
   result->endof_conflict_chance = 0;
-  result->refresh_ttl = ONES;
+  result->refresh_ttl = 0;
   result->next = 0;
 
   return result;

@@ -3162,7 +3162,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
-	      cache_namecard->refresh_ttl = ONES;
+	      cache_namecard->refresh_ttl = 0;
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
 
@@ -3217,7 +3217,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
-	      cache_namecard->refresh_ttl = ONES;
+	      cache_namecard->refresh_ttl = 0;
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
 
@@ -3285,7 +3285,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
 	      cache_namecard->timeof_death = ZEROONES; /* infinity */
-	      cache_namecard->refresh_ttl = ONES;
+	      cache_namecard->refresh_ttl = 0;
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
 
@@ -3340,7 +3340,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		cache_namecard->refresh_ttl = res->res->ttl;
 	      } else {
 		cache_namecard->timeof_death = ZEROONES; /* infinity */
-		cache_namecard->refresh_ttl = ONES;
+		cache_namecard->refresh_ttl = 0;
 	      }
 	      cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
 
