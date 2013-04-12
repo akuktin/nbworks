@@ -977,6 +977,11 @@ void *refresh_scopes(void *i_ignore_this) {
   struct ss_queue *trans;
   time_t cur_time;
   uint32_t wack;
+  unsigned int i;
+  struct {
+    unsigned int node_types;
+    uint32_t target_address;
+  } refresh_desc[2];
 
   tid.tid = 0;
 
@@ -984,39 +989,50 @@ void *refresh_scopes(void *i_ignore_this) {
   /* VAXism below! */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
 
+  refresh_desc[0].node_types = (CACHE_NODEFLG_P | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
+				CACHE_NODEGRPFLG_P | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H);
+  refresh_desc[1].node_types = (CACHE_NODEFLG_B | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
+				CACHE_NODEGRPFLG_B | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H);
+  refresh_desc[1].target_address = get_inaddr();
+
   while (! nbworks_all_port_cntl.all_stop) {
     cur_scope = nbworks_rootscope;
     trans = 0;
 
     while (cur_scope) {
       if (cur_scope->nbns_addr) {
-	pckt = name_srvc_Ptimer_mkpckt(cur_scope->names, cur_scope->scope, 0);
+	refresh_desc[0].target_address = cur_scope->nbns_addr;
+	for (i=0; i<2; i++) {
+	  pckt = name_srvc_timer_mkpckt(cur_scope->names, cur_scope->scope,
+					0, refresh_desc[i].node_types);
 
-	if (pckt) {
-	  if (! trans) {
-	    tid.tid = make_weakrandom();
-	    trans = ss_register_name_tid(&tid);
+	  if (pckt) {
 	    if (! trans) {
-	      destroy_name_srvc_pckt(pckt, 1, 1);
-	      return 0;
+	      tid.tid = make_weakrandom();
+	      trans = ss_register_name_tid(&tid);
+	      if (! trans) {
+		destroy_name_srvc_pckt(pckt, 1, 1);
+		return 0;
+	      }
 	    }
+
+	    pckt->header->transaction_id = tid.tid;
+	    pckt->for_del = TRUE;
+	    /* VAXism below! */
+	    fill_32field(refresh_desc[i].target_address,
+			 (unsigned char *)&(addr.sin_addr.s_addr));
+
+	    ss_name_send_pckt(pckt, &addr, trans);
 	  }
-
-	  pckt->header->transaction_id = tid.tid;
-	  pckt->for_del = TRUE;
-	  /* VAXism below! */
-	  fill_32field(cur_scope->nbns_addr, (unsigned char *)&(addr.sin_addr.s_addr));
-
-	  ss_name_send_pckt(pckt, &addr, trans);
 	}
       }
 
       cur_scope = cur_scope->next;
     }
 
-    nanosleep(&(nbworks_all_port_cntl.newtid_sleeptime), 0);
-
     if (trans) {
+      nanosleep(&(nbworks_all_port_cntl.newtid_sleeptime), 0);
+
       ss_set_inputdrop_name_tid(&tid);
       cur_time = time(0);
       last_outpckt = outside_pckt = 0;

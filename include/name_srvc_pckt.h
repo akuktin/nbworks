@@ -281,8 +281,9 @@ void
 
 /* Dont forget to fill in the transaction_id of the packet! */
 struct name_srvc_packet *
-  name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard,
-                          struct nbnodename_list *scope,
-                          uint32_t *total_lenof_nbaddrs);
+  name_srvc_timer_mkpckt(struct cache_namenode *namecard,
+                         struct nbnodename_list *scope,
+                         uint32_t *total_lenof_nbaddrs,
+                         unsigned int node_types);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */

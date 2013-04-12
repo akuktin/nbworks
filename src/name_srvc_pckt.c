@@ -1503,9 +1503,10 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
 
 
 /* Dont forget to fill in the transaction_id of the packet! */
-struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard,
-						 struct nbnodename_list *scope,
-						 uint32_t *total_lenof_nbaddrs) {
+struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
+						struct nbnodename_list *scope,
+						uint32_t *total_lenof_nbaddrs,
+						unsigned int node_types) {
   struct name_srvc_packet *pckt;
   struct name_srvc_question_lst **qstn_ptr;
   struct name_srvc_resource_lst **adit_ptr;
@@ -1527,8 +1528,7 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
 
   cur_time = time(0);
   while (namecard) {
-    if ((!(namecard->node_types & (~(CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B)))) ||
-	(! namecard->refresh_ttl)) {
+    if ((! namecard->refresh_ttl) || (! (namecard->node_types & node_types))) {
       namecard = namecard->next;
       continue;
     }
@@ -1544,12 +1544,7 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
       }
 
       for (i=0; i<NUMOF_ADDRSES; i++) {
-	if (namecard->addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
-						  CACHE_NODEFLG_M |
-						  CACHE_NODEFLG_H |
-						  CACHE_NODEGRPFLG_P |
-						  CACHE_NODEGRPFLG_M |
-						  CACHE_NODEGRPFLG_H))
+	if (namecard->addrs.recrd[i].node_type & node_types)
 	  break;
       }
       if (i>=NUMOF_ADDRSES) {
@@ -1601,12 +1596,7 @@ struct name_srvc_packet *name_srvc_Ptimer_mkpckt(struct cache_namenode *namecard
       nbaddrs = *last_nbaddrs;
       /* continue scanning the addresses from where the last loop left off */
       for (i++; i<NUMOF_ADDRSES; i++) {
-	if (namecard->addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
-						  CACHE_NODEFLG_M |
-						  CACHE_NODEFLG_H |
-						  CACHE_NODEGRPFLG_P |
-						  CACHE_NODEGRPFLG_M |
-						  CACHE_NODEGRPFLG_H)) {
+	if (namecard->addrs.recrd[i].node_type & node_types) {
 	  while (nbaddrs) {
 	    last_nbaddrs = &(nbaddrs->next_address);
 	    nbaddrs = *last_nbaddrs;
