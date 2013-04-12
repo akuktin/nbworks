@@ -104,7 +104,7 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
   for (i=0; i < retry_count; i++) {
     ss_name_send_pckt(pckt, &addr, trans);
 
-    nanosleep(&nbworks_namsrvc_cntrl.func_sleeptime, 0);
+    nanosleep(&nbworks_namsrvc_cntrl.bcast_sleeptime, 0);
   }
 
   ss_set_inputdrop_name_tid(&tid);

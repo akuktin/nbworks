@@ -56,16 +56,23 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_pruners_cntrl.passes_ses_srv_ses = 8; /* AKA 2 seconds */
   nbworks_pruners_cntrl.lifetimeof_queue_storage = 25; /* seconds */
 
-  nbworks_namsrvc_cntrl.retries_NBNS = 3;
+
+  nbworks_namsrvc_cntrl.NBNSnewtid_sleeptime.tv_sec = 0;
+  nbworks_namsrvc_cntrl.NBNSnewtid_sleeptime.tv_nsec = T_250MS;
+  nbworks_namsrvc_cntrl.NBNS_retries = 3;
+  nbworks_namsrvc_cntrl.bcast_sleeptime.tv_sec = BCAST_REQ_RETRY_TIMEOUT_s;
+  nbworks_namsrvc_cntrl.bcast_sleeptime.tv_nsec = BCAST_REQ_RETRY_TIMEOUT_ns;
   nbworks_namsrvc_cntrl.bcast_req_retry_count = BCAST_REQ_RETRY_COUNT;
+  nbworks_namsrvc_cntrl.ucast_sleeptime.tv_sec = UCAST_REQ_RETRY_TIMEOUT_s;
+  nbworks_namsrvc_cntrl.ucast_sleeptime.tv_nsec = UCAST_REQ_RETRY_TIMEOUT_ns;
   nbworks_namsrvc_cntrl.ucast_req_retry_count = UCAST_REQ_RETRY_COUNT;
+
   nbworks_namsrvc_cntrl.max_wack_sleeptime = 120;
   nbworks_namsrvc_cntrl.Ptimer_refresh_margin = REFRESH_TIMER;
   nbworks_namsrvc_cntrl.NBNS_threshold_ttl = 5; /* Ignore ultra-short leases. */
-  nbworks_namsrvc_cntrl.func_sleeptime.tv_sec = 0;
-  nbworks_namsrvc_cntrl.func_sleeptime.tv_nsec = T_250MS;
   nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len = MAX_DATAGRAM_LENGTH;
   nbworks_namsrvc_cntrl.conflict_timer = CONFLICT_TTL;
+
 
 
   /* RELEASE: This has to be changed, somehow. */

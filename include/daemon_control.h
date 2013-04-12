@@ -35,15 +35,16 @@ extern struct nbworks__rail_control_t {
 } nbworks__rail_control;
 
 extern struct nbworks_namsrvc_cntrl_t {
-  unsigned int retries_NBNS;
+  struct timespec NBNSnewtid_sleeptime;
+  unsigned int NBNS_retries;
+  struct timespec bcast_sleeptime;
   unsigned int bcast_req_retry_count;
+  struct timespec ucast_sleeptime;
   unsigned int ucast_req_retry_count;
 
   uint32_t max_wack_sleeptime;
   time_t Ptimer_refresh_margin;
   uint32_t NBNS_threshold_ttl;
-
-  struct timespec func_sleeptime;
 
   unsigned int name_srvc_max_udppckt_len;
   unsigned int conflict_timer;

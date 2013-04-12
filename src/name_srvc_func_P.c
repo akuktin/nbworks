@@ -110,11 +110,11 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
   pckt->header->nm_flags = FLG_RD;
 
-  retry_count = nbworks_namsrvc_cntrl.retries_NBNS;
+  retry_count = nbworks_namsrvc_cntrl.ucast_req_retry_count;
   for (i=0; i < retry_count; i++) {
     ss_name_send_pckt(pckt, &addr, trans);
 
-    nanosleep(&nbworks_namsrvc_cntrl.func_sleeptime, 0);
+    nanosleep(&nbworks_namsrvc_cntrl.ucast_sleeptime, 0);
     ss_set_inputdrop_name_tid(&tid);
 
     while (101) {

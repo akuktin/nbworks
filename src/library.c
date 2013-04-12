@@ -788,9 +788,6 @@ ssize_t lib_senddtg_138(struct name_state *handle,
       } else {
 	pckt->flags = basic_pckt_flags;
       }
-
-      /* TIMEOUT */
-      /* CANCEL */
     }
   }
 

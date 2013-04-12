@@ -1083,9 +1083,6 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	if (in_lib->next) {
 	  ses->handle->in_library = in_lib->next;
 	  free(in_lib);
-	  break; /* This break added to prevent us from getting
-		  * entangled in the timeout and cancel checks
-		  * at the end of the do-while loop. */
 	} else {
 	  if (ret_val)
 	    break;
@@ -1106,9 +1103,6 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	} else
 	  nanosleep(&sleeptime, 0);
       }
-
-      /* TIMEOUT */
-      /* CANCEL */
     } while (! ret_val);
 
     return ret_val;

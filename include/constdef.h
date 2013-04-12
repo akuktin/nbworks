@@ -68,10 +68,14 @@
 # define TP_500MS (500) /* 500 ms, for poll() */
 
 /* general */
-# define BCAST_REQ_RETRY_TIMEOUT T_250MS
-# define BCAST_REQ_RETRY_COUNT   3
-# define UCAST_REQ_RETRY_TIMEOUT 5 /* seconds */
-# define UCAST_REQ_RETRY_COUNT   3
+# define BCAST_REQ_RETRY_TIMEOUT_s  0
+# define BCAST_REQ_RETRY_TIMEOUT_ns T_250MS
+# define BCAST_REQ_RETRY_COUNT      3
+
+# define UCAST_REQ_RETRY_TIMEOUT_s  5
+# define UCAST_REQ_RETRY_TIMEOUT_ns 0
+# define UCAST_REQ_RETRY_COUNT      3
+
 # define MAX_DATAGRAM_LENGTH     576 /* bytes, that is, octets */
 
 # define REFRESH_TIMER 2 /* seconds */ /* Is supposed to be name-specific. */

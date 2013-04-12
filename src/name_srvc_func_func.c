@@ -305,7 +305,7 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 	    if ((index > last_index) ||
 		(index == 0)) {
 	      index = frst_index;
-	      nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
+	      nanosleep(&(nbworks_namsrvc_cntrl.NBNSnewtid_sleeptime), 0);
 	    }
 	    /* The below while is actually an exit guard, preventing the
 	     * exit from the loop in the event there is nothing in this
@@ -528,7 +528,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
   for (i=0; i < retry_count; i++) {
     ss_name_send_pckt(pckt, &addr, trans);
 
-    nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
+    nanosleep(&(nbworks_namsrvc_cntrl.bcast_sleeptime), 0);
 
     ss_set_inputdrop_name_tid(&tid);
 
@@ -836,6 +836,7 @@ int name_srvc_release_name(unsigned char *name,
 			   unsigned char node_types,
 			   unsigned char recursion) {
   struct sockaddr_in addr;
+  struct timespec *sleeptime;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outpckt;
   struct nbnodename_list *probe;
@@ -896,10 +897,13 @@ int name_srvc_release_name(unsigned char *name,
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_RELEASE;
   pckt->header->nm_flags = (recursion ? FLG_RD : FLG_B);
 
-  if (recursion)
+  if (recursion) {
     retry_count = nbworks_namsrvc_cntrl.ucast_req_retry_count;
-  else
+    sleeptime = &(nbworks_namsrvc_cntrl.ucast_sleeptime);
+  } else {
     retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count;
+    sleeptime = &(nbworks_namsrvc_cntrl.bcast_sleeptime);
+  }
 
   for (i = retry_count; i>0; i--) {
     if (i == 1)
@@ -909,7 +913,7 @@ int name_srvc_release_name(unsigned char *name,
       break;
 
     ss_name_send_pckt(pckt, &addr, trans);
-    nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
+    nanosleep(sleeptime, 0);
 
     if (recursion) {
       ss_set_inputdrop_name_tid(&tid);
@@ -1695,7 +1699,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     /* cur_laters->rdata is already filled. */
 
     /* Get ready for sending WACKs. */
-    res->res->ttl = (3 * (nbworks_namsrvc_cntrl.func_sleeptime.tv_sec +1));
+    res->res->ttl = (3 * (nbworks_namsrvc_cntrl.ucast_sleeptime.tv_sec +1));
     res->res->rdata_len = 2;
     res->res->rdata_t = nb_address_list;
     res->res->rdata = &pckt_flags;
@@ -1744,7 +1748,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
      * the WACK packet clears the service sector. */
   }
 
-  retry_count = nbworks_namsrvc_cntrl.retries_NBNS;
+  retry_count = nbworks_namsrvc_cntrl.NBNS_retries;
   for (retries = 0; retries < retry_count; retries++) {
     ss_set_normalstate_name_tid(&transid);
 
@@ -1908,7 +1912,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
       destroy_laters_list(killme);
     }
 
-    nanosleep(&(nbworks_namsrvc_cntrl.func_sleeptime), 0);
+    nanosleep(&(nbworks_namsrvc_cntrl.ucast_sleeptime), 0);
 
     ss_set_inputdrop_name_tid(&transid);
 
