@@ -58,7 +58,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   addr = malloc(sizeof(struct nbaddress_list));
   if (! addr) {
@@ -145,7 +145,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   result->questions->qstn->qtype = QTYPE_NB;
   result->questions->qstn->qclass = QCLASS_IN;
 
-  result->aditionals->res->name = clone_nbnodename(complete_name);
+  result->aditionals->res->name = nbworks_clone_nbnodename(complete_name);
   result->aditionals->res->rrtype = RRTYPE_NB;
   result->aditionals->res->rrclass = RRCLASS_IN;
   result->aditionals->res->ttl = ttl;
@@ -181,7 +181,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   addr = malloc(sizeof(struct nbaddress_list));
   if (! addr) {
@@ -282,7 +282,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(1, 0, 0, 0);
   if (! result) {
@@ -330,7 +330,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
@@ -378,7 +378,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
@@ -428,7 +428,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 0, 1, 1);
   if (! result) {
@@ -459,11 +459,11 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
   result->authorities->res->rrtype = RRTYPE_NS;
   result->authorities->res->rrclass = RRCLASS_IN;
   result->authorities->res->ttl = ttl;
-  result->authorities->res->rdata_len = nbnodenamelen(namesrvr_name);
+  result->authorities->res->rdata_len = nbworks_nbnodenamelen(namesrvr_name);
   result->authorities->res->rdata_t = nb_nodename;
   result->authorities->res->rdata = namesrvr_name;
 
-  result->aditionals->res->name = clone_nbnodename(namesrvr_name);
+  result->aditionals->res->name = nbworks_clone_nbnodename(namesrvr_name);
   result->aditionals->res->rrtype = RRTYPE_A;
   result->aditionals->res->rrclass = RRCLASS_IN;
   result->aditionals->res->ttl = ttl; /* NOTE: there is good reason to have
@@ -496,7 +496,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(1, 0, 0, 0);
   if (! result) {
@@ -544,7 +544,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
@@ -579,7 +579,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
   if (cur_names) {
     do {
       numof_names++;
-      lenof_names = lenof_names + align_incr(0, nbnodenamelen(cur_names->nbnodename), 4);
+      lenof_names = lenof_names + align_incr(0, nbworks_nbnodenamelen(cur_names->nbnodename), 4);
       if (nbworks_do_align)
         lenof_names = lenof_names +4;
       else
@@ -637,7 +637,7 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
     return 0;
   }
   complete_name->len = NETBIOS_CODED_NAME_LEN;
-  complete_name->next_name = clone_nbnodename(scope);
+  complete_name->next_name = nbworks_clone_nbnodename(scope);
 
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {

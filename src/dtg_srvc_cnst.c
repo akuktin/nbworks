@@ -83,13 +83,13 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
 
   complete_src->name = label_src;
   complete_src->len = NETBIOS_CODED_NAME_LEN;
-  complete_src->next_name = clone_nbnodename(scope);
+  complete_src->next_name = nbworks_clone_nbnodename(scope);
 
   complete_dst->name = label_dst;
   complete_dst->len = NETBIOS_CODED_NAME_LEN;
-  complete_dst->next_name = clone_nbnodename(scope);
+  complete_dst->next_name = nbworks_clone_nbnodename(scope);
 
-  lenof_names = align_incr(0, nbnodenamelen(complete_src), 4) *2;
+  lenof_names = align_incr(0, nbworks_nbnodenamelen(complete_src), 4) *2;
 
   result->len = lenof_names + lenof_pyld;
   result->offset = offset;

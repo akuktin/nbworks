@@ -81,7 +81,7 @@ void lib_dstry_packets(struct packet_cooked *forkill) {
   while (forkill) {
     fordel = forkill->next;
     free(forkill->data);
-    destroy_nbnodename(forkill->src);
+    nbworks_dstr_nbnodename(forkill->src);
     free(forkill);
     forkill = fordel;
   }
@@ -107,7 +107,7 @@ void lib_destroy_fragbckbone(struct dtg_frag_bckbone *bone) {
   /* A most curious site: a stackless function. */
 
   if (bone) {
-    destroy_nbnodename(bone->src);
+    nbworks_dstr_nbnodename(bone->src);
     lib_destroy_frags(bone->frags);
     free(bone);
   }
@@ -152,7 +152,7 @@ struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
 
   result->id = id;
   result->last_active = time(0);
-  result->src = clone_nbnodename(src);
+  result->src = nbworks_clone_nbnodename(src);
   result->last_ishere = FALSE;
 
   result->frags->offset = offsetof_first;
@@ -169,7 +169,7 @@ struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
 
     while (cur_frag) {
       if ((cur_frag->id == id) &&
-	  (0 == cmp_nbnodename(cur_frag->src, src))) {
+	  (0 == nbworks_cmp_nbnodename(cur_frag->src, src))) {
 	if (result == cur_frag)
 	  return result;
 	else {
@@ -197,7 +197,7 @@ struct dtg_frag_bckbone *lib_find_fragbckbone(uint16_t id,
   cur_frag = frags;
   while (cur_frag) {
     if ((cur_frag->id == id) &&
-	(0 == cmp_nbnodename(cur_frag->src, src)))
+	(0 == nbworks_cmp_nbnodename(cur_frag->src, src)))
       break;
     else
       cur_frag = cur_frag->next;
@@ -219,7 +219,7 @@ struct dtg_frag_bckbone *lib_take_fragbckbone(uint16_t id,
 
   while (cur_frag) {
     if ((cur_frag->id == id) &&
-	(0 == cmp_nbnodename(cur_frag->src, src))) {
+	(0 == nbworks_cmp_nbnodename(cur_frag->src, src))) {
       *last_frag = cur_frag->next;
       return cur_frag;
     } else {
@@ -244,7 +244,7 @@ void lib_del_fragbckbone(uint16_t id,
 
   while (cur_frag) {
     if ((cur_frag->id == id) &&
-	(0 == cmp_nbnodename(cur_frag->src, src))) {
+	(0 == nbworks_cmp_nbnodename(cur_frag->src, src))) {
       *last_frag = cur_frag->next;
       lib_destroy_fragbckbone(cur_frag);
       return;
@@ -979,7 +979,7 @@ void *lib_dtgserver(void *arg) {
 	      nrml_pyld->payload = 0;
 
 	      toshow->len = nrml_pyld->len;
-	      toshow->src = clone_nbnodename(&(decoded_nbnodename));
+	      toshow->src = nbworks_clone_nbnodename(&(decoded_nbnodename));
 	      if (! toshow->src) {
 		free(toshow->data);
 		free(toshow);
@@ -1007,7 +1007,7 @@ void *lib_dtgserver(void *arg) {
 		if (! fragbone->frags) {
 		  /* lib_order_frags() has detected an unrecoverable error.
 		   * Fragbckbone is unusable. */
-		  destroy_nbnodename(fragbone->src);
+		  nbworks_dstr_nbnodename(fragbone->src);
 		  free(fragbone);
 		} else {
 		  /* lib_order_frags() has detected a recoverable error.
@@ -1058,7 +1058,7 @@ void *lib_dtgserver(void *arg) {
   close(handle->dtg_srv_sckt);
   handle->dtg_srv_sckt = -1;
 
-  destroy_nbnodename(handle->dtg_listento);
+  nbworks_dstr_nbnodename(handle->dtg_listento);
   handle->dtg_listento = 0;
 
   lib_destroy_allfragbckbone(handle->dtg_frags);
@@ -1097,17 +1097,17 @@ int lib_open_session(struct name_state *handle,
 
   retry_count = 0;
 
-  her = clone_nbnodename(dst);
+  her = nbworks_clone_nbnodename(dst);
   if (! her) {
     /* TODO: errno signaling stuff */
     return -1;
   }
   if (her->next_name)
-    destroy_nbnodename(her->next_name);
-  her->next_name = clone_nbnodename(handle->scope);
+    nbworks_dstr_nbnodename(her->next_name);
+  her->next_name = nbworks_clone_nbnodename(handle->scope);
   if ((! her->next_name) && handle->scope) {
     /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
+    nbworks_dstr_nbnodename(her);
     return -1;
   }
 
@@ -1116,7 +1116,7 @@ int lib_open_session(struct name_state *handle,
   fill_32field(nbworks_whatisaddrX(her, (1+ NETBIOS_NAME_LEN+ handle->lenof_scope)),
                (unsigned char *)&(addr.sin_addr.s_addr));
   if (! addr.sin_addr.s_addr) {
-    destroy_nbnodename(her);
+    nbworks_dstr_nbnodename(her);
     return -1;
   }
   addr.sin_family = AF_INET;
@@ -1128,25 +1128,25 @@ int lib_open_session(struct name_state *handle,
   free(decoded_name);
   if (! her->name) {
     /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
+    nbworks_dstr_nbnodename(her);
     return -1;
   }
   her->len = NETBIOS_CODED_NAME_LEN;
 
 
-  name_id = clone_nbnodename(handle->name);
+  name_id = nbworks_clone_nbnodename(handle->name);
   if (! name_id) {
     /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
+    nbworks_dstr_nbnodename(her);
     return -1;
   }
   if (name_id->next_name)
-    destroy_nbnodename(name_id->next_name);
-  name_id->next_name = clone_nbnodename(handle->scope);
+    nbworks_dstr_nbnodename(name_id->next_name);
+  name_id->next_name = nbworks_clone_nbnodename(handle->scope);
   if ((! name_id->next_name) && handle->scope) {
     /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
-    destroy_nbnodename(name_id);
+    nbworks_dstr_nbnodename(her);
+    nbworks_dstr_nbnodename(name_id);
     return -1;
   }
   decoded_name = name_id->name;
@@ -1154,8 +1154,8 @@ int lib_open_session(struct name_state *handle,
   free(decoded_name);
   if (! name_id->name) {
     /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
-    destroy_nbnodename(name_id);
+    nbworks_dstr_nbnodename(her);
+    nbworks_dstr_nbnodename(name_id);
     return -1;
   }
   name_id->len = NETBIOS_CODED_NAME_LEN;
@@ -1185,16 +1185,16 @@ int lib_open_session(struct name_state *handle,
   mypckt_buff = malloc(wrotelenof_pckt);
   if (! mypckt_buff) {
     /* TODO: errno signaling stuff */
-    destroy_nbnodename(her);
-    destroy_nbnodename(name_id);
+    nbworks_dstr_nbnodename(her);
+    nbworks_dstr_nbnodename(name_id);
     return -1;
   }
   memset(mypckt_buff, 0, wrotelenof_pckt);
 
   master_ses_srvc_pckt_writer(&pckt, &wrotelenof_pckt, mypckt_buff);
 
-  destroy_nbnodename(twins.called_name);
-  destroy_nbnodename(twins.calling_name);
+  nbworks_dstr_nbnodename(twins.called_name);
+  nbworks_dstr_nbnodename(twins.calling_name);
 
   /* Now I have allocated: mypckt_buff. */
   /* Other that that, I will need: addr, wrotelenof_pckt,
@@ -1458,12 +1458,12 @@ void *lib_ses_srv(void *arg) {
     }
 
     if (caller->len != NETBIOS_CODED_NAME_LEN) {
-      destroy_nbnodename(caller);
+      nbworks_dstr_nbnodename(caller);
       close(new_sckt);
       continue;
     } else {
       decode_nbnodename(caller->name, decoded_nbnodename.name);
-      destroy_nbnodename(caller);
+      nbworks_dstr_nbnodename(caller);
     }
 
     if (! (handle->ses_takes & HANDLE_TAKES_ALL)) {
@@ -1529,7 +1529,7 @@ void *lib_ses_srv(void *arg) {
   close(handle->ses_srv_sckt);
   handle->ses_srv_sckt = -1;
 
-  destroy_nbnodename(handle->ses_listento);
+  nbworks_dstr_nbnodename(handle->ses_listento);
   handle->ses_listento = 0;
 
   handle->ses_srv_stop = TRUE;
@@ -1632,7 +1632,7 @@ struct nbworks_session *lib_make_session(int socket,
   }
 
   if (peer)
-    result->peer = clone_nbnodename(peer);
+    result->peer = nbworks_clone_nbnodename(peer);
   else
     result->peer = 0;
   result->handle = handle;
@@ -1672,7 +1672,7 @@ void lib_dstry_sesslist(struct nbworks_session *ses) {
     pthread_mutex_destroy(&(ses->mutex));
 
     if (ses->peer)
-      destroy_nbnodename(ses->peer);
+      nbworks_dstr_nbnodename(ses->peer);
     if (ses->oob_tmpstor)
       free(ses->oob_tmpstor);
 

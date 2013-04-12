@@ -51,7 +51,7 @@ inline uint16_t dtg_srvc_doesitmatch(struct nbnodename_list *target,
     return FALSE;
   }
 
-  if (! cmp_nbnodename(target->next_name, gun->next_name))
+  if (! nbworks_cmp_nbnodename(target->next_name, gun->next_name))
     if (! memcmp(target->name, gun->name, NETBIOS_CODED_NAME_LEN))
       return TRUE;
   return FALSE;
@@ -110,7 +110,7 @@ void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
     if (packet->payload_t == normal) {
       normal_pyld = packet->payload;
 
-      destroy_nbnodename(normal_pyld->src_name);
+      nbworks_dstr_nbnodename(normal_pyld->src_name);
       tid.name_scope = normal_pyld->dst_name;
       normal_pyld->dst_name = 0;
       if (normal_pyld->do_del_pyldpyld)
@@ -145,7 +145,7 @@ void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
 
       free(trans);
     }
-    destroy_nbnodename(tid.name_scope);
+    nbworks_dstr_nbnodename(tid.name_scope);
   } else {
     destroy_dtg_srvc_pckt(packet, 1, 1);
   }

@@ -369,7 +369,7 @@ void *handle_rail(void *args) {
 	}
       }
 
-      destroy_nbnodename(scope); /* This removes the copy of scope, type
+      nbworks_dstr_nbnodename(scope); /* This removes the copy of scope, type
 				  * (struct nbnodename_list *) that was used
 				  * in operation. */
       break;
@@ -718,7 +718,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 
 #define cleanup                        \
   free(namedata->name);                \
-  destroy_nbnodename(namedata->scope); \
+  nbworks_dstr_nbnodename(namedata->scope); \
   free(namedata);
 
   /* Call alloc_namecard() with ONES instead of name_type because
@@ -1085,7 +1085,7 @@ int rail_add_dtg_server(int rail_sckt,
       ss__dstry_recv_queue(trans);
       free(trans);
     }
-    destroy_nbnodename(nbname);
+    nbworks_dstr_nbnodename(nbname);
     free(new_rail);
     return 1;
   }
@@ -1122,7 +1122,7 @@ int rail_add_dtg_server(int rail_sckt,
       ss_deregister_dtg_tid(&tid);
       ss__dstry_recv_queue(&(queue->queue));
       ss_del_queuestorage(&tid, DTG_SRVC);
-      destroy_nbnodename(nbname);
+      nbworks_dstr_nbnodename(nbname);
       free(new_rail);
 
       return -1;
@@ -1248,7 +1248,7 @@ void *dtg_server(void *arg) {
   ss_deregister_dtg_tid(&tid);
   ss__dstry_recv_queue(&(queue->queue));
   ss_del_queuestorage(&tid, DTG_SRVC);
-  destroy_nbnodename(nbname);
+  nbworks_dstr_nbnodename(nbname);
 
   if (last_will)
     last_will->dead = 0xb00; /* said the ghost */
@@ -1710,7 +1710,7 @@ uint32_t rail_whatisaddrX(int rail_sckt,
 				   name->next_name, node_type, FALSE);
   }
 
-  destroy_nbnodename(name);
+  nbworks_dstr_nbnodename(name);
 
   if (namecard) {
     for (i=0; i<NUMOF_ADDRSES; i++) {

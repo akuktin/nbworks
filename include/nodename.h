@@ -59,16 +59,16 @@ unsigned char *
   nbworks_make_nbnodename(const unsigned char *string,
                           const unsigned char type_char,
                           unsigned char *field);
+void
+  nbworks_dstr_nbnodename(struct nbnodename_list *nbnodename);
+struct nbnodename_list *
+  nbworks_clone_nbnodename(struct nbnodename_list *nbnodename);
+int
+  nbworks_cmp_nbnodename(struct nbnodename_list *name_one,
+                         struct nbnodename_list *name_two);
+unsigned int
+  nbworks_nbnodenamelen(struct nbnodename_list *nbnodename);
 # endif
 
-void
-  destroy_nbnodename(struct nbnodename_list *nbnodename);
-struct nbnodename_list *
-  clone_nbnodename(struct nbnodename_list *nbnodename);
-int
-  cmp_nbnodename(struct nbnodename_list *name_one,
-                 struct nbnodename_list *name_two);
-uint16_t
-  nbnodenamelen(struct nbnodename_list *nbnodename);
 
 #endif /* NBWORKS_NODENAME_H */

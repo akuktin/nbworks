@@ -458,8 +458,8 @@ void destroy_ses_srvc_pcktpyld(struct ses_srvc_packet *pckt) {
   if (pckt->payload) {
     if (pckt->payload_t == two_names) {
       two_names_ptr = pckt->payload;
-      destroy_nbnodename(two_names_ptr->called_name);
-      destroy_nbnodename(two_names_ptr->calling_name);
+      nbworks_dstr_nbnodename(two_names_ptr->called_name);
+      nbworks_dstr_nbnodename(two_names_ptr->calling_name);
     }
 
     free(pckt->payload);
@@ -477,8 +477,8 @@ void destroy_ses_srvc_pckt(struct ses_srvc_packet *pckt) {
   if (pckt->payload) {
     if (pckt->payload_t == two_names) {
       two_names_ptr = pckt->payload;
-      destroy_nbnodename(two_names_ptr->called_name);
-      destroy_nbnodename(two_names_ptr->calling_name);
+      nbworks_dstr_nbnodename(two_names_ptr->called_name);
+      nbworks_dstr_nbnodename(two_names_ptr->calling_name);
     }
 
     free(pckt->payload);

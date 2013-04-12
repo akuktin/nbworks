@@ -117,7 +117,7 @@ struct ss_queue *ss_register_tid(union trans_id *arg,
     return 0;
   }
   if (branch == DTG_SRVC)
-    my_trans->id.name_scope = clone_nbnodename(arg->name_scope);
+    my_trans->id.name_scope = nbworks_clone_nbnodename(arg->name_scope);
   else
     my_trans->id.tid = arg->tid;
   my_trans->status = nmtrst_normal;
@@ -137,7 +137,7 @@ struct ss_queue *ss_register_tid(union trans_id *arg,
 
     while (cur_trans) {
       if ((branch == DTG_SRVC ?
-	   (! cmp_nbnodename(cur_trans->id.name_scope,
+	   (! nbworks_cmp_nbnodename(cur_trans->id.name_scope,
 			     arg->name_scope)) :
 	   cur_trans->id.tid == tid) &&
 	  (cur_trans->status == nmtrst_normal ||
@@ -150,7 +150,7 @@ struct ss_queue *ss_register_tid(union trans_id *arg,
 	  free(my_trans->in);
 	  free(my_trans->out);
 	  if (branch == DTG_SRVC)
-	    destroy_nbnodename(my_trans->id.name_scope);
+	    nbworks_dstr_nbnodename(my_trans->id.name_scope);
 	  free(my_trans);
 	  free(result);
 	  return 0;
@@ -184,7 +184,7 @@ void ss_deregister_tid(union trans_id *arg,
 
   while (cur_trans) {
     if ((branch == DTG_SRVC ?
-	 (! cmp_nbnodename(cur_trans->id.name_scope,
+	 (! nbworks_cmp_nbnodename(cur_trans->id.name_scope,
 			   arg->name_scope)) :
 	 cur_trans->id.tid == tid) &&
 	(cur_trans->status == nmtrst_normal ||
@@ -218,7 +218,7 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
 
   result->branch = branch;
   if (branch == DTG_SRVC)
-    result->id.name_scope = clone_nbnodename(arg->name_scope);
+    result->id.name_scope = nbworks_clone_nbnodename(arg->name_scope);
   else {
     tid = arg->tid;
     result->id.tid = tid;
@@ -235,14 +235,14 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
 
     while (cur_stor) {
       if ((branch == DTG_SRVC) ?
-	  (! cmp_nbnodename(cur_stor->id.name_scope,
+	  (! nbworks_cmp_nbnodename(cur_stor->id.name_scope,
 			    arg->name_scope)) :
 	  cur_stor->id.tid == tid) {
 	if (cur_stor == result)
 	  return result;
 	else {
 	  if (branch == DTG_SRVC) {
-	    destroy_nbnodename(result->id.name_scope);
+	    nbworks_dstr_nbnodename(result->id.name_scope);
 	  }
 	  free(result);
 	  return 0;
@@ -273,7 +273,7 @@ void ss_del_queuestorage(union trans_id *arg,
 
   while (cur_stor) {
     if ((branch == DTG_SRVC) ?
-	(! cmp_nbnodename(cur_stor->id.name_scope,
+	(! nbworks_cmp_nbnodename(cur_stor->id.name_scope,
 			  arg->name_scope)) :
 	cur_stor->id.tid == tid) {
       *last_stor = cur_stor->next;
@@ -286,7 +286,7 @@ void ss_del_queuestorage(union trans_id *arg,
       }
 
       if (branch == DTG_SRVC)
-	destroy_nbnodename(cur_stor->id.name_scope);
+	nbworks_dstr_nbnodename(cur_stor->id.name_scope);
 
       free(cur_stor);
       return;
@@ -315,7 +315,7 @@ struct ss_queue_storage *ss_take_queuestorage(union trans_id *arg,
 
   while (cur_stor) {
     if ((branch == DTG_SRVC) ?
-	(! cmp_nbnodename(cur_stor->id.name_scope,
+	(! nbworks_cmp_nbnodename(cur_stor->id.name_scope,
 			  arg->name_scope)) :
 	cur_stor->id.tid == tid) {
       *last_stor = cur_stor->next;
@@ -343,7 +343,7 @@ struct ss_queue_storage *ss_find_queuestorage(union trans_id *arg,
 
   while (cur_stor) {
     if ((branch == DTG_SRVC) ?
-	(! cmp_nbnodename(cur_stor->id.name_scope,
+	(! nbworks_cmp_nbnodename(cur_stor->id.name_scope,
 			  arg->name_scope)) :
 	cur_stor->id.tid == tid) {
       return cur_stor;
@@ -377,7 +377,7 @@ void ss_prune_queuestorage(time_t killtime) {
 	}
 
 	if (cur_stor->branch == DTG_SRVC) {
-	  destroy_nbnodename(cur_stor->id.name_scope);
+	  nbworks_dstr_nbnodename(cur_stor->id.name_scope);
 	}
 
 	free(cur_stor);
@@ -412,7 +412,7 @@ void ss_set_inputdrop_tid(union trans_id *arg,
 
   while (cur_trans) {
     if (((branch == DTG_SRVC) ?
-	 (! cmp_nbnodename(cur_trans->id.name_scope,
+	 (! nbworks_cmp_nbnodename(cur_trans->id.name_scope,
 			   arg->name_scope)) :
 	 cur_trans->id.tid == tid) &&
 	cur_trans->status == nmtrst_normal) {
@@ -455,7 +455,7 @@ void ss_set_normalstate_tid(union trans_id *arg,
 
   while (cur_trans) {
     if (((branch == DTG_SRVC) ?
-	 (! cmp_nbnodename(cur_trans->id.name_scope,
+	 (! nbworks_cmp_nbnodename(cur_trans->id.name_scope,
 			   arg->name_scope)) :
 	 cur_trans->id.tid == tid) &&
 	cur_trans->status != nmtrst_deregister) {
@@ -629,7 +629,7 @@ struct ses_srv_rails *ss__add_sessrv(struct nbnodename_list *name,
   if (! result)
     return 0;
 
-  result->name = clone_nbnodename(name);
+  result->name = nbworks_clone_nbnodename(name);
   result->rail = rail;
   result->next = 0;
 
@@ -638,11 +638,11 @@ struct ses_srv_rails *ss__add_sessrv(struct nbnodename_list *name,
     cur_srv = *last_srv;
 
     while (cur_srv) {
-      if (0 == cmp_nbnodename(cur_srv->name, name)) {
+      if (0 == nbworks_cmp_nbnodename(cur_srv->name, name)) {
 	if (cur_srv == result)
 	  return result;
 	else {
-	  destroy_nbnodename(result->name);
+	  nbworks_dstr_nbnodename(result->name);
 	  free(result);
 	  return 0;
 	}
@@ -661,7 +661,7 @@ struct ses_srv_rails *ss__find_sessrv(struct nbnodename_list *name) {
 
   result = nbworks_all_session_srvrs;
   while (result) {
-    if (0 == cmp_nbnodename(result->name, name))
+    if (0 == nbworks_cmp_nbnodename(result->name, name))
       break;
     else
       result = result->next;
@@ -677,9 +677,9 @@ void ss__del_sessrv(struct nbnodename_list *name) {
   cur_srv = *last_srv;
 
   while (cur_srv) {
-    if (0 == cmp_nbnodename(cur_srv->name, name)) {
+    if (0 == nbworks_cmp_nbnodename(cur_srv->name, name)) {
       *last_srv = cur_srv->next;
-      destroy_nbnodename(cur_srv->name);
+      nbworks_dstr_nbnodename(cur_srv->name);
       free(cur_srv);
 
       return;
@@ -1283,7 +1283,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	cur_trans = *last_trans;
 	while (cur_trans) {
 	  if (((sckts.branch) == DTG_SRVC) ?              /* The problem with this scheme */
-	      (! cmp_nbnodename(cur_trans->id.name_scope, /* is that it is possible for a */
+	      (! nbworks_cmp_nbnodename(cur_trans->id.name_scope, /* is that it is possible for a */
 				name_as_id)) :            /* torrent of datagram packets  */
 	      cur_trans->id.tid == tid) {                 /* to criple the daemon.        */
 	    if (cur_trans->status == nmtrst_normal) {
@@ -1698,7 +1698,7 @@ void *take_incoming_session(void *arg) {
 
   servers = *(params.servers);
   while (servers) {
-    if (0 != cmp_nbnodename(called_name, servers->name))
+    if (0 != nbworks_cmp_nbnodename(called_name, servers->name))
       servers = servers->next;
     else
       break;

@@ -121,7 +121,7 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
 	(outside_pckt->header->rcode != 0)) {
       res = outside_pckt->answers;
       while (res && res->res) {
-	if ((0 == cmp_nbnodename(pckt->questions->qstn->name,
+	if ((0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
 				 res->res->name)) &&
 	    (pckt->questions->qstn->qtype ==
 	     res->res->rrtype) &&

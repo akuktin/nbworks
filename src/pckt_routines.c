@@ -207,7 +207,7 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   del_clip;						\
 							\
   *cur_label = 0;					\
-  destroy_nbnodename(first_label);			\
+  nbworks_dstr_nbnodename(first_label);			\
   return 0;
 
 #define handle_abort						\
@@ -230,7 +230,7 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   } else {							\
     /* TODO: errno signaling stuff */				\
     *cur_label = 0;						\
-    destroy_nbnodename(first_label);				\
+    nbworks_dstr_nbnodename(first_label);				\
 								\
     del_clip;							\
     return 0;							\

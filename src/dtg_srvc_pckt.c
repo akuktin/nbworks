@@ -150,7 +150,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     if ((walker + 1 + normal_pckt->len) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      destroy_nbnodename(normal_pckt->src_name);
+      nbworks_dstr_nbnodename(normal_pckt->src_name);
       free(normal_pckt);
       return 0;
     }
@@ -161,7 +161,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     if (! normal_pckt->dst_name) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      destroy_nbnodename(normal_pckt->src_name);
+      nbworks_dstr_nbnodename(normal_pckt->src_name);
       free(normal_pckt);
       return 0;
     }
@@ -172,8 +172,8 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     if ((walker + normal_pckt->len) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
-      destroy_nbnodename(normal_pckt->src_name);
-      destroy_nbnodename(normal_pckt->dst_name);
+      nbworks_dstr_nbnodename(normal_pckt->src_name);
+      nbworks_dstr_nbnodename(normal_pckt->dst_name);
       free(normal_pckt);
       return 0;
     }
@@ -184,8 +184,8 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       normal_pckt->payload = malloc(normal_pckt->len);
       if (! normal_pckt->payload) {
 	/* TODO: errno signaling stuff */
-	destroy_nbnodename(normal_pckt->src_name);
-	destroy_nbnodename(normal_pckt->dst_name);
+	nbworks_dstr_nbnodename(normal_pckt->src_name);
+	nbworks_dstr_nbnodename(normal_pckt->dst_name);
 	free(normal_pckt);
 	return 0;
       }
@@ -439,7 +439,7 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
 
   result->packetbuff = malloc(len);
   if (! result->packetbuff) {
-    destroy_nbnodename(result->dst);
+    nbworks_dstr_nbnodename(result->dst);
     free(result);
     return 0;
   }
@@ -550,8 +550,8 @@ void destroy_dtg_srvc_pckt(void *packet_ptr,
   if (packet->payload_t == normal) {
     normal_pyld = packet->payload;
 
-    destroy_nbnodename(normal_pyld->src_name);
-    destroy_nbnodename(normal_pyld->dst_name);
+    nbworks_dstr_nbnodename(normal_pyld->src_name);
+    nbworks_dstr_nbnodename(normal_pyld->dst_name);
     if (normal_pyld->do_del_pyldpyld)
       free(normal_pyld->payload);
     else
@@ -559,7 +559,7 @@ void destroy_dtg_srvc_pckt(void *packet_ptr,
     free(normal_pyld);
   } else
     if (packet->payload_t == nbnodename)
-      destroy_nbnodename(packet->payload);
+      nbworks_dstr_nbnodename(packet->payload);
     else
       free(packet->payload);
 
@@ -578,7 +578,7 @@ void destroy_dtg_srvc_recvpckt(void *packet_ptr,
 
   pckt = packet_ptr;
 
-  destroy_nbnodename(pckt->dst);
+  nbworks_dstr_nbnodename(pckt->dst);
   free(pckt->packetbuff);
   free(pckt);
 

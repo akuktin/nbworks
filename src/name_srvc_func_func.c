@@ -548,7 +548,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 
 	while (res) {
 	  if (res->res &&
-	      (0 == cmp_nbnodename(pckt->questions->qstn->name,
+	      (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
 				   res->res->name)) &&
 	      (pckt->questions->qstn->qtype ==
 	       res->res->rrtype) &&
@@ -605,7 +605,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 	  authority = 0;
 	  while (res) {
 	    if (res->res &&
-		(0 == cmp_nbnodename(pckt->questions->qstn->name,
+		(0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
 				     res->res->name)) &&
 		(res->res->rrtype == RRTYPE_NS) &&
 		(pckt->questions->qstn->qclass ==
@@ -623,7 +623,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 
 	    while (res) {
 	      if (res->res &&
-		  (0 == cmp_nbnodename(authority,
+		  (0 == nbworks_cmp_nbnodename(authority,
 				       res->res->name)) &&
 		  (res->res->rrtype == RRTYPE_A) &&
 		  (pckt->questions->qstn->qclass ==
@@ -888,7 +888,7 @@ int name_srvc_release_name(unsigned char *name,
     probe = 0;
     type = class = 0;
   } else {
-    probe = clone_nbnodename(pckt->questions->qstn->name);
+    probe = nbworks_clone_nbnodename(pckt->questions->qstn->name);
     type = pckt->questions->qstn->qtype;
     class = pckt->questions->qstn->qclass;
   }
@@ -958,7 +958,7 @@ int name_srvc_release_name(unsigned char *name,
 
   ss_deregister_name_tid(&tid);
   if (recursion) {
-    destroy_nbnodename(probe);
+    nbworks_dstr_nbnodename(probe);
     ss__dstry_recv_queue(trans);
   }
   free(trans);
@@ -1131,7 +1131,7 @@ uint32_t name_srvc_find_biggestwack(struct name_srvc_packet *outside_pckt,
        res = res->next) {
     if (res->res) {
       if ((! reftype) ||
-	  (((0 == cmp_nbnodename(refname, res->res->name)) &&
+	  (((0 == nbworks_cmp_nbnodename(refname, res->res->name)) &&
 	    ((res->res->rrtype == RRTYPE_NULL) ||
 	     (res->res->rrtype == reftype)) &&
 	    (res->res->rrclass == refclass) &&
@@ -1159,7 +1159,7 @@ void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
        res != 0;
        res = res->next) {
     if (res->res &&
-	(0 == cmp_nbnodename(refname, res->res->name)) &&
+	(0 == nbworks_cmp_nbnodename(refname, res->res->name)) &&
 	((res->res->rrtype == RRTYPE_NULL) ||
 	 (res->res->rrtype == reftype)) &&
 	(res->res->rrclass == refclass) &&
@@ -1944,7 +1944,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	last_laters = &laters;
 	cur_laters = *last_laters;
 	while (cur_laters) {
-	  if (0 == cmp_nbnodename(cur_laters->res_lst->res->name,
+	  if (0 == nbworks_cmp_nbnodename(cur_laters->res_lst->res->name,
 				  response_res->res->name)) {
 	    /* Some node (I am not checking the senders IP address nor
 	     * that said address is properly registered) has responded
@@ -2189,14 +2189,14 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	    qstn = qstn->next;
 	    continue;
 	  }
-	  res->res->name = clone_nbnodename(qstn->qstn->name);
+	  res->res->name = nbworks_clone_nbnodename(qstn->qstn->name);
 	  res->res->rrtype = RRTYPE_NBSTAT;
 	  res->res->rrclass = qstn->qstn->qclass;
 	  res->res->ttl = 0;
 
 	  stats = calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
 	  if (! stats) {
-	    destroy_nbnodename(res->res->name);
+	    nbworks_dstr_nbnodename(res->res->name);
 	    free(res->res);
 	    memset(res, 0, sizeof(struct name_srvc_resource_lst));
 	    qstn = qstn->next;
@@ -2422,7 +2422,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	    qstn = qstn->next;
 	    continue;
 	  }
-	  res->res->name = clone_nbnodename(qstn->qstn->name);
+	  res->res->name = nbworks_clone_nbnodename(qstn->qstn->name);
 	  res->res->rrtype = qstn->qstn->qtype;
 	  res->res->rrclass = qstn->qstn->qclass;
 	  /* It is theorethically possible for 32-bit RDATA_TTL

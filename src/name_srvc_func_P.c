@@ -169,7 +169,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	       res != 0;
 	       res = res->next) {
 	    if (res->res &&
-		(0 == cmp_nbnodename(pckt->aditionals->res->name,
+		(0 == nbworks_cmp_nbnodename(pckt->aditionals->res->name,
 				     res->res->name)) &&
 		((res->res->rrtype == RRTYPE_NULL) ||
 		 (res->res->rrtype == pckt->aditionals->res->rrtype)) &&
@@ -189,7 +189,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 		 res != 0;
 		 res = res->next) {
 	      if (res->res &&
-		  (0 == cmp_nbnodename(pckt->aditionals->res->name,
+		  (0 == nbworks_cmp_nbnodename(pckt->aditionals->res->name,
 				       res->res->name)) &&
 		  (res->res->rrtype == pckt->aditionals->res->rrtype) &&
 		  (res->res->rrclass == pckt->aditionals->res->rrclass))
@@ -207,7 +207,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 		 res != 0;
 		 res = res->next) {
 	      if (res->res &&
-		  (0 == cmp_nbnodename(pckt->aditionals->res->name,
+		  (0 == nbworks_cmp_nbnodename(pckt->aditionals->res->name,
 				       res->res->name)) &&
 		  (res->res->rrtype == pckt->aditionals->res->rrtype) &&
 		  (res->res->rrclass == pckt->aditionals->res->rrclass))

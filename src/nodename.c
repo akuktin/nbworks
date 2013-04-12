@@ -181,7 +181,7 @@ unsigned char *nbworks_make_nbnodename(const unsigned char *string,
 }
 
 
-void destroy_nbnodename(struct nbnodename_list *nbnodename) {
+void nbworks_dstr_nbnodename(struct nbnodename_list *nbnodename) {
   struct nbnodename_list *next;
 
   while (nbnodename) {
@@ -194,7 +194,7 @@ void destroy_nbnodename(struct nbnodename_list *nbnodename) {
   return;
 }
 
-struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
+struct nbnodename_list *nbworks_clone_nbnodename(struct nbnodename_list *nbnodename) {
   struct nbnodename_list *original, *clone, *first_clone;
 
   original = nbnodename;
@@ -215,7 +215,7 @@ struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
         clone->name = malloc(clone->len);
         if (! clone->name) {
 	  /* TODO: errno signaling stuff */
-	  destroy_nbnodename(first_clone);
+	  nbworks_dstr_nbnodename(first_clone);
 	  return 0;
         }
         memcpy(clone->name, original->name, clone->len);
@@ -227,7 +227,7 @@ struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
 	clone->next_name = malloc(sizeof(struct nbnodename_list));
 	if (! clone->next_name) {
 	  /* TODO: errno signaling stuff */
-	  destroy_nbnodename(first_clone);
+	  nbworks_dstr_nbnodename(first_clone);
 	  return 0;
 	}
 	clone = clone->next_name;
@@ -242,8 +242,8 @@ struct nbnodename_list *clone_nbnodename(struct nbnodename_list *nbnodename) {
 }
 
 /* return: 0=equal, 1=not equal, -1=error */
-int cmp_nbnodename(struct nbnodename_list *name_one,
-		   struct nbnodename_list *name_two) {
+int nbworks_cmp_nbnodename(struct nbnodename_list *name_one,
+			   struct nbnodename_list *name_two) {
   while (name_one) {
     if (name_two) {
       if (name_one->len == name_two->len) {
@@ -264,7 +264,7 @@ int cmp_nbnodename(struct nbnodename_list *name_one,
     return 0;
 }
 
-uint16_t nbnodenamelen(struct nbnodename_list *nbnodename) {
+unsigned int nbworks_nbnodenamelen(struct nbnodename_list *nbnodename) {
   struct nbnodename_list *cur_name;
   uint16_t result;
 

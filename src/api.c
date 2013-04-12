@@ -116,7 +116,7 @@ struct name_state *nbworks_regname(unsigned char *name,
     return 0;
   }
 
-  lenof_scope = nbnodenamelen(scope);
+  lenof_scope = nbworks_nbnodenamelen(scope);
 
   command.len = (LEN_NAMEDT_ONWIREMIN -1) + lenof_scope;
   namedt.name = name;
@@ -159,7 +159,7 @@ struct name_state *nbworks_regname(unsigned char *name,
   /* Tramp stamp. */
   result->name->name[NETBIOS_NAME_LEN] = 0;
 
-  result->scope = clone_nbnodename(scope);
+  result->scope = nbworks_clone_nbnodename(scope);
   if ((! result->scope) &&
       scope) {
     free(result->name->name);
@@ -179,7 +179,7 @@ struct name_state *nbworks_regname(unsigned char *name,
 
   daemon = lib_daemon_socket();
   if (daemon < 0) {
-    destroy_nbnodename(result->scope);
+    nbworks_dstr_nbnodename(result->scope);
     free(result->name->name);
     free(result->name);
     free(result);
@@ -191,7 +191,7 @@ struct name_state *nbworks_regname(unsigned char *name,
   if (LEN_COMM_ONWIRE > send(daemon, &commbuff, LEN_COMM_ONWIRE,
 			     MSG_NOSIGNAL)) {
     close(daemon);
-    destroy_nbnodename(result->scope);
+    nbworks_dstr_nbnodename(result->scope);
     free(result->name->name);
     free(result->name);
     free(result);
@@ -202,7 +202,7 @@ struct name_state *nbworks_regname(unsigned char *name,
   if (command.len > send(daemon, namedtbuff, command.len,
 			 MSG_NOSIGNAL)) {
     close(daemon);
-    destroy_nbnodename(result->scope);
+    nbworks_dstr_nbnodename(result->scope);
     free(result->name->name);
     free(result->name);
     free(result);
@@ -216,7 +216,7 @@ struct name_state *nbworks_regname(unsigned char *name,
   if (LEN_COMM_ONWIRE > recv(daemon, &commbuff, LEN_COMM_ONWIRE,
 			     MSG_WAITALL)) {
     close(daemon);
-    destroy_nbnodename(result->scope);
+    nbworks_dstr_nbnodename(result->scope);
     free(result->name->name);
     free(result->name);
     free(result);
@@ -229,7 +229,7 @@ struct name_state *nbworks_regname(unsigned char *name,
   if ((command.command != rail_regname) ||
       (command.token < 2) ||
       (command.nbworks_errno)) {
-    destroy_nbnodename(result->scope);
+    nbworks_dstr_nbnodename(result->scope);
     free(result->name->name);
     free(result->name);
     free(result);
@@ -271,19 +271,19 @@ int nbworks_delname(struct name_state *handle) {
     pthread_join(handle->ses_srv_tid, 0);
   }
 
-  destroy_nbnodename(handle->name);
+  nbworks_dstr_nbnodename(handle->name);
   if (handle->scope)
-    destroy_nbnodename(handle->scope);
+    nbworks_dstr_nbnodename(handle->scope);
 
   if (handle->dtg_listento)
-    destroy_nbnodename(handle->dtg_listento);
+    nbworks_dstr_nbnodename(handle->dtg_listento);
   if (handle->dtg_frags)
     lib_destroy_allfragbckbone(handle->dtg_frags);
   if (handle->in_library)
     lib_dstry_packets(handle->in_library);
 
   if (handle->ses_listento)
-    destroy_nbnodename(handle->ses_listento);
+    nbworks_dstr_nbnodename(handle->ses_listento);
   if (handle->sesin_library)
     lib_dstry_sesslist(handle->sesin_library);
 
@@ -377,8 +377,8 @@ int nbworks_listen_dtg(struct name_state *handle,
   handle->dtg_srv_sckt = daemon;
 
   if (handle->dtg_listento)
-    destroy_nbnodename(handle->dtg_listento);
-  handle->dtg_listento = clone_nbnodename(listento);
+    nbworks_dstr_nbnodename(handle->dtg_listento);
+  handle->dtg_listento = nbworks_clone_nbnodename(listento);
   handle->dtg_takes = takes_field;
   handle->dtg_srv_stop = FALSE;
   if (handle->dtg_frags) {
@@ -398,7 +398,7 @@ int nbworks_listen_dtg(struct name_state *handle,
 
     close(daemon);
     handle->dtg_srv_sckt = -1;
-    destroy_nbnodename(handle->dtg_listento);
+    nbworks_dstr_nbnodename(handle->dtg_listento);
     handle->dtg_listento = 0;
 
     return -1;
@@ -476,7 +476,7 @@ int nbworks_listen_ses(struct name_state *handle,
 
   handle->ses_srv_sckt = daemon;
 
-  handle->ses_listento = clone_nbnodename(listento);
+  handle->ses_listento = nbworks_clone_nbnodename(listento);
   handle->ses_takes = takes_field;
   if (handle->sesin_library)
     lib_dstry_sesslist(handle->sesin_library);
@@ -487,7 +487,7 @@ int nbworks_listen_ses(struct name_state *handle,
     close(daemon);
     handle->ses_srv_sckt = -1;
 
-    destroy_nbnodename(handle->ses_listento);
+    nbworks_dstr_nbnodename(handle->ses_listento);
     handle->ses_listento = 0;
 
     handle->sesin_library = 0;
@@ -1089,7 +1089,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  if (src)
 	    *src = in_lib->src;
 	  else
-	    destroy_nbnodename(in_lib->src);
+	    nbworks_dstr_nbnodename(in_lib->src);
 	  in_lib->src = 0;
 	}
 	if (in_lib->next) {
@@ -1396,7 +1396,7 @@ void nbworks_hangup_ses(struct nbworks_session *ses) {
   pthread_mutex_destroy(&(ses->mutex));
 
   if (ses->peer)
-    destroy_nbnodename(ses->peer);
+    nbworks_dstr_nbnodename(ses->peer);
   if (ses->oob_tmpstor)
     free(ses->oob_tmpstor);
   free(ses);

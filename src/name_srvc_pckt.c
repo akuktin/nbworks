@@ -162,7 +162,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   if ((walker + 2 * 2) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     //    *do_kill_yourself = TRUE;
-    destroy_nbnodename(question->name);
+    nbworks_dstr_nbnodename(question->name);
     free(question);
     return 0;
   }
@@ -268,7 +268,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   if ((walker + ((2*2)+4+2)) > end_of_packet) {
     /* OUT_OF_BOUNDS */
     //    *do_kill_yourself = TRUE;
-    destroy_nbnodename(resource->name);
+    nbworks_dstr_nbnodename(resource->name);
     free(resource);
 
     return 0;
@@ -438,7 +438,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       while (listof_names) {					\
 	nbstat->listof_names = listof_names->next_nbnodename;	\
 								\
-	destroy_nbnodename(listof_names->nbnodename);		\
+	nbworks_dstr_nbnodename(listof_names->nbnodename);		\
 								\
 	free(listof_names);					\
 	listof_names = nbstat->listof_names;			\
@@ -1173,7 +1173,7 @@ struct name_srvc_question *name_srvc_make_qstn(unsigned char *label,
     return 0;
   }
   result->name->len = NETBIOS_CODED_NAME_LEN;
-  result->name->next_name = clone_nbnodename(scope);
+  result->name->next_name = nbworks_clone_nbnodename(scope);
   if ((! result->name->next_name) && scope) {
     free(result->name->name);
     free(result->name);
@@ -1218,7 +1218,7 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
     return 0;
   }
   result->name->len = NETBIOS_CODED_NAME_LEN;
-  result->name->next_name = clone_nbnodename(scope);
+  result->name->next_name = nbworks_clone_nbnodename(scope);
   if ((! result->name->next_name) && scope) {
     free(result->name->name);
     free(result->name);
@@ -1240,7 +1240,7 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
     break;
 
   case nb_nodename:
-    result->rdata_len = nbnodenamelen(rdata_content);
+    result->rdata_len = nbworks_nbnodenamelen(rdata_content);
     result->rdata = rdata_content;
     break;
 
@@ -1393,7 +1393,7 @@ void destroy_name_srvc_qstn_lst(struct name_srvc_question_lst *questions,
     if (questions->qstn) {
 
       if (complete) {
-	destroy_nbnodename(questions->qstn->name);
+	nbworks_dstr_nbnodename(questions->qstn->name);
       } else {
 	if (questions->qstn->name) {
 	  free(questions->qstn->name->name);
@@ -1420,7 +1420,7 @@ void destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
     res = cur_res->next;
     if (cur_res->res) {
       if (complete) {
-	destroy_nbnodename(cur_res->res->name);
+	nbworks_dstr_nbnodename(cur_res->res->name);
       } else {
 	if (cur_res->res->name) {
 	  free(cur_res->res->name->name);
@@ -1455,7 +1455,7 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
 	next_nbnodename_bckbone = nbnodename_bckbone->next_nbnodename;
 
 	if (really_complete) {
-	  destroy_nbnodename(nbnodename_bckbone->nbnodename);
+	  nbworks_dstr_nbnodename(nbnodename_bckbone->nbnodename);
 	} else {
 	  if (nbnodename_bckbone->nbnodename) {
 	    free(nbnodename_bckbone->nbnodename->name);
@@ -1473,7 +1473,7 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
   case nb_nodename:
     nbnodename = res->rdata;
     if (really_complete) {
-      destroy_nbnodename(nbnodename);
+      nbworks_dstr_nbnodename(nbnodename);
     } else {
       if (nbnodename) {
 	free(nbnodename->name);

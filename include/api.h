@@ -39,12 +39,22 @@ struct nbworks_pollfd {
   short int revents;
 };
 
+void
+  nbworks_libinit(void);
+
 unsigned char *
   nbworks_make_nbnodename(const unsigned char *string,
                           const unsigned char type_char,
                           unsigned char *field);
-
-void nbworks_libinit(void);
+void
+  nbworks_dstr_nbnodename(struct nbnodename_list *nbnodename);
+struct nbnodename_list *
+  nbworks_clone_nbnodename(struct nbnodename_list *nbnodename);
+int
+  nbworks_cmp_nbnodename(struct nbnodename_list *name_one,
+                         struct nbnodename_list *name_two);
+unsigned int
+  nbworks_nbnodenamelen(struct nbnodename_list *nbnodename);
 
 struct name_state *
   nbworks_regname(unsigned char *name,
