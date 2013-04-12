@@ -26,6 +26,36 @@ struct nbworks_pollfd {
   short int revents;
 };
 
+void nbworks_libinit(void);
+
+struct name_state *
+  nbworks_regname(unsigned char *name,
+                  unsigned char name_type,
+                  struct nbnodename_list *scope,
+                  unsigned char group_flg,
+                  unsigned char node_type, /* only one type */
+                  uint32_t ttl);
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  nbworks_delname(struct name_state *handle);
+
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  nbworks_listen_dtg(struct name_state *handle,
+                     unsigned char takes_field,
+                     struct nbnodename_list *listento);
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  nbworks_listen_ses(struct name_state *handle,
+                     unsigned char takes_field,
+                     struct nbnodename_list *listento);
+struct nbworks_session *
+  nbworks_accept_ses(struct name_state *handle);
+struct nbworks_session *
+  nbworks_sescall(struct name_state *handle,
+                  struct nbnodename_list *dst,
+                  unsigned char keepalive);
+
 int
   nbworks_poll(unsigned char service,
                struct nbworks_pollfd *handles,
@@ -49,5 +79,10 @@ ssize_t
                    int callflags,
                    struct nbnodename_list **src);
 # define nbworks_recv(a, b, c, d, e) nbworks_recvfrom(a, b, c, d, e, 0)
+
+uint32_t
+  nbworks_whatisaddrX(struct nbnodename_list *X,
+                      unsigned int len);
+
 
 #endif /* NBWORKS_API_H */

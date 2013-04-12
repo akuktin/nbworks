@@ -111,33 +111,8 @@ union nbworks_handle {
   struct nbworks_session *ses;
 };
 
-void
-  lib_init(void);
-
 int
   lib_daemon_socket(void);
-
-struct name_state *
-  lib_regname(unsigned char *name,
-              unsigned char name_type,
-              struct nbnodename_list *scope,
-              unsigned char group_flg,
-              unsigned char node_type, /* only one type */
-              uint32_t ttl);
-/* returns: >0 = success, 0 = fail, <0 = error */
-int
-  lib_delname(struct name_state *handle);
-
-/* returns: >0 = success, 0 = fail, <0 = error */
-int
-  lib_start_dtg_srv(struct name_state *handle,
-                    unsigned char takes_field,
-                    struct nbnodename_list *listento);
-/* returns: >0 = success, 0 = fail, <0 = error */
-int
-  lib_start_ses_srv(struct name_state *handle,
-                    unsigned char takes_field,
-                    struct nbnodename_list *listento);
 
 void
   lib_dstry_packets(struct packet_cooked *forkill);
@@ -191,10 +166,6 @@ unsigned int
   lib_doeslistento(struct nbnodename_list *query,
                    struct nbnodename_list *answerlist);
 
-uint32_t
-  lib_whatisaddrX(struct nbnodename_list *X,
-                  unsigned int len);
-
 ssize_t
   lib_senddtg_138(struct name_state *handle,
                   unsigned char *recepient,
@@ -210,6 +181,7 @@ void *
 int
   lib_open_session(struct name_state *handle,
                    struct nbnodename_list *dst);
+
 void *
   lib_ses_srv(void *arg);
 
