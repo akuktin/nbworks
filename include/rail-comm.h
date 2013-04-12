@@ -108,9 +108,6 @@ void
 
 int
   open_rail(void);
-uint32_t
-  rail_flushrail(uint32_t len,
-                 int rail);
 void *
   poll_rail(void *args);
 

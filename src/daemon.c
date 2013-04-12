@@ -75,12 +75,7 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   nbworks_namsrvc_cntrl.conflict_timer = CONFLICT_TTL;
 
 
-
-  /* FORRELEASE: This has to be changed, somehow. */
-  /* No srsly, how do I do this? If the config file is empty? */
-  /* Maybe: do whatever get_inaddr() will do to get the network prefix,
-   *        then call host 1 in that network prefix. */
-  nbworks__default_nbns = 0xc0a8012a;
+  init_default_nbns();
 
   railparams.isbusy = 0xda;
   railparams.rail_sckt = open_rail();
