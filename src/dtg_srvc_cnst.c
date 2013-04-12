@@ -26,8 +26,6 @@
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "dtg_srvc_pckt.h"
-/* For nbworks_make_nbnodename(). */
-#include "api.h"
 
 
 struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,

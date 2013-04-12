@@ -28,8 +28,6 @@
 #include "name_srvc_pckt.h"
 #include "name_srvc_cnst.h"
 #include "name_srvc_cache.h"
-/* For nbworks_make_nbnodename(). */
-#include "api.h"
 
 
 /* All of these functions return half-baked packets

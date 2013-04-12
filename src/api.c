@@ -27,8 +27,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "nodename.h"
 #include "api.h"
+#include "nodename.h"
 #include "library_control.h"
 #include "library.h"
 #include "rail-comm.h"
@@ -62,7 +62,7 @@ struct name_state *nbworks_regname(unsigned char *name,
 				   struct nbnodename_list *scope,
 				   unsigned char group_flg,
 				   unsigned char node_type, /* only one type */
-				   uint32_t ttl) {
+				   unsigned long ttl) {
   struct name_state *result;
   struct com_comm command;
   struct rail_name_data namedt;
@@ -1405,8 +1405,8 @@ void nbworks_hangup_ses(struct nbworks_session *ses) {
 }
 
 
-uint32_t nbworks_whatisaddrX(struct nbnodename_list *X,
-			     unsigned int len) {
+unsigned long nbworks_whatisaddrX(struct nbnodename_list *X,
+				  unsigned int len) {
   struct com_comm command;
   uint32_t result;
   int daemon_sckt;

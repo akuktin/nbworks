@@ -19,6 +19,8 @@
 #ifndef NBWORKS_CONSTDEF_H
 # define NBWORKS_CONSTDEF_H 1
 
+# include <stdint.h>
+
 # ifdef NULL
 #  undef NULL
 # endif

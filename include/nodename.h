@@ -32,12 +32,14 @@
 # define JOKER_NAME       "*\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 # define JOKER_NAME_CODED "CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
+# ifndef NBWORKS_API_H
 struct nbnodename_list {
   unsigned char *name;
   unsigned char len; /* Not int because the field is
                         6 bits wide in the packet. */
   struct nbnodename_list *next_name;
 };
+# endif
 
 struct nbnodename_list_backbone {
   struct nbnodename_list *nbnodename;
@@ -51,6 +53,13 @@ unsigned char *
 unsigned char *
   encode_nbnodename(const unsigned char *decoded_name,
                     unsigned char *result_buf);
+
+# ifndef NBWORKS_API_H
+unsigned char *
+  nbworks_make_nbnodename(const unsigned char *string,
+                          const unsigned char type_char,
+                          unsigned char *field);
+# endif
 
 void
   destroy_nbnodename(struct nbnodename_list *nbnodename);

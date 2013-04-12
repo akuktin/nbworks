@@ -30,6 +30,7 @@
 #include <poll.h>
 #include <errno.h>
 
+#include "api.h"
 #include "nodename.h"
 #include "library_control.h"
 #include "library.h"
@@ -39,7 +40,6 @@
 #include "dtg_srvc_cnst.h"
 #include "ses_srvc_pckt.h"
 #include "randomness.h"
-#include "api.h"
 
 
 int lib_daemon_socket(void) {

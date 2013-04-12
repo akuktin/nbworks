@@ -22,6 +22,16 @@
 # define NBWORKS_CANCEL_SEND 1
 # define NBWORKS_CANCEL_RECV 2
 
+# define NBWORKS_NBNAME_LEN 16
+# define NBWORKS_CODED_NBNAME_LEN 32
+
+struct nbnodename_list {
+  unsigned char *name;
+  unsigned char len; /* Not int because the field is
+                        6 bits wide in the packet. */
+  struct nbnodename_list *next_name;
+};
+
 struct nbworks_pollfd {
   struct name_state *handle;
   struct nbworks_session *session;
@@ -42,7 +52,7 @@ struct name_state *
                   struct nbnodename_list *scope,
                   unsigned char group_flg,
                   unsigned char node_type, /* only one type */
-                  uint32_t ttl);
+                  unsigned long ttl);
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   nbworks_delname(struct name_state *handle);
@@ -94,7 +104,7 @@ void
   nbworks_hangup_ses(struct nbworks_session *ses);
 # define nbworks_destroy_ses(a) nbworks_hangup_ses(a)
 
-uint32_t
+unsigned long
   nbworks_whatisaddrX(struct nbnodename_list *X,
                       unsigned int len);
 

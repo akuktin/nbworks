@@ -21,7 +21,9 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <errno.h>
 
+#include "constdef.h"
 #include "nodename.h"
 
 
