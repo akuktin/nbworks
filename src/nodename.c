@@ -266,7 +266,7 @@ int nbworks_cmp_nbnodename(struct nbnodename_list *name_one,
 
 unsigned int nbworks_nbnodenamelen(struct nbnodename_list *nbnodename) {
   struct nbnodename_list *cur_name;
-  uint16_t result;
+  unsigned int result;
 
   cur_name = nbnodename;
   result = 1; /* To account for the terminating NULL. */
