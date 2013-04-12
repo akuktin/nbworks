@@ -566,9 +566,9 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   struct dtg_srvc_packet *pckt;
   struct dtg_pckt_pyld_normal *pyld;
   struct com_comm command;
+  unsigned long pckt_len, hdr_len, max_wholefrag_len;
   int daemon_sckt;
   uint32_t basic_pckt_flags;
-  uint32_t pckt_len, hdr_len, max_wholefrag_len;
   uint32_t frag_len, max_frag_len, numof_frags, frag_offset;
   unsigned char readycommand[LEN_COMM_ONWIRE];
   void *readypacket;
@@ -1078,8 +1078,8 @@ int lib_open_session(struct name_state *handle,
   struct ses_pckt_pyld_two_names twins;
   struct sockaddr_in addr;
   int ses_sckt, retry_count;
+  unsigned long lenof_pckt, wrotelenof_pckt;
   unsigned int max_retries;
-  unsigned int lenof_pckt, wrotelenof_pckt;
   unsigned int ones;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char small_buff[SMALL_BUFF_LEN];

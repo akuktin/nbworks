@@ -338,7 +338,7 @@ inline enum dtg_packet_payload_t understand_dtg_pckt_type(unsigned char type_oct
 
 
 void *master_dtg_srvc_pckt_reader(void *packet,
-				  int len,
+				  long len,
 				  uint16_t *tid) {
   struct dtg_srvc_packet *result;
   unsigned char *startof_pckt, *endof_pckt, *walker;
@@ -370,7 +370,7 @@ void *master_dtg_srvc_pckt_reader(void *packet,
 /* The difference to the master reader is in the call to
    read_dtg_srvc_pckt_payload_data(). */
 void *partial_dtg_srvc_pckt_reader(void *packet,
-				   int len,
+				   long len,
 				   uint16_t *tid) {
   struct dtg_srvc_packet *result;
   unsigned char *startof_pckt, *endof_pckt, *walker;
@@ -400,7 +400,7 @@ void *partial_dtg_srvc_pckt_reader(void *packet,
 }
 
 void *recving_dtg_srvc_pckt_reader(void *packet,
-				   int len,
+				   long len,
 				   uint16_t *tid) {
   struct dtg_srvc_recvpckt *result;
   unsigned char *readhead, *startof_pckt;
@@ -458,7 +458,7 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
 }
 
 void *master_dtg_srvc_pckt_writer(void *packet_ptr,
-				  unsigned int *pckt_len,
+				  unsigned long *pckt_len,
 				  void *packet_field,
 				  unsigned char placeholder) {
   struct dtg_srvc_packet *packet;
@@ -501,7 +501,7 @@ void *master_dtg_srvc_pckt_writer(void *packet_ptr,
 }
 
 void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
-				   unsigned int *pckt_len,
+				   unsigned long *pckt_len,
 				   void *packet_field,
 				   unsigned char placeholder) {
   struct dtg_srvc_recvpckt *packet;

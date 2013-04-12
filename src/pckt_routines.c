@@ -266,8 +266,8 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   /* -XX--   END INIT   --XX- */
 
   /* Read RFC 1002 and RFC 883 for
-     details and understanding of
-     what exactly is going on here. */
+   * details and understanding of
+   * what exactly is going on here. */
   /* Not counting the start-stop system, ofcourse. */
 
   while (*walker != 0) {
@@ -309,11 +309,11 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 
       if (name_offset == ONES) {
 	/* Because of the way name_offset is filled (look below),
-	   the two top bits are guaranteed to be empty if we have
-	   encountered at least one pointer. If those two bits are
-	   set, then that can only mean this is the first pointer
-	   and we should record its position to enable us to read
-	   the rest of the packet. */
+	 * the two top bits are guaranteed to be empty if we have
+	 * encountered at least one pointer. If those two bits are
+	 * set, then that can only mean this is the first pointer
+	 * and we should record its position to enable us to read
+	 * the rest of the packet. */
 	*start_and_end_of_walk = walker +2;
       }
       name_offset = *walker & 0x3f;

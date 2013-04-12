@@ -1380,7 +1380,7 @@ void *ss__udp_sender(void *sckts_ptr) {
   struct ss_priv_trans **last_trans, *for_del2;
 #endif
   struct ss_priv_trans *cur_trans;
-  unsigned int len, prev_len, sendlen;
+  unsigned long len, prev_len, sendlen;
   unsigned char udp_pckt[MAX_UDP_PACKET_LEN];
   void *ptr;
 

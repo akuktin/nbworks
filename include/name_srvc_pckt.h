@@ -230,11 +230,11 @@ inline enum name_srvc_rdata_type
 
 void *
   master_name_srvc_pckt_reader(void *packet,
-                               int len,
+                               long len,
                                uint16_t *tid);
 void *
   master_name_srvc_pckt_writer(void *packet_ptr,
-                               unsigned int *pckt_len,
+                               unsigned long *pckt_len,
                                void *packet_field,
                                unsigned char transport);
 struct name_srvc_packet *

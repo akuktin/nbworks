@@ -2115,7 +2115,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   struct cache_namenode *cache_namecard;
   struct nbaddress_list *nbaddr_list, *nbaddr_list_frst, **nbaddr_list_last;
   struct ipv4_addr_list *ipv4_addr_list;
-  unsigned int i, lenof_addresses;
+  unsigned long i, lenof_addresses;
   uint16_t numof_answers, flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1], istruncated;
   time_t lowest_deathtime;

@@ -1406,7 +1406,7 @@ void nbworks_hangup_ses(struct nbworks_session *ses) {
 
 
 unsigned long nbworks_whatisaddrX(struct nbnodename_list *X,
-				  unsigned int len) {
+				  unsigned long len) {
   struct com_comm command;
   uint32_t result;
   int daemon_sckt;

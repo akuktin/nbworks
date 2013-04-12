@@ -116,7 +116,7 @@ void
 
 unsigned long
   nbworks_whatisaddrX(struct nbnodename_list *X,
-                      unsigned int len);
+                      unsigned long ten);
 
 
 #endif /* NBWORKS_API_H */

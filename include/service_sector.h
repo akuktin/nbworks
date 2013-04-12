@@ -89,8 +89,8 @@ struct ss_sckts {
   int udp_sckt;
   int tcp_sckt;
   unsigned char branch; /* passthrough for ss_register_tid() */
-  void *(*master_reader)(void *, int, uint16_t *);
-  void *(*master_writer)(void *, unsigned int *, void *, unsigned char);
+  void *(*master_reader)(void *, long, uint16_t *);
+  void *(*master_writer)(void *, unsigned long *, void *, unsigned char);
   void  (*pckt_dstr)(void *, unsigned int, unsigned int);
   void *(*newtid_handler)(void *);
   struct ss_priv_trans **all_trans;
