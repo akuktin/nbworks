@@ -19,15 +19,16 @@
 #ifndef NBWORKS_CLANGEXTENSIONS_H
 # define NBWORKS_CLANGEXTENSIONS_H 1
 
-/* Used: strnlen()
-         mempcpy() */
-
 # ifndef _GNU_SOURCE
 #  define _GNU_SOURCE
 # endif
 
 # ifndef _POSIX_C_SOURCE
 #  define _POSIX_C_SOURCE 199309
+# endif
+
+# ifdef SYSTEM_DOES_NOT_HAVE_MEMPCPY
+#  define mempcpy(a, b, c) (memcpy(a, b, c), (a+c))
 # endif
 
 #endif /* NBWORKS_CLANGEXTENSIONS_H */

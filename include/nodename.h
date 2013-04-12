@@ -52,10 +52,6 @@ unsigned char *
   encode_nbnodename(const unsigned char *decoded_name,
                     unsigned char *result_buf);
 
-unsigned char
-  unmake_nbnodename(unsigned char **coded_name);
-unsigned char *
-  make_nbnodename_sloppy(const unsigned char *string);
 unsigned char *
   make_nbnodename(const unsigned char *string,
                   const unsigned char type_char);

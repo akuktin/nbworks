@@ -37,7 +37,7 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name,
     return 0;
   }
 
-  coded_name_len = strnlen((char *)coded_name, NETBIOS_CODED_NAME_LEN +1);
+  coded_name_len = strlen((char *)coded_name);
   if (coded_name_len != NETBIOS_CODED_NAME_LEN) {
     /* TODO: have to make it use ERRNO signaling */
     return 0;
@@ -141,66 +141,6 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name,
 }
 
 
-unsigned char unmake_nbnodename(unsigned char **coded_name) {
-  int i;
-  unsigned char result, *decoded_name, *label;
-
-  decoded_name = decode_nbnodename(*coded_name, 0);
-
-  result = decoded_name[NETBIOS_NAME_LEN -1];
-
-  for (i=(NETBIOS_NAME_LEN-2); i >= 0; i--) {
-    if (decoded_name[i] != ' ') /* a space character */
-      break;
-  }
-
-  if (i >= 0) {
-    label = malloc(i+2);
-    memcpy(label, decoded_name, i+1);
-    label[i+2] = '\0';
-
-    *coded_name = label;
-  } else {
-    *coded_name = 0;
-  }
-
-  free(decoded_name);
-  return result;
-}
-
-unsigned char *make_nbnodename_sloppy(const unsigned char *string) {
-  int j, len;
-  /* Array below is to save a call to malloc()
-     and give us a wonderfull pleasure of not having to
-     free() stuff. */
-  unsigned char prepared_name[NETBIOS_NAME_LEN +1];
-
-  if (! string) {
-    /* TODO: errno signaling stuff */
-    return 0;
-  }
-
-  len = strnlen((char *)string, NETBIOS_NAME_LEN +1);
-  if (len > NETBIOS_NAME_LEN) {
-    /* TODO: errno signaling stuff */
-    return 0;
-  }
-
-  strncpy((char *)prepared_name, (char *)string, NETBIOS_NAME_LEN);
-
-  for (j = len; j < NETBIOS_NAME_LEN; j++) {
-    prepared_name[j] = ' '; /* a space character */
-  }
-
-  for (j = 0; j < NETBIOS_NAME_LEN; j++) {
-    prepared_name[j] = toupper(prepared_name[j]);
-  }
-
-  prepared_name[NETBIOS_NAME_LEN] = '\0';
-
-  return(encode_nbnodename(prepared_name, 0));
-}
-
 unsigned char *make_nbnodename(const unsigned char *string,
 			       const unsigned char type_char) {
   int j, len;
@@ -210,13 +150,13 @@ unsigned char *make_nbnodename(const unsigned char *string,
   unsigned char prepared_name[NETBIOS_NAME_LEN +1];
 
   if (! string) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = EINVAL;
     return 0;
   }
 
-  len = strnlen((char *)string, ((NETBIOS_NAME_LEN +1) -1));
+  len = strlen((char *)string);
   if (len >= NETBIOS_NAME_LEN) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = EINVAL;
     return 0;
   }
 
