@@ -60,11 +60,13 @@ int lib_daemon_socket(void) {
     nbworks_errno = 0;
   }
 
+  /*
   if (0 != set_sockoption(daemon, NONBLOCKING)) {
     nbworks_errno = errno;
     close(daemon);
     return -1;
   }
+  */
 
   if (0 != connect(daemon, (struct sockaddr *)&address, sizeof(struct sockaddr_un))) {
     nbworks_errno = errno;

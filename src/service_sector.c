@@ -862,10 +862,8 @@ void *ss__port137(void *placeholder) {
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
   pthread_t thread[2];/*3];*/
-  unsigned int ones;
   int ret_val, i;
 
-  ones = ONES;
   my_addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(my_addr.sin_port));
@@ -919,9 +917,7 @@ void *ss__port137(void *placeholder) {
   }
 */
 #ifndef COMPILING_NBNS
-  ret_val = setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
-		       &ones, sizeof(unsigned int));
-  if (ret_val < 0) {
+  if (0 > set_sockoption(sckts.udp_sckt, BROADCAST)) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
@@ -1008,9 +1004,8 @@ void *ss__port138(void *i_dont_actually_use_this) {
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
   pthread_t thread[2];
-  unsigned int ones;
+  int counter;
 
-  ones = ONES;
   my_addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(138, (unsigned char *)&(my_addr.sin_port));
@@ -1031,17 +1026,14 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
-  /*
   if (0 != set_sockoption(sckts.udp_sckt, NONBLOCKING)) {
-    /_* TODO: errno signaling stuff *_/
+    /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     nbworks_all_port_cntl.all_stop = 4;
     return 0;
   }
-  */
 
-  if (0 != setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
-		     &ones, sizeof(unsigned int))) {
+  if (0 != set_sockoption(sckts.udp_sckt, BROADCAST)) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     nbworks_all_port_cntl.all_stop = 4;
@@ -1078,8 +1070,8 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
-  for (ones = 0; ones < 2; ones++) {
-    pthread_join(thread[ones], 0);
+  for (counter = 0; counter < 2; counter++) {
+    pthread_join(thread[counter], 0);
   }
 
   close(sckts.udp_sckt);
@@ -1520,9 +1512,6 @@ void *ss__port139(void *args) {
   struct sockaddr_in port_addr;
   ssize_t ret_val;
   int sckt139, new_sckt;
-  unsigned int ones;
-
-  ones = ZEROONES;
 
   port_addr.sin_family = AF_INET;
   /* VAXism below */
