@@ -1438,7 +1438,7 @@ void *tunnel_stream_sockets(void *arg) {
   fds[1].events = (POLLIN | POLLPRI);
 
   while (! nbworks_ses_srv_cntrl.all_stop) {
-    ret_val = poll(fds, 2, TP_250MS);
+    ret_val = poll(fds, 2, nbworks_ses_srv_cntrl.poll_timeout);
     if (ret_val == 0) {
       continue;
     } else {

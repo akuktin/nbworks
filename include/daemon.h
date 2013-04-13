@@ -27,11 +27,16 @@ struct thread_cache {
   pthread_t ss__port138_tid;
   pthread_t ss__port139_tid;
   pthread_t refresh_scopes_tid;
+#ifdef COMPILING_NBNS
+  pthread_t nbns_newtid_tid;
+#endif
 };
 
 
 struct thread_cache *
-  daemon_internal_initializer(struct thread_cache *tcache);
+  daemon_allstart(struct thread_cache *tcache);
+void *
+  daemon_allstop(struct thread_cache *tcache);
 
 void *
   pruners(void *arg_ignored);

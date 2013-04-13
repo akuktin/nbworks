@@ -73,7 +73,8 @@ void *name_srvc_handle_newtid(void *input) {
 
       if (outside_pckt == last_outpckt) {
 	/* No packet. */
-	if (waited) {
+	if (waited ||
+	    nbworks_all_port_cntl.all_stop) {
 	  /* Wait time passed. */
 	  ss_deregister_name_tid(&(params.id));
 	  ss__dstry_recv_queue(params.trans);

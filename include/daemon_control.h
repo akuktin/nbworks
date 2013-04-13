@@ -61,6 +61,7 @@ extern struct nbworks_dtg_srv_cntrl_t {
 
 extern struct nbworks_ses_srv_cntrl_t {
   unsigned char all_stop;
+  int poll_timeout;
 } nbworks_ses_srv_cntrl;
 
 extern struct nbworks_pruners_cntrl_t {

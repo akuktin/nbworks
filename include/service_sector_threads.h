@@ -29,6 +29,7 @@ struct thread_node {
 
 void init_service_sector_threads(void);
 
+void *get_allthreads(void);
 struct thread_node *add_thread(pthread_t tid);
 void thread_joiner(void);
 

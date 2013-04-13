@@ -23,7 +23,12 @@
 #include "library_control.h"
 #include "constdef.h"
 
-nbworks_do_align_t nbworks_do_align;
 nbworks_errno_t nbworks_errno;
+
+#ifdef DO_ALIGN_FIELDS
+nbworks_do_align_t nbworks_do_align = 1;
+#else
+nbworks_do_align_t nbworks_do_align = 0;
+#endif
 
 struct nbworks_libcntl_t nbworks_libcntl;

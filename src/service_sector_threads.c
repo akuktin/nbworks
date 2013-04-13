@@ -34,6 +34,10 @@ void init_service_sector_threads(void) {
 }
 
 
+void *get_allthreads(void) {
+  return nbworks_all_threads;
+}
+
 struct thread_node *add_thread(pthread_t tid) {
   struct thread_node *node, *threads, **last;
 

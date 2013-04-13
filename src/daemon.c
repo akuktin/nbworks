@@ -34,7 +34,7 @@
 #include "portability.h"
 
 
-struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
+struct thread_cache *daemon_allstart(struct thread_cache *tcache) {
   struct thread_cache *result;
   struct rail_params railparams;
 
@@ -148,10 +148,20 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
     return 0;
   }
 
-#ifdef DO_ALIGN_FIELDS
-  nbworks_do_align = 1;
-#else
-  nbworks_do_align = 0;
+#ifdef COMPILING_NBNS
+  if (0 != pthread_create(&(result->nbns_newtid_tid), 0,
+			  name_srvc_NBNS_newtid, 0)) {
+    pthread_cancel(result->pruners_tid);
+    pthread_cancel(result->ss__port137_tid);
+    pthread_cancel(result->ss__port138_tid);
+    pthread_cancel(result->ss__port139_tid);
+    pthread_cancel(result->refresh_scopes_tid);
+    pthread_cancel(railparams.thread_id);
+    if (! tcache)
+      free(result);
+    close(railparams.rail_sckt);
+    return 0;
+  }
 #endif
 
   while (railparams.isbusy) {
@@ -159,6 +169,34 @@ struct thread_cache *daemon_internal_initializer(struct thread_cache *tcache) {
   }
 
   return result;
+}
+
+void *daemon_allstop(struct thread_cache *tcache) {
+  void *all_threads_cache;
+
+  if (! tcache)
+    return 0;
+  else
+    all_threads_cache = 0;
+
+  nbworks_ses_srv_cntrl.all_stop = ONES;
+  nbworks__rail_control.all_stop = ONES;
+  nbworks_all_port_cntl.all_stop = ONES;
+  nbworks_dtg_srv_cntrl.all_stop = ONES;
+
+  pthread_join(tcache->ss__port137_tid, 0);
+  pthread_join(tcache->ss__port138_tid, 0);
+  pthread_join(tcache->ss__port139_tid, 0);
+  pthread_join(tcache->refresh_scopes_tid, 0);
+#ifdef COMPILING_NBNS
+  pthread_join(tcache->nbns_newtid_tid, 0);
+#endif
+
+  nbworks_pruners_cntrl.all_stop = ONES;
+
+  pthread_join(tcache->pruners_tid, all_threads_cache);
+
+  return all_threads_cache;
 }
 
 
@@ -180,5 +218,5 @@ void *pruners(void *arg_ignored) {
     nanosleep(&(nbworks_pruners_cntrl.timeout), 0);
   } while (! nbworks_pruners_cntrl.all_stop);
 
-  return 0;
+  return get_allthreads();
 }

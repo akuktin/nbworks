@@ -68,16 +68,17 @@ void init_service_sector(void) {
 
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
-  nbworks_all_port_cntl.sleeptime.tv_nsec = T_10MS;
+  nbworks_all_port_cntl.sleeptime.tv_nsec = T_12MS;
   nbworks_all_port_cntl.newtid_sleeptime.tv_sec = 0;
   nbworks_all_port_cntl.newtid_sleeptime.tv_nsec = T_500MS;
-  nbworks_all_port_cntl.poll_timeout = TP_10MS;
+  nbworks_all_port_cntl.poll_timeout = TP_500MS;
 
   nbworks_dtg_srv_cntrl.all_stop = 0;
   nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_sec = 0;
-  nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_nsec = T_10MS;
+  nbworks_dtg_srv_cntrl.dtg_srv_sleeptime.tv_nsec = T_12MS;
 
   nbworks_ses_srv_cntrl.all_stop = 0;
+  nbworks_ses_srv_cntrl.poll_timeout = TP_500MS;
 }
 
 struct ss_queue *ss_register_tid(union trans_id *arg,
@@ -1553,7 +1554,7 @@ void *ss__port139(void *args) {
   pfd.events = POLLIN;
 
   while (! nbworks_ses_srv_cntrl.all_stop) {
-    ret_val = poll(&pfd, 1, TP_100MS);
+    ret_val = poll(&pfd, 1, nbworks_ses_srv_cntrl.poll_timeout);
     if (ret_val <= 0) {
       if (ret_val == 0) {
 	continue;
