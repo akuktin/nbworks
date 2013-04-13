@@ -39,9 +39,9 @@
 # ifdef COMPILING_DAEMON
 ipv4_addr_t
   init_default_nbns(void);
-# endif
 ipv4_addr_t
-  get_inaddr(void);
+  init_brdcts_addr(void);
+# endif
 ipv4_addr_t
   my_ipv4_address(void);
 int

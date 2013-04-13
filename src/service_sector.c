@@ -900,25 +900,23 @@ void *ss__port137(void *placeholder) {
     return 0;
   }
   /*
-  ret_val = set_sockoption(sckts.udp_sckt, NONBLOCKING);
-  if (ret_val < 0) {
-    /...* TODO: errno signaling stuff *.../
+  if (0 != set_sockoption(sckts.udp_sckt, NONBLOCKING)) {
+    /_* TODO: errno signaling stuff *_/
     close(sckts.udp_sckt);
     //XXX    close(sckts.tcp_sckt);
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }*/
   /* XXX
-  ret_val = set_sockoption(sckts.tcp_sckt, NONBLOCKING);
-  if (ret_val < 0) {
-    /...* TODO: errno signaling stuff *.../
+  if (0 != set_sockoption(sckts.tcp_sckt, NONBLOCKING)) {
+    /_* TODO: errno signaling stuff *_/
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
     return 0;
   }
 */
 #ifndef COMPILING_NBNS
-  if (0 > set_sockoption(sckts.udp_sckt, BROADCAST)) {
+  if (0 != set_sockoption(sckts.udp_sckt, BROADCAST)) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);

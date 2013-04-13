@@ -22,15 +22,13 @@
 
 #include "constdef.h"
 
-#ifdef COMPILING_NBNS
-# ifndef COMPILING_DAEMON
-#  define COMPILING_DAEMON 1
-# endif
+#ifdef COMPILING_DAEMON
+# include "daemon_control.h"
+#else
+# include "library_control.h"
 #endif
 
 #ifdef COMPILING_DAEMON
-# include "daemon_control.h"
-
 ipv4_addr_t init_default_nbns(void) {
   /* FORRELEASE: This has to be changed, somehow. */
   /* No srsly, how do I do this? If the config file is empty? */
@@ -49,13 +47,17 @@ ipv4_addr_t init_brdcts_addr(void) {
 
   return brdcst_addr;
 }
-
-#else
-# include "library_control.h"
 #endif
 
 ipv4_addr_t my_ipv4_address(void) {
   // FORRELEASE: stub
   //        192.168.1.8/24
   return 0xc0a80108;
+}
+
+/* return: 0 = success; !0 = !success */
+int set_sockoption(int socket,
+		   unsigned int what) {
+  // FORRELEASE: nonexistant
+  return 0;
 }
