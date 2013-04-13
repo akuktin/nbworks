@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "constdef.h"
+
 struct {
   uint64_t period;
   unsigned int weakstate;

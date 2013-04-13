@@ -441,7 +441,7 @@ uint32_t name_srvc_add_name(unsigned short node_type,
 			    unsigned char *name,
 			    unsigned char name_type,
 			    struct nbnodename_list *scope,
-			    uint32_t my_ip_address,
+			    ipv4_addr_t my_ip_address,
 			    uint32_t ttl) {
   unsigned char group_flg;
 
@@ -481,8 +481,8 @@ uint32_t name_srvc_add_name(unsigned short node_type,
 struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      unsigned char name_type,
 						      struct nbnodename_list *scope,
-						      uint32_t ask_address,
-						      uint32_t listen_address,
+						      ipv4_addr_t ask_address,
+						      ipv4_addr_t listen_address,
 						      unsigned char name_flags,
 						      unsigned char recursive) {
   struct sockaddr_in addr;
@@ -676,7 +676,8 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   struct ipv4_addr_list *addrlst, *frstaddrlst;
   struct cache_namenode *new_name;
   time_t curtime;
-  uint32_t ttl, nbns_addr;
+  uint32_t ttl;
+  ipv4_addr_t nbns_addr;
   uint16_t target_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
@@ -832,7 +833,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 int name_srvc_release_name(unsigned char *name,
 			   unsigned char name_type,
 			   struct nbnodename_list *scope,
-			   uint32_t my_ip_address,
+			   ipv4_addr_t my_ip_address,
 			   unsigned char node_types,
 			   unsigned char recursion) {
   struct sockaddr_in addr;
@@ -840,7 +841,7 @@ int name_srvc_release_name(unsigned char *name,
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outpckt;
   struct nbnodename_list *probe;
-  uint32_t listento;
+  ipv4_addr_t listento;
   uint16_t type, class;
   unsigned int retry_count, i;
   unsigned char stop_yourself;
@@ -979,7 +980,7 @@ void *refresh_scopes(void *i_ignore_this) {
   unsigned int i;
   struct {
     unsigned int node_types;
-    uint32_t target_address;
+    ipv4_addr_t target_address;
   } refresh_desc[2];
 
   tid.tid = 0;
@@ -1192,7 +1193,8 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *res;
   struct cache_namenode *cache_namecard;
-  uint32_t in_addr, i;
+  ipv4_addr_t in_addr;
+  uint32_t i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   /* This function fully shadows the difference
@@ -2559,7 +2561,8 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
   struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
   struct ipv4_addr_list *ipv4_addr_list;
-  uint32_t in_addr, status, i;
+  ipv4_addr_t in_addr;
+  uint32_t status, i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   /* This function fully shadows the difference
@@ -2767,7 +2770,8 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
   struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
   struct nbaddress_list *nbaddr_list;
-  uint32_t status, in_addr, sender_is_nbns, name_flags;
+  ipv4_addr_t in_addr;
+  uint32_t status, sender_is_nbns, name_flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   /* This function fully shadows the difference
@@ -2856,7 +2860,8 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
   struct nbaddress_list *nbaddr_list;
-  uint32_t in_addr, status, i;
+  ipv4_addr_t in_addr;
+  uint32_t status, i;
   unsigned int sender_is_nbns;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 #ifdef COMPILING_NBNS
@@ -3109,7 +3114,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   struct name_srvc_resource_lst *res;
   struct addrlst_bigblock *addr_bigblock;
   int i, j;
-  uint32_t in_addr;
+  ipv4_addr_t in_addr;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 #ifdef COMPILING_NBNS
   struct name_srvc_packet *pckt;
@@ -3117,7 +3122,8 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   uint32_t numof_succedded, numof_failed;
   unsigned char succedded;
 #else
-  uint32_t name_flags, nbns_addr;
+  uint32_t name_flags;
+  ipv4_addr_t nbns_addr;
 #endif
 
   /* This function fully shadows the difference

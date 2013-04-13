@@ -22,6 +22,7 @@
 #include <time.h>
 #include <pthread.h>
 
+#include "constdef.h"
 #include "daemon_control.h"
 #include "service_sector_threads.h"
 

@@ -185,7 +185,8 @@ inline int
                    struct sockaddr_in *addr,
                    struct ss_queue *trans);
 inline void *
-  ss__recv_pckt(struct ss_queue *trans, uint32_t listen);
+  ss__recv_pckt(struct ss_queue *trans,
+                ipv4_addr_t listen);
 inline struct ss_unif_pckt_list *
   ss__recv_entry(struct ss_queue *trans);
 inline void
@@ -232,11 +233,6 @@ void *
   take_incoming_session(void *arg);
 void
   ss_check_all_ses_server_rails(void);
-
-uint32_t
-  get_inaddr(void);
-uint32_t
-  my_ipv4_address(void);
 
 # define ss_register_name_tid(tid)        ss_register_tid(tid, NAME_SRVC)
 # define ss_deregister_name_tid(tid)      ss_deregister_tid(tid, NAME_SRVC)

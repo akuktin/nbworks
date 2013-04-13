@@ -124,7 +124,7 @@ struct name_srvc_pckt_header {
 struct nbaddress_list {
   uint16_t flags;
   unsigned char there_is_an_address;
-  uint32_t address;
+  ipv4_addr_t address;
   struct nbaddress_list *next_address;
 };
 

@@ -20,6 +20,8 @@
 
 #include <stdint.h>
 
+#include "constdef.h"
+
 #ifdef COMPILING_NBNS
 # ifndef COMPILING_DAEMON
 #  define COMPILING_DAEMON 1
@@ -29,7 +31,7 @@
 #ifdef COMPILING_DAEMON
 # include "daemon_control.h"
 
-uint32_t init_default_nbns(void) {
+ipv4_addr_t init_default_nbns(void) {
   /* FORRELEASE: This has to be changed, somehow. */
   /* No srsly, how do I do this? If the config file is empty? */
   /* Maybe: do whatever get_inaddr() will do to get the network prefix,
@@ -42,13 +44,13 @@ uint32_t init_default_nbns(void) {
 # include "library_control.h"
 #endif
 
-uint32_t get_inaddr(void) {
+ipv4_addr_t get_inaddr(void) {
   // FORRELEASE: stub
   //        192.168.1.255/24
   return 0xc0a801ff;
 }
 
-uint32_t my_ipv4_address(void) {
+ipv4_addr_t my_ipv4_address(void) {
   // FORRELEASE: stub
   //        192.168.1.8/24
   return 0xc0a80108;

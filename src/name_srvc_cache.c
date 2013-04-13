@@ -25,8 +25,8 @@
 
 #include <pthread.h>
 
-#include "daemon_control.h"
 #include "constdef.h"
+#include "daemon_control.h"
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
@@ -46,7 +46,7 @@ void init_name_srvc_cache(void) {
 
 struct cache_scopenode *add_scope(struct nbnodename_list *scope,
 				  struct cache_namenode *first_node,
-				  uint32_t nbns_addr) {
+				  ipv4_addr_t nbns_addr) {
   struct cache_scopenode *result, *new_scope,
     *cur_scope, **last_scope;
 
@@ -101,7 +101,7 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 }
 
 
-uint32_t get_nbnsaddr(struct nbnodename_list *scope) {
+ipv4_addr_t get_nbnsaddr(struct nbnodename_list *scope) {
   struct cache_scopenode *cur_scope;
 
   cur_scope = nbworks_rootscope;
@@ -802,7 +802,7 @@ void destroy_bigblock(struct addrlst_bigblock *block) {
 /* returns: >0 = removed own address, 0 = didn't, <0 = error */
 int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
 			 struct cache_namenode *namecard,
-			 uint32_t my_ipv4_address,
+			 ipv4_addr_t my_ipv4_address,
 			 unsigned int sender_is_nbns) {
   struct addrlst_bigblock addrblock, *addrof_addrblock;
   struct ipv4_addr_list *cur_addr, **last_addr,

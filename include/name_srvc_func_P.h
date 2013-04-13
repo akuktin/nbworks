@@ -26,7 +26,7 @@ uint32_t
   name_srvc_P_add_name(unsigned char *name,
                        unsigned char name_type,
                        struct nbnodename_list *scope,
-                       uint32_t my_ip_address,
+                       ipv4_addr_t my_ip_address,
                        unsigned char group_flg,
                        uint32_t ttl);
 

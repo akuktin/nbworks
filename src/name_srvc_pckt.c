@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "constdef.h"
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_cache.h"
@@ -1513,7 +1514,7 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
   struct nbaddress_list *nbaddrs, **last_nbaddrs;
   uint32_t numof_refresh;
   unsigned int i;
-  uint64_t nbaddrs_len;
+  uint16_t nbaddrs_len; /* Has to be 16 bits to be able to measure overflow. */
   uint16_t lenof_res, save_lenof_res;
   time_t cur_time;
 

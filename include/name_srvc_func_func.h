@@ -70,14 +70,14 @@ uint32_t
                      unsigned char *name,
                      unsigned char name_type,
                      struct nbnodename_list *scope,
-                     uint32_t my_ip_address,
+                     ipv4_addr_t my_ip_address,
                      uint32_t ttl);
 struct name_srvc_resource_lst *
   name_srvc_callout_name(unsigned char *name,
                          unsigned char name_type,
                          struct nbnodename_list *scope,
-                         uint32_t ask_address,
-                         uint32_t listen_address,
+                         ipv4_addr_t ask_address,
+                         ipv4_addr_t listen_address,
                          unsigned char name_flags,
                          unsigned char recursive);
 struct cache_namenode *
@@ -91,7 +91,7 @@ int
   name_srvc_release_name(unsigned char *name,
                          unsigned char name_type,
                          struct nbnodename_list *scope,
-                         uint32_t my_ip_address,
+                         ipv4_addr_t my_ip_address,
                          unsigned char node_types,
                          unsigned char recursion);
 void *

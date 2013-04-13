@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "constdef.h"
 #include "nbworks.h"
 #include "nodename.h"
 #include "library_control.h"
@@ -1409,7 +1410,7 @@ void nbworks_hangup_ses(struct nbworks_session *ses) {
 unsigned long nbworks_whatisaddrX(struct nbnodename_list *X,
 				  unsigned long len) {
   struct com_comm command;
-  uint32_t result;
+  ipv4_addr_t result;
   int daemon_sckt;
   unsigned char combuff[LEN_COMM_ONWIRE], *buff;
 

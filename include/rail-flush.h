@@ -21,8 +21,8 @@
 
 # include <stdint.h>
 
-uint32_t
-  rail_flushrail(uint32_t len,
+size_t
+  rail_flushrail(size_t len,
                  int rail);
 
 #endif /* NBWORKS_RAILFLUSH_H */

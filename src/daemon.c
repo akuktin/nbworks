@@ -23,8 +23,8 @@
 #include <time.h>
 #include <pthread.h>
 
-#include "daemon_control.h"
 #include "constdef.h"
+#include "daemon_control.h"
 #include "name_srvc_cache.h"
 #include "name_srvc_func_func.h"
 #include "service_sector.h"

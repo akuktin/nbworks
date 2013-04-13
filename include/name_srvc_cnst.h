@@ -24,14 +24,14 @@ struct name_srvc_packet *
                               unsigned char name_type,
                               struct nbnodename_list *scope,
                               uint32_t ttl,
-                              uint32_t in_address,
+                              ipv4_addr_t in_address,
                               unsigned char node_type);
 struct name_srvc_packet *
   name_srvc_make_name_reg_small(unsigned char *name,
                                unsigned char name_type,
                                struct nbnodename_list *scope,
                                uint32_t ttl,
-                               uint32_t in_address,
+                               ipv4_addr_t in_address,
                                unsigned char node_type);
 struct name_srvc_packet *
   name_srvc_make_name_qry_req(unsigned char *name,

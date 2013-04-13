@@ -37,12 +37,12 @@
 # endif
 
 # ifdef COMPILING_DAEMON
-uint32_t
+ipv4_addr_t
   init_default_nbns(void);
 # endif
-uint32_t
+ipv4_addr_t
   get_inaddr(void);
-uint32_t
+ipv4_addr_t
   my_ipv4_address(void);
 int
   set_sockoption(int socket,

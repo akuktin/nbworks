@@ -29,6 +29,7 @@
 #include <poll.h>
 #include <errno.h>
 
+#include "constdef.h"
 #include "nbworks.h"
 #include "nodename.h"
 #include "library_control.h"

@@ -30,8 +30,8 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#include "daemon_control.h"
 #include "constdef.h"
+#include "daemon_control.h"
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
@@ -48,7 +48,7 @@
 uint32_t name_srvc_B_add_name(unsigned char *name,
 			      unsigned char name_type,
 			      struct nbnodename_list *scope,
-			      uint32_t my_ip_address,
+			      ipv4_addr_t my_ip_address,
 			      unsigned char group_flg,
 			      uint32_t ttl) {
   struct sockaddr_in addr;

@@ -162,7 +162,8 @@ void *handle_rail(void *args) {
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
   struct ipv4_addr_list *cur_addr, **last_addr;
-  uint32_t ipv4, i;
+  ipv4_addr_t ipv4;
+  uint32_t i;
   unsigned int rail_isreusable;
   int ret_val;
   unsigned char buff[LEN_COMM_ONWIRE], *name_ptr, node_type;
@@ -1597,7 +1598,7 @@ void *tunnel_stream_sockets(void *arg) {
 /* Except not really - this is only used by the session
    service which never uses more than one address. */
 /* nbworks_errno is used to signal that the rail is broken. */
-uint32_t rail_whatisaddrX(int rail_sckt,
+ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 			  struct com_comm *command) {
   struct cache_namenode *namecard;
   struct nbnodename_list *name;

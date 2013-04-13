@@ -79,7 +79,7 @@ struct dtg_srvc_packet {
   unsigned char type;
   unsigned char flags;
   uint16_t id;
-  uint32_t src_address;
+  ipv4_addr_t src_address;
   uint16_t src_port;
   enum dtg_packet_payload_t payload_t;
   void *payload;

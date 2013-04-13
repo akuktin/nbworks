@@ -26,9 +26,9 @@
 #include "constdef.h"
 
 
-uint32_t rail_flushrail(uint32_t len,
-			int rail) {
-  uint32_t drained;
+size_t rail_flushrail(size_t len,
+		      int rail) {
+  size_t drained;
   unsigned char bucket[0xff];
 
   drained = 0;

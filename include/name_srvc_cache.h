@@ -32,11 +32,11 @@ void init_name_srvc_cache(void);
 struct cache_scopenode *
   add_scope(struct nbnodename_list *scope,
             struct cache_namenode *first_node,
-            uint32_t nbns_addr);
+            ipv4_addr_t nbns_addr);
 struct cache_scopenode *
   find_scope(struct nbnodename_list *scope);
 
-uint32_t
+ipv4_addr_t
   get_nbnsaddr(struct nbnodename_list *scope);
 void
   prune_scopes(time_t when);
@@ -99,7 +99,7 @@ void
 int
   remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
                        struct cache_namenode *namecard,
-                       uint32_t my_ipv4_address,
+                       ipv4_addr_t my_ipv4_address,
                        unsigned int sender_is_nbns);
 
 extern struct cache_scopenode *nbworks_rootscope;

@@ -20,8 +20,8 @@
 
 #include <stdint.h>
 
-#include "daemon_control.h"
 #include "constdef.h"
+#include "daemon_control.h"
 
 #ifdef COMPILING_NBNS
 # include "service_sector.h"
@@ -29,7 +29,7 @@
 struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
 #endif
 
-uint32_t nbworks__default_nbns;
+ipv4_addr_t nbworks__default_nbns;
 struct cache_scopenode *nbworks_rootscope;
 
 nbworks_errno_t nbworks_errno;
@@ -40,8 +40,8 @@ nbworks_do_align_t nbworks_do_align = 1;
 nbworks_do_align_t nbworks_do_align = 0;
 #endif
 
-uint32_t brdcst_addr;
-uint32_t my_ip4_address;
+ipv4_addr_t brdcst_addr;
+ipv4_addr_t my_ip4_address;
 
 struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
 struct nbworks__rail_control_t nbworks__rail_control;

@@ -21,6 +21,12 @@
 
 # include <stdint.h>
 
+# ifdef COMPILING_NBNS
+#  ifndef COMPILING_DAEMON
+#   define COMPILING_DAEMON 1
+#  endif
+# endif
+
 # ifdef NULL
 #  undef NULL
 # endif
@@ -116,7 +122,9 @@ extern nbworks_do_align_t nbworks_do_align;
 
 # define MSG_BRDCAST MSG_PROXY /* Trying hard to be portable. */
 
-extern uint32_t brdcst_addr;
-extern uint32_t my_ip4_address;
+typedef uint32_t ipv4_addr_t;
+
+extern ipv4_addr_t brdcst_addr;
+extern ipv4_addr_t my_ip4_address;
 
 #endif /* NBWORKS_CONSTDEF_H */

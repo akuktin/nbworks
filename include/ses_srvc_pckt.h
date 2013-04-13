@@ -53,7 +53,7 @@ struct ses_pckt_pyld_two_names {
 };
 
 struct ses_srvc_retarget_blob_rfc1002 {
-  uint32_t new_address;
+  ipv4_addr_t new_address;
   uint16_t new_port;
 };
 

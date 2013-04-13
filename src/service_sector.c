@@ -33,8 +33,8 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#include "daemon_control.h"
 #include "constdef.h"
+#include "daemon_control.h"
 #include "nodename.h"
 #include "pckt_routines.h"
 #include "name_srvc_pckt.h"
@@ -542,9 +542,10 @@ inline int ss_dtg_send_pckt(struct dtg_srvc_recvpckt *pckt,
   return -1;
 }
 
-inline void *ss__recv_pckt(struct ss_queue *trans, uint32_t listen) {
+inline void *ss__recv_pckt(struct ss_queue *trans,
+			   ipv4_addr_t listen) {
   struct ss_unif_pckt_list *holdme;
-  uint32_t real_listen;
+  ipv4_addr_t real_listen;
   void *result;
 
   if (! trans)

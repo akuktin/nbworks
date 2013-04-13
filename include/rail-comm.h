@@ -160,7 +160,7 @@ int
 void *
   tunnel_stream_sockets(void *arg);
 
-uint32_t
+ipv4_addr_t
   rail_whatisaddrX(int rail_sckt,
                    struct com_comm *command);
 

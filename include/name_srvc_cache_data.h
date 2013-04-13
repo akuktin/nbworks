@@ -52,7 +52,7 @@
 
 
 struct ipv4_addr_list {
-  uint32_t ip_addr;
+  ipv4_addr_t ip_addr;
   struct ipv4_addr_list *next;
 };
 
@@ -73,7 +73,7 @@ struct addrlst_bigblock {
 struct cache_scopenode {
   struct nbnodename_list *scope;
   struct cache_namenode *names;
-  uint32_t nbns_addr;
+  ipv4_addr_t nbns_addr;
   struct cache_scopenode *next;
 };
 
