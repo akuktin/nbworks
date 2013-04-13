@@ -177,7 +177,7 @@ void *daemon_allstop(struct thread_cache *tcache) {
   if (! tcache)
     return 0;
   else
-    all_threads_cache = 0;
+    all_threads_cache = 0; /* Stupid GCC warnings. */
 
   nbworks_ses_srv_cntrl.all_stop = ONES;
   nbworks__rail_control.all_stop = ONES;

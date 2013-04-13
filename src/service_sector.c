@@ -22,7 +22,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <time.h>
 #include <errno.h>
 
@@ -48,6 +47,7 @@
 #include "service_sector.h"
 #include "service_sector_threads.h"
 #include "rail-comm.h"
+#include "portability.h"
 
 
 struct ss_priv_trans *nbworks_all_transactions[2];
@@ -901,7 +901,7 @@ void *ss__port137(void *placeholder) {
     return 0;
   }
   /*
-  ret_val = fcntl(sckts.udp_sckt, F_SETFL, O_NONBLOCK);
+  ret_val = set_sockoption(sckts.udp_sckt, NONBLOCKING);
   if (ret_val < 0) {
     /...* TODO: errno signaling stuff *.../
     close(sckts.udp_sckt);
@@ -910,7 +910,7 @@ void *ss__port137(void *placeholder) {
     return 0;
   }*/
   /* XXX
-  ret_val = fcntl(sckts.tcp_sckt, F_SETFL, O_NONBLOCK);
+  ret_val = set_sockoption(sckts.tcp_sckt, NONBLOCKING);
   if (ret_val < 0) {
     /...* TODO: errno signaling stuff *.../
     close(sckts.udp_sckt);
@@ -1031,12 +1031,14 @@ void *ss__port138(void *i_dont_actually_use_this) {
     return 0;
   }
 
-  if (0 != fcntl(sckts.udp_sckt, F_SETFL, O_NONBLOCK)) {
-    /* TODO: errno signaling stuff */
+  /*
+  if (0 != set_sockoption(sckts.udp_sckt, NONBLOCKING)) {
+    /_* TODO: errno signaling stuff *_/
     close(sckts.udp_sckt);
     nbworks_all_port_cntl.all_stop = 4;
     return 0;
   }
+  */
 
   if (0 != setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST,
 		     &ones, sizeof(unsigned int))) {
@@ -1534,7 +1536,7 @@ void *ss__port139(void *args) {
     return 0;
   }
 
-  if (0 != fcntl(sckt139, F_SETFL, O_NONBLOCK)) {
+  if (0 != set_sockoption(sckt139, NONBLOCKING)) {
     /* TODO: errno signaling stuff */
     close(sckt139);
     return 0;
@@ -1707,15 +1709,15 @@ void *take_incoming_session(void *arg) {
 
   if (servers) {
     token = make_token();
-    if (0 != fcntl(params.sckt139, F_SETFL, O_NONBLOCK)) {
-      /*      err[4] = SES_ERR_UNSPEC;
+    if (0 != set_sockoption(params.sckt139, NONBLOCKING)) {
+      err[4] = SES_ERR_UNSPEC;
       send(params.sckt139, err, 5, MSG_NOSIGNAL);
 
       free(big_buff);
       close(params.sckt139);
       if (last_will)
 	last_will->dead = TRUE;
-	return 0;*/
+      return 0;
     }
 
     if (! ((session = ss__add_session(token, params.sckt139, big_buff)) &&

@@ -21,11 +21,22 @@
 
 # include <stdint.h>
 
+# define NONBLOCKING 1
+//fcntl(socket, F_SETFL, O_NONBLOCK)
+# define KEEPALIVE 2
+//setsockopt(ses_sckt, SOL_SOCKET, SO_KEEPALIVE, &ones, sizeof(unsigned int));
+# define KEEPIDLE 4
+//setsockopt(ses_sckt, IPPROTO_TCP, TCP_KEEPIDLE, &ones, sizeof(unsigned int));
+
+
 uint32_t
   init_default_nbns(void);
 uint32_t
   get_inaddr(void);
 uint32_t
   my_ipv4_address(void);
+int
+  set_sockoption(int socket,
+                 unsigned int what);
 
 #endif /* NBWORKS_PORTABILITY_H */

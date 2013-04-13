@@ -21,7 +21,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -41,6 +40,7 @@
 #include "ses_srvc_pckt.h"
 #include "randomness.h"
 #include "rail-flush.h"
+#include "portability.h"
 
 
 int lib_daemon_socket(void) {
@@ -59,13 +59,13 @@ int lib_daemon_socket(void) {
   } else {
     nbworks_errno = 0;
   }
-/*
-  if (0 != fcntl(daemon, F_SETFL, O_NONBLOCK)) {
+
+  if (0 != set_sockoption(daemon, NONBLOCKING)) {
     nbworks_errno = errno;
     close(daemon);
     return -1;
   }
-*/
+
   if (0 != connect(daemon, (struct sockaddr *)&address, sizeof(struct sockaddr_un))) {
     nbworks_errno = errno;
     close(daemon);
@@ -1081,7 +1081,6 @@ int lib_open_session(struct name_state *handle,
   int ses_sckt, retry_count;
   unsigned long lenof_pckt, wrotelenof_pckt;
   unsigned int max_retries;
-  unsigned int ones;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char small_buff[SMALL_BUFF_LEN];
   unsigned char *decoded_name;
@@ -1261,20 +1260,16 @@ int lib_open_session(struct name_state *handle,
     if (pckt.len)
       lib_flushsckt(ses_sckt, pckt.len, MSG_WAITALL);
 
-    if (0 != fcntl(ses_sckt, F_SETFL, O_NONBLOCK)) {
-      //      close(ses_sckt);
-      //      /* This also may not be a fatal error. */
-      //      return -1;
+    if (0 != set_sockoption(ses_sckt, NONBLOCKING)) {
+      close(ses_sckt);
+      /* This also may not be a fatal error. */
+      return -1;
     }
     /* --------------------------------------------------------------- */
     /* Looks like I will HAVE to implement some sort of errno,
        because a failure here is not fatal, but requires special care. */
-    ones = ONES;
-    setsockopt(ses_sckt, SOL_SOCKET, SO_KEEPALIVE,
-	       &ones, sizeof(unsigned int));
-    ones = ONES;
-    setsockopt(ses_sckt, IPPROTO_TCP, TCP_KEEPIDLE,
-	       &ones, sizeof(unsigned int));
+    /* FIXME */ set_sockoption(ses_sckt, KEEPALIVE);
+    /* FIXME */ set_sockoption(ses_sckt, KEEPIDLE);
     /* --------------------------------------------------------------- */
 
     return ses_sckt;
@@ -1488,7 +1483,7 @@ void *lib_ses_srv(void *arg) {
       }
     }
 
-    if (0 != fcntl(new_sckt, F_SETFL, O_NONBLOCK)) {
+    if (0 != set_sockoption(new_sckt, NONBLOCKING)) {
       close(new_sckt);
       break;
     }

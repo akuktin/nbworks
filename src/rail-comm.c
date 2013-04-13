@@ -25,7 +25,6 @@
 #include <pthread.h>
 #include <errno.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -46,6 +45,7 @@
 #include "ses_srvc_pckt.h"
 #include "randomness.h"
 #include "rail-flush.h"
+#include "portability.h"
 
 
 void init_rail(void) {
@@ -69,7 +69,7 @@ int open_rail(void) {
     return -1;
   }
 
-  if (0 != fcntl(result, F_SETFL, O_NONBLOCK)) {
+  if (0 != set_sockoption(result, NONBLOCKING)) {
     /* TODO: errno signaling stuff */
     close(result);
     return -1;
@@ -1371,13 +1371,13 @@ int rail_setup_session(int rail,
       rail_flushrail(answer.len, rail);
   }
 
-  if (0 != fcntl(rail, F_SETFL, O_NONBLOCK)) {
-    //    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
+  if (0 != set_sockoption(rail, NONBLOCKING)) {
+    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
 
-    //    close(rail);
-    //    close(out_sckt);
-    //    free(session);
-    //    return -1;
+    close(rail);
+    close(out_sckt);
+    free(session);
+    return -1;
   }
   /* The rail socket is now ready for operation. Establish a tunnel. */
 
