@@ -678,7 +678,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     break;
   }
   pckt->id = make_weakrandom() & 0xffff;
-  pckt->src_address = my_ipv4_address();
+  pckt->src_address = my_ip4_address;
   pckt->src_port = 138;
 
   pckt->payload_t = normal;

@@ -276,7 +276,7 @@ void *handle_rail(void *args) {
 	  break;
 	}
 	name_ptr = cache_namecard->name;
-	ipv4 = my_ipv4_address();
+	ipv4 = my_ip4_address;
 	name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
 			       scope, ipv4, node_type, FALSE);
 
@@ -713,7 +713,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	/* Tell the world (actually optional for B nodes). */
 	(refresh_ttl = name_srvc_add_name(node_type, namedata->name,
 					  namedata->name_type, namedata->scope,
-					  my_ipv4_address(), namedata->ttl))) {
+					  my_ip4_address, namedata->ttl))) {
       if (! grp_namecard->grp_token) {
 	grp_namecard->grp_token = make_token();
       }
@@ -740,7 +740,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	if (! new_addr) {
 	  return 0;
 	}
-	new_addr->ip_addr = my_ipv4_address();
+	new_addr->ip_addr = my_ip4_address;
 	new_addr->next = 0;
 
 	while (0xd0) {
@@ -767,7 +767,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     cache_namecard->node_types = node_type;
 
     if ((refresh_ttl = name_srvc_add_name(node_type, namedata->name, namedata->name_type,
-					  namedata->scope, my_ipv4_address(), namedata->ttl))) {
+					  namedata->scope, my_ip4_address, namedata->ttl))) {
       if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
 	     add_name(cache_namecard, namedata->scope))) {
 	destroy_namecard(cache_namecard);
@@ -783,7 +783,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	cleanup;
 	return 0;
       }
-      cache_namecard->addrs.recrd[0].addr->ip_addr = my_ipv4_address();
+      cache_namecard->addrs.recrd[0].addr->ip_addr = my_ip4_address;
       cache_namecard->timeof_death = time(0) + namedata->ttl;
       if (node_type & (CACHE_NODEGRPFLG_P | CACHE_NODEFLG_P))
 	cache_namecard->refresh_ttl = refresh_ttl;
@@ -924,7 +924,7 @@ int rail_senddtg(int rail_sckt,
 	(0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name,
 		     NETBIOS_CODED_NAME_LEN))) {
       /* VAXism below. */
-      fill_32field(get_inaddr(), (unsigned char *)&(dst_addr.sin_addr.s_addr));
+      fill_32field(brdcst_addr, (unsigned char *)&(dst_addr.sin_addr.s_addr));
 
       sendpckt->for_del = TRUE;
       ss_dtg_send_pckt(sendpckt, &dst_addr, &(trans->queue));

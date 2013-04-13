@@ -31,4 +31,7 @@ nbworks_do_align_t nbworks_do_align = 1;
 nbworks_do_align_t nbworks_do_align = 0;
 #endif
 
+uint32_t brdcst_addr;
+uint32_t my_ip4_address;
+
 struct nbworks_libcntl_t nbworks_libcntl;

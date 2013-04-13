@@ -734,7 +734,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 				 nbns_addr, FLG_RD, recursion);
   } else {
     nbns_addr = 0;
-    res = name_srvc_callout_name(name, name_type, scope, get_inaddr(),
+    res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
 				 0, FLG_B, recursion);
   }
 
@@ -856,9 +856,9 @@ int name_srvc_release_name(unsigned char *name,
   fill_16field(137, (unsigned char *)&(addr.sin_port));
   /* In case of recursion, call get_nbnsaddr(), put the result in listento
    * and use it as an argument for fill_32field(), otherwise, set listento
-   * to 0, call get_inaddr() and pass its result to fill_32field(). */
+   * to 0, and pass brdcst_addr to fill_32field(). */
   fill_32field((recursion ? (listento = get_nbnsaddr(scope)) :
-		            (listento = 0, get_inaddr())),
+		            (listento = 0, brdcst_addr)),
 	       (unsigned char *)&(addr.sin_addr.s_addr));
   if (! addr.sin_addr.s_addr)
     return -1;
@@ -992,7 +992,7 @@ void *refresh_scopes(void *i_ignore_this) {
 				CACHE_NODEGRPFLG_P | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H);
   refresh_desc[1].node_types = (CACHE_NODEFLG_B | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
 				CACHE_NODEGRPFLG_B | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H);
-  refresh_desc[1].target_address = get_inaddr();
+  refresh_desc[1].target_address = brdcst_addr;
 
   while (! nbworks_all_port_cntl.all_stop) {
     cur_scope = nbworks_rootscope;
@@ -2970,7 +2970,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	if (cache_namecard) {
 	  /* In NBNS mode, sender_is_nbns == FALSE. */
 	  if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard,
-				       my_ipv4_address(), sender_is_nbns)) {
+				       my_ip4_address, sender_is_nbns)) {
 	    cache_namecard->grp_token = 0;
 	  }
 

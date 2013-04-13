@@ -40,6 +40,9 @@ nbworks_do_align_t nbworks_do_align = 1;
 nbworks_do_align_t nbworks_do_align = 0;
 #endif
 
+uint32_t brdcst_addr;
+uint32_t my_ip4_address;
+
 struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
 struct nbworks__rail_control_t nbworks__rail_control;
 struct nbworks_namsrvc_cntrl_t nbworks_namsrvc_cntrl;

@@ -116,4 +116,7 @@ extern nbworks_do_align_t nbworks_do_align;
 
 # define MSG_BRDCAST MSG_PROXY /* Trying hard to be portable. */
 
+extern uint32_t brdcst_addr;
+extern uint32_t my_ip4_address;
+
 #endif /* NBWORKS_CONSTDEF_H */
