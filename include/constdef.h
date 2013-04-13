@@ -42,6 +42,11 @@
 # endif
 # define ONESZERO (~1)
 
+# ifdef ONEZEROS
+#  undef ONEZEROS
+# endif
+# define ONEZEROS (1 >> 1)
+
 # ifdef ZEROONES
 #  undef ZEROONES
 # endif
