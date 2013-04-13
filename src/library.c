@@ -30,7 +30,7 @@
 #include <poll.h>
 #include <errno.h>
 
-#include "api.h"
+#include "nbworks.h"
 #include "nodename.h"
 #include "library_control.h"
 #include "library.h"

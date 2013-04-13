@@ -363,9 +363,9 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 
   if (name_offset == ONES) {
     /* Read the fourth comment up.
-       If this test has succeded, then we have not encountered
-       a single pointer, *start_and_end_of_walk has not been
-       updated, so we update it now. */
+     * If this test has succeded, then we have not encountered
+     * a single pointer, *start_and_end_of_walk has not been
+     * updated, so we update it now. */
     *start_and_end_of_walk = walker +1;
   }
 
@@ -389,7 +389,7 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
   unsigned char *field;
 
   /* I have to check if I can fit the terminating 0 into
-     the packet here because content may be NULL. */
+   * the packet here because content may be NULL. */
   if ((walker +1) > endof_pckt) {
     /* OUT_OF_BOUNDS */
     /* TODO: errno signaling stuff */
@@ -406,7 +406,7 @@ unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
 
   while (iterator) {
     /* field + 1 octet for the len + 1 octet for the
-       terminating 0 + the len of the label */
+     * terminating 0 + the len of the label */
     if ((field + 2 + iterator->len) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */

@@ -28,7 +28,7 @@ extern struct nbworks_libcntl_t {
   int dtg_srv_polltimeout;
   int ses_srv_polltimeout;
 
-  int max_ses_retarget_retries;
+  unsigned int max_ses_retarget_retries;
   time_t keepalive_interval;
 
   time_t close_timeout;

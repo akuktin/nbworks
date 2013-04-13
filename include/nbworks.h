@@ -16,8 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NBWORKS_API_H
-# define NBWORKS_API_H 1
+#ifndef NBWORKS_NBWORKS_H
+# define NBWORKS_NBWORKS_H 1
 
 # define NBWORKS_CANCEL_SEND 1
 # define NBWORKS_CANCEL_RECV 2
@@ -119,4 +119,4 @@ unsigned long
                       unsigned long ten);
 
 
-#endif /* NBWORKS_API_H */
+#endif /* NBWORKS_NBWORKS_H */

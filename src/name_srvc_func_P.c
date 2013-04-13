@@ -59,8 +59,8 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
   struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
   struct name_srvc_resource_lst *res;
   struct nbaddress_list *nbaddr_list, *nbaddr_alllst;
-  int success, i;
-  unsigned int retry_count;
+  int success;
+  unsigned int retry_count, i;
   unsigned char rcode;
   union trans_id tid;
 

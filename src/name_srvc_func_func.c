@@ -491,8 +491,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
   struct name_srvc_resource_lst *result, *walker;
-  int i;
-  unsigned int retry_count;
+  unsigned int retry_count, i;
   union trans_id tid;
 
   if (! (name && ask_address))
@@ -842,8 +841,7 @@ int name_srvc_release_name(unsigned char *name,
   struct nbnodename_list *probe;
   uint32_t listento;
   uint16_t type, class;
-  int i;
-  unsigned int retry_count;
+  unsigned int retry_count, i;
   unsigned char stop_yourself;
   union trans_id tid;
 
@@ -1757,7 +1755,6 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   numof_succeded = 0;
   last_succeded = &succeded;
 
-  cur_time = time(0);
   while (pckt->stuck_in_transit) {
     /* busy-wait */
     /* Prevents the resources being manipulated before
@@ -1768,8 +1765,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   for (retries = 0; retries < retry_count; retries++) {
     ss_set_normalstate_name_tid(&transid);
 
-    if (retries)
-      cur_time = time(0);
+    cur_time = time(0);
     numof_succeded = 0;
     last_succeded = &succeded;
     last_laters = &laters;
@@ -1984,6 +1980,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
       break;
   }
 
+  cur_time = time(0);
   /* These have survived the killing fields and are to be registered. */
   last_laters = &laters;
   cur_laters = *last_laters;
@@ -2124,7 +2121,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   struct name_srvc_question_lst **last_qstn, *unknown, **last_unknown;
   struct name_srvc_resource_lst **last_res;
 #else
-  unsigned int numof_names;
+  uint32_t numof_names;
   struct nbnodename_list_backbone *names_list, **names_list_last;
   struct name_srvc_statistics_rfc1002 *stats;
   struct cache_scopenode *this_scope;

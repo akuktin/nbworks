@@ -55,8 +55,8 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
   struct name_srvc_resource_lst *res;
-  uint32_t result, i;
-  unsigned int retry_count;
+  uint32_t result;
+  unsigned int retry_count, i;
   union trans_id tid;
 
   if ((! name) ||

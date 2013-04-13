@@ -32,7 +32,7 @@
 # define JOKER_NAME       "*\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 # define JOKER_NAME_CODED "CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
-# ifndef NBWORKS_API_H
+# ifndef NBWORKS_NBWORKS_H
 struct nbnodename_list {
   unsigned char *name;
   unsigned char len; /* Not int because the field is
@@ -54,7 +54,7 @@ unsigned char *
   encode_nbnodename(const unsigned char *decoded_name,
                     unsigned char *result_buf);
 
-# ifndef NBWORKS_API_H
+# ifndef NBWORKS_NBWORKS_H
 unsigned char *
   nbworks_make_nbnodename(const unsigned char *string,
                           const unsigned char type_char,
