@@ -124,7 +124,6 @@ extern nbworks_do_align_t nbworks_do_align;
 
 typedef uint32_t ipv4_addr_t;
 
-extern ipv4_addr_t brdcst_addr;
 extern ipv4_addr_t my_ip4_address;
 
 #endif /* NBWORKS_CONSTDEF_H */

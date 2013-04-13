@@ -40,15 +40,19 @@ ipv4_addr_t init_default_nbns(void) {
 
   return nbworks__default_nbns;
 }
+
+ipv4_addr_t init_brdcts_addr(void) {
+  // FORRELEASE: stub
+  //        192.168.1.255/24
+
+  brdcst_addr = 0xc0a801ff;
+
+  return brdcst_addr;
+}
+
 #else
 # include "library_control.h"
 #endif
-
-ipv4_addr_t get_inaddr(void) {
-  // FORRELEASE: stub
-  //        192.168.1.255/24
-  return 0xc0a801ff;
-}
 
 ipv4_addr_t my_ipv4_address(void) {
   // FORRELEASE: stub
