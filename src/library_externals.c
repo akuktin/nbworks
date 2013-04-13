@@ -23,9 +23,6 @@
 #include "library_control.h"
 #include "constdef.h"
 
-/* The below extern exists only to enable me to link src/portability.c. */
-uint32_t nbworks__default_nbns;
-
 nbworks_do_align_t nbworks_do_align;
 nbworks_errno_t nbworks_errno;
 

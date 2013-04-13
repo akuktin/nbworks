@@ -22,6 +22,10 @@
 # include <time.h>
 # include <stdint.h>
 
+# ifndef COMPILING_DAEMON
+#  define COMPILING_DAEMON 1
+# endif
+
 extern struct nbworks_all_port_cntl_t {
   unsigned char all_stop;
   struct timespec sleeptime;

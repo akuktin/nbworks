@@ -37,7 +37,4 @@ extern struct nbworks_libcntl_t {
   unsigned int dtg_max_wholefrag_len;
 } nbworks_libcntl;
 
-/* The below extern exists only to enable me to link src/portability.c. */
-extern uint32_t nbworks__default_nbns;
-
 #endif /* NBWORKS_LIBRARYCONTROL_H */

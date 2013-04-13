@@ -20,7 +20,14 @@
 
 #include <stdint.h>
 
-#include "daemon_control.h"
+#ifdef COMPILING_NBNS
+# ifndef COMPILING_DAEMON
+#  define COMPILING_DAEMON 1
+# endif
+#endif
+
+#ifdef COMPILING_DAEMON
+# include "daemon_control.h"
 
 uint32_t init_default_nbns(void) {
   /* FORRELEASE: This has to be changed, somehow. */
@@ -31,6 +38,9 @@ uint32_t init_default_nbns(void) {
 
   return nbworks__default_nbns;
 }
+#else
+# include "library_control.h"
+#endif
 
 uint32_t get_inaddr(void) {
   // FORRELEASE: stub
