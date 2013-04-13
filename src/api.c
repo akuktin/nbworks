@@ -605,7 +605,7 @@ int nbworks_poll(unsigned char service,
   }
 
   switch (service) {
-  case DTG_SRVC:
+  case NBWORKS_DTG_SRVC:
     sleeptime.tv_sec = 0;
     sleeptime.tv_nsec = T_12MS;
 
@@ -701,7 +701,7 @@ int nbworks_poll(unsigned char service,
     return ret_val;
 
 
-  case SES_SRVC:
+  case NBWORKS_SES_SRVC:
     pfd = malloc(numof_pfd * sizeof(struct pollfd));
     if (! pfd) {
       nbworks_errno = ENOBUFS;
@@ -768,7 +768,7 @@ ssize_t nbworks_sendto(unsigned char service,
   }
 
   switch (service) {
-  case DTG_SRVC:
+  case NBWORKS_DTG_SRVC:
     /* FEATURE_REQUEST: for now, we only support sending
                         via the multiplexing daemon */
     if (! ses->handle) {
@@ -801,7 +801,7 @@ ssize_t nbworks_sendto(unsigned char service,
     } else
       return ret_val;
 
-  case SES_SRVC:
+  case NBWORKS_SES_SRVC:
 #define handle_cancel				\
     if (ses->cancel_send) {			\
       ses->cancel_send = 0;			\
@@ -1047,7 +1047,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
   }
 
   switch (service) {
-  case DTG_SRVC:
+  case NBWORKS_DTG_SRVC:
     if (! ses->handle) {
       nbworks_errno = EINVAL;
       return -1;
@@ -1121,7 +1121,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 
     return ret_val;
 
-  case SES_SRVC:
+  case NBWORKS_SES_SRVC:
 #define handle_cancel				\
     if (ses->cancel_recv) {			\
       ses->cancel_recv = 0;			\

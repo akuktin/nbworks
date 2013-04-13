@@ -25,6 +25,10 @@
 # define NBWORKS_NBNAME_LEN 16
 # define NBWORKS_CODED_NBNAME_LEN 32
 
+# define NBWORKS_NAME_SRVC 1
+# define NBWORKS_DTG_SRVC  0
+# define NBWORKS_SES_SRVC  2
+
 struct nbnodename_list {
   unsigned char *name;
   unsigned char len; /* Not int because the field is
