@@ -277,7 +277,7 @@ void *handle_rail(void *args) {
 	  break;
 	}
 	name_ptr = cache_namecard->name;
-	ipv4 = my_ip4_address;
+	ipv4 = nbworks__myip4addr;
 	name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
 			       scope, ipv4, node_type, FALSE);
 
@@ -714,7 +714,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	/* Tell the world (actually optional for B nodes). */
 	(refresh_ttl = name_srvc_add_name(node_type, namedata->name,
 					  namedata->name_type, namedata->scope,
-					  my_ip4_address, namedata->ttl))) {
+					  nbworks__myip4addr, namedata->ttl))) {
       if (! grp_namecard->grp_token) {
 	grp_namecard->grp_token = make_token();
       }
@@ -741,7 +741,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	if (! new_addr) {
 	  return 0;
 	}
-	new_addr->ip_addr = my_ip4_address;
+	new_addr->ip_addr = nbworks__myip4addr;
 	new_addr->next = 0;
 
 	while (0xd0) {
@@ -768,7 +768,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     cache_namecard->node_types = node_type;
 
     if ((refresh_ttl = name_srvc_add_name(node_type, namedata->name, namedata->name_type,
-					  namedata->scope, my_ip4_address, namedata->ttl))) {
+					  namedata->scope, nbworks__myip4addr, namedata->ttl))) {
       if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
 	     add_name(cache_namecard, namedata->scope))) {
 	destroy_namecard(cache_namecard);
@@ -784,7 +784,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	cleanup;
 	return 0;
       }
-      cache_namecard->addrs.recrd[0].addr->ip_addr = my_ip4_address;
+      cache_namecard->addrs.recrd[0].addr->ip_addr = nbworks__myip4addr;
       cache_namecard->timeof_death = time(0) + namedata->ttl;
       if (node_type & (CACHE_NODEGRPFLG_P | CACHE_NODEFLG_P))
 	cache_namecard->refresh_ttl = refresh_ttl;

@@ -38,6 +38,7 @@
 #include "dtg_srvc_pckt.h"
 #include "dtg_srvc_cnst.h"
 #include "rail-flush.h"
+#include "portability.h"
 
 
 void nbworks_libinit(void) {
@@ -56,6 +57,8 @@ void nbworks_libinit(void) {
   /* It's a little sad to write an algorithm that can
    * handle hell and heaven and then cripple it like this. */
   nbworks_libcntl.dtg_max_wholefrag_len = MAX_DATAGRAM_LENGTH;
+
+  init_my_ip4_address();
 }
 
 

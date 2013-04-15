@@ -2975,7 +2975,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	if (cache_namecard) {
 	  /* In NBNS mode, sender_is_nbns == FALSE. */
 	  if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard,
-				       my_ip4_address, sender_is_nbns)) {
+				       nbworks__myip4addr, sender_is_nbns)) {
 	    cache_namecard->grp_token = 0;
 	  }
 

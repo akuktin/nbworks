@@ -1125,7 +1125,7 @@ void *ss__udp_recver(void *sckts_ptr) {
   discard_addr.sin_family = AF_INET;
   /* VAXism below. */
   fill_16field(137, (unsigned char *)&(discard_addr.sin_port));
-  fill_32field(my_ip4_address,
+  fill_32field(nbworks__myip4addr,
 	       (unsigned char *)&(discard_addr.sin_addr.s_addr));
 
   polldata.fd = sckts.udp_sckt;
@@ -1515,7 +1515,7 @@ void *ss__port139(void *args) {
   port_addr.sin_family = AF_INET;
   /* VAXism below */
   fill_16field(139, (unsigned char *)&(port_addr.sin_port));
-  fill_32field(my_ip4_address, (unsigned char *)&(port_addr.sin_addr.s_addr));
+  fill_32field(nbworks__myip4addr, (unsigned char *)&(port_addr.sin_addr.s_addr));
 
   params.isbusy = 0; /* This is 0 on purpose. */
 

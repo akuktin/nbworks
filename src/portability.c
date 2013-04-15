@@ -49,10 +49,12 @@ ipv4_addr_t init_brdcts_addr(void) {
 }
 #endif
 
-ipv4_addr_t my_ipv4_address(void) {
+ipv4_addr_t init_my_ip4_address(void) {
   // FORRELEASE: stub
-  //        192.168.1.8/24
-  return 0xc0a80108;
+  //        192.168.1.2/24
+
+  nbworks__myip4addr = 0xc0a80102;
+  return nbworks__myip4addr;
 }
 
 /* return: 0 = success; !0 = !success */

@@ -41,7 +41,7 @@ ipv4_addr_t
   init_brdcts_addr(void);
 # endif
 ipv4_addr_t
-  my_ipv4_address(void);
+  init_my_ip4_address(void);
 int
   set_sockoption(int socket,
                  unsigned int what);

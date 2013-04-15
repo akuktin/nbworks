@@ -131,7 +131,7 @@ void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt) {
     packet->error_code = DTG_ERR_DSTNAM_NOTHERE;
 
     packet->src_port = 138; /_* >< *_/
-    packet->src_address = my_ip4_address;
+    packet->src_address = nbworks__myip4addr;
 
     /_* This will occationally produce some weird effects. *_/
     packet->flags = (packet->flags & DTG_NODE_TYPE_MASK) | DTG_FIRST_FLAG;

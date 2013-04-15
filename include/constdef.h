@@ -139,6 +139,6 @@ extern nbworks_do_align_t nbworks_do_align;
 typedef uint64_t token_t;
 typedef uint32_t ipv4_addr_t;
 
-extern ipv4_addr_t my_ip4_address;
+extern ipv4_addr_t nbworks__myip4addr;
 
 #endif /* NBWORKS_CONSTDEF_H */

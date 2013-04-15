@@ -41,7 +41,7 @@ nbworks_do_align_t nbworks_do_align = 0;
 #endif
 
 ipv4_addr_t brdcst_addr;
-ipv4_addr_t my_ip4_address;
+ipv4_addr_t nbworks__myip4addr;
 
 struct nbworks_all_port_cntl_t nbworks_all_port_cntl;
 struct nbworks__rail_control_t nbworks__rail_control;

@@ -31,6 +31,6 @@ nbworks_do_align_t nbworks_do_align = 1;
 nbworks_do_align_t nbworks_do_align = 0;
 #endif
 
-ipv4_addr_t my_ip4_address;
+ipv4_addr_t nbworks__myip4addr;
 
 struct nbworks_libcntl_t nbworks_libcntl;
