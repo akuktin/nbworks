@@ -83,6 +83,7 @@ struct nbworks_pollfd {
 void
   nbworks_libinit(void);
 
+/* BEGIN auxiliary API */
 unsigned char *
   nbworks_make_nbnodename(const unsigned char *string,
                           const unsigned char type_char,
@@ -97,7 +98,10 @@ int
                          struct nbworks_nbnamelst *name_two);
 unsigned int
   nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename);
+/* END auxiliatry API */
 
+/* BEGIN base API */
+/* BEGIN core API */
 nbworks_namestate_p
   nbworks_regname(unsigned char *name,
                   unsigned char name_type,
@@ -165,10 +169,12 @@ int
 void
   nbworks_hangup_ses(nbworks_session_p ses);
 # define nbworks_destroy_ses(a) nbworks_hangup_ses(a)
+/* END core API */
 
 unsigned long
   nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
                       unsigned long ten);
+/* END base API */
 
 
 #endif /* NBWORKS_NBWORKS_H */
