@@ -217,7 +217,7 @@ struct cache_namenode *add_nblabel(void *label,
     return 0;
   }
 
-  result->name = calloc(1, labellen +1);
+  result->name = malloc(labellen +1);
   if (! result->name) {
     /* TODO: errno signaling stuff */
     free(result);
@@ -225,6 +225,7 @@ struct cache_namenode *add_nblabel(void *label,
   }
 
   memcpy(result->name, label, labellen);
+  result->name[labellen] = 0;
 
   memcpy(&(result->addrs), addrblock, sizeof(struct addrlst_cardblock));
 
@@ -405,7 +406,7 @@ struct cache_namenode *alloc_namecard(void *label,
     return 0;
   }
 
-  result->name = calloc(1, labellen +1);
+  result->name = malloc(labellen +1);
   if (! result->name) {
     /* TODO: errno signaling stuff */
     free(result);
@@ -413,6 +414,7 @@ struct cache_namenode *alloc_namecard(void *label,
   }
 
   memcpy(result->name, label, labellen);
+  result->name[labellen] = 0;
   result->namelen = labellen;
   result->node_types = node_types;
   result->unq_isinconflict = FALSE;

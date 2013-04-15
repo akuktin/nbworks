@@ -192,13 +192,14 @@ struct nbworks_nbnamelst *nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbn
     while (1) {
       clone->len = original->len;
       if (original->name) {
-        clone->name = malloc(clone->len);
+        clone->name = malloc(clone->len +1);
         if (! clone->name) {
 	  /* TODO: errno signaling stuff */
 	  nbworks_dstr_nbnodename(first_clone);
 	  return 0;
         }
         memcpy(clone->name, original->name, clone->len);
+	clone->name[clone->len] = 0;
       } else {
         clone->name = 0;
       }
@@ -289,7 +290,7 @@ struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
     len = strlen(buff);
   result->len = len;
 
-  result->name = malloc(len);
+  result->name = malloc(len+1);
   if (! result->name) {
     if (! field)
       free(result);
@@ -298,6 +299,7 @@ struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
   }
 
   memcpy(result->name, buff, len);
+  result->name[len] = 0;
 
   return result;
 }
