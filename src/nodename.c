@@ -138,7 +138,7 @@ unsigned char *nbworks_make_nbnodename(const unsigned char *string,
   }
 
   len = strlen((char *)string);
-  if (len >= NETBIOS_NAME_LEN) {
+  if (len > NETBIOS_NAME_LEN) {
     nbworks_errno = EINVAL;
     return 0;
   }
@@ -264,7 +264,7 @@ unsigned int nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename) {
 
 struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
 					      struct nbworks_nbnamelst *field,
-					      unsigned long len) {
+					      unsigned long lenof_string) {
   struct nbworks_nbnamelst *result;
 
   if (! buff) {
@@ -339,4 +339,51 @@ unsigned long nbworks_nbname2buff(char **destination,
   *walker = 0;
 
   return len;
+}
+
+
+struct nbworks_nbnamelst *nbworks_makescope(char *buff) {
+  struct nbworks_nbnamelst **result, *first, *cur;
+  unsigned long name_len;
+  char *walker, *point;
+
+  if (! buff) {
+    nbworks_errno = EINVAL;
+    return 0;
+  } else
+    nbworks_errno = 0;
+
+  result = &first;
+
+  walker = buff;
+  while (*walker) {
+    point = strchrnul(walker, '.');
+    name_len = point - walker;
+
+    *result = malloc(sizeof(struct nbworks_nbnamelst));
+    if (! *result) {
+      nbworks_dstr_nbnodename(first);
+      nbworks_errno = ENOMEM;
+      return 0;
+    }
+    cur = *result;
+    result = &(result->next_name);
+
+    cur->len = name_len;
+    cur->name = malloc(name_len +1);
+    if (! cur->name) {
+      *result = 0;
+      nbworks_dstr_nbnodename(first);
+      nbworks_errno = ENOMEM;
+      return 0;
+    }
+
+    memcpy(result->name, walker, name_len);
+    result->name[name_len] = 0;
+
+    walker = point;
+  }
+
+  *result = 0;
+  return first;
 }

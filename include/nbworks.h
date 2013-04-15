@@ -98,13 +98,16 @@ int
                          struct nbworks_nbnamelst *name_two);
 unsigned int
   nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename);
+
 struct nbworks_nbnamelst *
   nbworks_buff2nbname(char *buff,
                       struct nbworks_nbnamelst *field,
-                      unsigned long len);
+                      unsigned long lenof_string);
 unsigned long
   nbworks_nbname2buff(char **destination,
                       struct nbworks_nbnamelst *name);
+struct nbworks_nbnamelst *
+  nbworks_makescope(char *buff);
 
 unsigned long
   nbworks_maxdtglen(nbworks_namestate_p handle,
