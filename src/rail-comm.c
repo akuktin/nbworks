@@ -1702,7 +1702,7 @@ token_t make_token(void) {
 
   do {
     result = make_weakrandom();
-    result = result << (8*(sizeof(token_t)/2));
+    result = result << (8*(sizeof(uint64_t)/2));
     result = make_weakrandom() + result;
   } while (result < 2);
   return result;
