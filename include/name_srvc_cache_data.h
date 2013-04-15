@@ -69,7 +69,7 @@ struct addrlst_bigblock {
 };
 
 struct cache_scopenode {
-  struct nbnodename_list *scope;
+  struct nbworks_nbnamelst *scope;
   struct cache_namenode *names;
   ipv4_addr_t nbns_addr;
   struct cache_scopenode *next;

@@ -24,7 +24,7 @@ struct dtg_pckt_pyld_normal *
                             unsigned char src_type,
                             unsigned char *dst,
                             unsigned char dst_type,
-                            struct nbnodename_list *scope,
+                            struct nbworks_nbnamelst *scope,
                             void *payload,
                             uint16_t lenof_pyld,
                             uint16_t offset);

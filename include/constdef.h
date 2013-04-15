@@ -119,12 +119,14 @@
 #  undef align
 # endif
 
-typedef uint32_t nbworks_errno_t;
+# ifndef NBWORKS_NBWORKS_H
+typedef unsigned int nbworks_errno_t;
 extern nbworks_errno_t nbworks_errno;
-# define ADD_MEANINGFULL_ERRNO ONES
 
-typedef unsigned char nbworks_do_align_t;
+typedef unsigned int nbworks_do_align_t;
 extern nbworks_do_align_t nbworks_do_align;
+# endif
+# define ADD_MEANINGFULL_ERRNO ONES
 
 # define align_incr(base, ptr, incr) (nbworks_do_align ? \
                                       ((incr- ((ptr-base) %incr)) %incr) : 0)

@@ -22,52 +22,52 @@
 struct name_srvc_packet *
   name_srvc_make_name_reg_big(unsigned char *name,
                               unsigned char name_type,
-                              struct nbnodename_list *scope,
+                              struct nbworks_nbnamelst *scope,
                               uint32_t ttl,
                               ipv4_addr_t in_address,
                               unsigned char node_type);
 struct name_srvc_packet *
   name_srvc_make_name_reg_small(unsigned char *name,
                                unsigned char name_type,
-                               struct nbnodename_list *scope,
+                               struct nbworks_nbnamelst *scope,
                                uint32_t ttl,
                                ipv4_addr_t in_address,
                                unsigned char node_type);
 struct name_srvc_packet *
   name_srvc_make_name_qry_req(unsigned char *name,
                               unsigned char name_type,
-                              struct nbnodename_list *scope);
+                              struct nbworks_nbnamelst *scope);
 struct name_srvc_packet *
   name_srvc_make_name_qry_pos(unsigned char *name,
                               unsigned char name_type,
-                              struct nbnodename_list *scope,
+                              struct nbworks_nbnamelst *scope,
                               struct nbaddress_list *addresses,
                               unsigned int numof_addresses,
                               uint32_t ttl);
 struct name_srvc_packet *
   name_srvc_make_name_qry_neg(unsigned char *name,
                               unsigned char name_type,
-                              struct nbnodename_list *scope);
+                              struct nbworks_nbnamelst *scope);
 struct name_srvc_packet *
   name_srvc_make_name_qry_red(unsigned char *name,
                               unsigned char name_type,
-                              struct nbnodename_list *scope,
-                              struct nbnodename_list *namesrvr_name,
+                              struct nbworks_nbnamelst *scope,
+                              struct nbworks_nbnamelst *namesrvr_name,
                               struct nbaddress_list *namesrvr_addr,
                               uint32_t ttl);
 struct name_srvc_packet *
   name_srvc_make_stat_rfc1002_qry(unsigned char *name,
                                   unsigned char name_type,
-                                  struct nbnodename_list *scope);
+                                  struct nbworks_nbnamelst *scope);
 struct name_srvc_packet *
   name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
                                   unsigned char name_type,
-                                  struct nbnodename_list *scope,
+                                  struct nbworks_nbnamelst *scope,
                                   struct nbnodename_list_backbone *my_names_this_scope);
 struct name_srvc_packet *
   name_srvc_make_wack(unsigned char *name,
                       unsigned char name_type,
-                      struct nbnodename_list *scope,
+                      struct nbworks_nbnamelst *scope,
                       uint32_t ttl,
                       uint16_t nm_flags);
 

@@ -161,8 +161,8 @@ unsigned char *nbworks_make_nbnodename(const unsigned char *string,
 }
 
 
-void nbworks_dstr_nbnodename(struct nbnodename_list *nbnodename) {
-  struct nbnodename_list *next;
+void nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename) {
+  struct nbworks_nbnamelst *next;
 
   while (nbnodename) {
     next = nbnodename->next_name;
@@ -174,13 +174,13 @@ void nbworks_dstr_nbnodename(struct nbnodename_list *nbnodename) {
   return;
 }
 
-struct nbnodename_list *nbworks_clone_nbnodename(struct nbnodename_list *nbnodename) {
-  struct nbnodename_list *original, *clone, *first_clone;
+struct nbworks_nbnamelst *nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbnodename) {
+  struct nbworks_nbnamelst *original, *clone, *first_clone;
 
   original = nbnodename;
 
   if (original) {
-    clone = malloc(sizeof(struct nbnodename_list));
+    clone = malloc(sizeof(struct nbworks_nbnamelst));
     if (! clone) {
       /* TODO: errno signaling stuff */
       return 0;
@@ -204,7 +204,7 @@ struct nbnodename_list *nbworks_clone_nbnodename(struct nbnodename_list *nbnoden
       }
       if (original->next_name) {
 	original = original->next_name;
-	clone->next_name = malloc(sizeof(struct nbnodename_list));
+	clone->next_name = malloc(sizeof(struct nbworks_nbnamelst));
 	if (! clone->next_name) {
 	  /* TODO: errno signaling stuff */
 	  nbworks_dstr_nbnodename(first_clone);
@@ -222,8 +222,8 @@ struct nbnodename_list *nbworks_clone_nbnodename(struct nbnodename_list *nbnoden
 }
 
 /* return: 0=equal, 1=not equal, -1=error */
-int nbworks_cmp_nbnodename(struct nbnodename_list *name_one,
-			   struct nbnodename_list *name_two) {
+int nbworks_cmp_nbnodename(struct nbworks_nbnamelst *name_one,
+			   struct nbworks_nbnamelst *name_two) {
   while (name_one) {
     if (name_two) {
       if (name_one->len == name_two->len) {
@@ -244,8 +244,8 @@ int nbworks_cmp_nbnodename(struct nbnodename_list *name_one,
     return 0;
 }
 
-unsigned int nbworks_nbnodenamelen(struct nbnodename_list *nbnodename) {
-  struct nbnodename_list *cur_name;
+unsigned int nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename) {
+  struct nbworks_nbnamelst *cur_name;
   unsigned int result;
 
   cur_name = nbnodename;

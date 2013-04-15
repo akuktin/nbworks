@@ -24,13 +24,13 @@
 # include "service_sector.h"
 
 inline uint16_t
-  dtg_srvc_doesitmatch(struct nbnodename_list *target,
+  dtg_srvc_doesitmatch(struct nbworks_nbnamelst *target,
                        struct dtg_srvc_packet *shot);
-inline struct nbnodename_list *
+inline struct nbworks_nbnamelst *
   dtg_srvc_extract_dstname(struct dtg_srvc_packet *pckt);
-inline struct nbnodename_list *
+inline struct nbworks_nbnamelst *
   dtg_srvc_extract_srcname(struct dtg_srvc_packet *pckt);
-inline struct nbnodename_list *
+inline struct nbworks_nbnamelst *
   dtg_srvc_get_srcnam_recvpckt(struct dtg_srvc_recvpckt *pckt);
 
 /* void dtg_srvc_send_NOTHERE_error(struct ss_unif_pckt_list *pckt); */

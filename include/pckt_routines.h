@@ -35,8 +35,8 @@
 # define MAX_PACKET_POINTER 0x3fff
 
 struct state__readDNSlabels {
-  struct nbnodename_list *first_label;
-  struct nbnodename_list **cur_label;
+  struct nbworks_nbnamelst *first_label;
+  struct nbworks_nbnamelst **cur_label;
   unsigned int name_offset;
   unsigned int mystery_int;
   void *mystery_pointer;
@@ -58,7 +58,7 @@ inline unsigned char *fill_48field(uint64_t content,
                                    unsigned char *field);
 inline unsigned char *fill_64field(uint64_t content,
                                    unsigned char *field);
-struct nbnodename_list *
+struct nbworks_nbnamelst *
   read_all_DNS_labels(unsigned char **start_and_end_of_walk,
                       unsigned char *start_of_packet,
                       unsigned char *end_of_packet,
@@ -67,10 +67,10 @@ struct nbnodename_list *
                       unsigned char *startblock,
                       unsigned int lenof_startblock);
 unsigned char *
-  fill_all_DNS_labels(struct nbnodename_list *content,
+  fill_all_DNS_labels(struct nbworks_nbnamelst *content,
                       unsigned char *field,
                       unsigned char *endof_pckt,
-                      struct nbnodename_list **state);
+                      struct nbworks_nbnamelst **state);
 unsigned char *
   fastfrwd_all_DNS_labels(unsigned char **start_and_end_of_walk,
                           unsigned char *endof_pckt);

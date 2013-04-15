@@ -28,20 +28,20 @@
 void init_name_srvc_cache(void);
 
 struct cache_scopenode *
-  add_scope(struct nbnodename_list *scope,
+  add_scope(struct nbworks_nbnamelst *scope,
             struct cache_namenode *first_node,
             ipv4_addr_t nbns_addr);
 struct cache_scopenode *
-  find_scope(struct nbnodename_list *scope);
+  find_scope(struct nbworks_nbnamelst *scope);
 
 ipv4_addr_t
-  get_nbnsaddr(struct nbnodename_list *scope);
+  get_nbnsaddr(struct nbworks_nbnamelst *scope);
 void
   prune_scopes(time_t when);
 
 struct cache_namenode *
   add_name(struct cache_namenode *name,
-           struct nbnodename_list *scope);
+           struct nbworks_nbnamelst *scope);
 struct cache_namenode *
   add_nblabel(void *label,
               unsigned char labellen,
@@ -50,21 +50,21 @@ struct cache_namenode *
               uint16_t dns_type,
               uint16_t dns_class,
               struct addrlst_cardblock *addrblock,
-              struct nbnodename_list *scope);
+              struct nbworks_nbnamelst *scope);
 
 struct cache_namenode *
   find_name(struct cache_namenode *namecard,
-            struct nbnodename_list *scope);
+            struct nbworks_nbnamelst *scope);
 struct cache_namenode *
   find_nblabel(void *label,
                unsigned char labellen,
                unsigned short node_types,
                uint16_t dns_type,
                uint16_t dns_class,
-               struct nbnodename_list *scope);
+               struct nbworks_nbnamelst *scope);
 struct cache_namenode *
   find_namebytok(token_t token,
-                 struct nbnodename_list **scope);
+                 struct nbworks_nbnamelst **scope);
 struct cache_namenode *
   find_nextcard(struct cache_namenode *prevcard,
                 unsigned short node_types,

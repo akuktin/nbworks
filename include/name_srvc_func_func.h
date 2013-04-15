@@ -67,13 +67,13 @@ uint32_t
   name_srvc_add_name(unsigned short node_type,
                      unsigned char *name,
                      unsigned char name_type,
-                     struct nbnodename_list *scope,
+                     struct nbworks_nbnamelst *scope,
                      ipv4_addr_t my_ip_address,
                      uint32_t ttl);
 struct name_srvc_resource_lst *
   name_srvc_callout_name(unsigned char *name,
                          unsigned char name_type,
-                         struct nbnodename_list *scope,
+                         struct nbworks_nbnamelst *scope,
                          ipv4_addr_t ask_address,
                          ipv4_addr_t listen_address,
                          unsigned char name_flags,
@@ -81,14 +81,14 @@ struct name_srvc_resource_lst *
 struct cache_namenode *
   name_srvc_find_name(unsigned char *name,
                       unsigned char name_type,
-                      struct nbnodename_list *scope,
+                      struct nbworks_nbnamelst *scope,
                       unsigned short nodetype, /* Only one node type! */
                       unsigned char recursion);
 /* return: 0=success, >0=fail, <0=error */
 int
   name_srvc_release_name(unsigned char *name,
                          unsigned char name_type,
-                         struct nbnodename_list *scope,
+                         struct nbworks_nbnamelst *scope,
                          ipv4_addr_t my_ip_address,
                          unsigned char node_types,
                          unsigned char recursion);
@@ -97,13 +97,13 @@ void *
 
 uint32_t
   name_srvc_find_biggestwack(struct name_srvc_packet *outside_pckt,
-                             struct nbnodename_list *refname,
+                             struct nbworks_nbnamelst *refname,
                              uint16_t reftype,
                              uint16_t refclass,
                              uint32_t prev_best_ttl);
 void
   name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
-                    struct nbnodename_list *refname,
+                    struct nbworks_nbnamelst *refname,
                     uint16_t reftype,
                     uint16_t refclass,
                     void *tid);

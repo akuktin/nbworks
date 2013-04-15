@@ -48,8 +48,8 @@ enum ses_packet_payload_t {
 };
 
 struct ses_pckt_pyld_two_names {
-  struct nbnodename_list *called_name;
-  struct nbnodename_list *calling_name;
+  struct nbworks_nbnamelst *called_name;
+  struct nbworks_nbnamelst *calling_name;
 };
 
 struct ses_srvc_retarget_blob_rfc1002 {
@@ -92,11 +92,11 @@ struct ses_srvc_packet *
   master_ses_srvc_pckt_reader(void *packet,
 			      unsigned long len);
 /* Call with whole packet, len is total len of whole packet. */
-struct nbnodename_list *
+struct nbworks_nbnamelst *
   ses_srvc_get_calledname(void *packet,
                           unsigned long len);
 /* Call with whole packet, len is total len of whole packet. */
-struct nbnodename_list *
+struct nbworks_nbnamelst *
   ses_srvc_get_callingname(void *packet,
                            unsigned long len);
 void *

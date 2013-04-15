@@ -156,7 +156,7 @@ void *poll_rail(void *args) {
 
 void *handle_rail(void *args) {
   struct pollfd pfd;
-  struct nbnodename_list *scope;
+  struct nbworks_nbnamelst *scope;
   struct rail_params params, *release_lock;
   struct com_comm command;
   struct cache_namenode *cache_namecard;
@@ -344,7 +344,7 @@ void *handle_rail(void *args) {
       }
 
       nbworks_dstr_nbnodename(scope); /* This removes the copy of scope, type
-				  * (struct nbnodename_list *) that was used
+				  * (struct nbworks_nbnamelst *) that was used
 				  * in operation. */
       break;
 
@@ -1000,7 +1000,7 @@ int rail_add_dtg_server(int rail_sckt,
   struct ss_queue *trans;
   struct ss_queue_storage *queue;
   struct cache_namenode *namecard;
-  struct nbnodename_list *nbname;
+  struct nbworks_nbnamelst *nbname;
   struct rail_list *new_rail, *cur_rail, **last_rail;
   struct dtg_srv_params params;
   union trans_id tid;
@@ -1017,7 +1017,7 @@ int rail_add_dtg_server(int rail_sckt,
   new_rail->rail_sckt = rail_sckt;
   new_rail->next = 0;
 
-  nbname = malloc(sizeof(struct nbnodename_list));
+  nbname = malloc(sizeof(struct nbworks_nbnamelst));
   if (! nbname) {
     free(new_rail);
     return -1;
@@ -1114,7 +1114,7 @@ int rail_add_dtg_server(int rail_sckt,
 void *dtg_server(void *arg) {
   struct dtg_srv_params *params;
   struct thread_node *last_will;
-  struct nbnodename_list *nbname;
+  struct nbworks_nbnamelst *nbname;
   struct ss_queue *trans;
   struct ss_queue_storage *queue;
   struct dtg_srvc_recvpckt *pckt;
@@ -1234,7 +1234,7 @@ void *dtg_server(void *arg) {
 int rail_add_ses_server(int rail_sckt,
 			struct com_comm *command) {
   struct cache_namenode *namecard;
-  struct nbnodename_list nbname;
+  struct nbworks_nbnamelst nbname;
   token_t token;
   time_t cur_time;
 
@@ -1601,7 +1601,7 @@ void *tunnel_stream_sockets(void *arg) {
 ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 			  struct com_comm *command) {
   struct cache_namenode *namecard;
-  struct nbnodename_list *name;
+  struct nbworks_nbnamelst *name;
   int i;
   unsigned char node_type;
   unsigned char *buff, *walker;

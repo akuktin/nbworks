@@ -38,7 +38,7 @@ enum trans_status {
 
 union trans_id {
   uint16_t tid;
-  struct nbnodename_list *name_scope;
+  struct nbworks_nbnamelst *name_scope;
 };
 
 struct rail_list {
@@ -106,7 +106,7 @@ struct ss_tcp_sckts {
 };
 
 struct ses_srv_rails {
-  struct nbnodename_list *name;
+  struct nbworks_nbnamelst *name;
   int rail;
   struct ses_srv_rails *next;
 };
@@ -188,12 +188,12 @@ inline void
   ss__dstry_recv_queue(struct ss_queue *trans);
 
 struct ses_srv_rails *
-  ss__add_sessrv(struct nbnodename_list *name,
+  ss__add_sessrv(struct nbworks_nbnamelst *name,
                  int rail);
 struct ses_srv_rails *
-  ss__find_sessrv(struct nbnodename_list *name);
+  ss__find_sessrv(struct nbworks_nbnamelst *name);
 void
-  ss__del_sessrv(struct nbnodename_list *name);
+  ss__del_sessrv(struct nbworks_nbnamelst *name);
 
 struct ses_srv_sessions *
   ss__add_session(token_t token,

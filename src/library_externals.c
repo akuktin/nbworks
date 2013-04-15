@@ -20,8 +20,8 @@
 
 #include <stdint.h>
 
+#include "nbworks.h"
 #include "constdef.h"
-#include "library_control.h"
 
 nbworks_errno_t nbworks_errno;
 

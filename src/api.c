@@ -27,10 +27,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "constdef.h"
 #include "nbworks.h"
+#include "constdef.h"
 #include "nodename.h"
-#include "library_control.h"
 #include "library.h"
 #include "rail-comm.h"
 #include "pckt_routines.h"
@@ -64,7 +63,7 @@ void nbworks_libinit(void) {
 
 struct name_state *nbworks_regname(unsigned char *name,
 				   unsigned char name_type,
-				   struct nbnodename_list *scope,
+				   struct nbworks_nbnamelst *scope,
 				   unsigned char group_flg,
 				   unsigned char node_type, /* only one type */
 				   unsigned long ttl) {
@@ -143,7 +142,7 @@ struct name_state *nbworks_regname(unsigned char *name,
     nbworks_errno = ENOMEM;
     return 0;
   }
-  result->name = malloc(sizeof(struct nbnodename_list));
+  result->name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! result->name) {
     free(result);
     free(namedtbuff);
@@ -315,7 +314,7 @@ int nbworks_delname(struct name_state *handle) {
 /* returns: >0 = success, 0 = fail, <0 = error */
 int nbworks_listen_dtg(struct name_state *handle,
 		       unsigned char takes_field,
-		       struct nbnodename_list *listento) {
+		       struct nbworks_nbnamelst *listento) {
   struct com_comm command;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
@@ -415,7 +414,7 @@ int nbworks_listen_dtg(struct name_state *handle,
 /* returns: >0 = success, 0 = fail, <0 = error */
 int nbworks_listen_ses(struct name_state *handle,
 		       unsigned char takes_field,
-		       struct nbnodename_list *listento) {
+		       struct nbworks_nbnamelst *listento) {
   struct com_comm command;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
@@ -568,7 +567,7 @@ struct nbworks_session *nbworks_accept_ses(struct name_state *handle) {
 }
 
 struct nbworks_session *nbworks_sescall(struct name_state *handle,
-					struct nbnodename_list *dst,
+					struct nbworks_nbnamelst *dst,
 					unsigned char keepalive) {
   int this_is_a_socket;
 
@@ -742,8 +741,8 @@ ssize_t nbworks_sendto(unsigned char service,
 		       void *buff,
 		       size_t len,
 		       int callflags,
-		       struct nbnodename_list *dst) {
-  struct nbnodename_list *peer;
+		       struct nbworks_nbnamelst *dst) {
+  struct nbworks_nbnamelst *peer;
   struct ses_srvc_packet pckt;
   time_t start_time;
   ssize_t ret_val, sent, notsent;
@@ -1026,7 +1025,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 			 void **buff,
 			 size_t len,
 			 int callflags,
-			 struct nbnodename_list **src) {
+			 struct nbworks_nbnamelst **src) {
   struct timespec sleeptime;
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
@@ -1410,7 +1409,7 @@ void nbworks_hangup_ses(struct nbworks_session *ses) {
 }
 
 
-unsigned long nbworks_whatisaddrX(struct nbnodename_list *X,
+unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
 				  unsigned long len) {
   struct com_comm command;
   ipv4_addr_t result;

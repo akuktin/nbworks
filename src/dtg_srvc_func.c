@@ -32,9 +32,9 @@
 
 
 /* returns: >0=success, 0=fail */
-inline uint16_t dtg_srvc_doesitmatch(struct nbnodename_list *target,
+inline uint16_t dtg_srvc_doesitmatch(struct nbworks_nbnamelst *target,
 				     struct dtg_srvc_packet *shot) {
-  struct nbnodename_list *gun;
+  struct nbworks_nbnamelst *gun;
   struct dtg_pckt_pyld_normal *pyld;
 
   switch (shot->payload_t) {
@@ -57,7 +57,7 @@ inline uint16_t dtg_srvc_doesitmatch(struct nbnodename_list *target,
   return FALSE;
 }
 
-inline struct nbnodename_list *dtg_srvc_extract_dstname(struct dtg_srvc_packet *pckt) {
+inline struct nbworks_nbnamelst *dtg_srvc_extract_dstname(struct dtg_srvc_packet *pckt) {
   struct dtg_pckt_pyld_normal *pyld;
 
   switch (pckt->payload_t) {
@@ -73,7 +73,7 @@ inline struct nbnodename_list *dtg_srvc_extract_dstname(struct dtg_srvc_packet *
   }
 }
 
-inline struct nbnodename_list *dtg_srvc_extract_srcname(struct dtg_srvc_packet *pckt) {
+inline struct nbworks_nbnamelst *dtg_srvc_extract_srcname(struct dtg_srvc_packet *pckt) {
   struct dtg_pckt_pyld_normal *pyld;
 
   switch (pckt->payload_t) {
@@ -89,7 +89,7 @@ inline struct nbnodename_list *dtg_srvc_extract_srcname(struct dtg_srvc_packet *
   }
 }
 
-inline struct nbnodename_list *dtg_srvc_get_srcnam_recvpckt(struct dtg_srvc_recvpckt *pckt) {
+inline struct nbworks_nbnamelst *dtg_srvc_get_srcnam_recvpckt(struct dtg_srvc_recvpckt *pckt) {
   if (! pckt)
     return 0;
   else

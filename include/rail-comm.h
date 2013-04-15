@@ -63,7 +63,7 @@ struct com_comm {
 struct rail_name_data {
   unsigned char *name; /* whole name, the entire NETBIOS_NAME_LEN */
   unsigned char name_type;
-  struct nbnodename_list *scope;
+  struct nbworks_nbnamelst *scope;
   uint32_t ttl;
 };
 
@@ -91,7 +91,7 @@ struct stream_connector_args {
 struct dtg_srv_params {
   unsigned char isbusy;
   pthread_t thread_id;
-  struct nbnodename_list *nbname;
+  struct nbworks_nbnamelst *nbname;
   struct ss_queue_storage *queue;
 };
 

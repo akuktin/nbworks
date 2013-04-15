@@ -357,7 +357,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 				   struct name_srvc_resource *resource,
 				   unsigned char *start_of_packet,
 				   unsigned char *end_of_packet) {
-  struct nbnodename_list *nbnodename;
+  struct nbworks_nbnamelst *nbnodename;
   struct nbnodename_list_backbone *listof_names;
   struct name_srvc_statistics_rfc1002 *nbstat;
   unsigned char *weighted_companion_cube, *walker, num_names;
@@ -1148,7 +1148,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
 }
 
 struct name_srvc_question *name_srvc_make_qstn(unsigned char *label,
-					       struct nbnodename_list *scope,
+					       struct nbworks_nbnamelst *scope,
 					       uint16_t dns_type,
 					       uint16_t dns_class) {
   struct name_srvc_question *result;
@@ -1161,7 +1161,7 @@ struct name_srvc_question *name_srvc_make_qstn(unsigned char *label,
   if (! result) {
     return 0;
   }
-  result->name = malloc(sizeof(struct nbnodename_list));
+  result->name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! result->name) {
     free(result);
     return 0;
@@ -1189,7 +1189,7 @@ struct name_srvc_question *name_srvc_make_qstn(unsigned char *label,
 }
 
 struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
-					      struct nbnodename_list *scope,
+					      struct nbworks_nbnamelst *scope,
 					      uint16_t dns_type,
 					      uint16_t dns_class,
 					      uint32_t ttl,
@@ -1206,7 +1206,7 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
   if (! result) {
     return 0;
   }
-  result->name = malloc(sizeof(struct nbnodename_list));
+  result->name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! result->name) {
     free(result);
     return 0;
@@ -1444,7 +1444,7 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
   struct name_srvc_statistics_rfc1002 *stats;
   struct nbnodename_list_backbone *nbnodename_bckbone,
     *next_nbnodename_bckbone;
-  struct nbnodename_list *nbnodename;
+  struct nbworks_nbnamelst *nbnodename;
   struct nbaddress_list *addr_list, *next_addr_list;
 
   switch (res->rdata_t) {
@@ -1505,7 +1505,7 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
 
 /* Dont forget to fill in the transaction_id of the packet! */
 struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
-						struct nbnodename_list *scope,
+						struct nbworks_nbnamelst *scope,
 						uint32_t *total_lenof_nbaddrs,
 						unsigned int node_types) {
   struct name_srvc_packet *pckt;

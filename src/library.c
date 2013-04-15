@@ -29,10 +29,9 @@
 #include <poll.h>
 #include <errno.h>
 
-#include "constdef.h"
 #include "nbworks.h"
+#include "constdef.h"
 #include "nodename.h"
-#include "library_control.h"
 #include "library.h"
 #include "pckt_routines.h"
 #include "rail-comm.h"
@@ -132,7 +131,7 @@ void lib_destroy_allfragbckbone(struct dtg_frag_bckbone *frags) {
 }
 
 struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
-					     struct nbnodename_list *src,
+					     struct nbworks_nbnamelst *src,
 					     uint16_t offsetof_first,
 					     uint16_t lenof_first,
 					     void *first_data,
@@ -191,7 +190,7 @@ struct dtg_frag_bckbone *lib_add_fragbckbone(uint16_t id,
 }
 
 struct dtg_frag_bckbone *lib_find_fragbckbone(uint16_t id,
-					      struct nbnodename_list *src,
+					      struct nbworks_nbnamelst *src,
 					      struct dtg_frag_bckbone *frags) {
   struct dtg_frag_bckbone *cur_frag;
 
@@ -211,7 +210,7 @@ struct dtg_frag_bckbone *lib_find_fragbckbone(uint16_t id,
 }
 
 struct dtg_frag_bckbone *lib_take_fragbckbone(uint16_t id,
-					      struct nbnodename_list *src,
+					      struct nbworks_nbnamelst *src,
 					      struct dtg_frag_bckbone **frags) {
   struct dtg_frag_bckbone *cur_frag, **last_frag;
 
@@ -236,7 +235,7 @@ struct dtg_frag_bckbone *lib_take_fragbckbone(uint16_t id,
 }
 
 void lib_del_fragbckbone(uint16_t id,
-			 struct nbnodename_list *src,
+			 struct nbworks_nbnamelst *src,
 			 struct dtg_frag_bckbone **frags) {
   struct dtg_frag_bckbone *cur_frag, **last_frag;
 
@@ -317,7 +316,7 @@ void lib_prune_fragbckbone(struct dtg_frag_bckbone **frags,
 }
 
 struct dtg_frag_bckbone *lib_add_frag_tobone(uint16_t id,
-					     struct nbnodename_list *src,
+					     struct nbworks_nbnamelst *src,
 					     uint16_t offset,
 					     uint16_t len,
 					     void *data,
@@ -533,8 +532,8 @@ void *lib_assemble_frags(struct dtg_frag *frags,
 
 /* returns: TRUE (AKA 1) = YES, listens to,
             FALSE (AKA 0) = NO, doesn't listen to */
-unsigned int lib_doeslistento(struct nbnodename_list *query,
-			      struct nbnodename_list *answerlist) {
+unsigned int lib_doeslistento(struct nbworks_nbnamelst *query,
+			      struct nbworks_nbnamelst *answerlist) {
   int labellen;
   unsigned char *label;
 
@@ -809,7 +808,7 @@ void *lib_dtgserver(void *arg) {
   struct packet_cooked *toshow;
   struct dtg_srvc_packet *dtg;
   struct dtg_pckt_pyld_normal *nrml_pyld;
-  struct nbnodename_list decoded_nbnodename;
+  struct nbworks_nbnamelst decoded_nbnodename;
   time_t last_pruned, killtime;
   uint32_t len;
   unsigned char lenbuf[4], decoded_name[NETBIOS_NAME_LEN+1];
@@ -1076,8 +1075,8 @@ void *lib_dtgserver(void *arg) {
 
 #define SMALL_BUFF_LEN (SES_HEADER_LEN +4+2)
 int lib_open_session(struct name_state *handle,
-		     struct nbnodename_list *dst) {
-  struct nbnodename_list *name_id, *her; /* To vary names a bit. */
+		     struct nbworks_nbnamelst *dst) {
+  struct nbworks_nbnamelst *name_id, *her; /* To vary names a bit. */
   struct ses_srvc_packet pckt;
   struct ses_pckt_pyld_two_names twins;
   struct sockaddr_in addr;
@@ -1327,7 +1326,7 @@ int lib_open_session(struct name_state *handle,
 void *lib_ses_srv(void *arg) {
   struct pollfd pfd;
   struct name_state *handle;
-  struct nbnodename_list *caller, decoded_nbnodename;
+  struct nbworks_nbnamelst *caller, decoded_nbnodename;
   struct nbworks_session *new_ses;
   struct ses_srvc_packet pckt;
   struct com_comm command;
@@ -1615,7 +1614,7 @@ void *lib_caretaker(void *arg) {
 }
 
 struct nbworks_session *lib_make_session(int socket,
-					 struct nbnodename_list *peer,
+					 struct nbworks_nbnamelst *peer,
 					 struct name_state *handle,
 					 unsigned char keepalive) {
   struct nbworks_session *result;

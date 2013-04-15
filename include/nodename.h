@@ -31,16 +31,16 @@
 # define JOKER_NAME_CODED "CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 # ifndef NBWORKS_NBWORKS_H
-struct nbnodename_list {
+struct nbworks_nbnamelst {
   unsigned char *name;
   unsigned char len; /* Not int because the field is
                         6 bits wide in the packet. */
-  struct nbnodename_list *next_name;
+  struct nbworks_nbnamelst *next_name;
 };
 # endif
 
 struct nbnodename_list_backbone {
-  struct nbnodename_list *nbnodename;
+  struct nbworks_nbnamelst *nbnodename;
   uint16_t name_flags;
   struct nbnodename_list_backbone *next_nbnodename;
 };
@@ -58,14 +58,14 @@ unsigned char *
                           const unsigned char type_char,
                           unsigned char *field);
 void
-  nbworks_dstr_nbnodename(struct nbnodename_list *nbnodename);
-struct nbnodename_list *
-  nbworks_clone_nbnodename(struct nbnodename_list *nbnodename);
+  nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename);
+struct nbworks_nbnamelst *
+  nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbnodename);
 int
-  nbworks_cmp_nbnodename(struct nbnodename_list *name_one,
-                         struct nbnodename_list *name_two);
+  nbworks_cmp_nbnodename(struct nbworks_nbnamelst *name_one,
+                         struct nbworks_nbnamelst *name_two);
 unsigned int
-  nbworks_nbnodenamelen(struct nbnodename_list *nbnodename);
+  nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename);
 # endif
 
 

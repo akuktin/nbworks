@@ -20,11 +20,18 @@
 
 #include <stdint.h>
 
-#include "constdef.h"
+#ifdef COMPILING_NBNS
+# ifndef COMPILING_DAEMON
+#  define COMPILING_DAEMON 1
+# endif
+#endif
+
 #ifdef COMPILING_DAEMON
+# include "constdef.h"
 # include "daemon_control.h"
 #else
-# include "library_control.h"
+# include "nbworks.h"
+# include "constdef.h"
 #endif
 
 

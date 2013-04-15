@@ -623,7 +623,7 @@ inline void ss__dstry_recv_queue(struct ss_queue *trans) {
 }
 
 
-struct ses_srv_rails *ss__add_sessrv(struct nbnodename_list *name,
+struct ses_srv_rails *ss__add_sessrv(struct nbworks_nbnamelst *name,
 				     int rail) {
   struct ses_srv_rails *result, *cur_srv, **last_srv;
 
@@ -658,7 +658,7 @@ struct ses_srv_rails *ss__add_sessrv(struct nbnodename_list *name,
   }
 }
 
-struct ses_srv_rails *ss__find_sessrv(struct nbnodename_list *name) {
+struct ses_srv_rails *ss__find_sessrv(struct nbworks_nbnamelst *name) {
   struct ses_srv_rails *result;
 
   result = nbworks_all_session_srvrs;
@@ -672,7 +672,7 @@ struct ses_srv_rails *ss__find_sessrv(struct nbnodename_list *name) {
   return result;
 }
 
-void ss__del_sessrv(struct nbnodename_list *name) {
+void ss__del_sessrv(struct nbworks_nbnamelst *name) {
   struct ses_srv_rails *cur_srv, **last_srv;
 
   last_srv = &(nbworks_all_session_srvrs);
@@ -1092,7 +1092,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 #endif
   struct newtid_params params;
   struct pollfd polldata;
-  struct nbnodename_list *name_as_id;
+  struct nbworks_nbnamelst *name_as_id;
   socklen_t addr_len;
   int ret_val;
   uint32_t len;
@@ -1580,7 +1580,7 @@ void *take_incoming_session(void *arg) {
   struct ses_srvc_packet new_pckt;
   struct ss_tcp_sckts params, *release_lock;
   struct ses_srv_rails *servers;
-  struct nbnodename_list *called_name;
+  struct nbworks_nbnamelst *called_name;
   struct ses_srv_sessions *session;
   struct thread_node *last_will;
   token_t token;

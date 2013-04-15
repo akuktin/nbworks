@@ -32,12 +32,12 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
 						       unsigned char src_type,
 						       unsigned char *dst,
 						       unsigned char dst_type,
-						       struct nbnodename_list *scope,
+						       struct nbworks_nbnamelst *scope,
 						       void *payload,
 						       uint16_t lenof_pyld,
 						       uint16_t offset) {
   struct dtg_pckt_pyld_normal *result;
-  struct nbnodename_list *complete_src, *complete_dst;
+  struct nbworks_nbnamelst *complete_src, *complete_dst;
   long lenof_names;
   unsigned char *label_src, *label_dst;
 
@@ -54,7 +54,7 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
     return 0;
   }
 
-  complete_src = malloc(sizeof(struct nbnodename_list));
+  complete_src = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_src) {
     /* TODO: errno signaling stuff */
     free(label_dst);
@@ -62,7 +62,7 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
     return 0;
   }
 
-  complete_dst = malloc(sizeof(struct nbnodename_list));
+  complete_dst = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_dst) {
     /* TODO: errno signaling stuff */
     free(complete_src);

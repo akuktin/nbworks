@@ -64,8 +64,8 @@ enum dtg_packet_payload_t {
 struct dtg_pckt_pyld_normal {
   uint16_t len;
   uint16_t offset;
-  struct nbnodename_list *src_name;
-  struct nbnodename_list *dst_name;
+  struct nbworks_nbnamelst *src_name;
+  struct nbworks_nbnamelst *dst_name;
   void *payload;
   unsigned char do_del_pyldpyld;
   void *pyldpyld_delptr;
@@ -86,7 +86,7 @@ struct dtg_srvc_packet {
 
 struct dtg_srvc_recvpckt {
   unsigned char for_del;
-  struct nbnodename_list *dst;
+  struct nbworks_nbnamelst *dst;
   void *packetbuff;
   uint32_t len;
 };

@@ -44,7 +44,7 @@ void init_name_srvc_cache(void) {
 }
 
 
-struct cache_scopenode *add_scope(struct nbnodename_list *scope,
+struct cache_scopenode *add_scope(struct nbworks_nbnamelst *scope,
 				  struct cache_namenode *first_node,
 				  ipv4_addr_t nbns_addr) {
   struct cache_scopenode *result, *new_scope,
@@ -85,7 +85,7 @@ struct cache_scopenode *add_scope(struct nbnodename_list *scope,
   }
 }
 
-struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
+struct cache_scopenode *find_scope(struct nbworks_nbnamelst *scope) {
   struct cache_scopenode *result;
 
   result = nbworks_rootscope;
@@ -101,7 +101,7 @@ struct cache_scopenode *find_scope(struct nbnodename_list *scope) {
 }
 
 
-ipv4_addr_t get_nbnsaddr(struct nbnodename_list *scope) {
+ipv4_addr_t get_nbnsaddr(struct nbworks_nbnamelst *scope) {
   struct cache_scopenode *cur_scope;
 
   cur_scope = nbworks_rootscope;
@@ -158,7 +158,7 @@ void prune_scopes(time_t when) {
 /* MAYBE: make it discriminate between group and unique names. */
 /* returns: >0=succes, 0=fail (name exists), <0=error */
 struct cache_namenode *add_name(struct cache_namenode *name,
-				struct nbnodename_list *scope) {
+				struct nbworks_nbnamelst *scope) {
   struct cache_scopenode *my_scope;
   struct cache_namenode *cur_name, **last_name;
 
@@ -205,7 +205,7 @@ struct cache_namenode *add_nblabel(void *label,
 				   uint16_t dns_type,
 				   uint16_t dns_class,
 				   struct addrlst_cardblock *addrblock,
-				   struct nbnodename_list *scope) {
+				   struct nbworks_nbnamelst *scope) {
   struct cache_namenode *result;
 
   if (! label)
@@ -266,7 +266,7 @@ struct cache_namenode *add_nblabel(void *label,
 
 
 struct cache_namenode *find_name(struct cache_namenode *namecard,
-				 struct nbnodename_list *scope) {
+				 struct nbworks_nbnamelst *scope) {
   struct cache_scopenode *my_scope;
   struct cache_namenode *cur_name;
 
@@ -302,7 +302,7 @@ struct cache_namenode *find_nblabel(void *label,
 				    unsigned short node_types,
 				    uint16_t dns_type,
 				    uint16_t dns_class,
-				    struct nbnodename_list *scope) {
+				    struct nbworks_nbnamelst *scope) {
   struct cache_scopenode *my_scope;
   struct cache_namenode *cur_name;
 
@@ -333,7 +333,7 @@ struct cache_namenode *find_nblabel(void *label,
 }
 
 struct cache_namenode *find_namebytok(token_t token,
-				      struct nbnodename_list **ret_scope) {
+				      struct nbworks_nbnamelst **ret_scope) {
   struct cache_scopenode *scope;
   struct cache_namenode *result;
 

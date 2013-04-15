@@ -127,7 +127,7 @@ struct nbaddress_list {
 };
 
 struct name_srvc_question {
-  struct nbnodename_list *name;
+  struct nbworks_nbnamelst *name;
   uint16_t qtype;
   uint16_t qclass;
 };
@@ -159,7 +159,7 @@ struct name_srvc_statistics_rfc1002 {
 };
 
 struct name_srvc_resource {
-  struct nbnodename_list *name;
+  struct nbworks_nbnamelst *name;
   uint16_t rrtype;
   uint16_t rrclass;
   uint32_t ttl;
@@ -242,12 +242,12 @@ struct name_srvc_packet *
                        unsigned int adit);
 struct name_srvc_question *
   name_srvc_make_qstn(unsigned char *label,
-                      struct nbnodename_list *scope,
+                      struct nbworks_nbnamelst *scope,
                       uint16_t dns_type,
                       uint16_t dns_class);
 struct name_srvc_resource *
   name_srvc_make_res(unsigned char *label,
-                     struct nbnodename_list *scope,
+                     struct nbworks_nbnamelst *scope,
                      uint16_t dns_type,
                      uint16_t dns_class,
                      uint32_t ttl,
@@ -280,7 +280,7 @@ void
 /* Dont forget to fill in the transaction_id of the packet! */
 struct name_srvc_packet *
   name_srvc_timer_mkpckt(struct cache_namenode *namecard,
-                         struct nbnodename_list *scope,
+                         struct nbworks_nbnamelst *scope,
                          uint32_t *total_lenof_nbaddrs,
                          unsigned int node_types);
 

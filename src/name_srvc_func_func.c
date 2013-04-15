@@ -440,7 +440,7 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 uint32_t name_srvc_add_name(unsigned short node_type,
 			    unsigned char *name,
 			    unsigned char name_type,
-			    struct nbnodename_list *scope,
+			    struct nbworks_nbnamelst *scope,
 			    ipv4_addr_t my_ip_address,
 			    uint32_t ttl) {
   unsigned char group_flg;
@@ -480,14 +480,14 @@ uint32_t name_srvc_add_name(unsigned short node_type,
 
 struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      unsigned char name_type,
-						      struct nbnodename_list *scope,
+						      struct nbworks_nbnamelst *scope,
 						      ipv4_addr_t ask_address,
 						      ipv4_addr_t listen_address,
 						      unsigned char name_flags,
 						      unsigned char recursive) {
   struct sockaddr_in addr;
   struct name_srvc_resource_lst *res, **last_res;
-  struct nbnodename_list *authority;
+  struct nbworks_nbnamelst *authority;
   struct nbaddress_list *nbaddr_list;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outside_pckt;
@@ -668,7 +668,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 
 struct cache_namenode *name_srvc_find_name(unsigned char *name,
 					   unsigned char name_type,
-					   struct nbnodename_list *scope,
+					   struct nbworks_nbnamelst *scope,
 					   unsigned short nodetype, /* Only one node type! */
 					   unsigned char recursion) {
   struct name_srvc_resource_lst *res, *cur_res;
@@ -832,7 +832,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 /* return: 0=success, >0=fail, <0=error */
 int name_srvc_release_name(unsigned char *name,
 			   unsigned char name_type,
-			   struct nbnodename_list *scope,
+			   struct nbworks_nbnamelst *scope,
 			   ipv4_addr_t my_ip_address,
 			   unsigned char node_types,
 			   unsigned char recursion) {
@@ -840,7 +840,7 @@ int name_srvc_release_name(unsigned char *name,
   struct timespec *sleeptime;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outpckt;
-  struct nbnodename_list *probe;
+  struct nbworks_nbnamelst *probe;
   ipv4_addr_t listento;
   uint16_t type, class;
   unsigned int retry_count, i;
@@ -1120,7 +1120,7 @@ void *refresh_scopes(void *i_ignore_this) {
 
 
 uint32_t name_srvc_find_biggestwack(struct name_srvc_packet *outside_pckt,
-				    struct nbnodename_list *refname,
+				    struct nbworks_nbnamelst *refname,
 				    uint16_t reftype,
 				    uint16_t refclass,
 				    uint32_t prev_best_ttl) {
@@ -1145,7 +1145,7 @@ uint32_t name_srvc_find_biggestwack(struct name_srvc_packet *outside_pckt,
 }
 
 void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
-		       struct nbnodename_list *refname,
+		       struct nbworks_nbnamelst *refname,
 		       uint16_t reftype,
 		       uint16_t refclass,
 		       void *tid) {
@@ -2230,7 +2230,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	    }
 	    numof_names++;
 
-	    names_list->nbnodename = malloc(sizeof(struct nbnodename_list));
+	    names_list->nbnodename = malloc(sizeof(struct nbworks_nbnamelst));
 	    names_list->nbnodename->name = encode_nbnodename(cache_namecard->name, 0);
 	    names_list->nbnodename->len = NETBIOS_CODED_NAME_LEN;
 	    names_list->nbnodename->next_name = 0;

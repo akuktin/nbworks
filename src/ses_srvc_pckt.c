@@ -379,7 +379,7 @@ struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
 }
 
 /* Call with whole packet, len is total len of whole packet. */
-struct nbnodename_list *ses_srvc_get_calledname(void *packet,
+struct nbworks_nbnamelst *ses_srvc_get_calledname(void *packet,
 						unsigned long len) {
   unsigned char *walker;
 
@@ -393,7 +393,7 @@ struct nbnodename_list *ses_srvc_get_calledname(void *packet,
 }
 
 /* Call with whole packet, len is total len of whole packet. */
-struct nbnodename_list *ses_srvc_get_callingname(void *packet_ptr,
+struct nbworks_nbnamelst *ses_srvc_get_callingname(void *packet_ptr,
 						 unsigned long len) {
   unsigned char *packet;
   unsigned char *walker;

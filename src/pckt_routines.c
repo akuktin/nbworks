@@ -147,7 +147,7 @@ inline unsigned char *fill_64field(uint64_t content,
   return field;
 }
 
-struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_walk,
+struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_walk,
 					    unsigned char *startof_packet,
 					    unsigned char *end_of_packet,
 					    uint32_t offsetof_start,
@@ -169,7 +169,7 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
     struct pointer_clip *next;
   } clip1, *clip_ptr, **clip_pptr;
 
-  struct nbnodename_list *label, *first_label, **cur_label;
+  struct nbworks_nbnamelst *label, *first_label, **cur_label;
   int name_len;
   uint32_t name_offset;
   unsigned char *walker, *weighted_companion_buf, *end;
@@ -278,7 +278,7 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
 	handle_abort;
       }
 
-      *cur_label = malloc(sizeof(struct nbnodename_list));
+      *cur_label = malloc(sizeof(struct nbworks_nbnamelst));
       label = *cur_label;
       if (! label) {
 	kill_yourself;
@@ -381,11 +381,11 @@ struct nbnodename_list *read_all_DNS_labels(unsigned char **start_and_end_of_wal
   return first_label;
 }
 
-unsigned char *fill_all_DNS_labels(struct nbnodename_list *content,
+unsigned char *fill_all_DNS_labels(struct nbworks_nbnamelst *content,
 				   unsigned char *walker,
 				   unsigned char *endof_pckt,
-				   struct nbnodename_list **state) {
-  struct nbnodename_list *iterator;
+				   struct nbworks_nbnamelst **state) {
+  struct nbworks_nbnamelst *iterator;
   unsigned char *field;
 
   /* I have to check if I can fit the terminating 0 into

@@ -35,18 +35,18 @@
 
 struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
 						     unsigned char name_type,
-						     struct nbnodename_list *scope,
+						     struct nbworks_nbnamelst *scope,
 						     uint32_t ttl,
 						     ipv4_addr_t in_address,
 						     unsigned char node_type) {
   struct name_srvc_packet *result;
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
   struct nbaddress_list *addr;
 
   if (! name)
     return 0;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -158,18 +158,18 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
 
 struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
 						       unsigned char name_type,
-						       struct nbnodename_list *scope,
+						       struct nbworks_nbnamelst *scope,
 						       uint32_t ttl,
 						       ipv4_addr_t in_address,
 						       unsigned char node_type) {
   struct name_srvc_packet *result;
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
   struct nbaddress_list *addr;
 
   if (! name)
     return 0;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -266,11 +266,11 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
 
 struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
 						     unsigned char name_type,
-						     struct nbnodename_list *scope) {
+						     struct nbworks_nbnamelst *scope) {
   struct name_srvc_packet *result;
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -311,14 +311,14 @@ struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
 
 struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
 						     unsigned char name_type,
-						     struct nbnodename_list *scope,
+						     struct nbworks_nbnamelst *scope,
 						     struct nbaddress_list *addresses,
 						     unsigned int numof_addresses,
 						     uint32_t ttl) {
   struct name_srvc_packet *result;
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -362,11 +362,11 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
 
 struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
 						     unsigned char name_type,
-						     struct nbnodename_list *scope) {
+						     struct nbworks_nbnamelst *scope) {
   struct name_srvc_packet *result;
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -409,14 +409,14 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
 
 struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
 						     unsigned char name_type,
-						     struct nbnodename_list *scope,
-						     struct nbnodename_list *namesrvr_name,
+						     struct nbworks_nbnamelst *scope,
+						     struct nbworks_nbnamelst *namesrvr_name,
 						     struct nbaddress_list *namesrvr_addr,
 						     uint32_t ttl) {
   struct name_srvc_packet *result;
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -480,11 +480,11 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
 
 struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
 							 unsigned char name_type,
-							 struct nbnodename_list *scope) {
+							 struct nbworks_nbnamelst *scope) {
   struct name_srvc_packet *result;
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -524,15 +524,15 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
 
 struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
 							 unsigned char name_type,
-							 struct nbnodename_list *scope,
+							 struct nbworks_nbnamelst *scope,
 							 struct nbnodename_list_backbone *my_names_this_scope) {
   struct name_srvc_packet *result;
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
   struct nbnodename_list_backbone *cur_names;
   struct name_srvc_statistics_rfc1002 *stats;
   uint32_t numof_names, lenof_names;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -607,10 +607,10 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
 
 struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
 					     unsigned char name_type,
-					     struct nbnodename_list *scope,
+					     struct nbworks_nbnamelst *scope,
 					     uint32_t ttl,
 					     uint16_t nm_flags) {
-  struct nbnodename_list *complete_name;
+  struct nbworks_nbnamelst *complete_name;
   struct name_srvc_packet *result;
   struct nbaddress_list *rdata;
 
@@ -623,7 +623,7 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
   rdata->next_address = 0;
   rdata->flags = nm_flags;
 
-  complete_name = malloc(sizeof(struct nbnodename_list));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     free(rdata);

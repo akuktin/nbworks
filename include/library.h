@@ -30,7 +30,7 @@
 struct packet_cooked {
   void *data;
   uint32_t len;
-  struct nbnodename_list *src;
+  struct nbworks_nbnamelst *src;
   struct packet_cooked *next;
 };
 
@@ -44,7 +44,7 @@ struct dtg_frag {
 struct dtg_frag_bckbone {
   uint16_t id;
   time_t last_active;
-  struct nbnodename_list *src;
+  struct nbworks_nbnamelst *src;
   struct dtg_frag *frags;
   unsigned char last_ishere;
   struct dtg_frag_bckbone *next;
@@ -53,13 +53,13 @@ struct dtg_frag_bckbone {
 struct name_state {
 /* identification */
   token_t token;
-  struct nbnodename_list *name;
-  struct nbnodename_list *scope;
+  struct nbworks_nbnamelst *name;
+  struct nbworks_nbnamelst *scope;
 
 /* datagram server */
   pthread_t dtg_srv_tid;
   int dtg_srv_sckt;
-  struct nbnodename_list *dtg_listento;
+  struct nbworks_nbnamelst *dtg_listento;
   unsigned char dtg_takes;  /* flag field */
   unsigned char dtg_srv_stop;
   struct dtg_frag_bckbone *dtg_frags;
@@ -69,7 +69,7 @@ struct name_state {
 /* session taker server */
   pthread_t ses_srv_tid;
   int ses_srv_sckt;
-  struct nbnodename_list *ses_listento;
+  struct nbworks_nbnamelst *ses_listento;
   unsigned char ses_takes;  /* flag field */
   unsigned char ses_srv_stop;
   struct nbworks_session *sesin_server;
@@ -87,7 +87,7 @@ struct name_state {
 };
 
 struct nbworks_session {
-  struct nbnodename_list *peer; /* name + scope */
+  struct nbworks_nbnamelst *peer; /* name + scope */
   struct name_state *handle;    /* pointer back to the whole name_handle */
   unsigned char cancel_send;
   unsigned char cancel_recv;
@@ -123,22 +123,22 @@ void
   lib_destroy_allfragbckbone(struct dtg_frag_bckbone *frags);
 struct dtg_frag_bckbone *
   lib_add_fragbckbone(uint16_t id,
-                      struct nbnodename_list *src,
+                      struct nbworks_nbnamelst *src,
                       uint16_t offsetof_first,
                       uint16_t lenof_first,
                       void *first_data,
                       struct dtg_frag_bckbone **frags);
 struct dtg_frag_bckbone *
   lib_find_fragbckbone(uint16_t id,
-                       struct nbnodename_list *src,
+                       struct nbworks_nbnamelst *src,
                        struct dtg_frag_bckbone *frags);
 struct dtg_frag_bckbone *
   lib_take_fragbckbone(uint16_t id,
-                       struct nbnodename_list *src,
+                       struct nbworks_nbnamelst *src,
                        struct dtg_frag_bckbone **frags);
 void
   lib_del_fragbckbone(uint16_t id,
-                      struct nbnodename_list *src,
+                      struct nbworks_nbnamelst *src,
                       struct dtg_frag_bckbone **frags);
 void
   lib_prune_fragbckbone(struct dtg_frag_bckbone **frags,
@@ -146,7 +146,7 @@ void
                         struct packet_cooked **anchor);
 struct dtg_frag_bckbone *
   lib_add_frag_tobone(uint16_t id,
-                      struct nbnodename_list *src,
+                      struct nbworks_nbnamelst *src,
                       uint16_t offset,
                       uint16_t len,
                       void *data,
@@ -161,8 +161,8 @@ void *
 /* returns: TRUE (AKA 1) = YES, listens to,
             FALSE (AKA 0) = NO, doesn't listen to */
 unsigned int
-  lib_doeslistento(struct nbnodename_list *query,
-                   struct nbnodename_list *answerlist);
+  lib_doeslistento(struct nbworks_nbnamelst *query,
+                   struct nbworks_nbnamelst *answerlist);
 
 ssize_t
   lib_senddtg_138(struct name_state *handle,
@@ -178,7 +178,7 @@ void *
 
 int
   lib_open_session(struct name_state *handle,
-                   struct nbnodename_list *dst);
+                   struct nbworks_nbnamelst *dst);
 
 void *
   lib_ses_srv(void *arg);
@@ -187,7 +187,7 @@ void *
   lib_caretaker(void *arg);
 struct nbworks_session *
   lib_make_session(int socket,
-                   struct nbnodename_list *caller,
+                   struct nbworks_nbnamelst *caller,
                    struct name_state *handle,
                    unsigned char keepalive);
 void
