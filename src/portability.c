@@ -112,7 +112,7 @@ ipv4_addr_t init_my_ip4_address(void) {
   } else {
     nbworks__myip4addr = 0;
   }
-    
+
   return nbworks__myip4addr;
 }
 #endif
