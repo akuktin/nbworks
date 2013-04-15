@@ -504,9 +504,11 @@ int nbworks_listen_ses(struct name_state *handle,
   return TRUE;
 }
 
-struct nbworks_session *nbworks_accept_ses(struct name_state *handle) {
+nbworks_session_p nbworks_accept_ses(struct name_state *namehandle) {
+  struct name_state *handle;
   struct nbworks_session *result, *clone;
 
+  handle = namehandle;
   if (! handle) {
     nbworks_errno = EINVAL;
     return 0;
@@ -566,9 +568,9 @@ struct nbworks_session *nbworks_accept_ses(struct name_state *handle) {
   }
 }
 
-struct nbworks_session *nbworks_sescall(struct name_state *handle,
-					struct nbworks_nbnamelst *dst,
-					unsigned char keepalive) {
+nbworks_session_p nbworks_sescall(struct name_state *handle,
+				  struct nbworks_nbnamelst *dst,
+				  unsigned char keepalive) {
   int this_is_a_socket;
 
   if (! (handle && dst)) {
@@ -596,6 +598,7 @@ int nbworks_poll(unsigned char service,
   struct pollfd *pfd;
   struct timespec sleeptime;
   struct packet_cooked *trgt;
+  struct nbworks_session *session;
   int i, count, ret_val;
 
   if ((! handles) ||
@@ -714,7 +717,8 @@ int nbworks_poll(unsigned char service,
     }
 
     for (i=0; i<numof_pfd; i++) {
-      pfd[i].fd = handles[i].session->socket;
+      session = handles[i].session;
+      pfd[i].fd = session->socket;
       pfd[i].events = handles[i].events;
     }
 
@@ -737,13 +741,14 @@ int nbworks_poll(unsigned char service,
 
 
 ssize_t nbworks_sendto(unsigned char service,
-		       struct nbworks_session *ses,
+		       nbworks_session_p sesp,
 		       void *buff,
 		       size_t len,
 		       int callflags,
 		       struct nbworks_nbnamelst *dst) {
   struct nbworks_nbnamelst *peer;
   struct ses_srvc_packet pckt;
+  struct nbworks_session *ses;
   time_t start_time;
   ssize_t ret_val, sent, notsent;
   int flags;
@@ -757,6 +762,7 @@ ssize_t nbworks_sendto(unsigned char service,
    *           as being sent.
    *           max(ssize_t) < max(size_t) */
 
+  ses = sesp;
   if ((! (ses && buff)) ||
       (len <= 0) ||
       (len >= (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
@@ -1021,7 +1027,7 @@ ssize_t nbworks_sendto(unsigned char service,
 }
 
 ssize_t nbworks_recvfrom(unsigned char service,
-			 struct nbworks_session *ses,
+			 nbworks_session_p sesp,
 			 void **buff,
 			 size_t len,
 			 int callflags,
@@ -1029,12 +1035,14 @@ ssize_t nbworks_recvfrom(unsigned char service,
   struct timespec sleeptime;
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
+  struct nbworks_session *ses;
   time_t start_time;
   ssize_t recved, notrecved, ret_val, torecv;
   size_t *hndllen_left, len_left;
   int flags;
   unsigned char hdrbuff[SES_HEADER_LEN], *walker;
 
+  ses = sesp;
   if ((! (ses && buff)) ||
       (len <= 0) ||
       (len >= (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
@@ -1364,12 +1372,16 @@ ssize_t nbworks_recvfrom(unsigned char service,
   }
 }
 
-void nbworks_cancel(struct nbworks_session *ses,
+void nbworks_cancel(nbworks_session_p sesp,
 		    unsigned char what) {
+  struct nbworks_session *ses;
+
+  ses = sesp;
   if (! (ses && what)) {
     nbworks_errno = EINVAL;
     return;
   } else {
+    ses = sesp;
     nbworks_errno = 0;
   }
 
@@ -1384,7 +1396,10 @@ void nbworks_cancel(struct nbworks_session *ses,
 }
 
 
-void nbworks_hangup_ses(struct nbworks_session *ses) {
+void nbworks_hangup_ses(nbworks_session_p sesp) {
+  struct nbworks_session *ses;
+
+  ses = sesp;
   if (! ses)
     return;
 

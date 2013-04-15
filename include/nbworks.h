@@ -55,7 +55,7 @@ extern nbworks_errno_t nbworks_errno;
 typedef unsigned int nbworks_do_align_t;
 extern nbworks_do_align_t nbworks_do_align;
 
-
+typedef void* nbworks_session_p;
 
 struct nbworks_nbnamelst {
   unsigned char *name;
@@ -66,7 +66,7 @@ struct nbworks_nbnamelst {
 
 struct nbworks_pollfd {
   struct name_state *handle;
-  struct nbworks_session *session;
+  nbworks_session_p session;
   short int events;
   short int revents;
 };
@@ -109,9 +109,9 @@ int
   nbworks_listen_ses(struct name_state *handle,
                      unsigned char takes_field,
                      struct nbworks_nbnamelst *listento);
-struct nbworks_session *
+nbworks_session_p
   nbworks_accept_ses(struct name_state *handle);
-struct nbworks_session *
+nbworks_session_p
   nbworks_sescall(struct name_state *handle,
                   struct nbworks_nbnamelst *dst,
                   unsigned char keepalive);
@@ -124,7 +124,7 @@ int
 
 ssize_t
   nbworks_sendto(unsigned char service,
-                 struct nbworks_session *ses,
+                 nbworks_session_p ses,
                  void *buff,
                  size_t len,
                  int flags,
@@ -132,18 +132,18 @@ ssize_t
 # define nbworks_send(a, b, c, d, e) nbworks_sendto(a, b, c, d, e, 0)
 ssize_t
   nbworks_recvfrom(unsigned char service,
-                   struct nbworks_session *ses,
+                   nbworks_session_p ses,
                    void **buff,
                    size_t len,
                    int callflags,
                    struct nbworks_nbnamelst **src);
 # define nbworks_recv(a, b, c, d, e) nbworks_recvfrom(a, b, c, d, e, 0)
 void
-  nbworks_cancel(struct nbworks_session *ses,
+  nbworks_cancel(nbworks_session_p ses,
                  unsigned char what);
 
 void
-  nbworks_hangup_ses(struct nbworks_session *ses);
+  nbworks_hangup_ses(nbworks_session_p ses);
 # define nbworks_destroy_ses(a) nbworks_hangup_ses(a)
 
 unsigned long
