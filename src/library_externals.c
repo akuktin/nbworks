@@ -18,8 +18,6 @@
 
 #include "c_lang_extensions.h"
 
-#include <stdint.h>
-
 #include "nbworks.h"
 #include "constdef.h"
 
