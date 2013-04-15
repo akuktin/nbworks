@@ -67,7 +67,7 @@ typedef void* nbworks_session_p;
 typedef void* nbworks_namestate_p;
 
 struct nbworks_nbnamelst {
-  unsigned char *name;
+  unsigned char *name; /* Does not include the tramp stamp. */
   unsigned char len; /* Not int because the field is
                         6 bits wide in the packet. */
   struct nbworks_nbnamelst *next_name;

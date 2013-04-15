@@ -125,7 +125,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     nbworks_errno = ENOMEM;
     return 0;
   }
-  result->name->name = malloc(NETBIOS_NAME_LEN+1);
+  result->name->name = malloc(NETBIOS_NAME_LEN);
   if (! result->name->name) {
     free(result->name);
     free(result);
@@ -139,10 +139,9 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     lenof_name = NETBIOS_NAME_LEN -1;
   memcpy(result->name->name, name, lenof_name);
   if (lenof_name < (NETBIOS_NAME_LEN-1))
-    memset((result->name->name+lenof_name), ' ', ((NETBIOS_NAME_LEN-1) - lenof_name));
+    memset((result->name->name+lenof_name), ' ',
+	   ((NETBIOS_NAME_LEN-1) - lenof_name));
   result->name->name[(NETBIOS_NAME_LEN-1)] = name_type;
-  /* Tramp stamp. */
-  result->name->name[NETBIOS_NAME_LEN] = 0;
 
   result->scope = nbworks_clone_nbnodename(scope);
   if ((! result->scope) &&
