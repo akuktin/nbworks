@@ -50,7 +50,7 @@ enum rail_commands {
  * ignored. */
 struct com_comm {
   unsigned char command;
-  uint64_t token;
+  token_t token;
   struct sockaddr_in addr; /* on wire: uint16_t port, uint32_t ip_addr */
   unsigned char node_type; /* one of {B, P, M, H, b, p, m, h},
                             * flags are used internally */
@@ -144,11 +144,11 @@ int
 /* returns: >0 = success, 0 = failed, <0 = error */
 int
   rail__send_ses_pending(int rail,
-                         uint64_t token);
+                         token_t token);
 /* returns: >0 = success, 0 = failed, <0 = error */
 int
   rail_setup_session(int rail,
-                     uint64_t token);
+                     token_t token);
 void *
   tunnel_stream_sockets(void *arg);
 
@@ -156,7 +156,7 @@ ipv4_addr_t
   rail_whatisaddrX(int rail_sckt,
                    struct com_comm *command);
 
-uint64_t
+token_t
   make_token(void);
 
 #endif /* NBWORKS_RAILCOMM_H */

@@ -112,7 +112,7 @@ struct ses_srv_rails {
 };
 
 struct ses_srv_sessions {
-  uint64_t token;
+  token_t token;
   int out_sckt;
   unsigned char *first_buff;
   unsigned int numof_passes;
@@ -196,15 +196,15 @@ void
   ss__del_sessrv(struct nbnodename_list *name);
 
 struct ses_srv_sessions *
-  ss__add_session(uint64_t token,
+  ss__add_session(token_t token,
                   int out_sckt,
                   unsigned char *first_buff);
 struct ses_srv_sessions *
-  ss__find_session(uint64_t token);
+  ss__find_session(token_t token);
 struct ses_srv_sessions *
-  ss__take_session(uint64_t token);
+  ss__take_session(token_t token);
 void
-  ss__del_session(uint64_t token,
+  ss__del_session(token_t token,
                   unsigned char close_sckt);
 void
   ss__prune_sessions(void);

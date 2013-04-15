@@ -52,7 +52,7 @@ struct dtg_frag_bckbone {
 
 struct name_state {
 /* identification */
-  uint64_t token;
+  token_t token;
   struct nbnodename_list *name;
   struct nbnodename_list *scope;
 

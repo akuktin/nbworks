@@ -46,7 +46,7 @@ struct cache_namenode *
   add_nblabel(void *label,
               unsigned char labellen,
               unsigned short node_types,
-              uint64_t token,
+              token_t token,
               uint16_t dns_type,
               uint16_t dns_class,
               struct addrlst_cardblock *addrblock,
@@ -63,7 +63,7 @@ struct cache_namenode *
                uint16_t dns_class,
                struct nbnodename_list *scope);
 struct cache_namenode *
-  find_namebytok(uint64_t token,
+  find_namebytok(token_t token,
                  struct nbnodename_list **scope);
 struct cache_namenode *
   find_nextcard(struct cache_namenode *prevcard,
@@ -75,7 +75,7 @@ struct cache_namenode *
   alloc_namecard(void *label,
                  unsigned char labellen,
                  unsigned short node_types,
-                 uint64_t token,
+                 token_t token,
                  uint16_t dns_type,
                  uint16_t dns_class);
 void
