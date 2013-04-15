@@ -1619,11 +1619,6 @@ struct nbworks_session *lib_make_session(int socket,
 					 unsigned char keepalive) {
   struct nbworks_session *result;
 
-  if (socket < 0) {
-    nbworks_errno = EINVAL;
-    return 0;
-  }
-
   result = malloc(sizeof(struct nbworks_session));
   if (! result) {
     return 0;

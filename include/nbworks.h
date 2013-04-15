@@ -34,18 +34,26 @@
 
 
 extern struct nbworks_libcntl_t {
+  /* Stop all datagram servers ASAP. */
   unsigned char stop_alldtg_srv;
+  /* Stop all session listeners ASAP. */
   unsigned char stop_allses_srv;
 
+  /* Latency for servers and listeners. */
   int dtg_srv_polltimeout;
   int ses_srv_polltimeout;
 
+  /* How many times to retry establishing a session. */
   unsigned int max_ses_retarget_retries;
+  /* Interval when sending NetBIOS keepalive packets. */
   time_t keepalive_interval;
 
+  /* Timeout when receiving or sending on sessions. */
   time_t close_timeout;
+  /* How long to keep dtg fragments around, waiting for the rest. */
   time_t dtg_frag_keeptime;
 
+  /* Maximum length of the WHOLE datagram packet, as sent to the UDP layer. */
   unsigned int dtg_max_wholefrag_len;
 } nbworks_libcntl;
 
@@ -100,6 +108,9 @@ nbworks_namestate_p
 int
   nbworks_delname(nbworks_namestate_p handle);
 
+nbworks_session_p
+  nbworks_castdtgsession(nbworks_namestate_p handle);
+
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   nbworks_listen_dtg(nbworks_namestate_p handle,
@@ -116,6 +127,9 @@ nbworks_session_p
   nbworks_sescall(nbworks_namestate_p handle,
                   struct nbworks_nbnamelst *dst,
                   unsigned char keepalive);
+nbworks_session_p
+  nbworks_dtgconnect(nbworks_session_p session,
+                     struct nbworks_nbnamelst *dst);
 
 int
   nbworks_poll(unsigned char service,

@@ -313,6 +313,18 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
 }
 
 
+nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle) {
+  if (! namehandle) {
+    nbworks_errno = EINVAL;
+    return 0;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  return lib_make_session(-1, 0, namehandle, FALSE);
+}
+
+
 /* returns: >0 = success, 0 = fail, <0 = error */
 int nbworks_listen_dtg(nbworks_namestate_p namehandle,
 		       unsigned char takes_field,
@@ -596,6 +608,26 @@ nbworks_session_p nbworks_sescall(nbworks_namestate_p namehandle,
   } else {
     return lib_make_session(this_is_a_socket, dst, handle, keepalive);
   }
+}
+
+nbworks_session_p nbworks_dtgconnect(nbworks_session_p session,
+				     struct nbworks_nbnamelst *dst) {
+  struct nbworks_session *ses;
+
+  ses = session;
+  if (! ses) {
+    nbworks_errno = EINVAL;
+    return 0;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  if (ses->peer)
+    nbworks_dstr_nbnodename(ses->peer);
+
+  ses->peer = nbworks_clone_nbnodename(dst);
+
+  return ses;
 }
 
 
