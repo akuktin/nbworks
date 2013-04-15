@@ -695,7 +695,7 @@ void ss__del_sessrv(struct nbnodename_list *name) {
 }
 
 
-struct ses_srv_sessions *ss__add_session(uint64_t token,
+struct ses_srv_sessions *ss__add_session(token_t token,
 					 int out_sckt,
 					 unsigned char *first_buff) {
   struct ses_srv_sessions *result, *cur_ses, **last_ses;
@@ -732,7 +732,7 @@ struct ses_srv_sessions *ss__add_session(uint64_t token,
   }
 }
 
-struct ses_srv_sessions *ss__find_session(uint64_t token) {
+struct ses_srv_sessions *ss__find_session(token_t token) {
   struct ses_srv_sessions *result;
 
   result = nbworks_all_sessions;
@@ -746,7 +746,7 @@ struct ses_srv_sessions *ss__find_session(uint64_t token) {
   return result;
 }
 
-struct ses_srv_sessions *ss__take_session(uint64_t token) {
+struct ses_srv_sessions *ss__take_session(token_t token) {
   struct ses_srv_sessions *cur_ses, **last_ses;
 
   last_ses = &(nbworks_all_sessions);
@@ -764,7 +764,7 @@ struct ses_srv_sessions *ss__take_session(uint64_t token) {
   return 0;
 }
 
-void ss__del_session(uint64_t token,
+void ss__del_session(token_t token,
 		     unsigned char close_sckt) {
   struct ses_srv_sessions *cur_ses, **last_ses;
 
@@ -1583,7 +1583,7 @@ void *take_incoming_session(void *arg) {
   struct nbnodename_list *called_name;
   struct ses_srv_sessions *session;
   struct thread_node *last_will;
-  uint64_t token;
+  token_t token;
   unsigned char buf[SES_HEADER_LEN+1]; /* +1 is for the error code */
   //  unsigned char decoded_name[NETBIOS_CODED_NAME_LEN+1];
   unsigned char err[] = { NEG_SESSION_RESPONSE, 0, 0, 1, SES_ERR_NOCALLED };

@@ -136,6 +136,7 @@ extern nbworks_do_align_t nbworks_do_align;
 
 # define MSG_BRDCAST MSG_PROXY /* Trying hard to be portable. */
 
+typedef uint64_t token_t;
 typedef uint32_t ipv4_addr_t;
 
 extern ipv4_addr_t my_ip4_address;

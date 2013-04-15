@@ -1004,7 +1004,7 @@ int rail_add_dtg_server(int rail_sckt,
   struct rail_list *new_rail, *cur_rail, **last_rail;
   struct dtg_srv_params params;
   union trans_id tid;
-  uint64_t token;
+  token_t token;
   time_t cur_time;
 
   if (! command)
@@ -1235,7 +1235,7 @@ int rail_add_ses_server(int rail_sckt,
 			struct com_comm *command) {
   struct cache_namenode *namecard;
   struct nbnodename_list nbname;
-  uint64_t token;
+  token_t token;
   time_t cur_time;
 
   if (! command)
@@ -1268,7 +1268,7 @@ int rail_add_ses_server(int rail_sckt,
 
 /* returns: >0 = success, 0 = failed, <0 = error */
 int rail__send_ses_pending(int rail,
-			   uint64_t token) {
+			   token_t token) {
   struct com_comm command;
   struct pollfd pfd;
   unsigned char wire_com[LEN_COMM_ONWIRE];
@@ -1294,7 +1294,7 @@ int rail__send_ses_pending(int rail,
 
 /* returns: >0 = success, 0 = failed, <0 = error */
 int rail_setup_session(int rail,
-		       uint64_t token) {
+		       token_t token) {
   struct ses_srv_sessions *session;
   struct ses_srvc_packet pckt;
   struct com_comm answer;
@@ -1697,12 +1697,12 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 }
 
 
-uint64_t make_token(void) {
-  uint64_t result;
+token_t make_token(void) {
+  token_t result;
 
   do {
     result = make_weakrandom();
-    result = result << (8*(sizeof(uint64_t)/2));
+    result = result << (8*(sizeof(token_t)/2));
     result = make_weakrandom() + result;
   } while (result < 2);
   return result;
