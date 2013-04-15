@@ -161,8 +161,7 @@ void
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   nbworks_haltsrv(unsigned int service,
-                  nbworks_namestate_p namehandle,
-                  unsigned int do_wait);
+                  nbworks_namestate_p namehandle);
 void
   nbworks_hangup_ses(nbworks_session_p ses);
 # define nbworks_destroy_ses(a) nbworks_hangup_ses(a)

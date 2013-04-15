@@ -62,7 +62,6 @@ struct name_state {
   struct nbworks_nbnamelst *dtg_listento;
   unsigned char dtg_takes;  /* flag field */
   unsigned char dtg_srv_stop;
-  unsigned char dtg_srv_isrunning;
   struct dtg_frag_bckbone *dtg_frags;
   struct packet_cooked *in_server;
   struct packet_cooked *in_library;
@@ -73,7 +72,6 @@ struct name_state {
   struct nbworks_nbnamelst *ses_listento;
   unsigned char ses_takes;  /* flag field */
   unsigned char ses_srv_stop;
-  unsigned char ses_srv_isrunning;
   struct nbworks_session *sesin_server;
   struct nbworks_session *sesin_library;
 

@@ -828,7 +828,6 @@ void *lib_dtgserver(void *arg) {
   pfd.events = POLLIN;
 
   handle->in_server = handle->in_library = 0;
-  handle->dtg_srv_isrunning = TRUE;
 
   decoded_nbnodename.name = decoded_name;
   decoded_nbnodename.len = NETBIOS_NAME_LEN;
@@ -1071,7 +1070,6 @@ void *lib_dtgserver(void *arg) {
   handle->dtg_srv_stop = TRUE;
   handle->in_server = 0;
 
-  handle->dtg_srv_isrunning = FALSE;
   return 0;
 }
 
@@ -1348,7 +1346,6 @@ void *lib_ses_srv(void *arg) {
   }
 
   handle->sesin_server = handle->sesin_library = 0;
-  handle->ses_srv_isrunning = TRUE;
 
   pfd.fd = handle->ses_srv_sckt;
   pfd.events = POLLIN;
@@ -1536,7 +1533,6 @@ void *lib_ses_srv(void *arg) {
   handle->ses_srv_stop = TRUE;
   handle->sesin_server = 0;
 
-  handle->ses_srv_isrunning = FALSE;
   return 0;
 }
 

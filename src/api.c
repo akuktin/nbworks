@@ -1441,8 +1441,7 @@ void nbworks_cancel(nbworks_session_p sesp,
 
 /* returns: >0 = success, 0 = fail, <0 = error */
 int nbworks_haltsrv(unsigned int service,
-		    nbworks_namestate_p namehandle,
-		    unsigned int do_wait) {
+		    nbworks_namestate_p namehandle) {
   struct name_state *handle;
 
   handle = namehandle;
@@ -1456,21 +1455,13 @@ int nbworks_haltsrv(unsigned int service,
   switch (service) {
   case NBWORKS_DTG_SRVC:
     handle->dtg_srv_stop = TRUE;
-    if (do_wait) {
-      while (handle->dtg_srv_isrunning) {
-	/* busy-wait */
-      }
-    }
+    pthread_join(handle->dtg_srv_tid, 0);
     handle->dtg_srv_tid = 0;
     break;
 
   case NBWORKS_SES_SRVC:
     handle->ses_srv_stop = TRUE;
-    if (do_wait) {
-      while (handle->ses_srv_isrunning) {
-	/* busy-wait */
-      }
-    }
+    pthread_join(handle->ses_srv_tid, 0);
     handle->ses_srv_tid = 0;
     break;
 
