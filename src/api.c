@@ -61,12 +61,12 @@ void nbworks_libinit(void) {
 }
 
 
-struct name_state *nbworks_regname(unsigned char *name,
-				   unsigned char name_type,
-				   struct nbworks_nbnamelst *scope,
-				   unsigned char group_flg,
-				   unsigned char node_type, /* only one type */
-				   unsigned long ttl) {
+nbworks_namestate_p nbworks_regname(unsigned char *name,
+				    unsigned char name_type,
+				    struct nbworks_nbnamelst *scope,
+				    unsigned char group_flg,
+				    unsigned char node_type, /* only one type */
+				    unsigned long ttl) {
   struct name_state *result;
   struct com_comm command;
   struct rail_name_data namedt;
@@ -247,11 +247,13 @@ struct name_state *nbworks_regname(unsigned char *name,
 }
 
 /* returns: >0 = success, 0 = fail, <0 = error */
-int nbworks_delname(struct name_state *handle) {
+int nbworks_delname(nbworks_namestate_p namehandle) {
   struct com_comm command;
+  struct name_state *handle;
   int daemon;
   unsigned char combuff[LEN_COMM_ONWIRE];
 
+  handle = namehandle;
   if (! handle) {
     nbworks_errno = EINVAL;
     return -1;
@@ -312,13 +314,15 @@ int nbworks_delname(struct name_state *handle) {
 
 
 /* returns: >0 = success, 0 = fail, <0 = error */
-int nbworks_listen_dtg(struct name_state *handle,
+int nbworks_listen_dtg(nbworks_namestate_p namehandle,
 		       unsigned char takes_field,
 		       struct nbworks_nbnamelst *listento) {
   struct com_comm command;
+  struct name_state *handle;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
 
+  handle = namehandle;
   if (! handle) {
     nbworks_errno = EINVAL;
     return -1;
@@ -412,13 +416,15 @@ int nbworks_listen_dtg(struct name_state *handle,
 }
 
 /* returns: >0 = success, 0 = fail, <0 = error */
-int nbworks_listen_ses(struct name_state *handle,
+int nbworks_listen_ses(nbworks_namestate_p namehandle,
 		       unsigned char takes_field,
 		       struct nbworks_nbnamelst *listento) {
   struct com_comm command;
+  struct name_state *handle;
   int daemon;
   unsigned char buff[LEN_COMM_ONWIRE];
 
+  handle = namehandle;
   if (! handle) {
     nbworks_errno = EINVAL;
     return -1;
@@ -504,7 +510,7 @@ int nbworks_listen_ses(struct name_state *handle,
   return TRUE;
 }
 
-nbworks_session_p nbworks_accept_ses(struct name_state *namehandle) {
+nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle) {
   struct name_state *handle;
   struct nbworks_session *result, *clone;
 
@@ -568,11 +574,13 @@ nbworks_session_p nbworks_accept_ses(struct name_state *namehandle) {
   }
 }
 
-nbworks_session_p nbworks_sescall(struct name_state *handle,
+nbworks_session_p nbworks_sescall(nbworks_namestate_p namehandle,
 				  struct nbworks_nbnamelst *dst,
 				  unsigned char keepalive) {
+  struct name_state *handle;
   int this_is_a_socket;
 
+  handle = namehandle;
   if (! (handle && dst)) {
     nbworks_errno = EINVAL;
     return 0;
@@ -599,6 +607,7 @@ int nbworks_poll(unsigned char service,
   struct timespec sleeptime;
   struct packet_cooked *trgt;
   struct nbworks_session *session;
+  struct name_state *nstate;
   int i, count, ret_val;
 
   if ((! handles) ||
@@ -616,7 +625,8 @@ int nbworks_poll(unsigned char service,
 
     ret_val = 0;
     for (i=0; i<numof_pfd; i++) {
-      trgt = handles[i].handle->in_library;
+      nstate = handles[i].handle;
+      trgt = nstate->in_library;
 
       /* If trgt[i].data is non-NULL, then this particular packet
        * has an unread payload and we do not need to check for the
@@ -649,7 +659,8 @@ int nbworks_poll(unsigned char service,
       while (0xce0) {
 
 	for (i=0; i<numof_pfd; i++) {
-	  trgt = handles[i].handle->in_library;
+	  nstate = handles[i].handle;
+	  trgt = nstate->in_library;
 
 	  /* Same as above. */
 	  if ((trgt->data) ? trgt :
@@ -677,7 +688,8 @@ int nbworks_poll(unsigned char service,
       for (count = timeout / 12; count > 0; count--) {
 
 	for (i=0; i<numof_pfd; i++) {
-	  trgt = handles[i].handle->in_library;
+	  nstate = handles[i].handle;
+	  trgt = nstate->in_library;
 
 	  /* Same as above. */
 	  if ((trgt->data) ? trgt :
@@ -1381,7 +1393,6 @@ void nbworks_cancel(nbworks_session_p sesp,
     nbworks_errno = EINVAL;
     return;
   } else {
-    ses = sesp;
     nbworks_errno = 0;
   }
 

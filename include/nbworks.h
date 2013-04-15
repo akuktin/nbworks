@@ -56,6 +56,7 @@ typedef unsigned int nbworks_do_align_t;
 extern nbworks_do_align_t nbworks_do_align;
 
 typedef void* nbworks_session_p;
+typedef void* nbworks_namestate_p;
 
 struct nbworks_nbnamelst {
   unsigned char *name;
@@ -65,7 +66,7 @@ struct nbworks_nbnamelst {
 };
 
 struct nbworks_pollfd {
-  struct name_state *handle;
+  nbworks_namestate_p handle;
   nbworks_session_p session;
   short int events;
   short int revents;
@@ -88,7 +89,7 @@ int
 unsigned int
   nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename);
 
-struct name_state *
+nbworks_namestate_p
   nbworks_regname(unsigned char *name,
                   unsigned char name_type,
                   struct nbworks_nbnamelst *scope,
@@ -97,22 +98,22 @@ struct name_state *
                   unsigned long ttl);
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
-  nbworks_delname(struct name_state *handle);
+  nbworks_delname(nbworks_namestate_p handle);
 
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
-  nbworks_listen_dtg(struct name_state *handle,
+  nbworks_listen_dtg(nbworks_namestate_p handle,
                      unsigned char takes_field,
                      struct nbworks_nbnamelst *listento);
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
-  nbworks_listen_ses(struct name_state *handle,
+  nbworks_listen_ses(nbworks_namestate_p handle,
                      unsigned char takes_field,
                      struct nbworks_nbnamelst *listento);
 nbworks_session_p
-  nbworks_accept_ses(struct name_state *handle);
+  nbworks_accept_ses(nbworks_namestate_p handle);
 nbworks_session_p
-  nbworks_sescall(struct name_state *handle,
+  nbworks_sescall(nbworks_namestate_p handle,
                   struct nbworks_nbnamelst *dst,
                   unsigned char keepalive);
 
