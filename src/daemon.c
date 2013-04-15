@@ -51,6 +51,7 @@ struct thread_cache *daemon_allstart(struct thread_cache *tcache) {
   init_service_sector();
   init_name_srvc_cache();
   init_default_nbns();
+  init_brdcts_addr();
 
   nbworks_pruners_cntrl.all_stop = 0;
   nbworks_pruners_cntrl.timeout.tv_sec = 0;
