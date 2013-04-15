@@ -91,6 +91,7 @@ void
   nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename);
 struct nbworks_nbnamelst *
   nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbnodename);
+/* returns: 0 = equal, >0 = not equal, <0 = error */
 int
   nbworks_cmp_nbnodename(struct nbworks_nbnamelst *name_one,
                          struct nbworks_nbnamelst *name_two);
@@ -157,6 +158,11 @@ void
   nbworks_cancel(nbworks_session_p ses,
                  unsigned char what);
 
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  nbworks_haltsrv(unsigned int service,
+                  nbworks_namestate_p namehandle,
+                  unsigned int do_wait);
 void
   nbworks_hangup_ses(nbworks_session_p ses);
 # define nbworks_destroy_ses(a) nbworks_hangup_ses(a)

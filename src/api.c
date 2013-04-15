@@ -1439,6 +1439,47 @@ void nbworks_cancel(nbworks_session_p sesp,
 }
 
 
+/* returns: >0 = success, 0 = fail, <0 = error */
+int nbworks_haltsrv(unsigned int service,
+		    nbworks_namestate_p namehandle,
+		    unsigned int do_wait) {
+  struct name_state *handle;
+
+  handle = namehandle;
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  switch (service) {
+  case NBWORKS_DTG_SRVC:
+    handle->dtg_srv_stop = TRUE;
+    if (do_wait) {
+      while (handle->dtg_srv_isrunning) {
+	/* busy-wait */
+      }
+    }
+    break;
+
+  case NBWORKS_SES_SRVC:
+    handle->ses_srv_stop = TRUE;
+    if (do_wait) {
+      while (handle->ses_srv_isrunning) {
+	/* busy-wait */
+      }
+    }
+    break;
+
+  default:
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  return 1;
+}
+
 void nbworks_hangup_ses(nbworks_session_p sesp) {
   struct nbworks_session *ses;
 
