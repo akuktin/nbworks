@@ -260,3 +260,83 @@ unsigned int nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename) {
 
   return result;
 }
+
+
+struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
+					      struct nbworks_nbnamelst *field,
+					      unsigned long len) {
+  struct nbworks_nbnamelst *result;
+
+  if (! buff) {
+    nbworks_errno = EINVAL;
+    return 0;
+  } else
+    nbworks_errno = 0;
+
+  if (field) {
+    result = field;
+  } else {
+    result = malloc(sizeof(struct nbworks_nbnamelst));
+    if (! result) {
+      nbworks_errno = ENOMEM;
+      return 0;
+    }
+  }
+
+  result->next_name = 0;
+
+  if (! len)
+    len = strlen(buff);
+  result->len = len;
+
+  result->name = malloc(len);
+  if (! result->name) {
+    if (! field)
+      free(result);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+
+  memcpy(result->name, buff, len);
+
+  return result;
+}
+
+unsigned long nbworks_nbname2buff(char **destination,
+				  struct nbworks_nbnamelst *name) {
+  char *result, *walker;
+  unsigned long len;
+
+  if (! (name && destination)) {
+    nbworks_errno = EINVAL;
+    return 0;
+  } else
+    nbworks_errno = 0;
+
+  len = nbworks_nbnodenamelen(name);
+  len--;
+
+  if (! (*destination)) {
+    *destination = malloc(len);
+    if (! *destination) {
+      nbworks_errno = ENOMEM;
+      return 0;
+    }
+  }
+
+  result = *destination;
+
+  walker = result;
+  while (0xe5) {
+    walker = mempcpy(walker, name->name, name->len);
+    name = name->next_name;
+    if (name)
+      *walker = '.';
+    else
+      break;
+  }
+
+  *walker = 0;
+
+  return len;
+}

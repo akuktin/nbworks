@@ -61,6 +61,31 @@ void nbworks_libinit(void) {
 }
 
 
+unsigned long nbworks_maxdtglen(nbworks_namestate_p handle,
+				unsigned int withfrag) {
+  struct name_state *name;
+  long result;
+
+  result = nbworks_libcntl.dtg_max_wholefrag_len -
+    (DTG_HDR_LEN + (2 + 2 + (2*(1+NETBIOS_CODED_NAME_LEN)))) -
+    (2*4); /* extra space for name alignment, if performed */
+
+  name = handle;
+  if (name)
+    result = result - (2*name->lenof_scope);
+  else
+    result = result - 2;
+
+  if (result > 0) {
+    if (withfrag)
+      result = result + 0xffff;
+
+    return result;
+  } else
+    return 0;
+}
+
+
 nbworks_namestate_p nbworks_regname(unsigned char *name,
 				    unsigned char name_type,
 				    struct nbworks_nbnamelst *scope,
@@ -109,7 +134,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   }
   result->name->next_name = 0;
   result->name->len = NETBIOS_NAME_LEN;
-  lenof_name = strlen(name);
+  lenof_name = strlen((char *)name);
   if (lenof_name > (NETBIOS_NAME_LEN -1))
     lenof_name = NETBIOS_NAME_LEN -1;
   memcpy(result->name->name, name, lenof_name);
