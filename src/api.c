@@ -1461,6 +1461,7 @@ int nbworks_haltsrv(unsigned int service,
 	/* busy-wait */
       }
     }
+    handle->dtg_srv_tid = 0;
     break;
 
   case NBWORKS_SES_SRVC:
@@ -1470,6 +1471,7 @@ int nbworks_haltsrv(unsigned int service,
 	/* busy-wait */
       }
     }
+    handle->ses_srv_tid = 0;
     break;
 
   default:
