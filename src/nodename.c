@@ -286,11 +286,11 @@ struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
 
   result->next_name = 0;
 
-  if (! len)
-    len = strlen(buff);
-  result->len = len;
+  if (! lenof_string)
+    lenof_string = strlen(buff);
+  result->len = lenof_string;
 
-  result->name = malloc(len+1);
+  result->name = malloc(lenof_string+1);
   if (! result->name) {
     if (! field)
       free(result);
@@ -298,8 +298,8 @@ struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
     return 0;
   }
 
-  memcpy(result->name, buff, len);
-  result->name[len] = 0;
+  memcpy(result->name, buff, lenof_string);
+  result->name[lenof_string] = 0;
 
   return result;
 }
@@ -369,7 +369,7 @@ struct nbworks_nbnamelst *nbworks_makescope(char *buff) {
       return 0;
     }
     cur = *result;
-    result = &(result->next_name);
+    result = &(cur->next_name);
 
     cur->len = name_len;
     cur->name = malloc(name_len +1);
@@ -380,8 +380,8 @@ struct nbworks_nbnamelst *nbworks_makescope(char *buff) {
       return 0;
     }
 
-    memcpy(result->name, walker, name_len);
-    result->name[name_len] = 0;
+    memcpy(cur->name, walker, name_len);
+    cur->name[name_len] = 0;
 
     walker = point;
   }

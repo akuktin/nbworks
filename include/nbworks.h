@@ -19,7 +19,6 @@
 #ifndef NBWORKS_NBWORKS_H
 # define NBWORKS_NBWORKS_H 1
 
-# include <time.h>
 # include <unistd.h>
 
 # define NBWORKS_CANCEL_SEND 1
@@ -46,12 +45,12 @@ extern struct nbworks_libcntl_t {
   /* How many times to retry establishing a session. */
   unsigned int max_ses_retarget_retries;
   /* Interval when sending NetBIOS keepalive packets. */
-  time_t keepalive_interval;
+  unsigned long keepalive_interval;
 
   /* Timeout when receiving or sending on sessions. */
-  time_t close_timeout;
+  unsigned long close_timeout;
   /* How long to keep dtg fragments around, waiting for the rest. */
-  time_t dtg_frag_keeptime;
+  unsigned long dtg_frag_keeptime;
 
   /* Maximum length of the WHOLE datagram packet, as sent to the UDP layer. */
   unsigned int dtg_max_wholefrag_len;
