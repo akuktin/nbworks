@@ -71,7 +71,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   struct com_comm command;
   struct rail_name_data namedt;
   int daemon;
-  unsigned int lenof_scope;
+  unsigned int lenof_scope, lenof_name;
   unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff;
 
   if ((! name) ||
@@ -86,6 +86,53 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   } else {
     nbworks_errno = 0;
   }
+
+  lenof_scope = nbworks_nbnodenamelen(scope);
+
+  result = calloc(1, sizeof(struct name_state));
+  if (! result) {
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+  result->name = malloc(sizeof(struct nbworks_nbnamelst));
+  if (! result->name) {
+    free(result);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+  result->name->name = malloc(NETBIOS_NAME_LEN+1);
+  if (! result->name->name) {
+    free(result->name);
+    free(result);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+  result->name->next_name = 0;
+  result->name->len = NETBIOS_NAME_LEN;
+  lenof_name = strlen(name);
+  if (lenof_name > (NETBIOS_NAME_LEN -1))
+    lenof_name = NETBIOS_NAME_LEN -1;
+  memcpy(result->name->name, name, lenof_name);
+  if (lenof_name < (NETBIOS_NAME_LEN-1))
+    memset((result->name->name+lenof_name), ' ', ((NETBIOS_NAME_LEN-1) - lenof_name));
+  result->name->name[(NETBIOS_NAME_LEN-1)] = name_type;
+  /* Tramp stamp. */
+  result->name->name[NETBIOS_NAME_LEN] = 0;
+
+  result->scope = nbworks_clone_nbnodename(scope);
+  if ((! result->scope) &&
+      scope) {
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+
+  result->lenof_scope = lenof_scope;
+  result->label_type = name_type;
+  result->node_type = node_type;
+  result->group_flg = group_flg;
 
   memset(&command, 0, sizeof(struct com_comm));
   command.command = rail_regname;
@@ -117,13 +164,14 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
 
   default:
     nbworks_errno = EINVAL;
+    free(result->name->name);
+    free(result->name);
+    free(result);
     return 0;
   }
 
-  lenof_scope = nbworks_nbnodenamelen(scope);
-
   command.len = (LEN_NAMEDT_ONWIREMIN -1) + lenof_scope;
-  namedt.name = name;
+  namedt.name = result->name->name;
   namedt.name_type = name_type;
   namedt.scope = scope;
   namedt.ttl = ttl;
@@ -132,52 +180,12 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   namedtbuff = malloc(command.len);
   if (! namedtbuff) {
     nbworks_errno = ENOBUFS;
-    return 0;
-  }
-  fill_rail_name_data(&namedt, namedtbuff, (namedtbuff + command.len));
-
-  result = calloc(1, sizeof(struct name_state));
-  if (! result) {
-    free(namedtbuff);
-    nbworks_errno = ENOMEM;
-    return 0;
-  }
-  result->name = malloc(sizeof(struct nbworks_nbnamelst));
-  if (! result->name) {
-    free(result);
-    free(namedtbuff);
-    nbworks_errno = ENOMEM;
-    return 0;
-  }
-  result->name->name = malloc(NETBIOS_NAME_LEN+1);
-  if (! result->name->name) {
-    free(result->name);
-    free(result);
-    free(namedtbuff);
-    nbworks_errno = ENOMEM;
-    return 0;
-  }
-  result->name->next_name = 0;
-  result->name->len = NETBIOS_NAME_LEN;
-  memcpy(result->name->name, name, NETBIOS_NAME_LEN);
-  /* Tramp stamp. */
-  result->name->name[NETBIOS_NAME_LEN] = 0;
-
-  result->scope = nbworks_clone_nbnodename(scope);
-  if ((! result->scope) &&
-      scope) {
     free(result->name->name);
     free(result->name);
     free(result);
-    free(namedtbuff);
-    nbworks_errno = ENOMEM;
     return 0;
   }
-
-  result->lenof_scope = lenof_scope;
-  result->label_type = name_type;
-  result->node_type = node_type;
-  result->group_flg = group_flg;
+  fill_rail_name_data(&namedt, namedtbuff, (namedtbuff + command.len));
 
   /* ----------------------- */
 
