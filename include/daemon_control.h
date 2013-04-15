@@ -19,9 +19,6 @@
 #ifndef NBWORKS_DAEMONCONTROL_H
 # define NBWORKS_DAEMONCONTROL_H 1
 
-# include <time.h>
-# include <stdint.h>
-
 # ifndef COMPILING_DAEMON
 #  define COMPILING_DAEMON 1
 # endif

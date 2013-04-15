@@ -21,12 +21,12 @@
 #include <stdint.h>
 
 #include "constdef.h"
-
 #ifdef COMPILING_DAEMON
 # include "daemon_control.h"
 #else
 # include "library_control.h"
 #endif
+
 
 #ifdef COMPILING_DAEMON
 ipv4_addr_t init_default_nbns(void) {

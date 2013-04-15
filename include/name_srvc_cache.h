@@ -19,8 +19,6 @@
 #ifndef NBWORKS_NAMESRVCCACHE_H
 # define NBWORKS_NAMESRVCCACHE_H 1
 
-# include <time.h>
-
 # include "nodename.h"
 # include "constdef.h"
 # include "name_srvc_cache_data.h"

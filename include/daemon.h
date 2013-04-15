@@ -19,8 +19,6 @@
 #ifndef NBWORKS_DAEMON_H
 # define NBWORKS_DAEMON_H 1
 
-# include <pthread.h>
-
 struct thread_cache {
   pthread_t pruners_tid;
   pthread_t ss__port137_tid;

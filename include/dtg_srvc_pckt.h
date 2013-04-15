@@ -19,8 +19,6 @@
 #ifndef NBWORKS_DTGSRVCPCKT_H
 # define NBWORKS_DTGSRVCPCKT_H 1
 
-# include <time.h>
-
 # include "nodename.h"
 
 # define DIR_UNIQ_DTG      0x10

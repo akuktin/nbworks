@@ -22,14 +22,6 @@
 # include "nodename.h"
 # include "service_sector.h"
 
-# include <stdint.h>
-# include <pthread.h>
-
-# include <sys/socket.h>
-# include <sys/un.h>
-# include <netinet/in.h>
-# include <netinet/ip.h>
-
 # define NBWORKS_SCKT_NAME "NBWORKS_MULTIPLEX_DAEMON"
 # define NBWORKS_SCKT_NAMELEN (7+1+9+1+6)
 

@@ -19,8 +19,6 @@
 #ifndef NBWORKS_PKCTROUTINES_H
 # define NBWORKS_PKCTROUTINES_H 1
 
-# include <stdint.h>
-
 # include "name_srvc_pckt.h"
 
 # ifndef MAX_UDP_PACKET_LEN

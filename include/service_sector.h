@@ -21,11 +21,6 @@
 
 # define MAX_NAME_TCP_QUEUE 16
 
-# include <time.h>
-# include <sys/time.h>
-# include <pthread.h>
-# include <netinet/in.h>
-
 # include "name_srvc_pckt.h"
 # include "dtg_srvc_pckt.h"
 

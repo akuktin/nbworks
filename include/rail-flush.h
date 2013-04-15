@@ -19,8 +19,6 @@
 #ifndef NBWORKS_RAILFLUSH_H
 # define NBWORKS_RAILFLUSH_H 1
 
-# include <stdint.h>
-
 size_t
   rail_flushrail(size_t len,
                  int rail);

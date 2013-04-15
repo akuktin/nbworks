@@ -19,8 +19,6 @@
 #ifndef NBWORKS_LIBRARYCONTROL_H
 # define NBWORKS_LIBRARYCONTROL_H 1
 
-# include <time.h>
-
 extern struct nbworks_libcntl_t {
   unsigned char stop_alldtg_srv;
   unsigned char stop_allses_srv;

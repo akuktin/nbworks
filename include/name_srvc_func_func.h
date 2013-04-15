@@ -19,8 +19,6 @@
 #ifndef NBWORKS_NAMESRVCFUNCFUNC_H
 # define NBWORKS_NAMESRVCFUNCFUNC_H 1
 
-# include <pthread.h>
-# include <time.h>
 # include "service_sector.h"
 
 # ifdef COMPILING_NBNS

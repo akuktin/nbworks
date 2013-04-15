@@ -19,8 +19,6 @@
 #ifndef NBWORKS_LIBRARY_H
 # define NBWORKS_LIBRARY_H 1
 
-# include <pthread.h>
-
 # include "nodename.h"
 # include "name_srvc_cache.h"
 # include "dtg_srvc_pckt.h"

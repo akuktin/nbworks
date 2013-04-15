@@ -19,8 +19,6 @@
 #ifndef NBWORKS_PORTABILITY_H
 # define NBWORKS_PORTABILITY_H 1
 
-# include <stdint.h>
-
 # define NONBLOCKING 0x0001
 //fcntl(socket, F_SETFL, O_NONBLOCK)
 # define KEEPALIVE 0x0002

@@ -19,8 +19,6 @@
 #ifndef NBWORKS_NAMESRVCPCKT_H
 # define NBWORKS_NAMESRVCPCKT_H 1
 
-# include <stdint.h>
-
 # include "nodename.h"
 # include "name_srvc_cache_data.h"
 

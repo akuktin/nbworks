@@ -19,8 +19,6 @@
 #ifndef NBWORKS_NAMESRVCCACHEDATA_H
 # define NBWORKS_NAMESRVCCACHEDATA_H 1
 
-# include <time.h>
-
 # include "nodename.h"
 # include "constdef.h"
 

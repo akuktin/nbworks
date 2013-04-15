@@ -19,7 +19,16 @@
 #ifndef NBWORKS_CONSTDEF_H
 # define NBWORKS_CONSTDEF_H 1
 
+/* Force inclusion of all system headers here. */
 # include <stdint.h>
+# include <netinet/in.h>
+# include <netinet/ip.h>
+# include <pthread.h>
+# include <sys/socket.h>
+# include <sys/time.h>
+# include <sys/un.h>
+# include <time.h>
+
 
 # ifdef COMPILING_NBNS
 #  ifndef COMPILING_DAEMON

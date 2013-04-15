@@ -19,8 +19,6 @@
 #ifndef NBWORKS_NODENAME_H
 # define NBWORKS_NODENAME_H 1
 
-# include <stdint.h>
-
 # define NETBIOS_NAME_LEN 16
 # define NETBIOS_CODED_NAME_LEN 32
 
