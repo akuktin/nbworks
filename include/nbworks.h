@@ -31,6 +31,8 @@
 # define NBWORKS_DTG_SRVC  0
 # define NBWORKS_SES_SRVC  2
 
+# define NBWORKS_MAXLEN_LABEL 0x3f
+
 
 extern struct nbworks_libcntl_t {
   /* Stop all datagram servers ASAP. */

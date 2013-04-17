@@ -405,6 +405,14 @@ unsigned char *fill_all_DNS_labels(struct nbworks_nbnamelst *content,
   }
 
   while (iterator) {
+    if (iterator->len > MAX_DNS_LABEL_LEN) {
+      /* BULLSHIT_IN_PACKET */
+      /* TODO: errno signaling stuff */
+      if (state)
+	*state = 0;
+      memset(walker, 0, (field-walker));
+      return walker;
+    }
     /* field + 1 octet for the len + 1 octet for the
      * terminating 0 + the len of the label */
     if ((field + 2 + iterator->len) > endof_pckt) {
