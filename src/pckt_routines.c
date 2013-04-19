@@ -30,16 +30,31 @@
 
 inline unsigned char *read_16field(unsigned char *content,
 				   uint16_t *field) {
+#ifdef SYSTEM_IS_BIGENDIAN
+  uint16_t *target;
+
+  target = content;
+  *field = *target;
+  content = target +1;
+#else
   *field = 0;
   *field = (*field | *content) << 8;
   content++;
   *field = (*field | *content);
   content++;
+#endif
 
   return content;
 }
 inline unsigned char *read_32field(unsigned char *content,
                                    uint32_t *field) {
+#ifdef SYSTEM_IS_BIGENDIAN
+  uint32_t *target;
+
+  target = content;
+  *field = *target;
+  content = target +1;
+#else
   int i;
 
   *field = 0;
@@ -49,6 +64,7 @@ inline unsigned char *read_32field(unsigned char *content,
   }
   *field = (*field | *content);
   content++;
+#endif
 
   return content;
 }
@@ -70,6 +86,13 @@ inline unsigned char *read_48field(unsigned char *content,
 
 inline unsigned char *read_64field(unsigned char *content,
                                    uint64_t *field) {
+#ifdef SYSTEM_IS_BIGENDIAN
+  uint64_t *target;
+
+  target = content;
+  *field = *target;
+  content = target +1;
+#else
   int i;
 
   *field = 0;
@@ -79,12 +102,20 @@ inline unsigned char *read_64field(unsigned char *content,
   }
   *field = (*field | *content);
   content++;
+#endif
 
   return content;
 }
 
 inline unsigned char *fill_16field(uint16_t content,
 				   unsigned char *field) {
+#ifdef SYSTEM_IS_BIGENDIAN
+  uint16_t *target;
+
+  target = field;
+  *target = content;
+  field = target +1;
+#else
   int i;
   uint16_t flags;
 
@@ -95,12 +126,20 @@ inline unsigned char *fill_16field(uint16_t content,
     field++;
     flags = flags >> 8;
   }
+#endif
 
   return field;
 }
 
 inline unsigned char *fill_32field(uint32_t content,
 				   unsigned char *field) {
+#ifdef SYSTEM_IS_BIGENDIAN
+  uint32_t *target;
+
+  target = field;
+  *target = content;
+  field = target +1;
+#else
   int i;
   uint32_t flags;
 
@@ -111,6 +150,7 @@ inline unsigned char *fill_32field(uint32_t content,
     field++;
     flags = flags >> 8;
   }
+#endif
 
   return field;
 }
@@ -133,6 +173,13 @@ inline unsigned char *fill_48field(uint64_t content,
 
 inline unsigned char *fill_64field(uint64_t content,
 				   unsigned char *field) {
+#ifdef SYSTEM_IS_BIGENDIAN
+  uint64_t *target;
+
+  target = field;
+  *target = content;
+  field = target +1;
+#else
   int i;
   uint64_t flags;
 
@@ -143,6 +190,7 @@ inline unsigned char *fill_64field(uint64_t content,
     field++;
     flags = flags >> 8;
   }
+#endif
 
   return field;
 }
