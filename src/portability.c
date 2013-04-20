@@ -95,7 +95,6 @@ struct ifreq *find_address_and_interface(struct ifreq *fieldof_all,
 int find_netmask(ipv4_addr_t *netmask,
 		 ipv4_addr_t *address) {
   struct ifreq request[NUMOF_REQUESTS], *ptr;
-  struct ifconf for_ioctl;
   struct sockaddr_in *addr_p;
   int sckt;
 
@@ -115,15 +114,12 @@ int find_netmask(ipv4_addr_t *netmask,
 		 address);
   }
 
-  for_ioctl.ifc_len = sizeof(struct ifreq);
-  for_ioctl.ifc_req = ptr;
-
   sckt = socket(PF_INET, SOCK_DGRAM, 0);
   if (sckt < 0) {
     return -1;
   }
 
-  if (0 > ioctl(sckt, SIOCGIFNETMASK, &for_ioctl)) {
+  if (0 > ioctl(sckt, SIOCGIFNETMASK, ptr)) {
     close(sckt);
     return -1;
   }
