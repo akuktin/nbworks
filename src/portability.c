@@ -46,9 +46,24 @@
 
 /* One block starting with #ifdef SYSTEM_IS_<whatever> and ending with
  * #endif for each system this has been ported to. */
+/* Mind the (COMPILING_DAEMON macro)-controlled conditional compilation. */
+/* API:
+ *    #ifdef COMPILING_DAEMON
+ *      ipv4_addr_t init_default_nbns(void);
+ *      ipv4_addr_t init_brdcts_addr(void);
+ *    #endif
+ *      ipv4_addr_t init_my_ip4_address(void);
+ *      int set_sockoption(int socket, unsigned int what);
+ *
+ * The above functions MUST be implemented. They are called by the code.
+ * Other functions may also be implemented, but they MUST remain in the
+ * scope of this file and MUST not be used elsewhere in nbworks' code or,
+ * God forbid, be exported to the application as part of the API.
+ */
 
 #ifdef SYSTEM_IS_LINUX
 /* return: >0 = success; 0 = fail; <0 = error */
+/* FUNCTION NOT IN ANY HEADER! */
 struct ifreq *find_address_and_interface(struct ifreq *fieldof_all,
 					 unsigned int numof_all) {
   struct ifconf for_ioctl;
@@ -92,6 +107,7 @@ struct ifreq *find_address_and_interface(struct ifreq *fieldof_all,
 
 # ifdef COMPILING_DAEMON
 /* return: >0 = success; 0 = fail; <0 = error */
+/* FUNCTION NOT IN ANY HEADER! */
 int find_netmask(ipv4_addr_t *netmask,
 		 ipv4_addr_t *address) {
   struct ifreq request[NUMOF_REQUESTS], *ptr;
