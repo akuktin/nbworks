@@ -28,6 +28,8 @@
 # include <sys/socket.h>
 # include <netinet/in.h>
 # include <netinet/tcp.h>
+# include <sys/types.h>
+# include <sys/stat.h>
 # include <fcntl.h>
 #endif
 
@@ -60,6 +62,7 @@
  *    #endif
  *      ipv4_addr_t init_my_ip4_address(void);
  *      int set_sockoption(int socket, unsigned int what);
+ *      int open_configfile(char *path)
  *
  * The above functions MUST be implemented. They are called by the code.
  * Other functions may also be implemented, but they MUST remain in the
@@ -231,5 +234,9 @@ int set_sockoption(int sckt,
   default:
     return -1;
   }
+}
+
+int open_configfile(char *path) {
+  return open(path, O_RDONLY);
 }
 #endif /* SYSTEM_IS_LINUX */

@@ -40,5 +40,6 @@ ipv4_addr_t
 int
   set_sockoption(int socket,
                  unsigned int what);
+int open_configfile(char *path);
 
 #endif /* NBWORKS_PORTABILITY_H */
