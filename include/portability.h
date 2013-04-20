@@ -19,14 +19,9 @@
 #ifndef NBWORKS_PORTABILITY_H
 # define NBWORKS_PORTABILITY_H 1
 
-# define NONBLOCKING 0x0001
-//fcntl(socket, F_SETFL, O_NONBLOCK)
-# define KEEPALIVE 0x0002
-//setsockopt(ses_sckt, SOL_SOCKET, SO_KEEPALIVE, &ones, sizeof(unsigned int));
-# define KEEPIDLE 0x0004
-//setsockopt(ses_sckt, IPPROTO_TCP, TCP_KEEPIDLE, &ones, sizeof(unsigned int));
-# define BROADCAST 0x0008
-//setsockopt(sckts.udp_sckt, SOL_SOCKET, SO_BROADCAST, &ones, sizeof(unsigned int))
+# define NONBLOCKING   0x0001
+# define KEEPALIVE     0x0002
+# define BROADCAST     0x0004
 
 # ifdef COMPILING_NBNS
 #  ifndef COMPILING_DAEMON

@@ -24,6 +24,11 @@
 #ifdef SYSTEM_IS_LINUX
 # include <sys/ioctl.h>
 # include <net/if.h>
+# include <sys/types.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
+# include <netinet/tcp.h>
+# include <fcntl.h>
 #endif
 
 #ifdef COMPILING_NBNS
@@ -40,6 +45,7 @@
 # include "constdef.h"
 #endif
 #include "pckt_routines.h"
+#include "portability.h"
 
 
 #define NUMOF_REQUESTS 32
@@ -200,9 +206,30 @@ ipv4_addr_t init_my_ip4_address(void) {
 }
 
 /* return: 0 = success; !0 = !success */
-int set_sockoption(int socket,
+int set_sockoption(int sckt,
 		   unsigned int what) {
-  // FORRELEASE: nonexistant
-  return 0;
+  unsigned int ones = SSN_KEEP_ALIVE_TIMEOUT;
+
+  switch (what) {
+  case NONBLOCKING:
+    return fcntl(sckt, F_SETFL, O_NONBLOCK);
+
+  case KEEPALIVE:
+    if (0 != setsockopt(sckt, SOL_SOCKET, SO_KEEPALIVE,
+			&ones, sizeof(unsigned int)))
+      return -1;
+    if (0 != setsockopt(sckt, IPPROTO_TCP, TCP_KEEPIDLE,
+			&ones, sizeof(unsigned int)))
+      return -1;
+    return setsockopt(sckt, IPPROTO_TCP, TCP_KEEPINTVL,
+		      &ones, sizeof(unsigned int));
+
+  case BROADCAST:
+    return setsockopt(sckt, SOL_SOCKET, SO_BROADCAST,
+		      &ones, sizeof(unsigned int));
+
+  default:
+    return -1;
+  }
 }
 #endif /* SYSTEM_IS_LINUX */

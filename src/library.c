@@ -1270,8 +1270,7 @@ int lib_open_session(struct name_state *handle,
     /* --------------------------------------------------------------- */
     /* Looks like I will HAVE to implement some sort of errno,
        because a failure here is not fatal, but requires special care. */
-    /* FIXME */ set_sockoption(ses_sckt, KEEPALIVE);
-    /* FIXME */ set_sockoption(ses_sckt, KEEPIDLE);
+    set_sockoption(ses_sckt, KEEPALIVE);
     /* --------------------------------------------------------------- */
 
     return ses_sckt;
