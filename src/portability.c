@@ -43,8 +43,68 @@
 
 #define NUMOF_REQUESTS 32
 
-#ifdef COMPILING_DAEMON
-# ifdef SYSTEM_IS_LINUX
+/* One block starting with #ifdef SYSTEM_IS_<whatever> and ending with
+ * #endif for each system this has been ported to. */
+
+#ifdef SYSTEM_IS_LINUX
+/* return: >0 = success; 0 = fail; <0 = error */
+struct ifreq *find_address_and_interface(struct ifreq *fieldof_all,
+					 unsigned int numof_all) {
+  struct ifconf for_ioctl;
+  struct ifreq *this_one;
+  int sckt;
+  unsigned int count;
+
+  if (! (fieldof_all && numof_all)) {
+    return 0;
+  }
+
+  for_ioctl.ifc_len = (sizeof(struct ifreq) * numof_all);
+  for_ioctl.ifc_req = fieldof_all;
+
+  memset(fieldof_all, 0, (sizeof(struct ifreq) * numof_all));
+
+  sckt = socket(PF_INET, SOCK_DGRAM, 0);
+  if (sckt == -1) {
+    return 0;
+  }
+
+  if (0 > ioctl(sckt, SIOCGIFCONF, &for_ioctl)) {
+    close(sckt);
+    return 0;
+  }
+
+  close(sckt);
+
+  for (this_one = fieldof_all, count = 0;
+       count < numof_all;
+       count++, this_one++) {
+    /* Weed out the loopback interface. */
+    if (0 != strcmp(this_one->ifr_name, "lo\0")) {
+      return this_one;
+    }
+  }
+
+  return 0;
+}
+
+
+# ifdef COMPILING_DAEMON
+/* return: >0 = success; 0 = fail; <0 = error */
+int find_netmask(ipv4_addr_t *netmask,
+		 int *bits) {
+  struct ifreq request[NUMOF_REQUESTS];
+  struct ifconf for_ioctl;
+  struct sockaddr_in *addr_p;
+  int count, sckt;
+
+  if (! (netmask && bits)) {
+    return -1;
+  }
+
+  
+}
+
 ipv4_addr_t init_default_nbns(void) {
   /* FORRELEASE: This has to be changed, somehow. */
   /* No srsly, how do I do this? If the config file is empty? */
@@ -54,9 +114,7 @@ ipv4_addr_t init_default_nbns(void) {
 
   return nbworks__default_nbns;
 }
-# endif
 
-# ifdef SYSTEM_IS_LINUX
 ipv4_addr_t init_brdcts_addr(void) {
   // FORRELEASE: stub
   //        192.168.1.255/24
@@ -65,63 +123,30 @@ ipv4_addr_t init_brdcts_addr(void) {
 
   return brdcst_addr;
 }
-# endif
-#endif /* COMPILING_DAEMON */
+# endif /* COMPILING_DAEMON */
 
-#ifdef SYSTEM_IS_LINUX
 ipv4_addr_t init_my_ip4_address(void) {
-  struct ifreq request[NUMOF_REQUESTS];
-  struct ifconf for_ioctl;
+  struct ifreq request[NUMOF_REQUESTS], *ptr;
   struct sockaddr_in *addr_p;
-  int count, sckt;
 
-  for_ioctl.ifc_len = (sizeof(struct ifreq) * NUMOF_REQUESTS);
-  for_ioctl.ifc_req = request;
+  ptr = find_address_and_interface(request, NUMOF_REQUESTS);
 
-  memset(&request, 0, (sizeof(struct ifreq) * NUMOF_REQUESTS));
-
-  sckt = socket(PF_INET, SOCK_DGRAM, 0);
-  if (sckt == -1) {
-    nbworks__myip4addr = 0;
-    nbworks_errno = ADD_MEANINGFULL_ERRNO;
-    return 0;
-  }
-
-  if (0 > ioctl(sckt, SIOCGIFCONF, &for_ioctl)) {
-    close(sckt);
-
-    nbworks__myip4addr = 0;
-    nbworks_errno = ADD_MEANINGFULL_ERRNO;
-    return 0;
-  }
-
-  close(sckt);
-
-  for (count = 0; count < (for_ioctl.ifc_len / sizeof(struct ifreq));
-       count ++) {
-    /* Weed out the loopback interface. */
-    if (0 != strcmp(request[count].ifr_name, "lo\0")) {
-      break;
-    }
-  }
-
-  if (count < NUMOF_REQUESTS) {
-    addr_p = (struct sockaddr_in *)&(request[count].ifr_addr);
+  if (ptr) {
+    addr_p = (struct sockaddr_in *)&(ptr->ifr_addr);
     read_32field((unsigned char *)&(addr_p->sin_addr.s_addr),
 		 &nbworks__myip4addr);
   } else {
+    nbworks_errno = ADD_MEANINGFULL_ERRNO;
     nbworks__myip4addr = 0;
   }
 
   return nbworks__myip4addr;
 }
-#endif
 
-#ifdef SYSTEM_IS_LINUX
 /* return: 0 = success; !0 = !success */
 int set_sockoption(int socket,
 		   unsigned int what) {
   // FORRELEASE: nonexistant
   return 0;
 }
-#endif
+#endif /* SYSTEM_IS_LINUX */
