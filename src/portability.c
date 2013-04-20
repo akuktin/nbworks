@@ -19,6 +19,7 @@
 #include "c_lang_extensions.h"
 
 #include <stdint.h>
+#include <unistd.h>
 
 #ifdef SYSTEM_IS_LINUX
 # include <sys/ioctl.h>
@@ -92,34 +93,77 @@ struct ifreq *find_address_and_interface(struct ifreq *fieldof_all,
 # ifdef COMPILING_DAEMON
 /* return: >0 = success; 0 = fail; <0 = error */
 int find_netmask(ipv4_addr_t *netmask,
-		 int *bits) {
-  struct ifreq request[NUMOF_REQUESTS];
+		 ipv4_addr_t *address) {
+  struct ifreq request[NUMOF_REQUESTS], *ptr;
   struct ifconf for_ioctl;
   struct sockaddr_in *addr_p;
-  int count, sckt;
+  int sckt;
 
-  if (! (netmask && bits)) {
+  if (! netmask) {
     return -1;
   }
 
-  
+  ptr = find_address_and_interface(request, NUMOF_REQUESTS);
+
+  if (! ptr) {
+    return 0;
+  }
+
+  if (address) {
+    addr_p = (struct sockaddr_in *)&(ptr->ifr_addr);
+    read_32field((unsigned char *)&(addr_p->sin_addr.s_addr),
+		 address);
+  }
+
+  for_ioctl.ifc_len = sizeof(struct ifreq);
+  for_ioctl.ifc_req = ptr;
+
+  sckt = socket(PF_INET, SOCK_DGRAM, 0);
+  if (sckt < 0) {
+    return -1;
+  }
+
+  if (0 > ioctl(sckt, SIOCGIFNETMASK, &for_ioctl)) {
+    close(sckt);
+    return -1;
+  }
+
+  close(sckt);
+
+  addr_p = (struct sockaddr_in *)&(ptr->ifr_netmask);
+  read_32field((unsigned char *)&(addr_p->sin_addr.s_addr),
+	       netmask);
+
+  return 1;
 }
 
 ipv4_addr_t init_default_nbns(void) {
-  /* FORRELEASE: This has to be changed, somehow. */
   /* No srsly, how do I do this? If the config file is empty? */
   /* Maybe: do whatever get_inaddr() will do to get the network prefix,
    *        then call host 1 in that network prefix. */
-  nbworks__default_nbns = 0xc0a8012a;
+  ipv4_addr_t netmask, address;
+
+  if (0 >= find_netmask(&netmask, &address)) {
+    nbworks__default_nbns = 0;
+  }
+
+  if (netmask == ONES) {
+    nbworks__default_nbns = address;
+  } else {
+    nbworks__default_nbns = (address & netmask) +1;
+  }
 
   return nbworks__default_nbns;
 }
 
 ipv4_addr_t init_brdcts_addr(void) {
-  // FORRELEASE: stub
-  //        192.168.1.255/24
+  ipv4_addr_t netmask, address;
 
-  brdcst_addr = 0xc0a801ff;
+  if (0 >= find_netmask(&netmask, &address)) {
+    brdcst_addr = ONES;
+  }
+
+  brdcst_addr = address | (~netmask);
 
   return brdcst_addr;
 }
