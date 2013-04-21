@@ -1,3 +1,4 @@
+config
 daemon
 daemon_externals
 dtg_srvc_func

@@ -29,6 +29,25 @@
 #  endif
 # endif
 
+# ifdef SYSTEM_IS_LINUX
+#  define SYSTEMS_NEWLINE '\n'
+# endif
+# ifdef SYSTEM_IS_BSD
+#  define SYSTEMS_NEWLINE '\n'
+# endif
+# ifdef SYSTEM_IS_WINDOWS
+#  define SYSTEMS_NEWLINE '\n'
+# endif
+# ifdef SYSTEM_IS_MACOS
+#  define SYSTEMS_NEWLINE '\r'
+# endif
+
+# ifdef SYSTEM_IS_WINDOWS
+#  define SYSTEMS_STRINGSTOP '\r'
+# else
+#  define SYSTEMS_STRINGSTOP SYSTEMS_NEWLINE
+# endif
+
 # ifdef COMPILING_DAEMON
 ipv4_addr_t
   init_default_nbns(void);
