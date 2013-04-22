@@ -49,6 +49,10 @@
 # endif
 
 # ifdef COMPILING_DAEMON
+#  define ENVIRONMENT_CONFIG_FILE_PLACEHOLDER 0
+#  ifdef SYSTEM_IS_LINUX
+#   define ENVIRONMENT_CONFIG_FILE_INDEXOF_POSITION 2
+#  endif
 extern char *config_files[];
 
 ipv4_addr_t
