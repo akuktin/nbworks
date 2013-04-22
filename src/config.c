@@ -30,12 +30,16 @@
 
 #define LENOF_BUF 0xff
 
-char optionstring_default_nbns[] = "default_nbns";
+struct option_match all_options[] = {{option_default_nbns,
+				      "default_nbns"},
+				     {option_nooption,
+				      0}};
 
 
 /* FIXME: make this Unicode compliant. */
 struct option *parse_config(char *path) {
   struct option *result, **last_option, *cur_opt;
+  struct option_match *option_selector;
   ssize_t ret_val;
   unsigned long lenof_data;
   int fd;
@@ -165,13 +169,15 @@ struct option *parse_config(char *path) {
     in_word = FALSE;
     *comwalker = 0;
 
-    /* Test all options. In reality, this should be done by using
-     * some black magic, but I will think about that later on. */
-
-    if (0 == strcmp(optionstring_default_nbns, command_buf)) {
-      option = option_default_nbns;
-      in_equal = TRUE;
-      goto do_jumpover_equal;
+    /* Parse the option label. */
+    for (option_selector = all_options;
+	 option_selector->option != option_nooption;
+	 option_selector++) {
+      if (0 == strcmp(option_selector->option_text, command_buf)) {
+	option = option_selector->option;
+	in_equal = TRUE;
+	break;
+      }
     }
 
     if (! in_equal)
@@ -271,7 +277,7 @@ int do_configure(void) {
     if (! *file_selector)
       return 0;
     else
-      if (*file_selector == ONES)
+      if (*file_selector == (char *)ONES)
 	continue;
     options = parse_config(*file_selector);
   } while (! options);

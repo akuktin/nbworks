@@ -73,7 +73,7 @@
 
 #ifdef SYSTEM_IS_LINUX
 # ifdef COMPILING_DAEMON
-char *config_files[] = {ENVIRONMENT_CONFIG_FILE_PLACEHOLDER,
+char *config_files[] = {(char *)ENVIRONMENT_CONFIG_FILE_PLACEHOLDER,
                         "~/.nbworks.conf", "/etc/nbworks.conf", 0};
 # endif
 

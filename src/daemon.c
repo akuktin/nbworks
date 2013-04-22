@@ -32,6 +32,7 @@
 #include "daemon.h"
 #include "rail-comm.h"
 #include "portability.h"
+#include "config.h"
 
 
 struct thread_cache *daemon_allstart(struct thread_cache *tcache) {

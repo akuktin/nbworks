@@ -24,6 +24,11 @@ enum config_option {
   option_default_nbns
 };
 
+struct option_match {
+  enum config_option option;
+  char *option_text;
+};
+
 struct option {
   enum config_option option;
   unsigned long lenof_data;
