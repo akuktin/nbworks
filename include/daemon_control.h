@@ -71,4 +71,6 @@ extern struct nbworks_pruners_cntrl_t {
 extern ipv4_addr_t nbworks__default_nbns;
 extern ipv4_addr_t brdcst_addr;
 
+extern unsigned int scram;
+
 #endif /* NBWORKS_DAEMONCONTROL_H */

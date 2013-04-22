@@ -35,6 +35,8 @@ struct thread_cache *
   daemon_allstart(struct thread_cache *tcache);
 void *
   daemon_allstop(struct thread_cache *tcache);
+void
+  daemon_sighandler(int signal);
 
 void *
   pruners(void *arg_ignored);

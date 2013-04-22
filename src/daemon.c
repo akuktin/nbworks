@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "constdef.h"
 #include "daemon_control.h"
@@ -201,6 +202,14 @@ void *daemon_allstop(struct thread_cache *tcache) {
   pthread_join(tcache->pruners_tid, all_threads_cache);
 
   return all_threads_cache;
+}
+
+void daemon_sighandler(int signal) {
+  if (signal == SIGTERM) {
+    scram = TRUE;
+  }
+
+  return;
 }
 
 

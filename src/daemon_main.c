@@ -18,26 +18,49 @@
 
 #include "c_lang_extensions.h"
 
+#include <unistd.h>
+#include <string.h>
 #include <time.h>
+#include <signal.h>
 
 #include "constdef.h"
 #include "daemon.h"
 
+unsigned int scram;
+
 int main() {
   struct timespec sleeptime;
+  struct sigaction signal_action;
   struct thread_cache tcache;
 
-  if (! daemon_allstart(&tcache)) {
-    return 1;
+  //  if (0 != daemon(0, 0)) {
+  //    return 1;
+  //  }
+
+  memset(&signal_action, 0, sizeof(struct sigaction));
+
+  signal_action.sa_handler = SIG_IGN;
+  scram = 0;
+
+  if (0 != sigaction(SIGTERM, &signal_action, 0)) {
+    return 2;
   }
 
-  /* --------------------------------------------- */
-  /* FORRELEASE: change this into a signal handler */
-  sleeptime.tv_sec = (60 * 30);
-  sleeptime.tv_nsec = 0;
+  if (! daemon_allstart(&tcache)) {
+    return 3;
+  }
 
-  nanosleep(&sleeptime, 0);
-  /* --------------------------------------------- */
+  signal_action.sa_handler = &daemon_sighandler;
+
+  if (0 != sigaction(SIGTERM, &signal_action, 0)) {
+    daemon_allstop(&tcache);
+    return 4;
+  }
+
+  sleeptime.tv_sec = 0;
+  sleeptime.tv_nsec = T_500MS;
+  while (! scram)
+    nanosleep(&sleeptime, 0);
 
   daemon_allstop(&tcache);
 
