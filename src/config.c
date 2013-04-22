@@ -262,6 +262,7 @@ int do_configure(void) {
   struct option *options, *cur_opt;
   char **file_selector;
 
+  options = 0;
   file_selector = (config_files -1);
   do {
     file_selector++;
