@@ -78,6 +78,7 @@ struct thread_cache *daemon_allstart(struct thread_cache *tcache) {
   nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len = MAX_DATAGRAM_LENGTH;
   nbworks_namsrvc_cntrl.conflict_timer = CONFLICT_TTL;
 
+  do_configure();
 
   railparams.isbusy = 0xda;
   railparams.rail_sckt = open_rail();
