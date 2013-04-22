@@ -381,15 +381,17 @@ struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
 /* Call with whole packet, len is total len of whole packet. */
 struct nbworks_nbnamelst *ses_srvc_get_calledname(void *packet,
 						unsigned long len) {
-  unsigned char *walker;
+  unsigned char *walker, *startof_pckt;
 
   if ((! packet) ||
       (len < (2 + SES_HEADER_LEN)))
     return 0;
 
-  walker = packet + SES_HEADER_LEN;
+  startof_pckt = packet;
+  walker = startof_pckt + SES_HEADER_LEN;
 
-  return read_all_DNS_labels(&walker, packet, (packet + len), 0, 0, 0, 0);
+  return read_all_DNS_labels(&walker, startof_pckt, (startof_pckt + len),
+                             0, 0, 0, 0);
 }
 
 /* Call with whole packet, len is total len of whole packet. */

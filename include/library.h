@@ -28,7 +28,7 @@
 # define HANDLE_TAKES_ALL       0x03
 
 struct packet_cooked {
-  void *data;
+  unsigned char *data;
   uint32_t len;
   struct nbworks_nbnamelst *src;
   struct packet_cooked *next;
@@ -37,7 +37,7 @@ struct packet_cooked {
 struct dtg_frag {
   uint32_t offset;
   uint32_t len;
-  void *data;
+  unsigned char *data;
   struct dtg_frag *next;
 };
 
@@ -98,7 +98,7 @@ struct nbworks_session {
   size_t len_left;
   size_t ooblen_left;
   size_t ooblen_offset;
-  void *oob_tmpstor;
+  unsigned char *oob_tmpstor;
   pthread_mutex_t mutex;
   pthread_t caretaker_tid;
   struct nbworks_session *next;

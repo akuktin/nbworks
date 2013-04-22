@@ -592,7 +592,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       if (! grp_namecard->grp_token) {
 	grp_namecard->grp_token = make_token();
       }
-      if (grp_namecard > 0)
+      if (grp_namecard->numof_grpholders > 0)
 	grp_namecard->numof_grpholders++;
       else
 	grp_namecard->numof_grpholders = 1;

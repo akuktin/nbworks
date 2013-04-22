@@ -820,7 +820,7 @@ int nbworks_poll(unsigned char service,
 
 ssize_t nbworks_sendto(unsigned char service,
 		       nbworks_session_p sesp,
-		       void *buff,
+		       void *buff_ptr,
 		       size_t len,
 		       int callflags,
 		       struct nbworks_nbnamelst *dst) {
@@ -830,7 +830,7 @@ ssize_t nbworks_sendto(unsigned char service,
   time_t start_time;
   ssize_t ret_val, sent, notsent;
   int flags;
-  unsigned char pcktbuff[SES_HEADER_LEN];
+  unsigned char pcktbuff[SES_HEADER_LEN], *buff;
 
   /* Fun fact: since ssize_t is signed, and size_t is not,
    *           ssize_t has one bit less than size_t.
@@ -841,7 +841,7 @@ ssize_t nbworks_sendto(unsigned char service,
    *           max(ssize_t) < max(size_t) */
 
   ses = sesp;
-  if ((! (ses && buff)) ||
+  if ((! (ses && buff_ptr)) ||
       (len <= 0) ||
       (len >= (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
     nbworks_errno = EINVAL;
@@ -851,6 +851,7 @@ ssize_t nbworks_sendto(unsigned char service,
     sent = 0;
     /* Turn off MSG_EOR in the flags we send to the socket. */
     flags = callflags & (ONES ^ (MSG_EOR | MSG_DONTROUTE));
+    buff = buff_ptr;
   }
 
   switch (service) {
@@ -1106,7 +1107,7 @@ ssize_t nbworks_sendto(unsigned char service,
 
 ssize_t nbworks_recvfrom(unsigned char service,
 			 nbworks_session_p sesp,
-			 void **buff,
+			 void **buff_pptr,
 			 size_t len,
 			 int callflags,
 			 struct nbworks_nbnamelst **src) {
@@ -1118,10 +1119,10 @@ ssize_t nbworks_recvfrom(unsigned char service,
   ssize_t recved, notrecved, ret_val, torecv;
   size_t *hndllen_left, len_left;
   int flags;
-  unsigned char hdrbuff[SES_HEADER_LEN], *walker;
+  unsigned char hdrbuff[SES_HEADER_LEN], *walker, *buff;
 
   ses = sesp;
-  if ((! (ses && buff)) ||
+  if ((! (ses && buff_pptr)) ||
       (len <= 0) ||
       (len >= (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
     nbworks_errno = EINVAL;
@@ -1149,7 +1150,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       if (ses->handle->in_library) {
 	in_lib = ses->handle->in_library;
 	if (in_lib->data) {
-	  if (*buff) {
+	  if (*buff_pptr) {
 	    if (len < in_lib->len) {
 	      if (flags & MSG_TRUNC) {
 		ret_val = in_lib->len;
@@ -1161,14 +1162,14 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	      len = ret_val;
 	    }
 
-	    memcpy(*buff, in_lib->data, len);
+	    memcpy(*buff_pptr, in_lib->data, len);
 	    free(in_lib->data);
 
 	  } else {
 	    ret_val = in_lib->len;
 
 	    if (ret_val)
-	      *buff = in_lib->data;
+	      *buff_pptr = in_lib->data;
 	    else
 	      free(in_lib->data);
 	  }
@@ -1226,13 +1227,14 @@ ssize_t nbworks_recvfrom(unsigned char service,
 
     /* --> begin setup */
     start_time = time(0);
-    if (! *buff) {
-      *buff = malloc(len);
-      if (! *buff) {
+    if (! *buff_pptr) {
+      *buff_pptr = malloc(len);
+      if (! *buff_pptr) {
 	nbworks_errno = ENOMEM;
 	return -1;
       }
     }
+    buff = *buff_pptr;
 
     recved = 0;
     notrecved = len;
@@ -1261,7 +1263,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    return -1;
 	  }
 
-	  memcpy(*buff, (ses->oob_tmpstor + ses->ooblen_offset), len_left);
+	  memcpy(*buff_pptr, (ses->oob_tmpstor + ses->ooblen_offset), len_left);
 
 	  if (*hndllen_left) {
 	    ses->ooblen_offset = ses->ooblen_offset + len_left;
@@ -1276,7 +1278,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  len_left = 0;
 	} else {
 	  do {
-	    ret_val = recv(ses->socket, (*buff + (len - notrecved)),
+	    ret_val = recv(ses->socket, (char *)(buff + (len - notrecved)),
 			   len_left, flags);
 
 	    if (ret_val <= 0) {
@@ -1360,7 +1362,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	len_left = hdr.len;
       }
       while (len_left) {
-	ret_val = recv(ses->socket, (*buff + (len - notrecved)),
+	ret_val = recv(ses->socket, (char *)(buff + (len - notrecved)),
 		       len_left, flags);
 	if (ret_val <= 0) {
 	  if (((errno == EAGAIN) ||

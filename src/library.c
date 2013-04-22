@@ -494,7 +494,7 @@ void *lib_assemble_frags(struct dtg_frag *frags,
 			 uint32_t len) {
   struct dtg_frag *tmp;
   uint32_t done;
-  void *result;
+  unsigned char *result;
 
   if (! frags)
     return 0;
@@ -562,7 +562,7 @@ unsigned int lib_doeslistento(struct nbworks_nbnamelst *query,
 ssize_t lib_senddtg_138(struct name_state *handle,
 			unsigned char *recepient,
 			unsigned char recepient_type,
-			void *data,
+			void *data_ptr,
 			size_t len,
 			unsigned char group_flg,
 			int isbroadcast) {
@@ -573,7 +573,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   int daemon_sckt;
   uint32_t basic_pckt_flags;
   uint32_t frag_len, max_frag_len, numof_frags, frag_offset;
-  unsigned char readycommand[LEN_COMM_ONWIRE];
+  unsigned char readycommand[LEN_COMM_ONWIRE], *data;
   void *readypacket;
 
   if ((! (handle && recepient)) ||
@@ -588,6 +588,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     return -1;
   } else {
     nbworks_errno = 0;
+    data = data_ptr;
   }
 
   hdr_len = DTG_HDR_LEN + 2 + 2 + ((1+NETBIOS_CODED_NAME_LEN) *2) +

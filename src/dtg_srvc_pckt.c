@@ -423,7 +423,7 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
 
   readhead = startof_pckt;
   readhead = readhead + (DTG_HDR_LEN +2+2);
-  if (! fastfrwd_all_DNS_labels(&readhead, (packet + len))) {
+  if (! fastfrwd_all_DNS_labels(&readhead, (startof_pckt + len))) {
     free(result);
     return 0;
   }
