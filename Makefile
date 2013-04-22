@@ -19,12 +19,14 @@
 CFLAGS ?= -O3 -g -Wall
 CC ?= gcc
 MKDIR ?= mkdir
+RM ?= rm
+RF ?= -rf
 
 SYSTEM_IS_MACRO = -DSYSTEM_IS_LINUX
 
-FILES_FOR_DAEMON = config.c daemon.c daemon_main.c daemon_externals.c       \
-                   dtg_srvc_func.c dtg_srvc_pckt.c name_srvc_cache.c        \
-                   name_srvc_cnst.c name_srvc_func_B.c name_srvc_func_P.c   \
+FILES_FOR_DAEMON = config.c daemon.c daemon_externals.c dtg_srvc_func.c     \
+                   dtg_srvc_pckt.c name_srvc_cache.c name_srvc_cnst.c       \
+                   name_srvc_func_B.c name_srvc_func_P.c                    \
                    name_srvc_func_func.c name_srvc_pckt.c nodename.c        \
                    pckt_routines.c portability.c rail-comm.c rail-flush.c   \
                    randomness.c service_sector.c service_sector_threads.c   \
@@ -34,17 +36,26 @@ FILES_FOR_LIBRARY = api.c dtg_srvc_cnst.c dtg_srvc_pckt.c library.c         \
                     library_externals.c nodename.c pckt_routines.c          \
                     portability.c rail-flush.c randomness.c ses_srvc_pckt.c
 
+DAEMON_STARTER = daemon_main.c
+NBNS_STARTER = nbns_main.c
+
 SRCDIR = src
 
 OBJDIR_NBNS = obj-nbns
 OBJDIR_DAEMON = obj-daemon
 OBJDIR_LIBRARY = obj-library
 
-OBJS_FOR_NBNS = $(addprefix $(OBJDIR_NBNS)/,$(FILES_FOR_DAEMON:.c=.o))
-OBJS_FOR_DAEMON = $(addprefix $(OBJDIR_DAEMON)/,$(FILES_FOR_DAEMON:.c=.o))
+OBJS_FOR_NBNS = $(addprefix $(OBJDIR_NBNS)/,$(FILES_FOR_DAEMON:.c=.o) \
+                                            $(NBNS_STARTER:.c=.o))
+OBJS_FOR_DAEMON = $(addprefix $(OBJDIR_DAEMON)/,$(FILES_FOR_DAEMON:.c=.o) \
+                                                $(DAEMON_STARTER:.c=.o))
 OBJS_FOR_LIBRARY = $(addprefix $(OBJDIR_LIBRARY)/,$(FILES_FOR_LIBRARY:.c=.o))
 
 .PHONY all: nbworksd libnbworks.so.0.0 nbworksnbnsd
+
+.PHONY clean:
+	$(RM) $(RF) $(OBJDIR_NBNS) $(OBJDIR_DAEMON) $(OBJDIR_LIBRARY) \
+	      nbworksd libnbworks.* nbworksnbnsd
 
 nbworksd: $(OBJS_FOR_DAEMON)
 	$(CC) $(CFLAGS) $+ -o $@ -lpthread
