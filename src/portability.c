@@ -31,7 +31,6 @@
 # include <sys/types.h>
 # include <sys/stat.h>
 # include <fcntl.h>
-
 #endif
 
 #ifdef COMPILING_NBNS
