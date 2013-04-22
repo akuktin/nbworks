@@ -155,8 +155,8 @@ void
                        struct sockaddr_in *addr,
 #ifdef COMPILING_NBNS
                        struct ss_queue *trans,
-#endif
                        uint32_t tid,
+#endif
                        time_t cur_time);
 
 #endif /* NBWORKS_NAMESRVCFUNCFUNC_H */

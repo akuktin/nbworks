@@ -193,9 +193,9 @@ void *name_srvc_handle_newtid(void *input) {
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
 #ifdef COMPILING_NBNS
-			   params.trans,
+			   params.trans, params.id.tid,
 #endif
-			   params.id.tid, cur_time);
+			   cur_time);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1097,9 +1097,9 @@ void *refresh_scopes(void *i_ignore_this) {
 
 	    name_srvc_do_updtreq(pckt, &(outside_pckt->addr),
 #ifdef COMPILING_NBNS
-				 trans,
+				 trans, tid.tid,
 #endif
-				 tid.tid, cur_time);
+				 cur_time);
 
 	  } else {
 
@@ -3107,8 +3107,8 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			  struct sockaddr_in *addr,
 #ifdef COMPILING_NBNS
 			  struct ss_queue *trans,
-#endif
 			  uint32_t tid,
+#endif
 			  time_t cur_time) {
   struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
