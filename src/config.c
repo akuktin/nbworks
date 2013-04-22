@@ -141,8 +141,8 @@ struct option *parse_config(char *path) {
 	  comwalker++;
 	  walker++;
 	} else {
-#ifdef SYSTEM_IS_WINDOWS	
-	  /* This, too can create weird effect on some systems under very specific
+#ifdef SYSTEM_IS_WINDOWS
+	  /* This, too, can create weird effect on some systems under very specific
 	   * conditions. */
 	  if (*walker == SYSTEMS_NEWLINE) {
 	    comwalker--;
