@@ -270,6 +270,9 @@ int do_configure(void) {
     file_selector++;
     if (! *file_selector)
       return 0;
+    else
+      if (*file_selector == ONES)
+	continue;
     options = parse_config(*file_selector);
   } while (! options);
 
