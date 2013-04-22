@@ -32,6 +32,7 @@
 char option_default_nbns[] = "default_nbns";
 
 
+/* FIXME: make this Unicode compliant. */
 struct option *parse_config(char *path) {
   struct option *result, **last_option, *cur_opt;
   ssize_t ret_val;
@@ -98,6 +99,9 @@ struct option *parse_config(char *path) {
 	   (*walker == '\t') ||
 	   (*walker == SYSTEMS_NEWLINE) ||
 	   (*walker == SYSTEMS_STRINGSTOP)) {
+      /* This can create some REALLY weird effects on certain systems
+       * under very exact conditions. One of those conditions is that
+       * the option name begins with the \r character. */
       walker++;
       if (walker >= end_walk)
 	break;
@@ -132,12 +136,20 @@ struct option *parse_config(char *path) {
 	if ((*walker != ' ') &&
 	    (*walker != '\t') &&
 	    (*walker != '=') &&
-	    (*walker != SYSTEMS_NEWLINE) &&
-	    (*walker != SYSTEMS_STRINGSTOP)) {
+	    (*walker != SYSTEMS_NEWLINE)) {
 	  *comwalker = *walker;
 	  comwalker++;
 	  walker++;
 	} else {
+#ifdef SYSTEM_IS_WINDOWS
+	  if (*walker == SYSTEMS_NEWLINE) {
+	    comwalker--;
+	    if (comwalker < command_buf) {
+	      comwalker = command_buf;
+	    }
+	    *comwalker = 0;
+	  }
+#endif
 	  break;
 	}
       } else {
@@ -178,7 +190,7 @@ struct option *parse_config(char *path) {
     in_data = TRUE;
     comwalker = command_buf;
   do_read_data:
-    while (*walker != SYSTEMS_STRINGSTOP) {
+    while (*walker != SYSTEMS_NEWLINE) {
       if (comwalker < com_endof) {
 	lenof_data++;
 	*comwalker = *walker;
@@ -193,6 +205,13 @@ struct option *parse_config(char *path) {
     }
     if (walker >= end_walk)
       continue;
+#ifdef SYSTEM_IS_WINDOWS
+    comwalker--;
+    if (comwalker < command_buf) {
+      comwalker = command_buf;
+    }
+    *comwalker = 0;
+#endif
     in_data = FALSE;
 
   do_save_option:
@@ -202,12 +221,16 @@ struct option *parse_config(char *path) {
     }
     cur_opt->nameof_option = option;
     cur_opt->lenof_data = lenof_data;
-    cur_opt->data = malloc(lenof_data);
-    if (! cur_opt->data) {
-      free(cur_opt);
-      goto do_keep_walking;
+    if (lenof_data) {
+      cur_opt->data = malloc(lenof_data);
+      if (! cur_opt->data) {
+	free(cur_opt);
+	goto do_keep_walking;
+      }
+      memcpy(cur_opt, command_buf, lenof_data);
+    } else {
+      cur_opt->data = 0;
     }
-    memcpy(cur_opt, command_buf, lenof_data);
     *last_option = cur_opt;
     last_option = &(cur_opt->next);
 
