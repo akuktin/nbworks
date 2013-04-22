@@ -60,7 +60,7 @@ extern struct nbworks_libcntl_t {
   /* The below stuff is added for use in the event I need to make hotfixes
    * after publishing a stable version of the library. These placeholders
    * will enable me to change the API without changing the ABI.
-   * It remains to be seen if this will provision will ever make sense. */
+   * It remains to be seen if this provision will ever make sense. */
   unsigned long emergencyfix_long1;
   unsigned long emergencyfix_long2;
   unsigned long emergencyfix_long3;
@@ -208,7 +208,7 @@ unsigned long
 /* The below stuff is added for use in the event I need to make hotfixes
  * after publishing a stable version of the library. These placeholders
  * will enable me to change the API without changing the ABI.
- * It remains to be seen if this will provision will ever make sense. */
+ * It remains to be seen if this provision will ever make sense. */
 void *nbworks_emergencyfix_func1(void *arg);
 void *nbworks_emergencyfix_func2(void *arg);
 void *nbworks_emergencyfix_func3(void *arg);
