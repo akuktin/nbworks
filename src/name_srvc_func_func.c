@@ -1113,6 +1113,8 @@ void *refresh_scopes(void *i_ignore_this) {
       }
 
     }
+
+    nanosleep(&(nbworks_all_port_cntl.newtid_sleeptime), 0);
   }
 
   return 0;

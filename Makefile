@@ -61,20 +61,20 @@ OBJS_FOR_LIBRARY = $(addprefix $(OBJDIR_LIBRARY)/,$(FILES_FOR_LIBRARY:.c=.o))
 	      nbworksd libnbworks.* nbworksnbnsd
 
 nbworksd: $(OBJS_FOR_DAEMON)
-	$(CC) $(CFLAGS) -pie -fpie $+ -o $@ -lpthread
+	$(CC) $(CFLAGS)  $+ -o $@ -lpthread
 
 libnbworks.so.0.0: $(OBJS_FOR_LIBRARY)
 	$(CC) $(CFLAGS) -fpic $+ -shared -o $@ -lpthread
 
 nbworksnbnsd: $(OBJS_FOR_NBNS)
-	$(CC) $(CFLAGS) -pie -fpie $+ -o $@ -lpthread
+	$(CC) $(CFLAGS)  $+ -o $@ -lpthread
 
 
 $(OBJDIR_NBNS)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -DCOMPILING_NBNS $(SYSTEM_IS_MACRO) -fpie -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) -DCOMPILING_NBNS $(SYSTEM_IS_MACRO)  -Iinclude -c -o $@ $<
 
 $(OBJDIR_DAEMON)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -DCOMPILING_DAEMON $(SYSTEM_IS_MACRO) -fpie -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) -DCOMPILING_DAEMON $(SYSTEM_IS_MACRO)  -Iinclude -c -o $@ $<
 
 $(OBJDIR_LIBRARY)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) $(SYSTEM_IS_MACRO) -fpic -Iinclude -c -o $@ $<

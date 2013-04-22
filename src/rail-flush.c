@@ -19,7 +19,7 @@
 #include "c_lang_extensions.h"
 
 #include <stdint.h>
-
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 

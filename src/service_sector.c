@@ -1193,7 +1193,6 @@ void *ss__udp_recver(void *sckts_ptr) {
       memset(&his_addr, 0, sizeof(his_addr));
       if (0 >= poll(&polldata, 1, 0))
 	break;
-
       len = recvfrom(sckts.udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
 		     /*MSG_DONTWAIT*/0, (struct sockaddr *)&his_addr, &addr_len);
       /* BUG: While testing, I have noticed that there appears to be
