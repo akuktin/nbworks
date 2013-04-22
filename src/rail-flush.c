@@ -24,6 +24,8 @@
 #include <sys/socket.h>
 
 #include "constdef.h"
+#include "rail-comm.h"
+#include "pckt_routines.h"
 
 
 size_t rail_flushrail(size_t len,
@@ -52,4 +54,131 @@ size_t rail_flushrail(size_t len,
   }
 
   return drained;
+}
+
+
+struct com_comm *read_railcommand(unsigned char *packet,
+				  unsigned char *endof_pckt,
+				  struct com_comm *field) {
+  struct com_comm *result;
+  unsigned char *walker;
+
+  if ((! packet) ||
+      ((packet + LEN_COMM_ONWIRE) > endof_pckt))
+    return 0;
+
+  if (field)
+    result = field;
+  else {
+    result = malloc(sizeof(struct com_comm));
+    if (! result)
+      return 0;
+  }
+
+  walker = packet;
+
+  result->command = *walker;
+  walker++;
+  walker = read_64field(walker, &(result->token));
+  walker = read_16field(walker, &(result->addr.sin_port));
+  walker = read_32field(walker, &(result->addr.sin_addr.s_addr));
+  result->node_type = *walker;
+  walker++;
+  walker = read_32field(walker, &(result->nbworks_errno));
+  walker = read_32field(walker, &(result->len));
+
+  result->addr.sin_family = AF_INET;
+  result->data = 0;
+
+  return result;
+}
+
+unsigned char *fill_railcommand(struct com_comm *command,
+				unsigned char *packet,
+				unsigned char *endof_packet) {
+  unsigned char *walker;
+
+  if (! (command && packet))
+    return packet;
+
+  if ((packet + LEN_COMM_ONWIRE) > endof_packet) {
+    /* TODO: errno signaling stuff */
+    return packet;
+  }
+
+  walker = packet;
+
+  *walker = command->command;
+  walker++;
+  walker = fill_64field(command->token, walker);
+  walker = fill_16field(command->addr.sin_port, walker);
+  walker = fill_32field(command->addr.sin_addr.s_addr, walker);
+  *walker = command->node_type;
+  walker++;
+  walker = fill_32field(command->nbworks_errno, walker);
+  walker = fill_32field(command->len, walker);
+
+  return walker;
+}
+
+
+struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
+					   unsigned char *endof_buff) {
+  struct rail_name_data *result;
+  unsigned char *walker;
+
+  if (! startof_buff)
+    return 0;
+
+  if ((startof_buff + LEN_NAMEDT_ONWIREMIN) > endof_buff) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  walker = startof_buff;
+
+  result = malloc(sizeof(struct rail_name_data));
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  result->name = malloc(NETBIOS_NAME_LEN+1);
+  if (! result->name) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+
+  memcpy(result->name, walker, NETBIOS_NAME_LEN);
+  walker = walker + (NETBIOS_NAME_LEN -1);
+  result->name_type = *walker;
+  walker++;
+
+  result->scope = read_all_DNS_labels(&walker, walker, endof_buff, 0, 0, 0, 0);
+
+  walker++;
+  read_32field(walker, &(result->ttl));
+
+  return result;
+}
+
+unsigned char *fill_rail_name_data(struct rail_name_data *data,
+				   unsigned char *startof_buff,
+				   unsigned char *endof_buff) {
+  unsigned char *walker;
+
+  if (! (data && startof_buff))
+    return startof_buff;
+
+  if ((startof_buff + LEN_NAMEDT_ONWIREMIN) > endof_buff) {
+    /* TODO: errno signaling stuff */
+    return startof_buff;
+  }
+
+  walker = mempcpy(startof_buff, data->name, NETBIOS_NAME_LEN);
+  walker = fill_all_DNS_labels(data->scope, walker, endof_buff, 0);
+  walker++;
+  walker = fill_32field(data->ttl, walker);
+
+  return walker;
 }

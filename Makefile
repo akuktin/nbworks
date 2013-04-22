@@ -16,7 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-CFLAGS ?= -O3 -g -Wall
+CFLAGS ?= -O3 -g -Wall -pedantic
 CC ?= gcc
 MKDIR ?= mkdir
 RM ?= rm

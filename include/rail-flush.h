@@ -19,8 +19,25 @@
 #ifndef NBWORKS_RAILFLUSH_H
 # define NBWORKS_RAILFLUSH_H 1
 
+# include "rail-comm.h"
+
 size_t
   rail_flushrail(size_t len,
                  int rail);
+struct com_comm *
+  read_railcommand(unsigned char *packet,
+                   unsigned char *endof_pckt,
+                   struct com_comm *field);
+unsigned char *
+  fill_railcommand(struct com_comm *command,
+                   unsigned char *packet,
+                   unsigned char *endof_packet);
+struct rail_name_data *
+  read_rail_name_data(unsigned char *startof_buff,
+                      unsigned char *endof_buff);
+unsigned char *
+  fill_rail_name_data(struct rail_name_data *data,
+                      unsigned char *startof_buff,
+                      unsigned char *endof_buff);
 
 #endif /* NBWORKS_RAILFLUSH_H */

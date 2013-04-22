@@ -106,22 +106,6 @@ void *
 void *
   handle_rail(void *args);
 
-struct com_comm *
-  read_railcommand(unsigned char *packet,
-                   unsigned char *endof_pckt,
-                   struct com_comm *field);
-unsigned char *
-  fill_railcommand(struct com_comm *command,
-                   unsigned char *packet,
-                   unsigned char *endof_packet);
-struct rail_name_data *
-  read_rail_name_data(unsigned char *startof_buff,
-                      unsigned char *endof_buff);
-unsigned char *
-  fill_rail_name_data(struct rail_name_data *data,
-                      unsigned char *startof_buff,
-                      unsigned char *endof_buff);
-
 struct cache_namenode *
   do_rail_regname(int rail_sckt,
                   struct com_comm *command);
