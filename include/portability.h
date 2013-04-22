@@ -49,6 +49,8 @@
 # endif
 
 # ifdef COMPILING_DAEMON
+extern char *config_files[];
+
 ipv4_addr_t
   init_default_nbns(void);
 ipv4_addr_t

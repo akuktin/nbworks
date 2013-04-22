@@ -254,6 +254,7 @@ struct option *parse_config(char *path) {
 /* returns: >0 = success; 0 = failure; <0 = error */
 int do_configure(void) {
   struct option *options, *cur_opt;
+  char **file_selector;
 
 #define destroy_options				\
   while (options) {				\
@@ -264,9 +265,13 @@ int do_configure(void) {
     options = cur_opt;				\
   }
 
-  options = parse_config("/etc/nbworks.conf");
-  if (! options)
-    return 0;
+  file_selector = (config_files -1);
+  do {
+    file_selector++;
+    if (! *file_selector)
+      return 0;
+    options = parse_config(*file_selector);
+  } while (! options);
 
   cur_opt = options;
   while (cur_opt) {

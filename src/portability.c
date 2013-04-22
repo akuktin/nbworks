@@ -31,6 +31,7 @@
 # include <sys/types.h>
 # include <sys/stat.h>
 # include <fcntl.h>
+
 #endif
 
 #ifdef COMPILING_NBNS
@@ -57,6 +58,7 @@
 /* Mind the (COMPILING_DAEMON macro)-controlled conditional compilation. */
 /* API:
  *    #ifdef COMPILING_DAEMON
+ *      char *config_files[];
  *      ipv4_addr_t init_default_nbns(void);
  *      ipv4_addr_t init_brdcts_addr(void);
  *    #endif
@@ -71,6 +73,10 @@
  */
 
 #ifdef SYSTEM_IS_LINUX
+# ifdef COMPILING_DAEMON
+char *config_files[] = {"~/.nbworks.conf", "/etc/nbworks.conf", 0};
+# endif
+
 /* return: >0 = success; 0 = fail; <0 = error */
 /* FUNCTION NOT IN ANY HEADER! */
 struct ifreq *find_address_and_interface(struct ifreq *fieldof_all,
