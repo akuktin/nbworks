@@ -262,15 +262,6 @@ int do_configure(void) {
   struct option *options, *cur_opt;
   char **file_selector;
 
-#define destroy_options				\
-  while (options) {				\
-    cur_opt = options->next;			\
-    if (options->data)				\
-      free(options->data);			\
-    free(options);				\
-    options = cur_opt;				\
-  }
-
   file_selector = (config_files -1);
   do {
     file_selector++;
@@ -298,12 +289,19 @@ int do_configure(void) {
     cur_opt = cur_opt->next;
   }
 
-  destroy_options;
-#undef destroy_options
+  while (options) {
+    cur_opt = options->next;
+    if (options->data)
+      free(options->data);
+    free(options);
+    options = cur_opt;
+  }
+
   return 1;
 }
 
 
+/* FIXME: make this Unicode compliant. */
 ipv4_addr_t read_ipv4_addr_conf(unsigned char *field,
 				unsigned int len) {
   ipv4_addr_t result;
@@ -311,7 +309,7 @@ ipv4_addr_t read_ipv4_addr_conf(unsigned char *field,
   unsigned char *walker, *endof_walk, block[4];
 
   if ((! field) ||
-      (len < (2+1 + 2+1 + 2+1 +2))) {
+      (len < (1+1 + 1+1 + 1+1 +1))) {
     return 0;
   }
 
