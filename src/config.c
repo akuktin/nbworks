@@ -29,7 +29,7 @@
 
 #define LENOF_BUF 0xff
 
-char option_default_nbns[] = "default_nbns";
+char optionstring_default_nbns[] = "default_nbns";
 
 
 /* FIXME: make this Unicode compliant. */
@@ -41,7 +41,7 @@ struct option *parse_config(char *path) {
   unsigned int in_comment, in_word, in_equal, in_data;
   char buf[LENOF_BUF], *walker, *end_walk;
   char command_buf[LENOF_BUF+1], *comwalker, *com_endof;
-  char *option;
+  enum config_option option;
 
   fd = open_configfile(path);
   if (fd < 0) {
@@ -53,7 +53,7 @@ struct option *parse_config(char *path) {
   in_word = FALSE;
   in_equal = FALSE;
   in_data = FALSE;
-  option = 0;
+  option = option_nooption;
   lenof_data = 0;
   walker = end_walk = comwalker = 0;
 
@@ -165,7 +165,7 @@ struct option *parse_config(char *path) {
     /* Test all options. In reality, this should be done by using
      * some black magic, but I will think about that later on. */
 
-    if (0 == strcmp(option_default_nbns, command_buf)) {
+    if (0 == strcmp(optionstring_default_nbns, command_buf)) {
       option = option_default_nbns;
       in_equal = TRUE;
       goto do_jumpover_equal;
@@ -221,7 +221,7 @@ struct option *parse_config(char *path) {
     if (! cur_opt) {
       goto do_keep_walking;
     }
-    cur_opt->nameof_option = option;
+    cur_opt->option = option;
     cur_opt->lenof_data = lenof_data;
     if (lenof_data) {
       cur_opt->data = malloc(lenof_data);
@@ -245,4 +245,39 @@ struct option *parse_config(char *path) {
   *last_option = 0;
 
   return result;
+}
+
+/* returns: >0 = success; 0 = failure; <0 = error */
+int do_configure(void) {
+  struct option *options, *cur_opt;
+
+#define destroy_options				\
+  while (options) {				\
+    cur_opt = options->next;			\
+    if (options->data)				\
+      free(options->data);			\
+    free(options);				\
+    options = cur_opt;				\
+  }
+
+  options = parse_config("/etc/nbworks.conf");
+  if (! options)
+    return 0;
+
+  cur_opt = options;
+  while (cur_opt) {
+    switch (cur_opt->option) {
+    case option_default_nbns:
+      goto endof_function;
+
+    default:
+      destroy_options;
+      return 0;
+    }
+  }
+
+ endof_function:
+  destroy_options;
+#undef destroy_options
+  return 1;
 }

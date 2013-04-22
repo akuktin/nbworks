@@ -19,8 +19,14 @@
 #ifndef NBWORKS_CONFIG_H
 # define NBWORKS_CONFIG_H 1
 
+enum config_option {
+  option_nooption = 0,
+  option_default_nbns,
+  option_invalidopton = ONES
+};
+
 struct option {
-  char *nameof_option;
+  enum config_option option;
   unsigned long lenof_data;
   char *data;
   struct option *next;
