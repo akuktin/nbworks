@@ -26,6 +26,7 @@
 #include "portability.h"
 #include "daemon_control.h"
 #include "config.h"
+#include "pckt_routines.h"
 
 #define LENOF_BUF 0xff
 
@@ -43,6 +44,8 @@ struct option *parse_config(char *path) {
   char command_buf[LENOF_BUF+1], *comwalker, *com_endof;
   enum config_option option;
 
+  if (! path)
+    return 0;
   fd = open_configfile(path);
   if (fd < 0) {
     return 0;
@@ -269,16 +272,65 @@ int do_configure(void) {
   while (cur_opt) {
     switch (cur_opt->option) {
     case option_default_nbns:
-      goto endof_function;
+      nbworks__default_nbns = read_ipv4_addr_conf(cur_opt->data,
+						  cur_opt->lenof_data);
+      break;
 
     default:
-      destroy_options;
-      return 0;
+      /* Nothing. Just ignore unknown options. */
+      break;
     }
+
+    cur_opt = cur_opt->next;
   }
 
- endof_function:
   destroy_options;
 #undef destroy_options
   return 1;
+}
+
+
+ipv4_addr_t read_ipv4_addr_conf(unsigned char *field,
+				unsigned int len) {
+  ipv4_addr_t result;
+  unsigned int i;
+  unsigned char *walker, *endof_walk, block[4];
+
+  if ((! field) ||
+      (len < (2+1 + 2+1 + 2+1 +2))) {
+    return 0;
+  }
+
+  endof_walk = field + len;
+  walker = field;
+
+  i = 0;
+  block[0] = block[1] = block[2] = block[3] = 0;
+  while (walker < endof_walk) {
+    if ((*walker >= '0') &&
+	(*walker <= '9')) {
+      block[i] = (block[i] * 10) + (*walker - '0');
+    } else {
+      if (*walker == '.') {
+	i++;
+	if (i>3)
+	  break;
+      } else {
+	if (i != 3)
+	  return 0;
+	else
+	  break;
+      }
+    }
+
+    walker++;
+  }
+
+  if (i != 3)
+    return 0;
+
+  /* I will burn in hell. */
+  read_32field(block, &result);
+
+  return result;
 }

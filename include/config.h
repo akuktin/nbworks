@@ -27,12 +27,18 @@ enum config_option {
 struct option {
   enum config_option option;
   unsigned long lenof_data;
-  char *data;
+  unsigned char *data;
   struct option *next;
 };
 
 
 struct option *
   parse_config(char *path);
+int
+  do_configure(void);
+
+ipv4_addr_t
+  read_ipv4_addr_conf(unsigned char *field,
+                      unsigned int len);
 
 #endif /* NBWORKS_CONFIG_H */
