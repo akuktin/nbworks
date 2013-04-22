@@ -236,12 +236,11 @@ struct option *parse_config(char *path) {
     *last_option = cur_opt;
     last_option = &(cur_opt->next);
 
-    if (ret_val)
-      goto do_keep_walking;
-    else {
+    if (ret_val) {
       option = option_nooption;
+      goto do_keep_walking;
+    } else
       break;
-    }
   }
 
   *last_option = 0;
