@@ -57,6 +57,15 @@ void nbworks_libinit(void) {
    * handle hell and heaven and then cripple it like this. */
   nbworks_libcntl.dtg_max_wholefrag_len = MAX_DATAGRAM_LENGTH;
 
+  nbworks_libcntl.emergencyfix_long1 = 0;
+  nbworks_libcntl.emergencyfix_long2 = 0;
+  nbworks_libcntl.emergencyfix_long3 = 0;
+  nbworks_libcntl.emergencyfix_long4 = 0;
+  nbworks_libcntl.emergencyfix_voidp1 = 0;
+  nbworks_libcntl.emergencyfix_voidp2 = 0;
+  nbworks_libcntl.emergencyfix_voidp3 = 0;
+  nbworks_libcntl.emergencyfix_voidp4 = 0;
+
   init_my_ip4_address();
 }
 
@@ -1627,4 +1636,21 @@ unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
   close(daemon_sckt);
 
   return result;
+}
+
+
+void *nbworks_emergencyfix_func1(void *arg) {
+  return arg;
+}
+
+void *nbworks_emergencyfix_func2(void *arg) {
+  return arg;
+}
+
+void *nbworks_emergencyfix_func3(void *arg) {
+  return arg;
+}
+
+void *nbworks_emergencyfix_func4(void *arg) {
+  return arg;
 }

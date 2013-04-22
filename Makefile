@@ -51,7 +51,8 @@ OBJS_FOR_DAEMON = $(addprefix $(OBJDIR_DAEMON)/,$(FILES_FOR_DAEMON:.c=.o) \
                                                 $(DAEMON_STARTER:.c=.o))
 OBJS_FOR_LIBRARY = $(addprefix $(OBJDIR_LIBRARY)/,$(FILES_FOR_LIBRARY:.c=.o))
 
-.PHONY all: nbworksd libnbworks.so.0.0 nbworksnbnsd
+#.PHONY all: nbworksd libnbworks.so.0.0 nbworksnbnsd
+.PHONY all: nbworksd libnbworks.so.0.0
 
 .PHONY lib: libnbworks.so.0.0
 

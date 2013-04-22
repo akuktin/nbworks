@@ -56,6 +56,19 @@ extern struct nbworks_libcntl_t {
 
   /* Maximum length of the WHOLE datagram packet, as sent to the UDP layer. */
   unsigned int dtg_max_wholefrag_len;
+
+  /* The below stuff is added for use in the event I need to make hotfixes
+   * after publishing a stable version of the library. These placeholders
+   * will enable me to change the API without changing the ABI.
+   * It remains to be seen if this will provision will ever make sense. */
+  unsigned long emergencyfix_long1;
+  unsigned long emergencyfix_long2;
+  unsigned long emergencyfix_long3;
+  unsigned long emergencyfix_long4;
+  void *emergencyfix_voidp1;
+  void *emergencyfix_voidp2;
+  void *emergencyfix_voidp3;
+  void *emergencyfix_voidp4;
 } nbworks_libcntl;
 
 typedef unsigned int nbworks_errno_t;
@@ -191,5 +204,14 @@ unsigned long
                       unsigned long ten);
 /* END base API */
 
+
+/* The below stuff is added for use in the event I need to make hotfixes
+ * after publishing a stable version of the library. These placeholders
+ * will enable me to change the API without changing the ABI.
+ * It remains to be seen if this will provision will ever make sense. */
+void *nbworks_emergencyfix_func1(void *arg);
+void *nbworks_emergencyfix_func2(void *arg);
+void *nbworks_emergencyfix_func3(void *arg);
+void *nbworks_emergencyfix_func4(void *arg);
 
 #endif /* NBWORKS_NBWORKS_H */
