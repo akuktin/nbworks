@@ -141,13 +141,14 @@ struct option *parse_config(char *path) {
 	  comwalker++;
 	  walker++;
 	} else {
-#ifdef SYSTEM_IS_WINDOWS
+#ifdef SYSTEM_IS_WINDOWS	
+	  /* This, too can create weird effect on some systems under very specific
+	   * conditions. */
 	  if (*walker == SYSTEMS_NEWLINE) {
 	    comwalker--;
 	    if (comwalker < command_buf) {
 	      comwalker = command_buf;
 	    }
-	    *comwalker = 0;
 	  }
 #endif
 	  break;
@@ -206,11 +207,12 @@ struct option *parse_config(char *path) {
     if (walker >= end_walk)
       continue;
 #ifdef SYSTEM_IS_WINDOWS
-    comwalker--;
-    if (comwalker < command_buf) {
-      comwalker = command_buf;
+    /* Yet another instance where it becomes painfully obvious
+     * that you should not use more than one character to signify
+     * the end of the line. */
+    if (lenof_data) {
+      lenof_data--;
     }
-    *comwalker = 0;
 #endif
     in_data = FALSE;
 
