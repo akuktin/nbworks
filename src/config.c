@@ -277,7 +277,7 @@ int do_configure(void) {
     if (! *file_selector)
       return 0;
     else
-      if (*file_selector == (char *)ONES)
+      if (*file_selector == ENVIRONMENT_CONFIG_FILE_PLACEHOLDER)
 	continue;
     options = parse_config(*file_selector);
   } while (! options);
