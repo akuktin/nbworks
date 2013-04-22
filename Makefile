@@ -53,28 +53,30 @@ OBJS_FOR_LIBRARY = $(addprefix $(OBJDIR_LIBRARY)/,$(FILES_FOR_LIBRARY:.c=.o))
 
 .PHONY all: nbworksd libnbworks.so.0.0 nbworksnbnsd
 
+.PHONY lib: libnbworks.so.0.0
+
 .PHONY clean:
 	$(RM) $(RF) $(OBJDIR_NBNS) $(OBJDIR_DAEMON) $(OBJDIR_LIBRARY) \
 	      nbworksd libnbworks.* nbworksnbnsd
 
 nbworksd: $(OBJS_FOR_DAEMON)
-	$(CC) $(CFLAGS) $+ -o $@ -lpthread
+	$(CC) $(CFLAGS) -pie -fpie $+ -o $@ -lpthread
 
 libnbworks.so.0.0: $(OBJS_FOR_LIBRARY)
-	$(CC) $(CFLAGS) $+ -o $@ -lpthread
+	$(CC) $(CFLAGS) -fpic $+ -shared -o $@ -lpthread
 
 nbworksnbnsd: $(OBJS_FOR_NBNS)
-	$(CC) $(CFLAGS) $+ -o $@ -lpthread
+	$(CC) $(CFLAGS) -pie -fpie $+ -o $@ -lpthread
 
 
 $(OBJDIR_NBNS)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -DCOMPILING_NBNS $(SYSTEM_IS_MACRO) -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) -DCOMPILING_NBNS $(SYSTEM_IS_MACRO) -fpie -Iinclude -c -o $@ $<
 
 $(OBJDIR_DAEMON)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -DCOMPILING_DAEMON $(SYSTEM_IS_MACRO) -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) -DCOMPILING_DAEMON $(SYSTEM_IS_MACRO) -fpie -Iinclude -c -o $@ $<
 
 $(OBJDIR_LIBRARY)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) $(SYSTEM_IS_MACRO) -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) $(SYSTEM_IS_MACRO) -fpic -Iinclude -c -o $@ $<
 
 $(OBJS_FOR_NBNS): | $(OBJDIR_NBNS)
 
