@@ -21,8 +21,7 @@
 
 enum config_option {
   option_nooption = 0,
-  option_default_nbns,
-  option_invalidopton = ONES
+  option_default_nbns
 };
 
 struct option {
