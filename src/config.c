@@ -238,8 +238,10 @@ struct option *parse_config(char *path) {
 
     if (ret_val)
       goto do_keep_walking;
-    else
+    else {
+      option = option_nooption;
       break;
+    }
   }
 
   *last_option = 0;
