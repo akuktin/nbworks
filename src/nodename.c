@@ -47,7 +47,7 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name,
   if (result_buf) {
     decoded_name = result_buf;
   } else {
-    decoded_name = malloc(NETBIOS_NAME_LEN +1);
+    decoded_name = malloc(NETBIOS_NAME_LEN);
     if (! decoded_name) {
       nbworks_errno = ENOBUFS;
       return 0;
@@ -65,8 +65,6 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name,
 
     decoded_name_cntr++;
   }
-
-  decoded_name[NETBIOS_NAME_LEN] = '\0'; /* tramp stamp */
 
   return decoded_name;
 }
@@ -97,7 +95,7 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name,
   if (result_buf) {
     coded_name = result_buf;
   } else {
-    coded_name = malloc(NETBIOS_CODED_NAME_LEN +1);
+    coded_name = malloc(NETBIOS_CODED_NAME_LEN);
     if (! coded_name) {
       nbworks_errno = ENOBUFS;
       return 0;
@@ -116,8 +114,6 @@ unsigned char *encode_nbnodename(const unsigned char *decoded_name,
     coded_name[coded_name_cntr] = nibble_reactor + 'A';
     coded_name_cntr++;
   }
-
-  coded_name[NETBIOS_CODED_NAME_LEN] = '\0';
 
   return coded_name;
 }
