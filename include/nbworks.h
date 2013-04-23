@@ -119,14 +119,14 @@ unsigned int
   nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename);
 
 struct nbworks_nbnamelst *
-  nbworks_buff2nbname(char *buff,
+  nbworks_buff2nbname(unsigned char *buff,
                       struct nbworks_nbnamelst *field,
                       unsigned long lenof_string);
 unsigned long
-  nbworks_nbname2buff(char **destination,
+  nbworks_nbname2buff(unsigned char **destination,
                       struct nbworks_nbnamelst *name);
 struct nbworks_nbnamelst *
-  nbworks_makescope(char *buff);
+  nbworks_makescope(unsigned char *buff);
 
 unsigned long
   nbworks_maxdtglen(nbworks_namestate_p handle,

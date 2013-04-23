@@ -259,7 +259,7 @@ unsigned int nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename) {
 }
 
 
-struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
+struct nbworks_nbnamelst *nbworks_buff2nbname(unsigned char *buff,
 					      struct nbworks_nbnamelst *field,
 					      unsigned long lenof_string) {
   struct nbworks_nbnamelst *result;
@@ -283,7 +283,7 @@ struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
   result->next_name = 0;
 
   if (! lenof_string)
-    lenof_string = strlen(buff);
+    lenof_string = strlen((char *)buff);
   result->len = lenof_string;
 
   result->name = malloc(lenof_string+1);
@@ -300,9 +300,9 @@ struct nbworks_nbnamelst *nbworks_buff2nbname(char *buff,
   return result;
 }
 
-unsigned long nbworks_nbname2buff(char **destination,
+unsigned long nbworks_nbname2buff(unsigned char **destination,
 				  struct nbworks_nbnamelst *name) {
-  char *result, *walker;
+  unsigned char *result, *walker;
   unsigned long len;
 
   if (! (name && destination)) {
@@ -340,10 +340,10 @@ unsigned long nbworks_nbname2buff(char **destination,
 }
 
 
-struct nbworks_nbnamelst *nbworks_makescope(char *buff) {
+struct nbworks_nbnamelst *nbworks_makescope(unsigned char *buff) {
   struct nbworks_nbnamelst **result, *first, *cur;
   unsigned long name_len;
-  char *walker, *point;
+  unsigned char *walker, *point;
 
   if (! buff) {
     nbworks_errno = EINVAL;
@@ -355,7 +355,7 @@ struct nbworks_nbnamelst *nbworks_makescope(char *buff) {
 
   walker = buff;
   while (*walker) {
-    point = strchrnul(walker, '.');
+    point = strchrnul((char *)walker, '.');
     name_len = point - walker;
 
     *result = malloc(sizeof(struct nbworks_nbnamelst));

@@ -278,7 +278,10 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     free(result->name->name);
     free(result->name);
     free(result);
-    nbworks_errno = EPERM;
+    if (command.nbworks_errno)
+      nbworks_errno = command.nbworks_errno;
+    else
+      nbworks_errno = EPERM;
     return 0;
   }
 
