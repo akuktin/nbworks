@@ -40,7 +40,7 @@ int main() {
   memset(&signal_action, 0, sizeof(struct sigaction));
   memset(&tcache, 0, sizeof(struct thread_cache));
 
-  signal_action.sa_handler = SIG_IGN;
+  signal_action.sa_handler = &daemon_sighandler;
   scram = 0;
 
   if (0 != sigaction(SIGTERM, &signal_action, 0)) {
@@ -49,13 +49,6 @@ int main() {
 
   if (! daemon_allstart(&tcache)) {
     return 3;
-  }
-
-  signal_action.sa_handler = &daemon_sighandler;
-
-  if (0 != sigaction(SIGTERM, &signal_action, 0)) {
-    daemon_allstop(&tcache);
-    return 4;
   }
 
   sleeptime.tv_sec = 0;
