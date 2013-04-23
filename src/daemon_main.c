@@ -33,9 +33,9 @@ int main() {
   struct sigaction signal_action;
   struct thread_cache tcache;
 
-  if (0 != daemon(0, 0)) {
-    return 1;
-  }
+//  if (0 != daemon(0, 0)) {
+//    return 1;
+//  }
 
   memset(&signal_action, 0, sizeof(struct sigaction));
   memset(&tcache, 0, sizeof(struct thread_cache));

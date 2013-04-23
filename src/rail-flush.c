@@ -156,7 +156,6 @@ struct rail_name_data *read_rail_name_data(unsigned char *startof_buff,
 
   result->scope = read_all_DNS_labels(&walker, walker, endof_buff, 0, 0, 0, 0);
 
-  walker++;
   read_32field(walker, &(result->ttl));
 
   return result;
@@ -166,6 +165,7 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
 				   unsigned char *startof_buff,
 				   unsigned char *endof_buff) {
   unsigned char *walker;
+  unsigned char *foo;
 
   if (! (data && startof_buff))
     return startof_buff;
@@ -177,8 +177,11 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
 
   walker = mempcpy(startof_buff, data->name, NETBIOS_NAME_LEN);
   walker = fill_all_DNS_labels(data->scope, walker, endof_buff, 0);
-  walker++;
-  walker = fill_32field(data->ttl, walker);
+  if ((walker + 4) > endof_buff) {
+    return startof_buff;
+  } else {
+    walker = fill_32field(data->ttl, walker);
+  }
 
   return walker;
 }

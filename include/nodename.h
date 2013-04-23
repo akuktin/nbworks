@@ -68,7 +68,6 @@ unsigned int
   nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename);
 struct nbworks_nbnamelst *
   nbworks_buff2nbname(unsigned char *buff,
-                      struct nbworks_nbnamelst *field,
                       unsigned long lenof_string);
 unsigned long
   nbworks_nbname2buff(unsigned char **destination,
