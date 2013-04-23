@@ -1303,10 +1303,10 @@ void *ss__udp_recver(void *sckts_ptr) {
 
 	if (new_pckt) {
 	  /* This means there were no previously registered transactions
-	     with this tid. If name service, register a new one and signal
-	     its existance. If datagram service, send a NOT-HERE error.
-	     MUSING: perhaps I could just drop the datagram and not send
-	             the error. */
+	   * with this tid. If name service, register a new one and signal
+	   * its existance. If datagram service, send a NOT-HERE error.
+	   * MUSING: perhaps I could just drop the datagram and not send
+	   *         the error. */
 	  if ((sckts.branch) == DTG_SRVC) { /* There goes my terminally abstract code... */
 	    //	FIXME    dtg_srvc_send_NOTHERE_error(new_pckt);
 	    sckts.pckt_dstr(new_pckt->packet, 1, 1);
@@ -1515,9 +1515,8 @@ void *ss__port139(void *args) {
   port_addr.sin_family = AF_INET;
   /* VAXism below */
   fill_16field(139, (unsigned char *)&(port_addr.sin_port));
-  fill_32field(nbworks__myip4addr, (unsigned char *)&(port_addr.sin_addr.s_addr));
-
-  params.isbusy = 0; /* This is 0 on purpose. */
+  fill_32field(nbworks__myip4addr,
+	       (unsigned char *)&(port_addr.sin_addr.s_addr));
 
   sckt139 = socket(PF_INET, SOCK_STREAM, 0);
   if (sckt139 < 0) {
@@ -1530,7 +1529,8 @@ void *ss__port139(void *args) {
     return 0;
   }
 
-  if (0 != bind(sckt139, (struct sockaddr *)&port_addr, sizeof(struct sockaddr_in))) {
+  if (0 != bind(sckt139, (struct sockaddr *)&port_addr,
+		sizeof(struct sockaddr_in))) {
     close(sckt139);
     return 0;
   }
@@ -1543,6 +1543,8 @@ void *ss__port139(void *args) {
   pfd.fd = sckt139;
   pfd.events = POLLIN;
 
+  params.isbusy = 0;
+  params.servers = &(nbworks_all_session_srvrs);
   while (! nbworks_ses_srv_cntrl.all_stop) {
     ret_val = poll(&pfd, 1, nbworks_ses_srv_cntrl.poll_timeout);
     if (ret_val <= 0) {
@@ -1558,17 +1560,8 @@ void *ss__port139(void *args) {
     if (new_sckt < 0) {
       continue;
     } else {
-      while (params.isbusy) {
-	/* busy-wait */
-      }
-      params.isbusy = 0xda;
       params.sckt139 = new_sckt;
-      params.servers = &(nbworks_all_session_srvrs);
-      if (0 != pthread_create(&(params.thread_id), 0,
-			      take_incoming_session, &params)) {
-	params.isbusy = 0;
-	close(new_sckt);
-      }
+      take_incoming_session(&params);
     }
   }
 
