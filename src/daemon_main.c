@@ -38,6 +38,7 @@ int main() {
   }
 
   memset(&signal_action, 0, sizeof(struct sigaction));
+  memset(&tcache, 0, sizeof(struct thread_cache));
 
   signal_action.sa_handler = SIG_IGN;
   scram = 0;
