@@ -19,14 +19,15 @@
 #ifndef NBWORKS_NAMESRVCCACHEDATA_H
 # define NBWORKS_NAMESRVCCACHEDATA_H 1
 
-# include "nodename.h"
 # include "constdef.h"
+# include "nodename.h"
 
 # define NUMOF_ADDRSES 8
 
 # define ANY_GROUP    ONES
 # define ANY_NODETYPE ONES
 
+/* ALSO DEFINED IN include/nbworks.h */
 # define CACHE_NODEFLG_B 0x01
 # define CACHE_NODEFLG_P 0x02
 # define CACHE_NODEFLG_M 0x04

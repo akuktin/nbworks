@@ -31,6 +31,11 @@
 # define NBWORKS_DTG_SRVC  0
 # define NBWORKS_SES_SRVC  2
 
+# define NBWORKS_NODE_B 0x01
+# define NBWORKS_NODE_P 0x02
+# define NBWORKS_NODE_M 0x04
+# define NBWORKS_NODE_H 0x08
+
 # define NBWORKS_MAXLEN_LABEL 0x3f
 
 
@@ -131,12 +136,12 @@ unsigned long
 /* BEGIN base API */
 /* BEGIN core API */
 nbworks_namestate_p
-  nbworks_regname(unsigned char *name,
-                  unsigned char name_type,
-                  struct nbworks_nbnamelst *scope,
-                  unsigned char group_flg,
+  nbworks_regname(unsigned char *name, /* len <= (NBWORKS_NBNAME_LEN-1) */
+                  unsigned char name_type, /* these are Microsofts idea */
+                  struct nbworks_nbnamelst *scope, /* 0 is a valid value */
+                  unsigned char isgroup,   /* boolean */
                   unsigned char node_type, /* only one type */
-                  unsigned long ttl);
+                  unsigned long ttl);      /* seconds */
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   nbworks_delname(nbworks_namestate_p handle);
@@ -201,7 +206,7 @@ void
 
 unsigned long
   nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
-                      unsigned long ten);
+                      unsigned long len);
 /* END base API */
 
 

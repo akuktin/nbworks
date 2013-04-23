@@ -98,7 +98,7 @@ unsigned long nbworks_maxdtglen(nbworks_namestate_p handle,
 nbworks_namestate_p nbworks_regname(unsigned char *name,
 				    unsigned char name_type,
 				    struct nbworks_nbnamelst *scope,
-				    unsigned char group_flg,
+				    unsigned char isgroup,
 				    unsigned char node_type, /* only one type */
 				    unsigned long ttl) {
   struct name_state *result;
@@ -106,19 +106,17 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   struct rail_name_data namedt;
   int daemon;
   unsigned int lenof_scope, lenof_name;
-  unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff;
+  unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff, group_flg;
 
-  if ((! name) ||
-      /* The explanation for the below test:
-       * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
-       * 2. you can not set both bits at the same time. */
-      (! ((group_flg & (ISGROUP_YES | ISGROUP_NO)) &&
-	  (((group_flg & ISGROUP_YES) ? 1 : 0) ^
-	   ((group_flg & ISGROUP_NO) ? 1 : 0))))) {
+  if (! name) {
     nbworks_errno = EINVAL;
     return 0;
   } else {
     nbworks_errno = 0;
+    if (isgroup)
+      group_flg = ISGROUP_YES;
+    else
+      group_flg = ISGROUP_NO;
   }
 
   lenof_scope = nbworks_nbnodenamelen(scope);
@@ -668,7 +666,33 @@ nbworks_session_p nbworks_dtgconnect(nbworks_session_p session,
   if (ses->peer)
     nbworks_dstr_nbnodename(ses->peer);
 
-  ses->peer = nbworks_clone_nbnodename(dst);
+  if (dst) {
+    if (dst->len < NBWORKS_NBNAME_LEN) {
+      ses->peer = malloc(sizeof(struct nbworks_nbnamelst));
+      if (! ses->peer) {
+	return 0;
+      }
+      ses->peer->name = malloc(NBWORKS_NBNAME_LEN);
+      if (! ses->peer->name) {
+	free(ses->peer);
+	ses->peer = 0;
+	return 0;
+      }
+      memcpy(ses->peer->name, dst->name, dst->len);
+      memset((ses->peer->name + dst->len), 0,
+	     (NBWORKS_NBNAME_LEN - dst->len));
+      ses->peer->len = NBWORKS_NBNAME_LEN;
+      if (dst->next_name) {
+	ses->peer->next_name = nbworks_clone_nbnodename(dst->next_name);
+      } else {
+	ses->peer->next_name = 0;
+      }
+    } else {
+      ses->peer = nbworks_clone_nbnodename(dst);
+    }
+  } else {
+    ses->peer = 0;
+  }
 
   return ses;
 }
@@ -877,9 +901,15 @@ ssize_t nbworks_sendto(unsigned char service,
       return -1;
     }
 
-    if (dst)
-      peer = dst;
-    else
+    if (dst) {
+      if ((dst->name) &&
+	  (dst->len >= NETBIOS_NAME_LEN))
+	peer = dst;
+      else {
+	nbworks_errno = EINVAL;
+	return -1;
+      }
+    } else
       if (ses->peer) {
 	peer = ses->peer;
       } else {
@@ -1553,8 +1583,7 @@ unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
   int daemon_sckt;
   unsigned char combuff[LEN_COMM_ONWIRE], *buff;
 
-  if ((! X) ||
-      (len < (1+NETBIOS_NAME_LEN+1))) {
+  if (! X) {
     nbworks_errno = EINVAL;
     return 0;
   } else {
@@ -1563,7 +1592,11 @@ unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
 
   memset(&command, 0, sizeof(struct com_comm));
   command.command = rail_addr_ofXuniq;
-  command.len = len;
+  if (len < (1+NETBIOS_NAME_LEN+1)) {
+    command.len = nbworks_nbnodenamelen(X);
+  } else {
+    command.len = len;
+  }
 
   fill_railcommand(&command, combuff, (combuff +LEN_COMM_ONWIRE));
 

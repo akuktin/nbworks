@@ -768,7 +768,8 @@ int rail_senddtg(int rail_sckt,
   case normal:
     normal_pyld = pckt->payload;
 
-    if (normal_pyld->dst_name->len != NETBIOS_CODED_NAME_LEN) {
+    if ((normal_pyld->dst_name->len != NETBIOS_CODED_NAME_LEN) ||
+	(normal_pyld->src_name->len != NETBIOS_CODED_NAME_LEN)) {
       break;
     }
 
@@ -979,6 +980,8 @@ int rail_add_dtg_server(int rail_sckt,
     while (params.isbusy) {
       /* busy-wait */
     }
+  } else {
+    nbworks_dstr_nbnodename(nbname);
   }
 
   return 0;
@@ -1134,8 +1137,10 @@ int rail_add_ses_server(int rail_sckt,
     rail_flushrail(command->len, rail_sckt);
 
   if (ss__add_sessrv(&nbname, rail_sckt)) {
+    free(nbname.name);
     return 0;
   } else {
+    free(nbname.name);
     return 1;
   }
 }
@@ -1210,23 +1215,22 @@ int rail_setup_session(int rail,
   } else {
     out_sckt = session->out_sckt;
     free(session->first_buff);
+    free(session);
   }
 
   if (LEN_COMM_ONWIRE > recv(rail, rail_buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
-    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
+    send(out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
     close(out_sckt);
-    free(session);
     return 0;
   }
 
   if (! read_railcommand(rail_buff, (rail_buff+LEN_COMM_ONWIRE), &answer)) {
-    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
+    send(out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
     close(out_sckt);
-    free(session);
     return -1;
   }
 
@@ -1239,7 +1243,6 @@ int rail_setup_session(int rail,
 
     close(rail);
     close(out_sckt);
-    free(session);
     return -1;
   } else {
     if (answer.len)
@@ -1247,11 +1250,10 @@ int rail_setup_session(int rail,
   }
 
   if (0 != set_sockoption(rail, NONBLOCKING)) {
-    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
+    send(out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
     close(out_sckt);
-    free(session);
     return -1;
   }
   /* The rail socket is now ready for operation. Establish a tunnel. */
@@ -1262,11 +1264,10 @@ int rail_setup_session(int rail,
 
   if (0 != pthread_create(&(new_session.thread_id), 0,
 			  tunnel_stream_sockets, &new_session)) {
-    send(session->out_sckt, err, 5, MSG_NOSIGNAL);
+    send(out_sckt, err, 5, MSG_NOSIGNAL);
 
     close(rail);
     close(out_sckt);
-    free(session);
     return -1;
   }
 
@@ -1274,7 +1275,6 @@ int rail_setup_session(int rail,
     /* busy-wait */
   }
 
-  free(session);
 
   return TRUE;
 }
@@ -1473,7 +1473,7 @@ void *tunnel_stream_sockets(void *arg) {
    service which never uses more than one address. */
 /* nbworks_errno is used to signal that the rail is broken. */
 ipv4_addr_t rail_whatisaddrX(int rail_sckt,
-			  struct com_comm *command) {
+			     struct com_comm *command) {
   struct cache_namenode *namecard;
   struct nbworks_nbnamelst *name;
   int i;
@@ -1544,7 +1544,9 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
     rail_flushrail(((buff + command->len) - walker), rail_sckt);
   }
   free(buff);
-  if (! name) {
+  if ((! name) ||
+      (! name->name) ||
+      (name->len < NETBIOS_NAME_LEN)) {
     return 0;
   }
 
