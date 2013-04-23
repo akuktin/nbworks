@@ -1545,6 +1545,7 @@ void *ss__port139(void *args) {
 
   params.isbusy = 0;
   params.servers = &(nbworks_all_session_srvrs);
+  params.thread_id = 0;
   while (! nbworks_ses_srv_cntrl.all_stop) {
     ret_val = poll(&pfd, 1, nbworks_ses_srv_cntrl.poll_timeout);
     if (ret_val <= 0) {
