@@ -1028,10 +1028,10 @@ void *refresh_scopes(void *i_ignore_this) {
 
 	    pckt->header->transaction_id = tid.tid;
 	    if (i == B_CLASS) {
-	      pckt->header->flags = FLG_B;
+	      pckt->header->nm_flags = FLG_B;
 	    } else {
 	      /* Flags already set by name_srvc_timer_mkpckt(). */
-	      /* pckt->header->flags = FLG_RD; */
+	      /* pckt->header->nm_flags = FLG_RD; */
 	    }
 	    pckt->for_del = TRUE;
 	    /* VAXism below! */
