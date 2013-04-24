@@ -729,12 +729,11 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     break;
   }
 
+  nbns_addr = get_nbnsaddr(scope);
   if (recursion) {
-    nbns_addr = get_nbnsaddr(scope);
     res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
 				 nbns_addr, FLG_RD, recursion);
   } else {
-    nbns_addr = 0;
     res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
 				 0, FLG_B, recursion);
   }
@@ -802,10 +801,11 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
       new_name->addrs.recrd[0].addr = frstaddrlst;
       frstaddrlst = 0;
 
-      if (add_scope(scope, new_name, nbworks__default_nbns) ||
+      if (add_scope(scope, new_name, nbns_addr) ||
 	  add_name(new_name, scope)) {
 	curtime = time(0);
-	new_name->endof_conflict_chance = curtime + nbworks_namsrvc_cntrl.conflict_timer;
+	new_name->endof_conflict_chance = curtime +
+	  nbworks_namsrvc_cntrl.conflict_timer;
 	/* Fun fact: the below can overflow. No,
 	 * I'm not gonna make a test for that. */
 	new_name->timeof_death = curtime + ttl;

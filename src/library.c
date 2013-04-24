@@ -1094,7 +1094,7 @@ int lib_open_session(struct name_state *handle,
   unsigned int max_retries;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char small_buff[SMALL_BUFF_LEN];
-  unsigned char *decoded_name;
+  unsigned char *decoded_name, isgroup;
 
   if (! (handle && dst)) {
     nbworks_errno = EINVAL;
@@ -1107,6 +1107,7 @@ int lib_open_session(struct name_state *handle,
   }
 
   retry_count = 0;
+  isgroup = FALSE;
 
   her = nbworks_clone_nbnodename(dst);
   if (! her) {
@@ -1122,13 +1123,18 @@ int lib_open_session(struct name_state *handle,
     return -1;
   }
 
-
-  /* I don't really understand why I put this here like this. */
-  fill_32field(nbworks_whatisaddrX(her, (1+ NETBIOS_NAME_LEN+ handle->lenof_scope)),
+ try_to_resolve_name:
+  fill_32field(nbworks_whatisaddrX(her, ONES, isgroup,
+				   (1+ NETBIOS_NAME_LEN+ handle->lenof_scope)),
                (unsigned char *)&(addr.sin_addr.s_addr));
   if (! addr.sin_addr.s_addr) {
-    nbworks_dstr_nbnodename(her);
-    return -1;
+    if (! isgroup) {
+      isgroup = TRUE;
+      goto try_to_resolve_name;
+    } else {
+      nbworks_dstr_nbnodename(her);
+      return -1;
+    }
   }
   addr.sin_family = AF_INET;
   /* VAXism below */

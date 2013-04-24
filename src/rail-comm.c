@@ -1580,7 +1580,9 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 
   if (! namecard) {
     namecard = name_srvc_find_name(name->name, (name->name)[name->len -1],
-				   name->next_name, node_type, FALSE);
+				   name->next_name, node_type,
+				   ((node_type == CACHE_NODEFLG_P) ?
+				    TRUE : FALSE));
   }
 
   nbworks_dstr_nbnodename(name);
