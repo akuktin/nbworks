@@ -843,7 +843,7 @@ int name_srvc_release_name(unsigned char *name,
   struct nbworks_nbnamelst *probe;
   ipv4_addr_t listento;
   uint16_t type, class;
-  unsigned int retry_count, i;
+  unsigned int retry_count;
   unsigned char stop_yourself;
   union trans_id tid;
 
@@ -887,26 +887,26 @@ int name_srvc_release_name(unsigned char *name,
     ss__dstry_recv_queue(trans);
     probe = 0;
     type = class = 0;
+
+    retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count;
+    sleeptime = &(nbworks_namsrvc_cntrl.bcast_sleeptime);
   } else {
     probe = nbworks_clone_nbnodename(pckt->questions->qstn->name);
     type = pckt->questions->qstn->qtype;
     class = pckt->questions->qstn->qclass;
+
+    retry_count = nbworks_namsrvc_cntrl.ucast_req_retry_count;
+    sleeptime = &(nbworks_namsrvc_cntrl.ucast_sleeptime);
   }
 
   pckt->header->transaction_id = tid.tid;
   pckt->header->opcode = OPCODE_REQUEST | OPCODE_RELEASE;
   pckt->header->nm_flags = (recursion ? FLG_RD : FLG_B);
 
-  if (recursion) {
-    retry_count = nbworks_namsrvc_cntrl.ucast_req_retry_count;
-    sleeptime = &(nbworks_namsrvc_cntrl.ucast_sleeptime);
-  } else {
-    retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count;
-    sleeptime = &(nbworks_namsrvc_cntrl.bcast_sleeptime);
-  }
-
-  for (i = retry_count; i>0; i--) {
-    if (i == 1)
+  if (retry_count < 1)
+    retry_count = 1;
+  for (; retry_count > 0; retry_count--) {
+    if (retry_count == 1)
       pckt->for_del = TRUE;
 
     if (stop_yourself)

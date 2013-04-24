@@ -130,25 +130,23 @@ void prune_scopes(time_t when) {
     while (cur_name) {
       if (cur_name->timeof_death < when) {
 	*last_name = cur_name->next;
-
 	destroy_namecard(cur_name);
-
-	cur_name = *last_name;
       } else {
 	last_name = &(cur_name->next);
-	cur_name = *last_name;
       }
+
+      cur_name = *last_name;
     }
 
     if (! cur_scope->names) {
       *last_scope = cur_scope->next;
       nbworks_dstr_nbnodename(cur_scope->scope);
       free(cur_scope);
-      cur_scope = *last_scope;
     } else {
       last_scope = &(cur_scope->next);
-      cur_scope = *last_scope;
     }
+
+    cur_scope = *last_scope;
   }
 
   return;

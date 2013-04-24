@@ -1625,6 +1625,8 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
       }
       adit_ptr = &((*adit_ptr)->next);
     }
+
+    namecard = namecard->next;
   }
 
   if (pckt) {

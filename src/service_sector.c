@@ -512,9 +512,11 @@ inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
 #ifdef COMPILING_NBNS
       ss_alltrans[pckt->header->transaction_id].ss_iosig |= SS_IOSIG_OUT;
 #endif
+
+      return 1;
     };
 
-  return 1;
+  return -1;
 }
 
 /* returns: 1=success, 0=failure, -1=error */
