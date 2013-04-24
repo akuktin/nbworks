@@ -1531,11 +1531,13 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
 
   cur_time = time(0);
   while (namecard) {
-    if ((! namecard->refresh_ttl) || (! (namecard->node_types & node_types))) {
+    if ((! namecard->refresh_ttl) ||
+	(! (namecard->node_types & node_types))) {
       namecard = namecard->next;
       continue;
     }
-    if ((namecard->timeof_death - cur_time) <= nbworks_namsrvc_cntrl.refresh_threshold) {
+    if ((namecard->timeof_death - cur_time) <=
+	nbworks_namsrvc_cntrl.refresh_threshold) {
       if (! pckt) {
 	pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
 	if (! pckt)
