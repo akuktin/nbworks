@@ -165,7 +165,6 @@ unsigned char *fill_rail_name_data(struct rail_name_data *data,
 				   unsigned char *startof_buff,
 				   unsigned char *endof_buff) {
   unsigned char *walker;
-  unsigned char *foo;
 
   if (! (data && startof_buff))
     return startof_buff;

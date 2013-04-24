@@ -710,6 +710,9 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   /* --------------------------------- */
 
   pckt->flags = basic_pckt_flags | DTG_FIRST_FLAG;
+  if (numof_frags > 1) {
+    pckt->flags |= DTG_MORE_FLAG;
+  }
 
   len = 0;
   pyld = pckt->payload;
@@ -728,9 +731,11 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 
     if (! master_dtg_srvc_pckt_writer(pckt, &pckt_len, readypacket, 0)) {
       nbworks_errno = ADD_MEANINGFULL_ERRNO;
+      pyld->payload = 0;
       destroy_dtg_srvc_pckt(pckt, 1, 1);
       return -1;
     }
+    pyld->payload = 0;
 
     memset(&(command), 0, sizeof(struct com_comm));
     command.command = rail_send_dtg;
@@ -770,6 +775,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 			      &command)) {
       close(daemon_sckt);
       nbworks_errno = ENOBUFS;
+      destroy_dtg_srvc_pckt(pckt, 1, 1);
       return -1;
     }
 
@@ -777,6 +783,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 	(command.nbworks_errno)) {
       close(daemon_sckt);
       nbworks_errno = command.nbworks_errno;
+      destroy_dtg_srvc_pckt(pckt, 1, 1);
       return 0;
     } else {
       len = len + frag_len;
@@ -784,7 +791,8 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 
     if (numof_frags) {
       frag_offset = frag_offset + frag_len;
-      /* Only the first fragment has a variable size, others are as big as possible. */
+      /* Only the first fragment has a variable size,
+       * others are as big as possible. */
       frag_len = max_frag_len;
 
       if (numof_frags > 1) {

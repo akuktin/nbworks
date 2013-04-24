@@ -221,10 +221,10 @@ void *handle_rail(void *args) {
 	break;
       }
       if (cache_namecard) {
-	if (command.node_type > 'A') {
-	  command.token = cache_namecard->grp_token;
-	} else {
+	if (command.node_type >= 'a') {
 	  command.token = cache_namecard->unq_token;
+	} else {
+	  command.token = cache_namecard->grp_token;
 	}
 	command.nbworks_errno = 0;
       } else {
@@ -493,7 +493,7 @@ void *handle_rail(void *args) {
   return 0;
 }
 
-
+#include <stdio.h> /* YYY */
 /* nbworks_errno is used as a simple signaling instrument that signals
  * back the usability of the rail: 0 = usable; !0 = not usable */
 struct cache_namenode *do_rail_regname(int rail_sckt,
@@ -572,8 +572,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   /* Call alloc_namecard() with ONES instead of name_type because
    * of the call to find_name() later on. */
   cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
-				  ONES, make_token(),
-				  QTYPE_NB, QCLASS_IN);
+				  ONES, 0, QTYPE_NB, QCLASS_IN);
   if (! cache_namecard) {
     /* TODO: error handling */
     cleanup;
@@ -597,8 +596,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       else
 	grp_namecard->numof_grpholders = 1;
       grp_namecard->timeof_death = time(0) + namedata->ttl;
-      if (node_type & CACHE_NODEGRPFLG_P)
-	grp_namecard->refresh_ttl = refresh_ttl;
+      grp_namecard->refresh_ttl = refresh_ttl;
 
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if ((grp_namecard->addrs.recrd[i].node_type == node_type) ||
@@ -640,9 +638,16 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   } else {
     /* Revert the node_types field into what is should be. */
     cache_namecard->node_types = node_type;
+    if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
+      cache_namecard->unq_token = make_token();
+    } else {
+      cache_namecard->grp_token = make_token();
+      cache_namecard->numof_grpholders = 1;
+    }
 
-    if ((refresh_ttl = name_srvc_add_name(node_type, namedata->name, namedata->name_type,
-					  namedata->scope, nbworks__myip4addr, namedata->ttl))) {
+    if ((refresh_ttl = name_srvc_add_name(node_type, namedata->name,
+					  namedata->name_type, namedata->scope,
+					  nbworks__myip4addr, namedata->ttl))) {
       if (! (add_scope(namedata->scope, cache_namecard, nbworks__default_nbns) ||
 	     add_name(cache_namecard, namedata->scope))) {
 	destroy_namecard(cache_namecard);
@@ -660,8 +665,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       }
       cache_namecard->addrs.recrd[0].addr->ip_addr = nbworks__myip4addr;
       cache_namecard->timeof_death = time(0) + namedata->ttl;
-      if (node_type & (CACHE_NODEGRPFLG_P | CACHE_NODEFLG_P))
-	cache_namecard->refresh_ttl = refresh_ttl;
+      cache_namecard->refresh_ttl = refresh_ttl;
 
       cleanup;
       return cache_namecard;
@@ -691,13 +695,14 @@ int rail_senddtg(int rail_sckt,
   struct ss_queue *queue;
   union trans_id tid;
   int i;
-  unsigned short node_type;
+  unsigned short node_type, sent;
   unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! command)
     return -1;
 
   sendpckt = 0;
+  sent = FALSE;
   decoded_name[NETBIOS_NAME_LEN] = 0;
   dst_addr.sin_family = AF_INET;
   /* VAXism below */
@@ -849,6 +854,7 @@ int rail_senddtg(int rail_sckt,
 	sendpckt->for_del = TRUE;
 	ss_dtg_send_pckt(sendpckt, &dst_addr, &(trans->queue));
 	sendpckt = 0;
+	sent = TRUE;
       }
     } /* else
 	 FU(); */
@@ -866,7 +872,10 @@ int rail_senddtg(int rail_sckt,
     free(sendpckt->packetbuff);
     free(sendpckt);
   }
-  return 0;
+  if (sent)
+    return 0;
+  else
+    return 1;
 }
 
 /* returns: 0=success, >0=fail, <0=error */

@@ -171,25 +171,25 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   command.command = rail_regname;
   switch (node_type) {
   case CACHE_NODEFLG_B:
-    if (group_flg)
+    if (group_flg == ISGROUP_YES)
       command.node_type = 'B';
     else
       command.node_type = 'b';
     break;
   case CACHE_NODEFLG_P:
-    if (group_flg)
+    if (group_flg == ISGROUP_YES)
       command.node_type = 'P';
     else
       command.node_type = 'p';
     break;
   case CACHE_NODEFLG_M:
-    if (group_flg)
+    if (group_flg == ISGROUP_YES)
       command.node_type = 'M';
     else
       command.node_type = 'm';
     break;
   case CACHE_NODEFLG_H:
-    if (group_flg)
+    if (group_flg == ISGROUP_YES)
       command.node_type = 'H';
     else
       command.node_type = 'h';

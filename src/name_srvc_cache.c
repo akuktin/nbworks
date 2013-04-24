@@ -420,14 +420,14 @@ struct cache_namenode *alloc_namecard(void *label,
   result->unq_isinconflict = FALSE;
   result->grp_isinconflict = FALSE;
   /* The below could backfire. */
-  if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
-    result->unq_token = token;
-    result->grp_token = 0;
-    result->numof_grpholders = 0;
-  } else {
+  if (node_types & CACHE_ADDRBLCK_GRP_MASK) {
     result->unq_token = 0;
     result->grp_token = token;
     result->numof_grpholders = 1;
+  } else {
+    result->unq_token = token;
+    result->grp_token = 0;
+    result->numof_grpholders = 0;
   }
   result->dns_type = dns_type;
   result->dns_class = dns_class;
