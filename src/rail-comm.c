@@ -245,7 +245,6 @@ void *handle_rail(void *args) {
     case rail_delname:
       if (command.len)
 	rail_flushrail(command.len, params.rail_sckt);
-
       cache_namecard = find_namebytok(command.token, &scope);
 
       if (cache_namecard) {
@@ -279,8 +278,9 @@ void *handle_rail(void *args) {
 	name_ptr = cache_namecard->name;
 	ipv4 = nbworks__myip4addr;
 	name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			       scope, ipv4, node_type, FALSE);
-
+			       scope, ipv4, node_type,
+			       ((node_type & (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
+				TRUE : FALSE));
 	if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
 	  cache_namecard->unq_token = 0;
 	  cache_namecard->unq_isinconflict = FALSE;
@@ -312,6 +312,7 @@ void *handle_rail(void *args) {
 	  if (! cache_namecard->addrs.recrd[i].addr) {
 	    cache_namecard->node_types = cache_namecard->node_types &
 	      (~(cache_namecard->addrs.recrd[i].node_type));
+	    cache_namecard->addrs.recrd[i].node_type = 0;
 	  }
 
 	  if (! cache_namecard->node_types) {

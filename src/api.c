@@ -346,11 +346,9 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
 
   fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE));
   send(daemon, combuff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
-  /* Now, you may be thinking that some lossage may occur, and that it
-   * can mess up our day something fierce. In effect, that can not happen.
-   * The quiet loss of the name is something NetBIOS is designed to handle.
-   * The only problem we may encounter is that the daemon keeps thinking
-   * it still has a name and therefore keeps defending it. */
+
+  /* Wait on the daemon, so our day does not get screwed up. */
+  recv(daemon, combuff, LEN_COMM_ONWIRE, 0);
   close(daemon);
 
   return TRUE;
