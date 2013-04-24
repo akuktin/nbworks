@@ -20,6 +20,7 @@
 
 #include "nbworks.h"
 #include "constdef.h"
+#include "nodename.h"
 
 nbworks_errno_t nbworks_errno;
 
@@ -30,5 +31,8 @@ nbworks_do_align_t nbworks_do_align = 0;
 #endif
 
 ipv4_addr_t nbworks__myip4addr;
+
+const char nbworks_jokername[] = JOKER_NAME;
+const char nbworks_jokernamecoded[] = JOKER_NAME_CODED;
 
 struct nbworks_libcntl_t nbworks_libcntl;

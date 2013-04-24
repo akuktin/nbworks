@@ -466,7 +466,7 @@ void *handle_rail(void *args) {
 	  close(params.rail_sckt);
 	  rail_isreusable = FALSE;
 	} else {
-	  command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
+	  command.nbworks_errno = ENONET;
 	  command.len = 0;
 	  command.data = 0;
 	  fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
@@ -1566,13 +1566,10 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 
   walker = buff;
   name = read_all_DNS_labels(&walker, buff, buff + command->len, 0, 0, 0, 0);
-  if (walker < (buff + command->len)) {
-    rail_flushrail(((buff + command->len) - walker), rail_sckt);
-  }
   free(buff);
   if ((! name) ||
       (! name->name) ||
-      (name->len < NETBIOS_NAME_LEN)) {
+      (name->len != NETBIOS_NAME_LEN)) {
     return 0;
   }
 

@@ -1606,29 +1606,55 @@ void nbworks_hangup_ses(nbworks_session_p sesp) {
 }
 
 
+#define NUMOF_NODETYPES 8
+unsigned short nbworks_nodetype_templates[NUMOF_NODETYPES][2] = {
+  {CACHE_NODEFLG_B, 'b'}, {CACHE_NODEFLG_P, 'p'},
+  {CACHE_NODEFLG_M, 'm'}, {CACHE_NODEFLG_H, 'h'},
+  {CACHE_NODEGRPFLG_B, 'B'}, {CACHE_NODEGRPFLG_P, 'P'},
+  {CACHE_NODEGRPFLG_M, 'M'}, {CACHE_NODEGRPFLG_H, 'H'}};
+
 unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
+				  unsigned char node_types,
+				  unsigned char isgroup,
 				  unsigned long len) {
   struct com_comm command;
   ipv4_addr_t result;
   int daemon_sckt;
-  unsigned char combuff[LEN_COMM_ONWIRE], *buff;
+  enum rail_commands cur_command;
+  unsigned short real_node_types, node_type_walker, bullshit;
+  unsigned char combuff[LEN_COMM_ONWIRE], *buff, cur_node_type;
 
-  if (! X) {
+  if ((! (X && node_types)) ||
+      (X->len != NETBIOS_NAME_LEN)) {
     nbworks_errno = EINVAL;
     return 0;
   } else {
     nbworks_errno = 0;
   }
 
-  memset(&command, 0, sizeof(struct com_comm));
-  command.command = rail_addr_ofXuniq;
-  if (len < (1+NETBIOS_NAME_LEN+1)) {
-    command.len = nbworks_nbnodenamelen(X);
-  } else {
-    command.len = len;
-  }
+  result = 0;
+  node_type_walker = 0;
+  cur_node_type = 0;
 
-  fill_railcommand(&command, combuff, (combuff +LEN_COMM_ONWIRE));
+  memset(&command, 0, sizeof(struct com_comm));
+
+  real_node_types = node_types;
+  if (isgroup) {
+    real_node_types = real_node_types << 8;
+    cur_command = rail_addr_ofXgroup;
+  } else {
+    cur_command = rail_addr_ofXuniq;
+  }
+  command.command = cur_command;
+
+  if (len < (1+NETBIOS_NAME_LEN+1)) {
+  no_bullshit_please:
+    len = nbworks_nbnodenamelen(X);
+    bullshit = FALSE;
+  } else {
+    bullshit = TRUE;
+  }
+  command.len = len;
 
   buff = malloc(len);
   if (! buff) {
@@ -1638,8 +1664,13 @@ unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
 
   if (buff == fill_all_DNS_labels(X, buff, (buff +len), 0)) {
     free(buff);
-    nbworks_errno = ENOBUFS;
-    return 0;
+
+    if (bullshit) {
+      goto no_bullshit_please;
+    } else {
+      nbworks_errno = ENOBUFS;
+      return 0;
+    }
   }
 
   daemon_sckt = lib_daemon_socket();
@@ -1649,57 +1680,94 @@ unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
     return 0;
   }
 
-  if (LEN_COMM_ONWIRE > send(daemon_sckt, combuff,
-			     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
-    close(daemon_sckt);
-    free(buff);
-    nbworks_errno = EPIPE;
-    return 0;
+  while (real_node_types) {
+    for (; node_type_walker < NUMOF_NODETYPES; node_type_walker++) {
+      if (real_node_types &
+	  (nbworks_nodetype_templates[node_type_walker][0])) {
+
+	cur_node_type = nbworks_nodetype_templates[node_type_walker][1];
+
+	real_node_types = real_node_types &
+	  (~nbworks_nodetype_templates[node_type_walker][0]);
+
+	break;
+      }
+    }
+    if (! (node_type_walker < NUMOF_NODETYPES)) {
+      break;
+    } else {
+      node_type_walker++; /* To speed up for-loop walking. */
+    }
+    command.node_type = cur_node_type;
+
+    fill_railcommand(&command, combuff, (combuff +LEN_COMM_ONWIRE));
+
+    if (LEN_COMM_ONWIRE > send(daemon_sckt, combuff,
+			       LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+      close(daemon_sckt);
+      free(buff);
+      nbworks_errno = EPIPE;
+      return 0;
+    }
+
+    if (len > send(daemon_sckt, buff, len, MSG_NOSIGNAL)) {
+      close(daemon_sckt);
+      free(buff);
+      nbworks_errno = EPIPE;
+      return 0;
+    }
+
+
+    if (LEN_COMM_ONWIRE > recv(daemon_sckt, combuff,
+			       LEN_COMM_ONWIRE, MSG_WAITALL)) {
+      close(daemon_sckt);
+      free(buff);
+      nbworks_errno = EPIPE;
+      return 0;
+    }
+
+    if (0 == read_railcommand(combuff, (combuff +LEN_COMM_ONWIRE),
+			      &command)) {
+      close(daemon_sckt);
+      free(buff);
+      nbworks_errno = ENOBUFS;
+      return 0;
+    }
+
+    if (command.command != cur_command) {
+      close(daemon_sckt);
+      free(buff);
+      nbworks_errno = EPIPE; /* What do I put here? */
+      return 0;
+    }
+
+    if (command.nbworks_errno)
+      continue;
+
+    if (command.len < 4) {
+      close(daemon_sckt);
+      free(buff);
+      nbworks_errno = EPIPE; /* What do I put here? */
+      return 0;
+    }
+
+    if (4 > recv(daemon_sckt, combuff, 4, MSG_WAITALL)) {
+      close(daemon_sckt);
+      free(buff);
+      nbworks_errno = EPIPE;
+      return 0;
+    } else {
+      read_32field(combuff, &result);
+      break;
+    }
   }
-
-  if (len > send(daemon_sckt, buff, len, MSG_NOSIGNAL)) {
-    close(daemon_sckt);
-    free(buff);
-    nbworks_errno = EPIPE;
-    return 0;
-  }
-
-  free(buff);
-
-  if (LEN_COMM_ONWIRE > recv(daemon_sckt, combuff,
-			     LEN_COMM_ONWIRE, MSG_WAITALL)) {
-    close(daemon_sckt);
-    /* No error, genuine failure to resolve. */
-    return 0;
-  }
-
-  if (0 == read_railcommand(combuff, (combuff +LEN_COMM_ONWIRE),
-			    &command)) {
-    close(daemon_sckt);
-    nbworks_errno = ENOBUFS;
-    return 0;
-  }
-
-  if ((command.command != rail_addr_ofXuniq) ||
-      (command.len < 4) ||
-      (command.nbworks_errno)) {
-    close(daemon_sckt);
-    nbworks_errno = EPIPE; /* What do I put here? */
-    return 0;
-  }
-
-  if (4 > recv(daemon_sckt, combuff, 4, MSG_WAITALL)) {
-    close(daemon_sckt);
-    nbworks_errno = EPIPE;
-    return 0;
-  }
-
-  read_32field(combuff, &result);
 
   close(daemon_sckt);
+  free(buff);
 
   return result;
 }
+#undef NUMOF_NODETYPES
 
 
 void *nbworks_emergencyfix_func1(void *arg) {

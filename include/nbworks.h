@@ -38,6 +38,8 @@
 
 # define NBWORKS_MAXLEN_LABEL 0x3f
 
+extern const char nbworks_jokername[];
+extern const char nbworks_jokernamecoded[];
 
 extern struct nbworks_libcntl_t {
   /* Stop all datagram servers ASAP. */
@@ -205,6 +207,8 @@ void
 
 unsigned long
   nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
+                      unsigned char node_types, /* can be more than one */
+                      unsigned char isgroup,
                       unsigned long len);
 /* END base API */
 
