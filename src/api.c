@@ -309,6 +309,36 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
     return -1;
   }
 
+  memset(&command, 0, sizeof(struct com_comm));
+
+  command.command = rail_delname;
+  command.token = handle->token;
+
+  fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE));
+  if (LEN_COMM_ONWIRE > send(daemon, combuff, LEN_COMM_ONWIRE,
+			     MSG_NOSIGNAL)) {
+    close(daemon);
+    return 0;
+  }
+
+  /* Wait on the daemon, so our day does not get screwed up. */
+  if (LEN_COMM_ONWIRE > recv(daemon, combuff, LEN_COMM_ONWIRE, 0)) {
+    close(daemon);
+    return 0;
+  }
+  close(daemon);
+
+  if (! read_railcommand(combuff, (combuff + LEN_COMM_ONWIRE),
+			 &command)) {
+    goto do_delete_everything;
+  }
+
+  if ((command.command != rail_delname) ||
+      (command.token != handle->token)) {
+    return 0;
+  }
+
+ do_delete_everything:
   if (handle->dtg_srv_tid) {
     handle->dtg_srv_stop = TRUE;
 
@@ -337,19 +367,8 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
   if (handle->sesin_library)
     lib_dstry_sesslist(handle->sesin_library);
 
-  memset(&command, 0, sizeof(struct com_comm));
-
-  command.command = rail_delname;
-  command.token = handle->token;
-
   free(handle); /* Bye-bye. */
 
-  fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE));
-  send(daemon, combuff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
-
-  /* Wait on the daemon, so our day does not get screwed up. */
-  recv(daemon, combuff, LEN_COMM_ONWIRE, 0);
-  close(daemon);
 
   return TRUE;
 }
