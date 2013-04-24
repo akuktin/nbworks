@@ -325,23 +325,17 @@ void *handle_rail(void *args) {
 	command.nbworks_errno = 0;
 	command.len = 0;
 	command.data = 0;
-	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
-				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
-	  close(params.rail_sckt);
-	  rail_isreusable = FALSE;
-	}
       } else {
 	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
-
 	command.len = 0;
 	command.data = 0;
-	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
-				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
-	  close(params.rail_sckt);
-	  rail_isreusable = FALSE;
-	}
+      }
+
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	close(params.rail_sckt);
+	rail_isreusable = FALSE;
       }
 
       nbworks_dstr_nbnodename(scope); /* This removes the copy of scope, type

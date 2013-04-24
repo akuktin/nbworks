@@ -369,7 +369,6 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
 
   free(handle); /* Bye-bye. */
 
-
   return TRUE;
 }
 
