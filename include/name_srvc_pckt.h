@@ -282,6 +282,7 @@ struct name_srvc_packet *
   name_srvc_timer_mkpckt(struct cache_namenode *namecard,
                          struct nbworks_nbnamelst *scope,
                          uint32_t *total_lenof_nbaddrs,
-                         unsigned int node_types);
+                         unsigned int node_types,
+                         unsigned int auto_update);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */

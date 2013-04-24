@@ -981,6 +981,7 @@ void *refresh_scopes(void *i_ignore_this) {
   struct {
     unsigned int node_types;
     ipv4_addr_t target_address;
+    unsigned int auto_update;
   } refresh_desc[2];
 
   tid.tid = 0;
@@ -991,9 +992,11 @@ void *refresh_scopes(void *i_ignore_this) {
 
   refresh_desc[0].node_types = (CACHE_NODEFLG_P | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
 				CACHE_NODEGRPFLG_P | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H);
+  refresh_desc[0].auto_update = FALSE;
   refresh_desc[1].node_types = (CACHE_NODEFLG_B | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
 				CACHE_NODEGRPFLG_B | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H);
   refresh_desc[1].target_address = brdcst_addr;
+  refresh_desc[1].auto_update = TRUE;
 
   while (! nbworks_all_port_cntl.all_stop) {
     cur_scope = nbworks_rootscope;
@@ -1004,7 +1007,8 @@ void *refresh_scopes(void *i_ignore_this) {
 	refresh_desc[0].target_address = cur_scope->nbns_addr;
 	for (i=0; i<2; i++) {
 	  pckt = name_srvc_timer_mkpckt(cur_scope->names, cur_scope->scope,
-					0, refresh_desc[i].node_types);
+					0, refresh_desc[i].node_types,
+					refresh_desc[i].auto_update);
 
 	  if (pckt) {
 	    if (! trans) {
@@ -1045,7 +1049,8 @@ void *refresh_scopes(void *i_ignore_this) {
 	  if (outside_pckt == last_outpckt) {
 	    if (wack) {
 	      /* DOS_BUG: a malevolent NBNS can use this point to hose
-	       *          the daemon. */
+	       *          the daemon by continually sending wacks and
+	       *          never anything else. */
 	      ss_set_normalstate_name_tid(&tid);
 
 	      if (wack > nbworks_namsrvc_cntrl.max_wack_sleeptime) {

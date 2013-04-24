@@ -1507,7 +1507,8 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
 struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
 						struct nbworks_nbnamelst *scope,
 						uint32_t *total_lenof_nbaddrs,
-						unsigned int node_types) {
+						unsigned int node_types,
+						unsigned int auto_update) {
   struct name_srvc_packet *pckt;
   struct name_srvc_question_lst **qstn_ptr;
   struct name_srvc_resource_lst **adit_ptr;
@@ -1516,7 +1517,7 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
   unsigned int i;
   uint16_t nbaddrs_len; /* Has to be 16 bits to be able to measure overflow. */
   uint16_t lenof_res, save_lenof_res;
-  time_t cur_time;
+  time_t cur_time, overflow_test;
 
   if (! namecard)
     return 0;
@@ -1555,6 +1556,16 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
       }
 
       numof_refresh++;
+
+      /* ---------------------------------- */
+      /* if auto_update, update timeof_death */
+      if (auto_update) {
+	overflow_test = cur_time + namecard->refresh_ttl;
+	if (overflow_test < cur_time)
+	  namecard->timeof_death = ZEROONES;
+	else
+	  namecard->timeof_death = overflow_test;
+      }
 
       /* ---------------------------------- */
       /* question first */
