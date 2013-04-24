@@ -1495,8 +1495,6 @@ void *tunnel_stream_sockets(void *arg) {
 
 
 /* WRONG FOR GROUPS! */
-/* Except not really - this is only used by the session
-   service which never uses more than one address. */
 /* nbworks_errno is used to signal that the rail is broken. */
 ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 			     struct com_comm *command) {
