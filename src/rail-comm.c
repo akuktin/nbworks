@@ -493,7 +493,7 @@ void *handle_rail(void *args) {
   return 0;
 }
 
-#include <stdio.h> /* YYY */
+
 /* nbworks_errno is used as a simple signaling instrument that signals
  * back the usability of the rail: 0 = usable; !0 = not usable */
 struct cache_namenode *do_rail_regname(int rail_sckt,
