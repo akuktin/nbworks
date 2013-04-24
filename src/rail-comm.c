@@ -245,6 +245,19 @@ void *handle_rail(void *args) {
     case rail_delname:
       if (command.len)
 	rail_flushrail(command.len, params.rail_sckt);
+
+      command.command = rail_readcom;
+      command.nbworks_errno = 0;
+      command.len = 0;
+      command.data = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	close(params.rail_sckt);
+	rail_isreusable = FALSE;
+	break;
+      }
+
       cache_namecard = find_namebytok(command.token, &scope);
 
       if (cache_namecard) {
@@ -322,10 +335,12 @@ void *handle_rail(void *args) {
 	}
 
       jumpover:
+	command.command = rail_delname;
 	command.nbworks_errno = 0;
 	command.len = 0;
 	command.data = 0;
       } else {
+	command.command = rail_delname;
 	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
 	command.len = 0;
 	command.data = 0;

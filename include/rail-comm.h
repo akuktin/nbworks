@@ -26,7 +26,9 @@
 # define NBWORKS_SCKT_NAMELEN (7+1+9+1+6)
 
 enum rail_commands {
-  rail_regname = 1,    /* library wants to register a name in the scope */
+  rail_readcom,        /* daemon tells library it read the whole command */
+
+  rail_regname,        /* library wants to register a name in the scope */
   rail_delname,        /* library wants to delete a name from the scope */
 
   rail_make_stream,    /* library wants to establist a session with port 139 */

@@ -333,7 +333,8 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
     goto do_delete_everything;
   }
 
-  if ((command.command != rail_delname) ||
+  if ((! ((command.command == rail_delname) ||
+	  (command.command == rail_readcom))) ||
       (command.token != handle->token)) {
     return 0;
   }
