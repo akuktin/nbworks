@@ -968,6 +968,8 @@ int name_srvc_release_name(unsigned char *name,
 
 /* This function sends refresh packets for scopes. */
 void *refresh_scopes(void *i_ignore_this) {
+#define B_CLASS 1
+#define P_CLASS 0
   struct sockaddr_in addr;
   struct timespec sleeptime;
   struct cache_scopenode *cur_scope;
@@ -990,13 +992,17 @@ void *refresh_scopes(void *i_ignore_this) {
   /* VAXism below! */
   fill_16field(137, (unsigned char *)&(addr.sin_port));
 
-  refresh_desc[0].node_types = (CACHE_NODEFLG_P | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
-				CACHE_NODEGRPFLG_P | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H);
-  refresh_desc[0].auto_update = FALSE;
-  refresh_desc[1].node_types = (CACHE_NODEFLG_B | CACHE_NODEFLG_M | CACHE_NODEFLG_H |
-				CACHE_NODEGRPFLG_B | CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H);
-  refresh_desc[1].target_address = brdcst_addr;
-  refresh_desc[1].auto_update = TRUE;
+  refresh_desc[P_CLASS].node_types = (CACHE_NODEFLG_P | CACHE_NODEFLG_M |
+				      CACHE_NODEFLG_H |
+				      CACHE_NODEGRPFLG_P | CACHE_NODEGRPFLG_M |
+				      CACHE_NODEGRPFLG_H);
+  refresh_desc[P_CLASS].auto_update = FALSE;
+  refresh_desc[B_CLASS].node_types = (CACHE_NODEFLG_B | CACHE_NODEFLG_M |
+				      CACHE_NODEFLG_H |
+				      CACHE_NODEGRPFLG_B | CACHE_NODEGRPFLG_M |
+				      CACHE_NODEGRPFLG_H);
+  refresh_desc[B_CLASS].target_address = brdcst_addr;
+  refresh_desc[B_CLASS].auto_update = TRUE;
 
   while (! nbworks_all_port_cntl.all_stop) {
     cur_scope = nbworks_rootscope;
@@ -1004,7 +1010,7 @@ void *refresh_scopes(void *i_ignore_this) {
 
     while (cur_scope) {
       if (cur_scope->nbns_addr) {
-	refresh_desc[0].target_address = cur_scope->nbns_addr;
+	refresh_desc[P_CLASS].target_address = cur_scope->nbns_addr;
 	for (i=0; i<2; i++) {
 	  pckt = name_srvc_timer_mkpckt(cur_scope->names, cur_scope->scope,
 					0, refresh_desc[i].node_types,
@@ -1021,6 +1027,12 @@ void *refresh_scopes(void *i_ignore_this) {
 	    }
 
 	    pckt->header->transaction_id = tid.tid;
+	    if (i == B_CLASS) {
+	      pckt->header->flags = FLG_B;
+	    } else {
+	      /* Flags already set by name_srvc_timer_mkpckt(). */
+	      /* pckt->header->flags = FLG_RD; */
+	    }
 	    pckt->for_del = TRUE;
 	    /* VAXism below! */
 	    fill_32field(refresh_desc[i].target_address,
@@ -1123,6 +1135,8 @@ void *refresh_scopes(void *i_ignore_this) {
   }
 
   return 0;
+#undef P_CLASS
+#undef B_CLASS
 }
 
 
