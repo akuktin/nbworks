@@ -803,9 +803,16 @@ int rail_senddtg(int rail_sckt,
     trans = ss_find_queuestorage(&tid, DTG_SRVC);
     if (! trans) {
       queue = ss_register_dtg_tid(&tid);
+      if (! queue) {
+	break;
+      }
       trans = ss_add_queuestorage(queue, &tid, DTG_SRVC);
 
       free(queue);
+      if (! trans) {
+	ss_deregister_dtg_tid(&tid);
+	break;
+      }
     }
     if (trans->last_active < ZEROONES)
       trans->last_active = time(0);

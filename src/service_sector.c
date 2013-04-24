@@ -275,7 +275,7 @@ void ss_del_queuestorage(union trans_id *arg,
   while (cur_stor) {
     if ((branch == DTG_SRVC) ?
 	(! nbworks_cmp_nbnodename(cur_stor->id.name_scope,
-			  arg->name_scope)) :
+				  arg->name_scope)) :
 	cur_stor->id.tid == tid) {
       *last_stor = cur_stor->next;
 
@@ -317,7 +317,7 @@ struct ss_queue_storage *ss_take_queuestorage(union trans_id *arg,
   while (cur_stor) {
     if ((branch == DTG_SRVC) ?
 	(! nbworks_cmp_nbnodename(cur_stor->id.name_scope,
-			  arg->name_scope)) :
+				  arg->name_scope)) :
 	cur_stor->id.tid == tid) {
       *last_stor = cur_stor->next;
       return cur_stor;
@@ -345,18 +345,19 @@ struct ss_queue_storage *ss_find_queuestorage(union trans_id *arg,
   while (cur_stor) {
     if ((branch == DTG_SRVC) ?
 	(! nbworks_cmp_nbnodename(cur_stor->id.name_scope,
-			  arg->name_scope)) :
+				  arg->name_scope)) :
 	cur_stor->id.tid == tid) {
-      return cur_stor;
+      break;
     } else {
       cur_stor = cur_stor->next;
     }
   }
 
-  return 0;
+  return cur_stor;
 }
 
 void ss_prune_queuestorage(time_t killtime) {
+  union trans_id tid;
   struct ss_queue_storage *cur_stor, **last_stor;
   struct rail_list *railkill, *roadkill;
   int i;
@@ -376,6 +377,9 @@ void ss_prune_queuestorage(time_t killtime) {
 	  free(railkill);
 	  railkill = roadkill;
 	}
+
+	memcpy(&tid, &(cur_stor->id), sizeof(union trans_id));
+	ss_deregister_tid(&tid, cur_stor->branch);
 
 	if (cur_stor->branch == DTG_SRVC) {
 	  nbworks_dstr_nbnodename(cur_stor->id.name_scope);
