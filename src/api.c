@@ -461,7 +461,6 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
     nbworks_dstr_nbnodename(handle->dtg_listento);
   handle->dtg_listento = nbworks_clone_nbnodename(listento);
   handle->dtg_takes = takes_field;
-  handle->dtg_srv_stop = FALSE;
   if (handle->dtg_frags) {
     lib_destroy_allfragbckbone(handle->dtg_frags);
     handle->dtg_frags = 0;
@@ -471,6 +470,7 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
     lib_dstry_packets(handle->in_library);
     handle->in_library = 0;
   }
+  handle->dtg_srv_stop = FALSE;
 
   if (0 != pthread_create(&(handle->dtg_srv_tid), 0,
 			  lib_dtgserver, handle)) {
@@ -559,10 +559,16 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
 
   handle->ses_srv_sckt = daemon;
 
+  if (handle->ses_listento)
+    nbworks_dstr_nbnodename(handle->ses_listento);
   handle->ses_listento = nbworks_clone_nbnodename(listento);
   handle->ses_takes = takes_field;
-  if (handle->sesin_library)
+  handle->sesin_server = 0;
+  if (handle->sesin_library) {
     lib_dstry_sesslist(handle->sesin_library);
+    handle->sesin_library = 0;
+  }
+  handle->ses_srv_stop = FALSE;
 
   if (0 != pthread_create(&(handle->ses_srv_tid), 0,
 			  lib_ses_srv, handle)) {
@@ -643,6 +649,7 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle) {
 
     return result;
   } else {
+    nbworks_errno = EAGAIN;
     return 0;
   }
 }
@@ -699,8 +706,11 @@ nbworks_session_p nbworks_dtgconnect(nbworks_session_p session,
 	return 0;
       }
       memcpy(ses->peer->name, dst->name, dst->len);
-      memset((ses->peer->name + dst->len), 0,
-	     (NBWORKS_NBNAME_LEN - dst->len));
+      if (dst->len < (NBWORKS_NBNAME_LEN-1))
+	memset((ses->peer->name + dst->len), ' ',
+	       ((NBWORKS_NBNAME_LEN-1) - dst->len ));
+      /* Default to name_type of 0x00. */
+      ses->peer->name[NBWORKS_NBNAME_LEN] = 0;
       ses->peer->len = NBWORKS_NBNAME_LEN;
       if (dst->next_name) {
 	ses->peer->next_name = nbworks_clone_nbnodename(dst->next_name);
@@ -923,7 +933,7 @@ ssize_t nbworks_sendto(unsigned char service,
 
     if (dst) {
       if ((dst->name) &&
-	  (dst->len >= NETBIOS_NAME_LEN))
+	  (dst->len == NETBIOS_NAME_LEN))
 	peer = dst;
       else {
 	nbworks_errno = EINVAL;

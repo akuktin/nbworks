@@ -1097,12 +1097,12 @@ int lib_open_session(struct name_state *handle,
   unsigned char *decoded_name;
 
   if (! (handle && dst)) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = EINVAL;
     return -1;
   }
   if ((! dst->name) ||
       (dst->len < NETBIOS_NAME_LEN)) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = EINVAL;
     return -1;
   }
 
@@ -1110,14 +1110,14 @@ int lib_open_session(struct name_state *handle,
 
   her = nbworks_clone_nbnodename(dst);
   if (! her) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = ENOBUFS;
     return -1;
   }
   if (her->next_name)
     nbworks_dstr_nbnodename(her->next_name);
   her->next_name = nbworks_clone_nbnodename(handle->scope);
   if ((! her->next_name) && handle->scope) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = ENOBUFS;
     nbworks_dstr_nbnodename(her);
     return -1;
   }
@@ -1138,7 +1138,7 @@ int lib_open_session(struct name_state *handle,
   her->name = encode_nbnodename(decoded_name, 0);
   free(decoded_name);
   if (! her->name) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = ENOBUFS;
     nbworks_dstr_nbnodename(her);
     return -1;
   }
@@ -1147,7 +1147,7 @@ int lib_open_session(struct name_state *handle,
 
   name_id = nbworks_clone_nbnodename(handle->name);
   if (! name_id) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = ENOBUFS;
     nbworks_dstr_nbnodename(her);
     return -1;
   }
@@ -1155,7 +1155,7 @@ int lib_open_session(struct name_state *handle,
     nbworks_dstr_nbnodename(name_id->next_name);
   name_id->next_name = nbworks_clone_nbnodename(handle->scope);
   if ((! name_id->next_name) && handle->scope) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = ENOBUFS;
     nbworks_dstr_nbnodename(her);
     nbworks_dstr_nbnodename(name_id);
     return -1;
@@ -1164,7 +1164,7 @@ int lib_open_session(struct name_state *handle,
   name_id->name = encode_nbnodename(decoded_name, 0);
   free(decoded_name);
   if (! name_id->name) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = ENOBUFS;
     nbworks_dstr_nbnodename(her);
     nbworks_dstr_nbnodename(name_id);
     return -1;
@@ -1195,7 +1195,7 @@ int lib_open_session(struct name_state *handle,
 
   mypckt_buff = malloc(wrotelenof_pckt);
   if (! mypckt_buff) {
-    /* TODO: errno signaling stuff */
+    nbworks_errno = ENOBUFS;
     nbworks_dstr_nbnodename(her);
     nbworks_dstr_nbnodename(name_id);
     return -1;
@@ -1217,6 +1217,7 @@ int lib_open_session(struct name_state *handle,
   ses_sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (ses_sckt == -1) {
     free(mypckt_buff);
+    nbworks_errno = EPIPE;
     return -1;
   }
 
@@ -1227,6 +1228,7 @@ int lib_open_session(struct name_state *handle,
       goto try_to_connect;
     } else {
       free(mypckt_buff);
+      nbworks_errno = EPIPE;
       return -1;
     }
   }
@@ -1239,6 +1241,7 @@ int lib_open_session(struct name_state *handle,
       goto try_to_connect;
     } else {
       free(mypckt_buff);
+      nbworks_errno = EPIPE;
       return -1;
     }
   }
@@ -1253,6 +1256,7 @@ int lib_open_session(struct name_state *handle,
       goto try_to_connect;
     } else {
       free(mypckt_buff);
+      nbworks_errno = EPIPE;
       return -1;
     }
   }
@@ -1262,6 +1266,7 @@ int lib_open_session(struct name_state *handle,
 				  &pckt)) {
     close(ses_sckt);
     free(mypckt_buff);
+    nbworks_errno = EPIPE; /* Too lazy to change this. */
     return -1;
   }
 
@@ -1271,11 +1276,7 @@ int lib_open_session(struct name_state *handle,
     if (pckt.len)
       lib_flushsckt(ses_sckt, pckt.len, MSG_WAITALL);
 
-    if (0 != set_sockoption(ses_sckt, NONBLOCKING)) {
-      close(ses_sckt);
-      /* This also may not be a fatal error. */
-      return -1;
-    }
+    set_sockoption(ses_sckt, NONBLOCKING);
     /* --------------------------------------------------------------- */
     /* Looks like I will HAVE to implement some sort of errno,
        because a failure here is not fatal, but requires special care. */
@@ -1290,11 +1291,13 @@ int lib_open_session(struct name_state *handle,
     if (pckt.len) {
       if (1 > recv(ses_sckt, herpckt_buff, 1, MSG_WAITALL)) {
 	close(ses_sckt);
+	nbworks_errno = EPIPE;
 	return -1;
       }
     }
     close(ses_sckt);
     // session_error = *herpckt_buff;
+    nbworks_errno = ECONNREFUSED;
     return -1;
     break;
 
@@ -1302,11 +1305,13 @@ int lib_open_session(struct name_state *handle,
     if (pckt.len < (4+2)) {
       close(ses_sckt);
       free(mypckt_buff);
+      nbworks_errno = EPIPE;
       return -1;
     }
     if ((4+2) > recv(ses_sckt, herpckt_buff, (4+2), MSG_WAITALL)) {
       close(ses_sckt);
       free(mypckt_buff);
+      nbworks_errno = EPIPE;
       return -1;
     }
     herpckt_buff = read_32field(herpckt_buff,
@@ -1321,11 +1326,13 @@ int lib_open_session(struct name_state *handle,
       goto try_to_connect;
     } else {
       free(mypckt_buff);
+      nbworks_errno = EPIPE;
       return -1;
     }
     break;
   }
 
+  nbworks_errno = EPIPE;
   return -1;
 }
 #undef SMALL_BUFF_LEN
