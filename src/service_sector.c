@@ -565,13 +565,13 @@ inline void *ss__recv_pckt(struct ss_queue *trans,
   result = trans->incoming->packet;
   trans->incoming->packet = 0;
 
-  if (real_listen &&
-      (trans->incoming->addr.sin_addr.s_addr != real_listen)) {
-    trans->incoming->dstry(result, 1, 1);
-    result = 0;
-  }
-
   if (result) {
+    if (real_listen &&
+	(trans->incoming->addr.sin_addr.s_addr != real_listen)) {
+      trans->incoming->dstry(result, 1, 1);
+      goto handle_no_result;
+    }
+
     if (trans->incoming->next) {
       holdme = trans->incoming;
       trans->incoming = trans->incoming->next;
@@ -579,6 +579,7 @@ inline void *ss__recv_pckt(struct ss_queue *trans,
       free(holdme);
     }
   } else {
+  handle_no_result:
     if (trans->incoming->next) {
       holdme = trans->incoming;
       trans->incoming = trans->incoming->next;

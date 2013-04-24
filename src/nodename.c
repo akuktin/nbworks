@@ -156,6 +156,49 @@ unsigned char *nbworks_make_nbnodename(const unsigned char *string,
   return(encode_nbnodename(prepared_name, field));
 }
 
+unsigned char *nbworks_create_nbnodename(const unsigned char *string,
+				         const unsigned char type_char,
+				         unsigned char *field) {
+  int j, len;
+  unsigned char *result;
+
+  if (! string) {
+    nbworks_errno = EINVAL;
+    return 0;
+  }
+
+  len = strlen((char *)string);
+  if (len > NETBIOS_NAME_LEN) {
+    nbworks_errno = EINVAL;
+    return 0;
+  }
+
+  if (! field) {
+    result = malloc(NETBIOS_NAME_LEN);
+    if (! result) {
+      nbworks_errno = ENOMEM;
+      return 0;
+    }
+  } else {
+    result = field;
+  }
+
+  strncpy((char *)result, (char *)string, NETBIOS_NAME_LEN -1);
+
+  for (j = 0; j < len; j++) {
+    result[j] = toupper(result[j]);
+  }
+
+  /* j is inherited from the previous loop */
+  for (; j < (NETBIOS_NAME_LEN -1); j++) {
+    result[j] = ' '; /* a space character */
+  }
+
+  result[NETBIOS_NAME_LEN -1] = type_char;
+
+  return result;
+}
+
 
 void nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename) {
   struct nbworks_nbnamelst *next;

@@ -1513,10 +1513,14 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
     switch (command->node_type) {
     case 'H':
     case 'h':
+      rail_flushrail(command->len, rail_sckt);
+      return 0;
       node_type = CACHE_NODEGRPFLG_H;
       break;
     case 'M':
     case 'm':
+      rail_flushrail(command->len, rail_sckt);
+      return 0;
       node_type = CACHE_NODEGRPFLG_M;
       break;
     case 'P':
@@ -1533,10 +1537,14 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
     switch (command->node_type) {
     case 'H':
     case 'h':
+      rail_flushrail(command->len, rail_sckt);
+      return 0;
       node_type = CACHE_NODEFLG_H;
       break;
     case 'M':
     case 'm':
+      rail_flushrail(command->len, rail_sckt);
+      return 0;
       node_type = CACHE_NODEFLG_M;
       break;
     case 'P':

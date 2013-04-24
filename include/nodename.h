@@ -52,11 +52,15 @@ unsigned char *
   encode_nbnodename(const unsigned char *decoded_name,
                     unsigned char *result_buf);
 
-# ifndef NBWORKS_NBWORKS_H
 unsigned char *
   nbworks_make_nbnodename(const unsigned char *string,
                           const unsigned char type_char,
                           unsigned char *field);
+# ifndef NBWORKS_NBWORKS_H
+unsigned char *
+  nbworks_create_nbnodename(const unsigned char *string,
+                            const unsigned char type_char,
+                            unsigned char *field);
 void
   nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename);
 struct nbworks_nbnamelst *

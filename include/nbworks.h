@@ -106,9 +106,9 @@ void
 
 /* BEGIN auxiliary API */
 unsigned char *
-  nbworks_make_nbnodename(const unsigned char *string,
-                          const unsigned char type_char,
-                          unsigned char *field);
+  nbworks_create_nbnodename(const unsigned char *string,
+                            const unsigned char type_char,
+                            unsigned char *field);
 void
   nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename);
 struct nbworks_nbnamelst *

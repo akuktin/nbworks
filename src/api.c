@@ -1617,7 +1617,7 @@ unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
 				  unsigned char node_types,
 				  unsigned char isgroup,
 				  unsigned long len) {
-  struct com_comm command;
+  struct com_comm command, answer;
   ipv4_addr_t result;
   int daemon_sckt;
   enum rail_commands cur_command;
@@ -1727,24 +1727,24 @@ unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
     }
 
     if (0 == read_railcommand(combuff, (combuff +LEN_COMM_ONWIRE),
-			      &command)) {
+			      &answer)) {
       close(daemon_sckt);
       free(buff);
       nbworks_errno = ENOBUFS;
       return 0;
     }
 
-    if (command.command != cur_command) {
+    if (answer.command != cur_command) {
       close(daemon_sckt);
       free(buff);
       nbworks_errno = EPIPE; /* What do I put here? */
       return 0;
     }
 
-    if (command.nbworks_errno)
+    if (answer.nbworks_errno)
       continue;
 
-    if (command.len < 4) {
+    if (answer.len < 4) {
       close(daemon_sckt);
       free(buff);
       nbworks_errno = EPIPE; /* What do I put here? */
