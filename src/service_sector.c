@@ -576,7 +576,7 @@ inline void *ss__recv_pckt(struct ss_queue *trans,
 	  /* NOTETOSELF: This is safe. */
 	  free(holdme);
 	}
-	return result;
+	break;
       }
     }
 
@@ -586,9 +586,12 @@ inline void *ss__recv_pckt(struct ss_queue *trans,
       /* NOTETOSELF: This too is safe. */
       free(holdme);
     } else {
-      return 0;
+      result = 0;
+      break;
     }
   } while (0101);
+
+  return result;
 }
 
 inline struct ss_unif_pckt_list *ss__recv_entry(struct ss_queue *trans) {
