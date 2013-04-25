@@ -561,38 +561,34 @@ inline void *ss__recv_pckt(struct ss_queue *trans,
 
   fill_32field(listen, (unsigned char *)&(real_listen));
 
- try_again:
-  result = trans->incoming->packet;
-  trans->incoming->packet = 0;
+  do {
+    result = trans->incoming->packet;
+    trans->incoming->packet = 0;
 
-  if (result) {
-    if (real_listen &&
-	(trans->incoming->addr.sin_addr.s_addr != real_listen)) {
-      trans->incoming->dstry(result, 1, 1);
-      goto handle_no_result;
+    if (result) {
+      if (real_listen &&
+	  (trans->incoming->addr.sin_addr.s_addr != real_listen)) {
+	trans->incoming->dstry(result, 1, 1);
+      } else {
+	if (trans->incoming->next) {
+	  holdme = trans->incoming;
+	  trans->incoming = trans->incoming->next;
+	  /* NOTETOSELF: This is safe. */
+	  free(holdme);
+	}
+	return result;
+      }
     }
 
-    if (trans->incoming->next) {
-      holdme = trans->incoming;
-      trans->incoming = trans->incoming->next;
-      /* NOTETOSELF: This is safe. */
-      free(holdme);
-    }
-  } else {
-  handle_no_result:
     if (trans->incoming->next) {
       holdme = trans->incoming;
       trans->incoming = trans->incoming->next;
       /* NOTETOSELF: This too is safe. */
       free(holdme);
-
-      goto try_again;
     } else {
-      result = 0;
+      return 0;
     }
-  }
-
-  return result;
+  } while (0101);
 }
 
 inline struct ss_unif_pckt_list *ss__recv_entry(struct ss_queue *trans) {
