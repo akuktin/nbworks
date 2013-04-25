@@ -35,6 +35,8 @@
 # define NBWORKS_NODE_P 0x02
 # define NBWORKS_NODE_M 0x04
 # define NBWORKS_NODE_H 0x08
+# define NBWORKS_NODE_ALL (NBWORKS_NODE_B | NBWORKS_NODE_P | \
+                           NBWORKS_NODE_M | NBWORKS_NODE_H)
 
 # define NBWORKS_MAXLEN_LABEL 0x3f
 

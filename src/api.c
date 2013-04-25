@@ -1638,7 +1638,7 @@ unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
 
   memset(&command, 0, sizeof(struct com_comm));
 
-  real_node_types = node_types;
+  real_node_types = (node_types & NBWORKS_NODE_ALL);
   if (isgroup) {
     real_node_types = real_node_types << 8;
     cur_command = rail_addr_ofXgroup;
