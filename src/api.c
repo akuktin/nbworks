@@ -768,8 +768,9 @@ int nbworks_poll(unsigned char service,
        * One other thing: I am not using the "logical or" operator because
        * I want to exercise total control over memory contents.
        * After all - that is the reason I use C and not PHP. */
-      if ((trgt->data) ? trgt :
-	  ((trgt = trgt->next), trgt)) {
+      if (trgt &&
+	  ((trgt->data) ? trgt :
+	   ((trgt = trgt->next), trgt))) {
 	ret_val++;
 
 	/* Do not report a POLLIN event if the application has not
@@ -792,8 +793,9 @@ int nbworks_poll(unsigned char service,
 	  trgt = nstate->in_library;
 
 	  /* Same as above. */
-	  if ((trgt->data) ? trgt :
-	      ((trgt = trgt->next), trgt)) {
+	  if (trgt &&
+	      ((trgt->data) ? trgt :
+	       ((trgt = trgt->next), trgt))) {
 	    ret_val++;
 
 	    handles[i].revents = ((handles[i].events & POLLIN) | POLLOUT);
@@ -821,8 +823,9 @@ int nbworks_poll(unsigned char service,
 	  trgt = nstate->in_library;
 
 	  /* Same as above. */
-	  if ((trgt->data) ? trgt :
-	      ((trgt = trgt->next), trgt)) {
+	  if (trgt &&
+	      ((trgt->data) ? trgt :
+	       ((trgt = trgt->next), trgt))) {
 	    ret_val++;
 
 	    handles[i].revents = ((handles[i].events & POLLIN) | POLLOUT);

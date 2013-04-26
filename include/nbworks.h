@@ -21,6 +21,10 @@
 
 # include <unistd.h>
 
+# define NBWORKS_NAME_SRVC 1
+# define NBWORKS_DTG_SRVC  0
+# define NBWORKS_SES_SRVC  2
+
 # define NBWORKS_CANCEL_SEND 1
 # define NBWORKS_CANCEL_RECV 2
 
