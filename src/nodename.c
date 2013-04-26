@@ -124,8 +124,8 @@ unsigned char *nbworks_make_nbnodename(const unsigned char *string,
 				       unsigned char *field) {
   int j, len;
   /* Array below is to save a call to malloc()
-     and give us a wonderfull pleasure of not having to
-     ) stuff. */
+   * and give us a wonderfull pleasure of not having to
+   * free() stuff. */
   unsigned char prepared_name[NETBIOS_NAME_LEN +1];
 
   if (! string) {
