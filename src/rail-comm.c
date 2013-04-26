@@ -827,6 +827,7 @@ int rail_senddtg(int rail_sckt,
       sendpckt->for_del = TRUE;
       ss_dtg_send_pckt(sendpckt, &dst_addr, &(trans->queue));
       sendpckt = 0;
+      sent = TRUE;
 
       break;
     }
@@ -842,11 +843,11 @@ int rail_senddtg(int rail_sckt,
 				     node_type, FALSE);
     if (namecard) {
       for (i=0; i<NUMOF_ADDRSES; i++) {
-	if (namecard->addrs.recrd[i].node_type == node_type)
+	if ((namecard->addrs.recrd[i].node_type == node_type) &&
+	    (namecard->addrs.recrd[i].addr))
 	  break;
       }
-      if ((i<NUMOF_ADDRSES) &&
-	  (namecard->addrs.recrd[i].addr)) {
+      if (i<NUMOF_ADDRSES) {
 	if (namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_GRP_MASK) {
 	  group_addrs = namecard->addrs.recrd[i].addr;
 	  while (group_addrs->next) {
@@ -867,7 +868,6 @@ int rail_senddtg(int rail_sckt,
 	  fill_32field(namecard->addrs.recrd[i].addr->ip_addr,
 		       (unsigned char *)&(dst_addr.sin_addr.s_addr));
 	}
-
 	sendpckt->for_del = TRUE;
 	ss_dtg_send_pckt(sendpckt, &dst_addr, &(trans->queue));
 	sendpckt = 0;

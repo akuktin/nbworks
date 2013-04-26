@@ -530,8 +530,9 @@ void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
     }
   }
 
-  mempcpy(result, packet->packetbuff, packet->len);
+  memcpy(result, packet->packetbuff, packet->len);
 
+  *pckt_len = packet->len;
   return result;
 }
 
