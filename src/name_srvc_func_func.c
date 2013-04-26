@@ -2154,7 +2154,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   numof_answers = 0;
   answer_lst = res = 0;
   istruncated = FALSE;
-  lowest_deathtime = ZEROONES;
+  lowest_deathtime = INFINITY;
 
 #ifdef COMPILING_NBNS
   last_qstn = &(outpckt->questions);
@@ -3202,7 +3202,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
-	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = 0;
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
@@ -3257,7 +3257,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
-	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = 0;
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
@@ -3325,7 +3325,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
-	      cache_namecard->timeof_death = ZEROONES; /* infinity */
+	      cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = 0;
 	    }
 	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
@@ -3380,7 +3380,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		cache_namecard->timeof_death = cur_time + res->res->ttl;
 		cache_namecard->refresh_ttl = res->res->ttl;
 	      } else {
-		cache_namecard->timeof_death = ZEROONES; /* infinity */
+		cache_namecard->timeof_death = INFINITY;
 		cache_namecard->refresh_ttl = 0;
 	      }
 	      cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;

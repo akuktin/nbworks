@@ -439,7 +439,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       while (listof_names) {					\
 	nbstat->listof_names = listof_names->next_nbnodename;	\
 								\
-	nbworks_dstr_nbnodename(listof_names->nbnodename);		\
+	nbworks_dstr_nbnodename(listof_names->nbnodename);	\
 								\
 	free(listof_names);					\
 	listof_names = nbstat->listof_names;			\
@@ -1564,7 +1564,7 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
       if (auto_update) {
 	overflow_test = cur_time + namecard->refresh_ttl;
 	if (overflow_test < cur_time)
-	  namecard->timeof_death = ZEROONES;
+	  namecard->timeof_death = INFINITY;
 	else
 	  namecard->timeof_death = overflow_test;
       }

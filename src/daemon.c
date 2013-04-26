@@ -184,10 +184,10 @@ void *daemon_allstop(struct thread_cache *tcache) {
   else
     all_threads_cache = 0; /* Stupid GCC warnings. */
 
-  nbworks_ses_srv_cntrl.all_stop = ONES;
-  nbworks__rail_control.all_stop = ONES;
-  nbworks_all_port_cntl.all_stop = ONES;
-  nbworks_dtg_srv_cntrl.all_stop = ONES;
+  nbworks_ses_srv_cntrl.all_stop = TRUE;
+  nbworks__rail_control.all_stop = TRUE;
+  nbworks_all_port_cntl.all_stop = TRUE;
+  nbworks_dtg_srv_cntrl.all_stop = TRUE;
 
   pthread_join(tcache->ss__port137_tid, 0);
   pthread_join(tcache->ss__port138_tid, 0);
@@ -197,7 +197,7 @@ void *daemon_allstop(struct thread_cache *tcache) {
   pthread_join(tcache->nbns_newtid_tid, 0);
 #endif
 
-  nbworks_pruners_cntrl.all_stop = ONES;
+  nbworks_pruners_cntrl.all_stop = TRUE;
 
   pthread_join(tcache->pruners_tid, all_threads_cache);
 

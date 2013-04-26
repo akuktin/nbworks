@@ -61,6 +61,11 @@
 # endif
 # define ZEROONES (~(1 >> 1))
 
+# ifdef INFINITY
+#  undef INFINITY
+# endif
+# define INFINITY ((time_t)(SIZE_MAX / 2))
+
 # ifdef TRUE
 #  undef TRUE
 # endif

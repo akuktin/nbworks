@@ -243,7 +243,7 @@ struct cache_namenode *add_nblabel(void *label,
   }
   result->dns_type = dns_type;
   result->dns_class = dns_class;
-  result->timeof_death = ZEROONES; /* AKA infinity. */
+  result->timeof_death = INFINITY;
   result->endof_conflict_chance = 0;
   result->refresh_ttl = 0;
   result->next = 0;
@@ -429,7 +429,7 @@ struct cache_namenode *alloc_namecard(void *label,
   }
   result->dns_type = dns_type;
   result->dns_class = dns_class;
-  result->timeof_death = ZEROONES; /* AKA infinity. */
+  result->timeof_death = INFINITY;
   result->endof_conflict_chance = 0;
   result->refresh_ttl = 0;
   result->next = 0;

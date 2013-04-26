@@ -814,7 +814,7 @@ int rail_senddtg(int rail_sckt,
 	break;
       }
     }
-    if (trans->last_active < ZEROONES)
+    if (trans->last_active < INFINITY)
       trans->last_active = time(0);
 
 
@@ -963,6 +963,9 @@ int rail_add_dtg_server(int rail_sckt,
     nbworks_dstr_nbnodename(nbname);
     free(new_rail);
     return 1;
+  } else {
+    /* Make the queue unperishable. */
+    queue->last_active = INFINITY;
   }
 
   while (0x101) { /* Not really 101. */
@@ -1052,8 +1055,8 @@ void *dtg_server(void *arg) {
     while (438) {
       pckt = ss__recv_pckt(trans, 0);
       if (pckt) {
-	if (queue->last_active < ZEROONES)
-	  queue->last_active = time(0);
+	if (queue->last_active < INFINITY)
+	  queue->last_active = INFINITY;
 
 	/* VAXism below */
 	fill_32field(pckt->len, buff);

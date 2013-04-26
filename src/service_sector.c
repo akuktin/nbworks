@@ -224,7 +224,7 @@ struct ss_queue_storage *ss_add_queuestorage(struct ss_queue *queue,
     tid = arg->tid;
     result->id.tid = tid;
   }
-  result->last_active = ZEROONES -1;
+  result->last_active = INFINITY -1;
   result->rail = 0;
   result->queue.incoming = queue->incoming;
   result->queue.outgoing = queue->outgoing;
