@@ -1231,6 +1231,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	continue;
       }
 
+
       new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
       /* NOTE: No check for failure. */
       new_pckt->packet = sckts.master_reader(udp_pckt, len, &tid);

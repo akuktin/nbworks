@@ -868,6 +868,7 @@ int rail_senddtg(int rail_sckt,
 	  fill_32field(namecard->addrs.recrd[i].addr->ip_addr,
 		       (unsigned char *)&(dst_addr.sin_addr.s_addr));
 	}
+
 	sendpckt->for_del = TRUE;
 	ss_dtg_send_pckt(sendpckt, &dst_addr, &(trans->queue));
 	sendpckt = 0;
