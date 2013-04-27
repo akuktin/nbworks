@@ -1349,11 +1349,11 @@ ssize_t nbworks_recvfrom(unsigned char service,
     while (notrecved) {
       if (len_left) {
 	if (*hndllen_left >= notrecved) {
-	  *hndllen_left = *hndllen_left - notrecved;
 	  len_left = notrecved;
+	  *hndllen_left = *hndllen_left - notrecved;
 	} else {
+	  /* len_left is already set */
 	  *hndllen_left = 0;
-	  len_left = *hndllen_left;
 	}
 
 	if (flags & MSG_OOB) {
@@ -1382,16 +1382,22 @@ ssize_t nbworks_recvfrom(unsigned char service,
 			   len_left, flags);
 
 	    if (ret_val <= 0) {
-	      if (((errno == EAGAIN) ||
-		   (errno == EWOULDBLOCK)) &&
-		  (recved)) {
+	      if (ret_val == 0) {
 		return recved;
 	      } else {
-		nbworks_errno = errno;
-		if (ret_val == 0)
-		  return recved;
-		else
+		*hndllen_left = *hndllen_left + len_left;
+		if ((errno == EAGAIN) ||
+		    (errno == EWOULDBLOCK)) {
+		  if (recved)
+		    return recved;
+		  else {
+		    nbworks_errno = EAGAIN;
+		    return -1;
+		  }
+		} else {
+		  nbworks_errno = errno;
 		  return -1;
+		}
 	      }
 	    }
 	    notrecved = notrecved - ret_val;
@@ -1476,16 +1482,22 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	ret_val = recv(ses->socket, (char *)(buff + (len - notrecved)),
 		       len_left, flags);
 	if (ret_val <= 0) {
-	  if (((errno == EAGAIN) ||
-	       (errno == EWOULDBLOCK)) &&
-	      (recved)) {
+	  if (ret_val == 0) {
 	    return recved;
 	  } else {
-	    nbworks_errno = errno;
-	    if (ret_val == 0)
-	      return recved;
-	    else
+	    *hndllen_left = *hndllen_left + len_left;
+	    if ((errno == EAGAIN) ||
+		(errno == EWOULDBLOCK)) {
+	      if (recved)
+		return recved;
+	      else {
+		nbworks_errno = EAGAIN;
+		return -1;
+	      }
+	    } else {
+	      nbworks_errno = errno;
 	      return -1;
+	    }
 	  }
 	}
 
@@ -1521,16 +1533,17 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  ret_val = recv(ses->socket, (ses->oob_tmpstor +(torecv - len_left)),
 			 len_left, flags);
 	  if (ret_val <= 0) {
-	    if ((errno == EAGAIN) ||
-		(errno == EWOULDBLOCK)) {
-	      /* no timeouts here */
-	      handle_cancel else continue;
+	    if (ret_val == 0) {
+	      return recved;
 	    } else {
-	      nbworks_errno = errno;
-	      if (ret_val == 0)
-		return recved;
-	      else
+	      if ((errno == EAGAIN) ||
+		  (errno == EWOULDBLOCK)) {
+		/* no timeouts here */
+		handle_cancel else continue;
+	      } else {
+		nbworks_errno = errno;
 		return -1;
+	      }
 	    }
 	  }
 
