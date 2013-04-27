@@ -167,8 +167,8 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     }
 
     /* However, maybe I should ignore alignment things. */
-
     walker = align(remember_walker, walker, 4);
+
     if ((walker + normal_pckt->len) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
