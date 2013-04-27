@@ -1289,8 +1289,9 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	} else {
 	  if (ret_val)
 	    break;
-	  if ((flags & MSG_DONTWAIT) ||
-	      (ses->nonblocking)) {
+	  if (((flags & MSG_DONTWAIT) ||
+	       (ses->nonblocking)) &&
+	      (! (flags & MSG_WAITALL))) {
 	    nbworks_errno = EAGAIN;
 	    ret_val = -1;
 	    break;
@@ -1298,8 +1299,9 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    nanosleep(&sleeptime, 0);
 	}
       } else {
-	if ((flags & MSG_DONTWAIT) ||
-	    (ses->nonblocking)) {
+	if (((flags & MSG_DONTWAIT) ||
+	     (ses->nonblocking)) &&
+	    (! (flags & MSG_WAITALL))) {
 	  nbworks_errno = EAGAIN;
 	  ret_val = -1;
 	  break;
@@ -1488,6 +1490,8 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    *hndllen_left = *hndllen_left + len_left;
 	    if ((errno == EAGAIN) ||
 		(errno == EWOULDBLOCK)) {
+	      if (flags & MSG_OOB)
+		break; /* and enter the below if block */
 	      if (recved)
 		return recved;
 	      else {
