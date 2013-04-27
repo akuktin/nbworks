@@ -908,12 +908,17 @@ void *lib_dtgserver(void *arg) {
       nrml_pyld = dtg->payload;
       if (nrml_pyld->src_name) {
 	if (nrml_pyld->src_name->len != NETBIOS_CODED_NAME_LEN) {
-	  /* Theoretically, I should send a SOURCE NAME BAD FORMAT error message to the sender. */
+	  /* Theoretically, I should send a SOURCE NAME BAD FORMAT
+	   * error message to the sender. */
 	  destroy_dtg_srvc_pckt(dtg, 1, 1);
 	  continue;
 	} else {
 	  decode_nbnodename(nrml_pyld->src_name->name, decoded_nbnodename.name);
 	}
+      } else {
+	/* Punk. */
+	destroy_dtg_srvc_pckt(dtg, 1, 1);
+	continue;
       }
       if (handle->dtg_takes == HANDLE_TAKES_ALL)
 	take_dtg = TRUE;

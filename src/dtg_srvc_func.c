@@ -37,6 +37,9 @@ inline uint16_t dtg_srvc_doesitmatch(struct nbworks_nbnamelst *target,
   struct nbworks_nbnamelst *gun;
   struct dtg_pckt_pyld_normal *pyld;
 
+  if (! (target && shot))
+    return 0;
+
   switch (shot->payload_t) {
   case normal:
     pyld = shot->payload;
@@ -60,6 +63,9 @@ inline uint16_t dtg_srvc_doesitmatch(struct nbworks_nbnamelst *target,
 inline struct nbworks_nbnamelst *dtg_srvc_extract_dstname(struct dtg_srvc_packet *pckt) {
   struct dtg_pckt_pyld_normal *pyld;
 
+  if (! pckt)
+    return 0;
+
   switch (pckt->payload_t) {
   case normal:
     pyld = pckt->payload;
@@ -75,6 +81,9 @@ inline struct nbworks_nbnamelst *dtg_srvc_extract_dstname(struct dtg_srvc_packet
 
 inline struct nbworks_nbnamelst *dtg_srvc_extract_srcname(struct dtg_srvc_packet *pckt) {
   struct dtg_pckt_pyld_normal *pyld;
+
+  if (! pckt)
+    return 0;
 
   switch (pckt->payload_t) {
   case normal:
