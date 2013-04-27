@@ -221,7 +221,6 @@ int set_sockoption(int sckt,
 
   switch (what) {
   case NONBLOCKING:
-    return 0;
     return fcntl(sckt, F_SETFL, O_NONBLOCK);
 
   case KEEPALIVE:
