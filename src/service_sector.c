@@ -1242,6 +1242,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	if (sckts.branch == DTG_SRVC) {
 	  name_as_id = dtg_srvc_get_srcnam_recvpckt(new_pckt->packet);
 	  if ((! name_as_id) ||
+	      (! name_as_id->name) ||
 	      (name_as_id->len != NETBIOS_CODED_NAME_LEN)) {
 	    sckts.pckt_dstr(new_pckt->packet, 1, 1);
 	    free(new_pckt);

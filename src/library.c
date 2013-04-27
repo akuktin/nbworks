@@ -904,168 +904,164 @@ void *lib_dtgserver(void *arg) {
       continue;
     }
 
-    if (dtg->payload_t == normal) {
-      nrml_pyld = dtg->payload;
-      if (nrml_pyld->src_name) {
-	if (nrml_pyld->src_name->len != NETBIOS_CODED_NAME_LEN) {
-	  /* Theoretically, I should send a SOURCE NAME BAD FORMAT
-	   * error message to the sender. */
-	  destroy_dtg_srvc_pckt(dtg, 1, 1);
-	  continue;
+    nrml_pyld = dtg->payload;
+    if ((dtg->payload_t == normal) &&
+	nrml_pyld &&
+	nrml_pyld->src_name &&
+	nrml_pyld->src_name->name &&
+	(nrml_pyld->src_name->len == NETBIOS_CODED_NAME_LEN)) {
+      decode_nbnodename(nrml_pyld->src_name->name, decoded_nbnodename.name);
+    } else {
+      /* Theoretically, I should send a SOURCE NAME BAD FORMAT
+       * error message to the sender or something like that. */
+      destroy_dtg_srvc_pckt(dtg, 1, 1);
+      continue;
+    }
+    if (handle->dtg_takes == HANDLE_TAKES_ALL)
+      take_dtg = TRUE;
+    else {
+      switch (dtg->type) {
+      case BRDCST_DTG:
+	if (handle->dtg_takes & HANDLE_TAKES_ALLBRDCST) {
+	  take_dtg = TRUE;
 	} else {
-	  decode_nbnodename(nrml_pyld->src_name->name, decoded_nbnodename.name);
+	  take_dtg = lib_doeslistento(&decoded_nbnodename,
+				      handle->dtg_listento);
 	}
-      } else {
-	/* Punk. */
-	destroy_dtg_srvc_pckt(dtg, 1, 1);
-	continue;
-      }
-      if (handle->dtg_takes == HANDLE_TAKES_ALL)
-	take_dtg = TRUE;
-      else {
-	switch (dtg->type) {
-	case BRDCST_DTG:
-	  if (handle->dtg_takes & HANDLE_TAKES_ALLBRDCST) {
-	    take_dtg = TRUE;
-	  } else {
-	    take_dtg = lib_doeslistento(&decoded_nbnodename,
-					handle->dtg_listento);
-	  }
-	  break;
+	break;
 
-	  /* I think I implemented the below wrong (groups again). */
-	case DIR_UNIQ_DTG:
-	case DIR_GRP_DTG:
-	  if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
-	    take_dtg = TRUE;
-	  } else {
-	    take_dtg = lib_doeslistento(&decoded_nbnodename,
-					handle->dtg_listento);
-	  }
-	  break;
-
-	default:
-	  break;
+	/* I think I implemented the below wrong (groups again). */
+      case DIR_UNIQ_DTG:
+      case DIR_GRP_DTG:
+	if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
+	  take_dtg = TRUE;
+	} else {
+	  take_dtg = lib_doeslistento(&decoded_nbnodename,
+				      handle->dtg_listento);
 	}
+	break;
+
+      default:
+	break;
       }
+    }
 
-      /* This is the only point in the code where take_dtg can be TRUE. */
+    /* This is the only point in the code where take_dtg can be TRUE. */
 
-      if (take_dtg == TRUE) {
-	take_dtg = FALSE;
+    if (take_dtg == TRUE) {
+      take_dtg = FALSE;
 
-	if (! (dtg->flags & DTG_FIRST_FLAG)) {
-	attempt_to_add_a_fragment:
-	  if (lib_add_frag_tobone(dtg->id, &(decoded_nbnodename),
+      if (! (dtg->flags & DTG_FIRST_FLAG)) {
+      attempt_to_add_a_fragment:
+	if (lib_add_frag_tobone(dtg->id, &(decoded_nbnodename),
+				nrml_pyld->offset, nrml_pyld->len,
+				nrml_pyld->payload, handle->dtg_frags)) {
+	  nrml_pyld->payload = 0;
+	} else {
+	  /* Either there was an internal error in lib_add_frag_tobone() or
+	   * this is the first fragment of the datagram that was received,
+	   * in the event of fragments coming in out of order. */
+	  /* Assume the latter is true and attempt to add a new fragbone. */
+	  if (lib_add_fragbckbone(dtg->id, &(decoded_nbnodename),
 				  nrml_pyld->offset, nrml_pyld->len,
-				  nrml_pyld->payload, handle->dtg_frags)) {
+				  nrml_pyld->payload, &(handle->dtg_frags))) {
 	    nrml_pyld->payload = 0;
 	  } else {
-	    /* Either there was an internal error in lib_add_frag_tobone() or
-	     * this is the first fragment of the datagram that was received,
-	     * in the event of fragments coming in out of order. */
-	    /* Assume the latter is true and attempt to add a new fragbone. */
-	    if (lib_add_fragbckbone(dtg->id, &(decoded_nbnodename),
-				    nrml_pyld->offset, nrml_pyld->len,
-				    nrml_pyld->payload, &(handle->dtg_frags))) {
-	      nrml_pyld->payload = 0;
-	    } else {
-	      lib_del_fragbckbone(dtg->id, &(decoded_nbnodename),
-				  &(handle->dtg_frags));
-	      destroy_dtg_srvc_pckt(dtg, 1, 1);
-	      continue;
-	    }
-	  }
-	} else {
-	  if (dtg->flags & DTG_MORE_FLAG) {
-	    /* I am using this goto to reduce the amount of code. It is somewhat ineficient. */
-	    goto attempt_to_add_a_fragment;
-	  }
-	}
-
-	if (! (dtg->flags & DTG_MORE_FLAG)) {
-	  toshow = malloc(sizeof(struct packet_cooked));
-	  if (! toshow) {
+	    lib_del_fragbckbone(dtg->id, &(decoded_nbnodename),
+				&(handle->dtg_frags));
 	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    continue;
 	  }
-
-	  if (dtg->flags & DTG_FIRST_FLAG) {
-	    if (! nrml_pyld->offset) {
-	      toshow->data = nrml_pyld->payload;
-	      nrml_pyld->payload = 0;
-
-	      toshow->len = nrml_pyld->len;
-	      toshow->src = nbworks_clone_nbnodename(&(decoded_nbnodename));
-	      if (! toshow->src) {
-		free(toshow->data);
-		free(toshow);
-		toshow = 0;
-	      } else {
-		toshow->next = 0;
-	      }
-	    } else {
-	      /* Now, interestingly, I might be able to interpret the
-	       * offset as meaning that the offsetted part is filled with
-	       * well-known information (maybe NULLs?) and is thus not
-	       * transmitted, but only the other, meaningfull part is
-	       * transmitted. */
-	      free(toshow);
-	      toshow = 0;
-	    }
-	  } else {
-	    fragbone = lib_take_fragbckbone(dtg->id, &(decoded_nbnodename),
-					    &(handle->dtg_frags));
-	    if (fragbone) {
-
-	      if (lib_order_frags(&(fragbone->frags), &(toshow->len))) {
-		toshow->data = lib_assemble_frags(fragbone->frags, toshow->len);
-	      } else {
-		if (! fragbone->frags) {
-		  /* lib_order_frags() has detected an unrecoverable error.
-		   * Fragbckbone is unusable. */
-		  nbworks_dstr_nbnodename(fragbone->src);
-		  free(fragbone);
-		} else {
-		  /* lib_order_frags() has detected a recoverable error.
-		   * Fragbckbone is still usable but not in this iteration of the loop.*/
-		  /* This only works because only one datagram server can be used per
-		   * nodename handle and said server is single-threaded. */
-		  fragbone->next = handle->dtg_frags;
-		  handle->dtg_frags = fragbone;
-		  fragbone->last_ishere = TRUE;
-		}
-
-		free(toshow);
-		toshow = 0;
-
-		destroy_dtg_srvc_pckt(dtg, 1, 1);
-		continue;
-	      }
-
-	      toshow->src = fragbone->src;
-
-	      toshow->next = 0;
-
-	      free(fragbone);
-	    } else {
-	      free(toshow);
-	      toshow = 0;
-	    }
-	  }
-        }
-
-	if (toshow) {
-	  if (handle->in_server) {
-	    handle->in_server->next = toshow;
-	    handle->in_server = toshow;
-	  } else {
-	    handle->in_server = toshow;
-	    handle->in_library = toshow;
-	  }
-
-	  toshow = 0;
 	}
+      } else {
+	if (dtg->flags & DTG_MORE_FLAG) {
+	  /* I am using this goto to reduce the amount of code. It is somewhat ineficient. */
+	  goto attempt_to_add_a_fragment;
+	}
+      }
+
+      if (! (dtg->flags & DTG_MORE_FLAG)) {
+	toshow = malloc(sizeof(struct packet_cooked));
+	if (! toshow) {
+	  destroy_dtg_srvc_pckt(dtg, 1, 1);
+	  continue;
+	}
+
+	if (dtg->flags & DTG_FIRST_FLAG) {
+	  if (! nrml_pyld->offset) {
+	    toshow->data = nrml_pyld->payload;
+	    nrml_pyld->payload = 0;
+
+	    toshow->len = nrml_pyld->len;
+	    toshow->src = nbworks_clone_nbnodename(&(decoded_nbnodename));
+	    if (! toshow->src) {
+	      free(toshow->data);
+	      free(toshow);
+	      toshow = 0;
+	    } else {
+	      toshow->next = 0;
+	    }
+	  } else {
+	    /* Now, interestingly, I might be able to interpret the
+	     * offset as meaning that the offsetted part is filled with
+	     * well-known information (maybe NULLs?) and is thus not
+	     * transmitted, but only the other, meaningfull part is
+	     * transmitted. */
+	    free(toshow);
+	    toshow = 0;
+	  }
+	} else {
+	  fragbone = lib_take_fragbckbone(dtg->id, &(decoded_nbnodename),
+					  &(handle->dtg_frags));
+	  if (fragbone) {
+
+	    if (lib_order_frags(&(fragbone->frags), &(toshow->len))) {
+	      toshow->data = lib_assemble_frags(fragbone->frags, toshow->len);
+	    } else {
+	      if (! fragbone->frags) {
+		/* lib_order_frags() has detected an unrecoverable error.
+		 * Fragbckbone is unusable. */
+		nbworks_dstr_nbnodename(fragbone->src);
+		free(fragbone);
+	      } else {
+		/* lib_order_frags() has detected a recoverable error.
+		 * Fragbckbone is still usable but not in this iteration of the loop.*/
+		/* This only works because only one datagram server can be used per
+		 * nodename handle and said server is single-threaded. */
+		fragbone->next = handle->dtg_frags;
+		handle->dtg_frags = fragbone;
+		fragbone->last_ishere = TRUE;
+	      }
+
+	      free(toshow);
+	      toshow = 0;
+
+	      destroy_dtg_srvc_pckt(dtg, 1, 1);
+	      continue;
+	    }
+
+	    toshow->src = fragbone->src;
+
+	    toshow->next = 0;
+
+	    free(fragbone);
+	  } else {
+	    free(toshow);
+	    toshow = 0;
+	  }
+	}
+      }
+
+      if (toshow) {
+	if (handle->in_server) {
+	  handle->in_server->next = toshow;
+	  handle->in_server = toshow;
+	} else {
+	  handle->in_server = toshow;
+	  handle->in_library = toshow;
+	}
+
+	toshow = 0;
       }
     }
 
