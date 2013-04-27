@@ -1421,8 +1421,14 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	if (ret_val == 0) {
 	  return recved;
 	} else {
-	  nbworks_errno = EREMOTEIO;
-	  return -1;
+	  if ((ret_val == -1) &&
+	      ((errno == EAGAIN) ||
+	       (errno == EWOULDBLOCK)))
+	    return recved;
+	  else {
+	    nbworks_errno = EREMOTEIO;
+	    return -1;
+	  }
 	}
       }
       walker = hdrbuff;
