@@ -589,9 +589,12 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
   return TRUE;
 }
 
-nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle) {
+nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
+				     int timeout) {
+  struct timespec sleeptime;
   struct name_state *handle;
   struct nbworks_session *result, *clone;
+  int waits;
 
   handle = namehandle;
   if (! handle) {
@@ -601,57 +604,82 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle) {
     nbworks_errno = 0;
   }
 
-  if (handle->sesin_library) {
-    result = handle->sesin_library;
+  sleeptime.tv_sec = 0;
+  sleeptime.tv_nsec = T_12MS;
+  if (timeout <= 0) {
+    waits = -1;
+  } else {
+    waits = timeout / 12;
+  }
 
-    if ((! result->peer) ||
-	(result->socket < 0)) {
+  for (; waits != 0; waits--) {
+    if (waits < 0) {
+      /* Prevent the counter from underflowing. Forewer really means FOREVER. */
+      waits = -1;
+    }
+
+    if (handle->sesin_library) {
+      result = handle->sesin_library;
+
+      if ((! result->peer) ||
+	  (result->socket < 0)) {
+	if (result->next) {
+	  handle->sesin_library = result->next;
+	  nbworks_hangup_ses(result);
+
+	  if (timeout > 0) {
+	    timeout = timeout - (waits * 12);
+	    if (timeout <= 0) {
+	      goto endof_function;
+	    }
+	  } else {
+	    timeout = 0;
+	  }
+	  return nbworks_accept_ses(handle, timeout);
+	} else {
+	  continue;
+	}
+      }
+
       if (result->next) {
 	handle->sesin_library = result->next;
-	nbworks_hangup_ses(result);
-
-	return nbworks_accept_ses(handle);
+	result->next = 0;
       } else {
-	nbworks_errno = EAGAIN;
-	return 0;
+	clone = malloc(sizeof(struct nbworks_session));
+	if (! clone) {
+	  nbworks_errno = ENOBUFS;
+	  return 0;
+	}
+
+	memcpy(clone, result, sizeof(struct nbworks_session));
+
+	result->peer = 0;
+	result->socket = -1;
+
+	pthread_mutex_init(&(clone->mutex), 0);
+
+	result = clone;
       }
-    }
 
-    if (result->next) {
-      handle->sesin_library = result->next;
-      result->next = 0;
-    } else {
-      clone = malloc(sizeof(struct nbworks_session));
-      if (! clone) {
-	nbworks_errno = ENOBUFS;
-	return 0;
-      }
-
-      memcpy(clone, result, sizeof(struct nbworks_session));
-
-      result->peer = 0;
-      result->socket = -1;
-
-      pthread_mutex_init(&(clone->mutex), 0);
-
-      result = clone;
-    }
-
-    if ((result->keepalive) &&
-	(! result->caretaker_tid)) {
-      if (0 != pthread_create(&(result->caretaker_tid), 0,
-			      lib_caretaker, handle)) {
+      if ((result->keepalive) &&
+	  (! result->caretaker_tid)) {
+	if (0 != pthread_create(&(result->caretaker_tid), 0,
+				lib_caretaker, handle)) {
+	  result->caretaker_tid = 0;
+	}
+      } else {
 	result->caretaker_tid = 0;
       }
-    } else {
-      result->caretaker_tid = 0;
+
+      return result;
     }
 
-    return result;
-  } else {
-    nbworks_errno = EAGAIN;
-    return 0;
+    nanosleep(&sleeptime, 0);
   }
+
+ endof_function:
+  nbworks_errno = EAGAIN;
+  return 0;
 }
 
 nbworks_session_p nbworks_sescall(nbworks_namestate_p namehandle,
@@ -969,7 +997,7 @@ ssize_t nbworks_sendto(unsigned char service,
       return -1;				\
     }
 #define handle_timeout							\
-    if ((start_time + nbworks_libcntl.close_timeout) > time(0)) {	\
+    if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {	\
       close(ses->socket);						\
       nbworks_errno = ETIME;						\
       return -1;							\
@@ -1291,7 +1319,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       return -1;				\
     }
 #define handle_timeout							\
-    if ((start_time + nbworks_libcntl.close_timeout) > time(0)) {	\
+    if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {	\
       *hndllen_left = *hndllen_left + len_left;				\
       nbworks_errno = ETIME;						\
       return recved;							\

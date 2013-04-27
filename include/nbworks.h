@@ -167,7 +167,8 @@ int
                      unsigned char takes_field,
                      struct nbworks_nbnamelst *listento);
 nbworks_session_p
-  nbworks_accept_ses(nbworks_namestate_p handle);
+  nbworks_accept_ses(nbworks_namestate_p handle,
+                     int timeout);
 nbworks_session_p
   nbworks_sescall(nbworks_namestate_p handle,
                   struct nbworks_nbnamelst *dst,
