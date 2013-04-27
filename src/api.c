@@ -1326,7 +1326,6 @@ ssize_t nbworks_recvfrom(unsigned char service,
     }
 
     /* --> begin setup */
-    start_time = time(0);
     if (! *buff_pptr) {
       *buff_pptr = malloc(len);
       if (! *buff_pptr) {
@@ -1335,6 +1334,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       }
     }
     buff = *buff_pptr;
+    start_time = time(0);
 
     recved = 0;
     notrecved = len;
