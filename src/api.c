@@ -1423,9 +1423,14 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	} else {
 	  if ((ret_val == -1) &&
 	      ((errno == EAGAIN) ||
-	       (errno == EWOULDBLOCK)))
-	    return recved;
-	  else {
+	       (errno == EWOULDBLOCK))) {
+	    if (recved)
+	      return recved;
+	    else {
+	      nbworks_errno = EAGAIN;
+	      return -1;
+	    }
+	  } else {
 	    nbworks_errno = EREMOTEIO;
 	    return -1;
 	  }
