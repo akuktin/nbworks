@@ -339,21 +339,21 @@ struct dtg_frag_bckbone *lib_add_frag_tobone(uint16_t id,
     return 0;
   }
 
-  bone->last_active = time(0);
-
   while (42) {
     last_frag = &(bone->frags);
     cur_frag = *last_frag;
 
     while (cur_frag) {
-      if (cur_frag == result)
+      if (cur_frag == result) {
+	bone->last_active = time(0);
 	return bone;
+      }
 
       last_frag = &(cur_frag->next);
       cur_frag = *last_frag;
     }
 
-    *last_frag = cur_frag;
+    *last_frag = result;
   }
 }
 
@@ -521,7 +521,7 @@ void *lib_assemble_frags(struct dtg_frag *frags,
       return 0;
     }
     memcpy((result + done), frags->data, frags->len);
-    done = done + len;
+    done = done + frags->len;
     frags = frags->next;
   }
 
