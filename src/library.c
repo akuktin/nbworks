@@ -824,6 +824,7 @@ void *lib_dtgserver(void *arg) {
   struct dtg_pckt_pyld_normal *nrml_pyld;
   struct nbworks_nbnamelst decoded_nbnodename;
   time_t last_pruned, killtime;
+  unsigned long frag_keeptime;
   uint32_t len;
   unsigned char lenbuf[4], decoded_name[NETBIOS_NAME_LEN+1];
   unsigned char *new_pckt, take_dtg;
@@ -858,7 +859,8 @@ void *lib_dtgserver(void *arg) {
      * because lib_prune_fragbckbone() will not be called at all in the
      * event of a datagram torrent, when datagrams are comming in in
      * intervals shorter than nbworks_libcntl.dtg_srv_polltimeout. */
-    killtime = time(0) - nbworks_libcntl.dtg_frag_keeptime;
+    frag_keeptime = nbworks_libcntl.dtg_frag_keeptime;
+    killtime = time(0) - frag_keeptime;
 
     if (last_pruned < killtime) {
       /* toshow equals zero */
@@ -875,7 +877,7 @@ void *lib_dtgserver(void *arg) {
 	toshow = 0;
       }
       /* Save us a call to time(). */
-      last_pruned = killtime + nbworks_libcntl.dtg_frag_keeptime;
+      last_pruned = killtime + frag_keeptime;
     }
 
     if (0 >= poll(&pfd, 1, nbworks_libcntl.dtg_srv_polltimeout)) {
