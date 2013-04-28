@@ -76,8 +76,7 @@ unsigned long nbworks_maxdtglen(nbworks_namestate_p handle,
   long result;
 
   result = nbworks_libcntl.dtg_max_wholefrag_len -
-    (DTG_HDR_LEN + (2 + 2 + (2*(1+NETBIOS_CODED_NAME_LEN)))) -
-    (2*4); /* extra space for name alignment, if performed */
+    (DTG_HDR_LEN + (2 + 2 + (2*(1+NETBIOS_CODED_NAME_LEN))));
 
   name = handle;
   if (name)
@@ -120,6 +119,11 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   }
 
   lenof_scope = nbworks_nbnodenamelen(scope);
+  if ((lenof_scope + (1+NETBIOS_CODED_NAME_LEN)) >
+      ARBITRARY_MAXIMUM_LENOF_NAME) {
+    nbworks_errno = EOVERFLOW;
+    return 0;
+  }
 
   result = calloc(1, sizeof(struct name_state));
   if (! result) {

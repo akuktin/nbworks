@@ -572,7 +572,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   unsigned long pckt_len, hdr_len, max_wholefrag_len;
   int daemon_sckt;
   uint32_t basic_pckt_flags;
-  uint32_t frag_len, max_frag_len, numof_frags, frag_offset;
+  uint32_t frag_len, max_frag_len, numof_frags, frag_offset, names_len;
   unsigned char readycommand[LEN_COMM_ONWIRE], *data;
   void *readypacket;
 
@@ -591,9 +591,11 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     data = data_ptr;
   }
 
-  hdr_len = DTG_HDR_LEN + 2 + 2 + ((1+NETBIOS_CODED_NAME_LEN) *2) +
-    (handle->lenof_scope *2) + (2 * 4); /* extra space for name alignment,
-					   if performed */
+  /* Which FUCKING IDIOT came up with the idea to include
+   * the length of the names in the datagram_length field??? */
+  names_len = ((1+NETBIOS_CODED_NAME_LEN) *2) + (handle->lenof_scope *2);
+  /* ALIGNMENT */
+  hdr_len = DTG_HDR_LEN + 2 + 2 + names_len;
 
   max_wholefrag_len = nbworks_libcntl.dtg_max_wholefrag_len;
   if (max_wholefrag_len > MAX_UDP_PACKET_LEN) {
@@ -607,6 +609,8 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   }
 
   max_frag_len = max_wholefrag_len - hdr_len;
+  /* if (max_frag_len > FURTHER_IDIOTISM) max_frag_len = FURTHER_IDIOTISM;
+   * With FURTHER_IDIOTISM = ARBITRARY_maximum_length_of_user_data */
 
   /* Check if we can send the data with overloading.
    * Actually, see if the data is so big that not even
@@ -720,7 +724,8 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   while (numof_frags) {
     numof_frags--;
 
-    pyld->len = frag_len;
+    pyld->lenof_data = frag_len;
+    pyld->len = frag_len + names_len; /* Idiot. */
     pyld->offset = frag_offset;
     pyld->payload = data + frag_offset;
 
@@ -954,7 +959,7 @@ void *lib_dtgserver(void *arg) {
       if (! (dtg->flags & DTG_FIRST_FLAG)) {
       attempt_to_add_a_fragment:
 	if (lib_add_frag_tobone(dtg->id, &(decoded_nbnodename),
-				nrml_pyld->offset, nrml_pyld->len,
+				nrml_pyld->offset, nrml_pyld->lenof_data,
 				nrml_pyld->payload, handle->dtg_frags)) {
 	  nrml_pyld->payload = 0;
 	} else {
@@ -963,7 +968,7 @@ void *lib_dtgserver(void *arg) {
 	   * in the event of fragments coming in out of order. */
 	  /* Assume the latter is true and attempt to add a new fragbone. */
 	  if (lib_add_fragbckbone(dtg->id, &(decoded_nbnodename),
-				  nrml_pyld->offset, nrml_pyld->len,
+				  nrml_pyld->offset, nrml_pyld->lenof_data,
 				  nrml_pyld->payload, &(handle->dtg_frags))) {
 	    nrml_pyld->payload = 0;
 	  } else {
@@ -992,7 +997,7 @@ void *lib_dtgserver(void *arg) {
 	    toshow->data = nrml_pyld->payload;
 	    nrml_pyld->payload = 0;
 
-	    toshow->len = nrml_pyld->len;
+	    toshow->len = nrml_pyld->lenof_data;
 	    toshow->src = nbworks_clone_nbnodename(&(decoded_nbnodename));
 	    if (! toshow->src) {
 	      free(toshow->data);

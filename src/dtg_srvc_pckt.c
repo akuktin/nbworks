@@ -97,7 +97,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
                                       unsigned char *end_of_packet,
 				      unsigned char read_allpyld) {
   struct dtg_pckt_pyld_normal *normal_pckt;
-  unsigned char *walker, *remember_walker;
+  unsigned char *walker, *remember_walker, *endof_buff;
 
   if (! (packet && master_packet_walker))
     return 0;
@@ -128,12 +128,13 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
     walker = read_16field(walker, &(normal_pckt->len));
     walker = read_16field(walker, &(normal_pckt->offset));
-    if ((walker + 2 + normal_pckt->len) > end_of_packet) {
+    if ((walker + normal_pckt->len) > end_of_packet) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       free(normal_pckt);
       return 0;
     }
+    endof_buff = walker + normal_pckt->len;
 
     /* read_all_DNS_labels() increments the walker by at least one. */
     remember_walker = walker +1;
@@ -147,7 +148,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     }
 
     walker = align(remember_walker, walker, 4);
-    if ((walker + 1 + normal_pckt->len) > end_of_packet) {
+    if (walker >= endof_buff) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       nbworks_dstr_nbnodename(normal_pckt->src_name);
@@ -169,7 +170,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     /* However, maybe I should ignore alignment things. */
     walker = align(remember_walker, walker, 4);
 
-    if ((walker + normal_pckt->len) > end_of_packet) {
+    if (walker > endof_buff) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       nbworks_dstr_nbnodename(normal_pckt->src_name);
@@ -179,9 +180,10 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     }
 
     normal_pckt->pyldpyld_delptr = 0;
+    normal_pckt->lenof_data = endof_buff - walker;
     if (read_allpyld) {
       normal_pckt->do_del_pyldpyld = TRUE;
-      normal_pckt->payload = malloc(normal_pckt->len);
+      normal_pckt->payload = malloc(normal_pckt->lenof_data);
       if (! normal_pckt->payload) {
 	/* TODO: errno signaling stuff */
 	nbworks_dstr_nbnodename(normal_pckt->src_name);
@@ -190,11 +192,11 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 	return 0;
       }
       walker = mempcpy(normal_pckt->payload, walker,
-		       normal_pckt->len);
+		       normal_pckt->lenof_data);
     } else {
       normal_pckt->do_del_pyldpyld = FALSE;
       normal_pckt->payload = walker;
-      walker = walker + normal_pckt->len;
+      walker = endof_buff;
     }
 
     *master_packet_walker = walker;
@@ -244,7 +246,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     if (! content->payload)
       return walker;
     normal_pckt = content->payload;
-    if ((walker + normal_pckt->len +2+2*2) > endof_pckt) {
+    if ((walker + normal_pckt->len +2) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       return walker;
@@ -259,7 +261,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
 
     save_walker = walker;
     walker = align(remember_walker, walker, 4);
-    if ((walker + normal_pckt->len +1) > endof_pckt) {
+    if ((walker + normal_pckt->lenof_data +1) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       memset(field, 0, (save_walker-field));
@@ -271,7 +273,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
 
     save_walker = walker;
     walker = align(remember_walker, walker, 4);
-    if ((walker + normal_pckt->len) > endof_pckt) {
+    if ((walker + normal_pckt->lenof_data) > endof_pckt) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       memset(field, 0, (save_walker-field));
@@ -279,7 +281,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     }
 
     return mempcpy(walker, normal_pckt->payload,
-		   normal_pckt->len);
+		   normal_pckt->lenof_data);
     break;
 
   case error_code:

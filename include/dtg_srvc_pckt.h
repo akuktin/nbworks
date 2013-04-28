@@ -62,6 +62,7 @@ enum dtg_packet_payload_t {
 };
 
 struct dtg_pckt_pyld_normal {
+  unsigned int lenof_data;
   uint16_t len;
   uint16_t offset;
   struct nbworks_nbnamelst *src_name;

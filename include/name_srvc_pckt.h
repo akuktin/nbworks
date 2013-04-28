@@ -87,6 +87,7 @@
 # define NBADDRLST_NODET_H    0x6000
 
 # define MAX_RDATALEN 0xffff
+# define ARBITRARY_MAXIMUM_LENOF_NAME 256
 
 
 enum name_srvc_rdata_type {
