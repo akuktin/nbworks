@@ -128,7 +128,8 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
     walker = read_16field(walker, &(normal_pckt->len));
     walker = read_16field(walker, &(normal_pckt->offset));
-    if ((walker + normal_pckt->len) > end_of_packet) {
+    if ((normal_pckt->len >= 2) &&
+	((walker + normal_pckt->len) > end_of_packet)) {
       /* OUT_OF_BOUNDS */
       /* TODO: errno signaling stuff */
       free(normal_pckt);
