@@ -138,6 +138,9 @@ struct nbworks_nbnamelst *
 unsigned long
   nbworks_maxdtglen(nbworks_namestate_p handle,
                     unsigned int withfrag);
+/* returns: >0 = success; 0 = fail; <0 = error */
+int
+  nbworks_release_railguard(nbworks_namestate_p namehandle);
 /* END auxiliatry API */
 
 /* BEGIN base API */
@@ -153,9 +156,6 @@ nbworks_namestate_p
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   nbworks_delname(nbworks_namestate_p handle);
-/* returns: >0 = success; 0 = fail; <0 = error */
-int
-  nbworks_release_railguard(nbworks_namestate_p namehandle);
 
 nbworks_session_p
   nbworks_castdtgsession(nbworks_namestate_p handle);

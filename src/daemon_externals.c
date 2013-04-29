@@ -29,8 +29,9 @@
 struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
 #endif
 
-ipv4_addr_t nbworks__default_nbns;
 struct cache_scopenode *nbworks_rootscope;
+
+ipv4_addr_t nbworks__default_nbns;
 
 nbworks_errno_t nbworks_errno;
 

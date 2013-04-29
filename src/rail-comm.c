@@ -215,17 +215,13 @@ void *handle_rail(void *args) {
     case rail_regname:
       /* Rail is flushed by do_rail_regname(). */
       cache_namecard = do_rail_regname(params.rail_sckt, &command,
-				       &rail_isreusable);
+				       &rail_isreusable, &(command.token));
       if (! rail_isreusable) {
 	close(params.rail_sckt);
 	break;
       }
       if (cache_namecard) {
-	if (command.node_type >= 'a') {
-	  command.token = cache_namecard->unq_token;
-	} else {
-	  command.token = cache_namecard->grp_token;
-	}
+	/* command.token is set by do_rail_regname() */
 	command.nbworks_errno = 0;
       } else {
 	command.token = 0;
@@ -460,10 +456,12 @@ void *handle_rail(void *args) {
 
 struct cache_namenode *do_rail_regname(int rail_sckt,
 				       struct com_comm *command,
-				       unsigned int *rail_isreusable) {
+				       unsigned int *rail_isreusable,
+				       token_t *token_field) {
   struct cache_namenode *cache_namecard, *grp_namecard;
   struct rail_name_data *namedata;
   struct ipv4_addr_list *new_addr, *cur_addr, **last_addr;
+  token_t new_token;
   uint32_t refresh_ttl;
   int i;
   node_type_t node_type;
@@ -530,6 +528,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   nbworks_dstr_nbnodename(namedata->scope); \
   free(namedata);
 
+  new_token = make_token();
+
   /* Call alloc_namecard() with ONES instead of name_type because
    * of the call to find_name() later on. */
   cache_namecard = alloc_namecard(namedata->name, NETBIOS_NAME_LEN,
@@ -549,13 +549,13 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	(refresh_ttl = name_srvc_add_name(node_type, namedata->name,
 					  namedata->name_type, namedata->scope,
 					  nbworks__myip4addr, namedata->ttl))) {
-      if (! grp_namecard->grp_token) {
-	grp_namecard->grp_token = make_token();
+      if (! add_token(&(grp_namecard->grp_tokens), new_token)) {
+	cleanup;
+	return 0;
+      } else {
+	if (token_field)
+	  *token_field = new_token;
       }
-      if (grp_namecard->numof_grpholders > 0)
-	grp_namecard->numof_grpholders++;
-      else
-	grp_namecard->numof_grpholders = 1;
       grp_namecard->timeof_death = time(0) + namedata->ttl;
       grp_namecard->refresh_ttl = refresh_ttl;
 
@@ -600,11 +600,16 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     /* Revert the node_types field into what is should be. */
     cache_namecard->node_types = node_type;
     if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
-      cache_namecard->unq_token = make_token();
+      cache_namecard->unq_token = new_token;
     } else {
-      cache_namecard->grp_token = make_token();
-      cache_namecard->numof_grpholders = 1;
+      if (! add_token(&(cache_namecard->grp_tokens), new_token)) {
+	destroy_namecard(cache_namecard);
+	cleanup;
+	return 0;
+      }
     }
+    if (token_field)
+      *token_field = new_token;
 
     if ((refresh_ttl = name_srvc_add_name(node_type, namedata->name,
 					  namedata->name_type, namedata->scope,
@@ -718,18 +723,22 @@ int do_rail_delname(int rail_sckt,
     if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
       cache_namecard->unq_token = 0;
       cache_namecard->unq_isinconflict = FALSE;
+      node_type |= CACHE_ADDRBLCK_UNIQ_MASK;
     }
     if (node_type & CACHE_ADDRBLCK_GRP_MASK) {
-      cache_namecard->numof_grpholders--;
-      if (cache_namecard->numof_grpholders <= 0) {
-	cache_namecard->grp_token = 0;
-	cache_namecard->grp_isinconflict = FALSE;
+      del_token(&(cache_namecard->grp_tokens), command->token);
+      if (cache_namecard->grp_tokens) {
+	node_type = node_type & CACHE_ADDRBLCK_UNIQ_MASK;
       } else {
-	goto jumpover;
+	cache_namecard->grp_isinconflict = 0;
       }
     }
 
     for (i=0; i<NUMOF_ADDRSES; i++) {
+      if (!(cache_namecard->addrs.recrd[i].node_type & node_type)) {
+	continue;
+      }
+
       last_addr = &(cache_namecard->addrs.recrd[i].addr);
       cur_addr = *last_addr;
 
@@ -757,7 +766,6 @@ int do_rail_delname(int rail_sckt,
     }
   }
 
- jumpover:
   if (scope)
     nbworks_dstr_nbnodename(scope);
   return 1; /* return 1 in all cases becase, if the name was not here
@@ -1007,7 +1015,7 @@ int rail_add_dtg_server(int rail_sckt,
   if ((! namecard) ||
       (namecard->timeof_death <= cur_time) ||
       (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
-       ((namecard->grp_token == token) && namecard->grp_isinconflict))) {
+       (does_token_match(namecard->grp_tokens, token) && namecard->grp_isinconflict))) {
     free(new_rail);
     free(nbname);
     return 1;
@@ -1230,7 +1238,7 @@ int rail_add_ses_server(int rail_sckt,
   if ((! namecard) ||
       (namecard->timeof_death <= cur_time) ||
       (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
-       ((namecard->grp_token == token) && namecard->grp_isinconflict))) {
+       (does_token_match(namecard->grp_tokens, token) && namecard->grp_isinconflict))) {
     return 1;
   }
 

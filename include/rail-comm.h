@@ -114,7 +114,8 @@ void *
 struct cache_namenode *
   do_rail_regname(int rail_sckt,
                   struct com_comm *command,
-                  unsigned int *rail_isreusable);
+                  unsigned int *rail_isreusable,
+                  token_t *token_field);
 int
   do_rail_delname(int rail_sckt,
                   struct com_comm *command,

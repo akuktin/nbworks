@@ -2186,7 +2186,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 					     QTYPE_NB, qstn->qstn->qclass,
 					     qstn->qstn->name->next_name)) &&
 	      ((cache_namecard->unq_token && (! cache_namecard->unq_isinconflict)) ||
-	       (cache_namecard->grp_token && (! cache_namecard->grp_isinconflict))) &&
+	       (cache_namecard->grp_tokens && (! cache_namecard->grp_isinconflict))) &&
 	      (cache_namecard->timeof_death > cur_time))) &&
 	    (this_scope = find_scope(qstn->qstn->name->next_name))) {
 
@@ -2229,7 +2229,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  cache_namecard = this_scope->names;
 	  names_list_last = &(stats->listof_names);
 	  while (cache_namecard) {
-	    if (! (cache_namecard->unq_token || cache_namecard->grp_token)) {
+	    if (! (cache_namecard->unq_token || cache_namecard->grp_tokens)) {
 	      cache_namecard = cache_namecard->next;
 	      continue;
 	    }
@@ -2338,7 +2338,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  if (cache_namecard &&
 #ifndef COMPILING_NBNS
 	      ((cache_namecard->unq_token && (! cache_namecard->unq_isinconflict)) ||
-	       (cache_namecard->grp_token && (! cache_namecard->grp_isinconflict))) &&
+	       (cache_namecard->grp_tokens && (! cache_namecard->grp_isinconflict))) &&
 #endif
 	      (cache_namecard->timeof_death > cur_time)) {
 
@@ -2705,7 +2705,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 		}
 	      }
 	      if (ipv4_addr_list) {
-		if (! cache_namecard->grp_token)
+		if (! cache_namecard->grp_tokens)
 		  cache_namecard->timeof_death = 0;
 		else
 		  cache_namecard->grp_isinconflict = 1;  /* WRONG! But how do I fix it? */
@@ -2849,7 +2849,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 				      res->res->rrclass,
 				      res->res->name->next_name);
 	if (cache_namecard)
-	  if (cache_namecard->grp_token)
+	  if (cache_namecard->grp_tokens)
 	    cache_namecard->grp_isinconflict = TRUE; /* WRONG ? */
       }
       if (status & STATUS_DID_UNIQ) {
@@ -2997,7 +2997,8 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 	  /* In NBNS mode, sender_is_nbns == FALSE. */
 	  if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard,
 				       nbworks__myip4addr, sender_is_nbns)) {
-	    cache_namecard->grp_token = 0;
+	    destroy_tokens(cache_namecard->grp_tokens);
+	    cache_namecard->grp_tokens = 0;
 	  }
 
 	  for (i=0; i<NUMOF_ADDRSES; i++) {

@@ -36,11 +36,88 @@
 #include "name_srvc_func_func.h"
 
 
-//struct cache_scopenode *nbworks_rootscope;
-
-
 void init_name_srvc_cache(void) {
   nbworks_rootscope = 0;
+}
+
+
+unsigned int does_token_match(struct group_tokenlst *list,
+			      token_t token) {
+  while (list) {
+    if (list->token == token)
+      return TRUE;
+    else
+      list = list->next;
+  }
+
+  return FALSE;
+}
+
+struct group_tokenlst *add_token(struct group_tokenlst **anchor,
+				 token_t token) {
+  struct group_tokenlst *grptkn, **lasttkn, *result;
+
+  if (! (anchor && token))
+    return 0;
+
+  result = malloc(sizeof(*result));
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    return 0;
+  }
+  result->token = token;
+  result->next = 0;
+
+  while (5050) {
+    lasttkn = anchor;
+    grptkn = *lasttkn;
+
+    while (grptkn) {
+      if (grptkn == result)
+	return result;
+
+      lasttkn = &(grptkn->next);
+      grptkn = *lasttkn;
+    }
+
+    *lasttkn = result;
+  }
+}
+
+void del_token(struct group_tokenlst **anchor,
+	       token_t token) {
+  struct group_tokenlst *grptkn, **lasttkn;
+
+  if (! anchor)
+    return;
+
+  lasttkn = anchor;
+  grptkn = *lasttkn;
+
+  while (grptkn) {
+    if (grptkn->token == token) {
+      *lasttkn = grptkn->next;
+      free(grptkn);
+    } else {
+      lasttkn = &(grptkn->next);
+    }
+
+    grptkn = *lasttkn;
+  }
+
+  return;
+}
+
+void destroy_tokens(struct group_tokenlst *tokens) {
+  struct group_tokenlst *next;
+
+  while (tokens) {
+    next = tokens->next;
+    free(tokens);
+    tokens = next;
+  }
+
+  return;
 }
 
 
@@ -231,15 +308,20 @@ struct cache_namenode *add_nblabel(void *label,
   result->node_types = node_types;
   result->unq_isinconflict = FALSE;
   result->grp_isinconflict = FALSE;
-  /* The below could backfire. */
   if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
     result->unq_token = token;
-    result->grp_token = 0;
-    result->numof_grpholders = 0;
   } else {
     result->unq_token = 0;
-    result->grp_token = token;
-    result->numof_grpholders = 1;
+  }
+  if ((node_types & CACHE_ADDRBLCK_GRP_MASK) &&
+      token) {
+    if (! add_token(&(result->grp_tokens), token)) {
+      /* TODO: errno signaling stuff */
+      free(result);
+      return 0;
+    }
+  } else {
+    result->grp_tokens = 0;
   }
   result->dns_type = dns_type;
   result->dns_class = dns_class;
@@ -345,7 +427,7 @@ struct cache_namenode *find_namebytok(token_t token,
     result = scope->names;
     while (result)
       if ((result->unq_token == token) ||
-	  (result->grp_token == token)) {
+	  does_token_match(result->grp_tokens, token)) {
 	if (ret_scope)
 	  *ret_scope = nbworks_clone_nbnodename(scope->scope);
 	return result;
@@ -417,15 +499,20 @@ struct cache_namenode *alloc_namecard(void *label,
   result->node_types = node_types;
   result->unq_isinconflict = FALSE;
   result->grp_isinconflict = FALSE;
-  /* The below could backfire. */
-  if (node_types & CACHE_ADDRBLCK_GRP_MASK) {
-    result->unq_token = 0;
-    result->grp_token = token;
-    result->numof_grpholders = 1;
-  } else {
+  if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
     result->unq_token = token;
-    result->grp_token = 0;
-    result->numof_grpholders = 0;
+  } else {
+    result->unq_token = 0;
+  }
+  if ((node_types & CACHE_ADDRBLCK_GRP_MASK) &&
+      token) {
+    if (! add_token(&(result->grp_tokens), token)) {
+      /* TODO: errno signaling stuff */
+      free(result);
+      return 0;
+    }
+  } else {
+    result->grp_tokens = 0;
   }
   result->dns_type = dns_type;
   result->dns_class = dns_class;

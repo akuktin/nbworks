@@ -27,6 +27,18 @@
 
 void init_name_srvc_cache(void);
 
+unsigned int
+  does_token_match(struct group_tokenlst *list,
+                   token_t token);
+struct group_tokenlst *
+  add_token(struct group_tokenlst **anchor,
+            token_t token);
+void
+  del_token(struct group_tokenlst **anchor,
+            token_t token);
+void
+  destroy_tokens(struct group_tokenlst *tokens);
+
 struct cache_scopenode *
   add_scope(struct nbworks_nbnamelst *scope,
             struct cache_namenode *first_node,
@@ -100,5 +112,4 @@ int
                        ipv4_addr_t my_ipv4_address,
                        unsigned int sender_is_nbns);
 
-extern struct cache_scopenode *nbworks_rootscope;
 #endif /* NBWORKS_NAMESRVCCACHE_H*/

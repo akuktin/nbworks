@@ -42,11 +42,6 @@
 
 # define GROUP_SHIFT 4
 
-# define CACHE_NODET_B 'B'
-# define CACHE_NODET_P 'P'
-# define CACHE_NODET_M 'M'
-# define CACHE_NODET_H 'H'
-
 # define RAIL_NODET_BUNQ 'b'
 # define RAIL_NODET_PUNQ 'p'
 # define RAIL_NODET_MUNQ 'm'
@@ -58,6 +53,8 @@
 
 # define CACHE_TAKES_DTG 0x01
 # define CACHE_TAKES_SES 0x02
+
+extern struct cache_scopenode *nbworks_rootscope;
 
 struct ipv4_addr_list {
   ipv4_addr_t ip_addr;
@@ -85,15 +82,19 @@ struct cache_scopenode {
   struct cache_scopenode *next;
 };
 
+struct group_tokenlst {
+  token_t token;
+  struct group_tokenlst *next;
+};
+
 struct cache_namenode {
   unsigned char *name;
   unsigned char namelen;
   node_type_t node_types; /* flag field */
   unsigned char unq_isinconflict;
   unsigned char grp_isinconflict;
-  token_t unq_token; /* 0 if name not mine, 1 if name in */
-  token_t grp_token; /* process of being registered */
-  long numof_grpholders;
+  token_t unq_token; /* 0 if name not mine */
+  struct group_tokenlst *grp_tokens; /* 0 if name not mine */
   uint16_t dns_type;
   uint16_t dns_class;
   time_t timeof_death;
