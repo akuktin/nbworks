@@ -21,13 +21,6 @@
 
 # include <unistd.h>
 
-# define NBWORKS_NAME_SRVC 1
-# define NBWORKS_DTG_SRVC  0
-# define NBWORKS_SES_SRVC  2
-
-# define NBWORKS_CANCEL_SEND 1
-# define NBWORKS_CANCEL_RECV 2
-
 # define NBWORKS_NBNAME_LEN 16
 # define NBWORKS_CODED_NBNAME_LEN 32
 
@@ -35,12 +28,19 @@
 # define NBWORKS_DTG_SRVC  0
 # define NBWORKS_SES_SRVC  2
 
+# define NBWORKS_CANCEL_SEND 1
+# define NBWORKS_CANCEL_RECV 2
+
 # define NBWORKS_NODE_B 0x01
 # define NBWORKS_NODE_P 0x02
 # define NBWORKS_NODE_M 0x04
 # define NBWORKS_NODE_H 0x08
-# define NBWORKS_NODE_ALL (NBWORKS_NODE_B | NBWORKS_NODE_P | \
-                           NBWORKS_NODE_M | NBWORKS_NODE_H)
+# define NBWORKS_NODE_BTYPE (NBWORKS_NODE_B | NBWORKS_NODE_M | \
+                             NBWORKS_NODE_H)
+# define NBWORKS_NODE_PTYPE (NBWORKS_NODE_P | NBWORKS_NODE_M | \
+                             NBWORKS_NODE_H)
+# define NBWORKS_NODE_ALL   (NBWORKS_NODE_B | NBWORKS_NODE_P | \
+                             NBWORKS_NODE_M | NBWORKS_NODE_H)
 
 # define NBWORKS_MAXLEN_LABEL 0x3f
 
