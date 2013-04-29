@@ -99,7 +99,8 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
 				    struct nbworks_nbnamelst *scope,
 				    unsigned char isgroup,
 				    unsigned char node_type, /* only one type */
-				    unsigned long ttl) {
+				    unsigned long ttl,
+				    unsigned int withguard) {
   struct name_state *result;
   struct com_comm command;
   struct rail_name_data namedt;
@@ -169,7 +170,10 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   result->lenof_scope = lenof_scope;
   result->label_type = name_type;
   result->node_type = node_type;
+  if (group_flg == ISGROUP_YES)
+    result->node_type = result->node_type << GROUP_SHIFT;
   result->group_flg = group_flg;
+  result->guard_rail = -1;
 
   memset(&command, 0, sizeof(struct com_comm));
   command.command = rail_regname;
@@ -291,6 +295,9 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
 
   result->token = command.token;
 
+  if (withguard)
+    lib_grab_railguard(result);
+
   return result;
 }
 
@@ -307,7 +314,11 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
     return -1;
   }
 
-  daemon = lib_daemon_socket();
+  if (handle->guard_rail < 0) {
+    daemon = lib_daemon_socket();
+  } else {
+    daemon = handle->guard_rail;
+  }
   if (daemon < 0) {
     nbworks_errno = EPIPE;
     return -1;
@@ -372,9 +383,102 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
   if (handle->sesin_library)
     lib_dstry_sesslist(handle->sesin_library);
 
+
   free(handle); /* Bye-bye. */
 
   return TRUE;
+}
+
+/* returns: >0 = success; 0 = fail; <0 = error */
+int nbworks_release_railguard(nbworks_namestate_p namehandle) {
+  struct com_comm command;
+  struct name_state *handle;
+  int rail;
+  unsigned char buff[LEN_COMM_ONWIRE];
+
+  handle = namehandle;
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  if (handle->guard_rail < 0) {
+    return 1;
+  } else {
+    rail = handle->guard_rail;
+  }
+
+  memset(&command, 0, sizeof(command));
+  command.command = rail_isnotguard;
+  command.token = handle->token;
+  switch (handle->node_type) {
+  case CACHE_NODEFLG_B:
+    command.node_type = RAIL_NODET_BUNQ;
+    break;
+  case CACHE_NODEGRPFLG_B:
+    command.node_type = RAIL_NODET_BGRP;
+    break;
+
+  case CACHE_NODEFLG_P:
+    command.node_type = RAIL_NODET_PUNQ;
+    break;
+  case CACHE_NODEGRPFLG_P:
+    command.node_type = RAIL_NODET_PGRP;
+    break;
+
+  case CACHE_NODEFLG_M:
+    command.node_type = RAIL_NODET_MUNQ;
+    break;
+  case CACHE_NODEGRPFLG_M:
+    command.node_type = RAIL_NODET_MGRP;
+    break;
+
+  case CACHE_NODEFLG_H:
+    command.node_type = RAIL_NODET_HUNQ;
+    break;
+  case CACHE_NODEGRPFLG_H:
+    command.node_type = RAIL_NODET_HGRP;
+    break;
+
+  default:
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+  if (buff == fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE))) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  if (LEN_COMM_ONWIRE > send(rail, buff, LEN_COMM_ONWIRE,
+			     MSG_NOSIGNAL)) {
+    nbworks_errno = EREMOTEIO;
+    return 0;
+  }
+
+  if (LEN_COMM_ONWIRE > recv(rail, buff, LEN_COMM_ONWIRE,
+			     MSG_WAITALL)) {
+    nbworks_errno = EREMOTEIO;
+    return 0;
+  }
+
+  if (! read_railcommand(buff, (buff+LEN_COMM_ONWIRE), &command)) {
+    nbworks_errno = EREMOTEIO;
+    return 0;
+  }
+
+  if (!((command.command == rail_isnotguard) &&
+	(command.token == handle->token) &&
+	(command.nbworks_errno == 0))) {
+    nbworks_errno = EREMOTEIO;
+    return 0;
+  }
+
+  close(rail);
+  handle->guard_rail = -1;
+
+  return 1;
 }
 
 
@@ -1703,7 +1807,7 @@ unsigned long nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
 
   real_node_types = (node_types & NBWORKS_NODE_ALL);
   if (isgroup) {
-    real_node_types = real_node_types << 8;
+    real_node_types = real_node_types << GROUP_SHIFT;
     cur_command = rail_addr_ofXgroup;
   } else {
     cur_command = rail_addr_ofXuniq;

@@ -42,6 +42,8 @@
 # define CACHE_ADDRBLCK_UNIQ_MASK 0x0f
 # define CACHE_ADDRBLCK_GRP_MASK  0xf0
 
+# define GROUP_SHIFT 4
+
 # define CACHE_NODET_B 'B'
 # define CACHE_NODET_P 'P'
 # define CACHE_NODET_M 'M'

@@ -82,6 +82,9 @@ struct name_state {
   node_type_t node_type;  /* flag field */
   unsigned char group_flg;
 
+/* guard rail */
+  int guard_rail;
+
 /* maybe we will daysie-chain them */
   struct name_state *next;
 };
@@ -192,6 +195,10 @@ struct nbworks_session *
                    unsigned char keepalive);
 void
   lib_dstry_sesslist(struct nbworks_session *ses);
+
+/* returns: >0 = success; 0 = fail; <0 = error */
+int
+  lib_grab_railguard(struct name_state *handle);
 
 ssize_t
   lib_flushsckt(int socket,

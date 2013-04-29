@@ -160,6 +160,8 @@ void *handle_rail(void *args) {
   struct com_comm command;
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
+  token_t guard_token;
+  node_type_t guard_node_type;
   ipv4_addr_t ipv4;
   unsigned int rail_isreusable;
   int ret_val;
@@ -186,6 +188,8 @@ void *handle_rail(void *args) {
   pfd.fd = params.rail_sckt;
   pfd.events = POLLIN;
   rail_isreusable = TRUE;
+  guard_token = 0;
+  guard_node_type = 0;
 
   while (rail_isreusable &&
 	 (! nbworks__rail_control.all_stop)) {
@@ -242,6 +246,10 @@ void *handle_rail(void *args) {
       /* Rail is flushed by do_rail_delname(). */
       if (0 < do_rail_delname(params.rail_sckt, &command,
 			      &rail_isreusable)) {
+	if (guard_token == command.token) {
+	  guard_token = 0;
+	  guard_node_type = 0;
+	}
 	command.command = rail_delname;
 	command.nbworks_errno = 0;
 	command.len = 0;
@@ -287,7 +295,8 @@ void *handle_rail(void *args) {
 	  }
 	}
       } else {
-	rail_flushrail(command.len, params.rail_sckt);
+	if (command.len)
+	  rail_flushrail(command.len, params.rail_sckt);
       failed_to_send_dtg:
 	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
 
@@ -388,6 +397,34 @@ void *handle_rail(void *args) {
       }
       break;
 
+    case rail_isnotguard:
+      if (guard_token == command.token) {
+	guard_token = 0;
+	guard_node_type = 0;
+	command.nbworks_errno = 0;
+      } else {
+	command.nbworks_errno= ADD_MEANINGFULL_ERRNO;
+      }
+      goto send_guard_response;
+
+    case rail_isguard:
+      guard_token = command.token; 
+      guard_node_type = command.node_type;
+      command.nbworks_errno = 0;
+    send_guard_response:
+      if (command.len)
+	rail_flushrail(command.len, params.rail_sckt);
+      command.len = 0;
+      command.data = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	close(params.rail_sckt);
+	rail_isreusable = FALSE;
+	break;
+      }
+      break;
+
     default:
       /* Unknown command. */
       command.nbworks_errno = EINVAL;
@@ -405,6 +442,15 @@ void *handle_rail(void *args) {
 
   if (rail_isreusable)
     close(params.rail_sckt);
+
+  if (guard_token) {
+    memset(&command, 0, sizeof(command));
+    command.command = rail_delname;
+    command.token = guard_token;
+    command.node_type = guard_node_type;
+    rail_isreusable = FALSE;
+    do_rail_delname(-1, &command, &rail_isreusable);
+  }
 
   if (last_will)
     last_will->dead = TRUE;
@@ -617,16 +663,18 @@ int do_rail_delname(int rail_sckt,
   if (command->len)
     rail_flushrail(command->len, rail_sckt);
 
-  command->command = rail_readcom;
-  command->nbworks_errno = 0;
-  command->len = 0;
-  command->data = 0;
-  fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
-  if (LEN_COMM_ONWIRE > send(rail_sckt, buff,
-			     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
-    close(rail_sckt);
-    *rail_isreusable = FALSE;
-    return -1;
+  if (*rail_isreusable) {
+    command->command = rail_readcom;
+    command->nbworks_errno = 0;
+    command->len = 0;
+    command->data = 0;
+    fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+    if (LEN_COMM_ONWIRE > send(rail_sckt, buff,
+			       LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+      close(rail_sckt);
+      *rail_isreusable = FALSE;
+      return -1;
+    }
   }
 
   cache_namecard = find_namebytok(command->token, &scope);
@@ -1640,6 +1688,6 @@ token_t make_token(void) {
     result = make_weakrandom();
     result = result << (8*(sizeof(uint64_t)/2));
     result = make_weakrandom() + result;
-  } while (result < 2);
+  } while (! result);
   return result;
 }

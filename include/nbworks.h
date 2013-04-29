@@ -151,10 +151,14 @@ nbworks_namestate_p
                   struct nbworks_nbnamelst *scope, /* 0 is a valid value */
                   unsigned char isgroup,   /* boolean */
                   unsigned char node_type, /* only one type */
-                  unsigned long ttl);      /* seconds */
+                  unsigned long ttl,       /* seconds */
+                  unsigned int withguard); /* isure yourself or not */
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   nbworks_delname(nbworks_namestate_p handle);
+/* returns: >0 = success; 0 = fail; <0 = error */
+int
+  nbworks_release_railguard(nbworks_namestate_p namehandle);
 
 nbworks_session_p
   nbworks_castdtgsession(nbworks_namestate_p handle);
