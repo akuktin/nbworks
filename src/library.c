@@ -1132,8 +1132,8 @@ int lib_open_session(struct name_state *handle,
   }
 
  try_to_resolve_name:
-  fill_32field(nbworks_whatisaddrX(her, ONES, isgroup,
-				   (1+ NETBIOS_NAME_LEN+ handle->lenof_scope)),
+  fill_32field(nbworks_whatisIP4addrX(her, ONES, isgroup,
+				      (1+NETBIOS_NAME_LEN+handle->lenof_scope)),
                (unsigned char *)&(addr.sin_addr.s_addr));
   if (! addr.sin_addr.s_addr) {
     if (! isgroup) {

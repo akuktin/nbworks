@@ -1676,10 +1676,10 @@ unsigned short nbworks_nodetype_templates[NUMOF_NODETYPES][2] = {
   {CACHE_NODEGRPFLG_B, 'B'}, {CACHE_NODEGRPFLG_P, 'P'},
   {CACHE_NODEGRPFLG_M, 'M'}, {CACHE_NODEGRPFLG_H, 'H'}};
 
-unsigned long nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
-				  unsigned char node_types,
-				  unsigned char isgroup,
-				  unsigned long len) {
+unsigned long nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
+				     unsigned char node_types,
+				     unsigned char isgroup,
+				     unsigned long len) {
   struct com_comm command, answer;
   ipv4_addr_t result;
   int daemon_sckt;

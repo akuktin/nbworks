@@ -213,10 +213,10 @@ void
 /* END core API */
 
 unsigned long
-  nbworks_whatisaddrX(struct nbworks_nbnamelst *X,
-                      unsigned char node_types, /* can be more than one */
-                      unsigned char isgroup,
-                      unsigned long len);
+  nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
+                         unsigned char node_types, /* can be more than one */
+                         unsigned char isgroup,
+                         unsigned long len);
 /* END base API */
 
 
