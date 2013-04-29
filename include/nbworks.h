@@ -35,9 +35,6 @@
 # define NBWORKS_DTG_SRVC  0
 # define NBWORKS_SES_SRVC  2
 
-/* People hacking nbworks should read the comment in
- * include/name_srvc_cache_data.h regarding node types.
- * Others can ignore this note. */
 # define NBWORKS_NODE_B 0x01
 # define NBWORKS_NODE_P 0x02
 # define NBWORKS_NODE_M 0x04
@@ -152,7 +149,7 @@ nbworks_namestate_p
                   unsigned char isgroup,   /* boolean */
                   unsigned char node_type, /* only one type */
                   unsigned long ttl,       /* seconds */
-                  unsigned int withguard); /* isure yourself or not */
+                  unsigned int withguard); /* insure yourself or not */
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   nbworks_delname(nbworks_namestate_p handle);

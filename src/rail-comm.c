@@ -408,7 +408,7 @@ void *handle_rail(void *args) {
       goto send_guard_response;
 
     case rail_isguard:
-      guard_token = command.token; 
+      guard_token = command.token;
       guard_node_type = command.node_type;
       command.nbworks_errno = 0;
     send_guard_response:

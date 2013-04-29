@@ -105,6 +105,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   struct com_comm command;
   struct rail_name_data namedt;
   int daemon;
+  node_type_t real_node_type;
   unsigned int lenof_scope, lenof_name;
   unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff, group_flg;
 
@@ -169,38 +170,47 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
 
   result->lenof_scope = lenof_scope;
   result->label_type = name_type;
-  result->node_type = node_type;
-  if (group_flg == ISGROUP_YES)
-    result->node_type = result->node_type << GROUP_SHIFT;
   result->group_flg = group_flg;
   result->guard_rail = -1;
 
   memset(&command, 0, sizeof(struct com_comm));
   command.command = rail_regname;
   switch (node_type) {
-  case CACHE_NODEFLG_B:
-    if (group_flg == ISGROUP_YES)
+  case NBWORKS_NODE_B:
+    if (group_flg == ISGROUP_YES) {
+      real_node_type = CACHE_NODEGRPFLG_B;
       command.node_type = RAIL_NODET_BGRP;
-    else
+    } else {
+      real_node_type = CACHE_NODEFLG_B;
       command.node_type = RAIL_NODET_BUNQ;
+    }
     break;
-  case CACHE_NODEFLG_P:
-    if (group_flg == ISGROUP_YES)
+  case NBWORKS_NODE_P:
+    if (group_flg == ISGROUP_YES) {
+      real_node_type = CACHE_NODEGRPFLG_P;
       command.node_type = RAIL_NODET_PGRP;
-    else
+    } else {
+      real_node_type = CACHE_NODEFLG_P;
       command.node_type = RAIL_NODET_PUNQ;
+    }
     break;
-  case CACHE_NODEFLG_M:
-    if (group_flg == ISGROUP_YES)
+  case NBWORKS_NODE_M:
+    if (group_flg == ISGROUP_YES) {
+      real_node_type = CACHE_NODEGRPFLG_M;
       command.node_type = RAIL_NODET_MGRP;
-    else
+    } else {
+      real_node_type = CACHE_NODEFLG_M;
       command.node_type = RAIL_NODET_MUNQ;
+    }
     break;
   case CACHE_NODEFLG_H:
-    if (group_flg == ISGROUP_YES)
+    if (group_flg == ISGROUP_YES) {
+      real_node_type = CACHE_NODEGRPFLG_H;
       command.node_type = RAIL_NODET_HGRP;
-    else
+    } else {
+      real_node_type = CACHE_NODEFLG_H;
       command.node_type = RAIL_NODET_HUNQ;
+    }
     break;
 
   default:
@@ -210,6 +220,8 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     free(result);
     return 0;
   }
+  result->node_type = real_node_type;
+
 
   command.len = (LEN_NAMEDT_ONWIREMIN -1) + lenof_scope;
   namedt.name = result->name->name;
@@ -1788,7 +1800,7 @@ unsigned long nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
   ipv4_addr_t result;
   int daemon_sckt;
   enum rail_commands cur_command;
-  unsigned short real_node_types, node_type_walker, bullshit;
+  node_type_t real_node_types, node_type_walker, bullshit;
   unsigned char combuff[LEN_COMM_ONWIRE], *buff, cur_node_type;
 
   if ((! (X && node_types)) ||
@@ -1805,7 +1817,16 @@ unsigned long nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
 
   memset(&command, 0, sizeof(struct com_comm));
 
-  real_node_types = (node_types & NBWORKS_NODE_ALL);
+  real_node_types = 0;
+  if (node_types & NBWORKS_NODE_B)
+    real_node_types |= CACHE_NODEFLG_B;
+  if (node_types & NBWORKS_NODE_P)
+    real_node_types |= CACHE_NODEFLG_P;
+  if (node_types & NBWORKS_NODE_M)
+    real_node_types |= CACHE_NODEFLG_M;
+  if (node_types & NBWORKS_NODE_H)
+    real_node_types |= CACHE_NODEFLG_H;
+
   if (isgroup) {
     real_node_types = real_node_types << GROUP_SHIFT;
     cur_command = rail_addr_ofXgroup;
@@ -1911,7 +1932,8 @@ unsigned long nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
     if (answer.nbworks_errno)
       continue;
 
-    if (answer.len < 4) {
+    if ((answer.len < 4) ||
+	(answer.node_type != cur_node_type)) {
       close(daemon_sckt);
       free(buff);
       nbworks_errno = EPIPE; /* What do I put here? */
