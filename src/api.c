@@ -203,7 +203,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
       command.node_type = RAIL_NODET_MUNQ;
     }
     break;
-  case CACHE_NODEFLG_H:
+  case NBWORKS_NODE_H:
     if (group_flg == ISGROUP_YES) {
       real_node_type = CACHE_NODEGRPFLG_H;
       command.node_type = RAIL_NODET_HGRP;
@@ -1786,7 +1786,7 @@ void nbworks_hangup_ses(nbworks_session_p sesp) {
 
 
 #define NUMOF_NODETYPES 8
-node_type_t nbworks_nodetype_templates[NUMOF_NODETYPES][2] = {
+const node_type_t nbworks_nodetype_templates[NUMOF_NODETYPES][2] = {
   {CACHE_NODEFLG_B, RAIL_NODET_BUNQ}, {CACHE_NODEFLG_P, RAIL_NODET_PUNQ},
   {CACHE_NODEFLG_M, RAIL_NODET_MUNQ}, {CACHE_NODEFLG_H, RAIL_NODET_HUNQ},
   {CACHE_NODEGRPFLG_B, RAIL_NODET_BGRP}, {CACHE_NODEGRPFLG_P, RAIL_NODET_PGRP},
