@@ -47,6 +47,15 @@
 # define CACHE_NODET_M 'M'
 # define CACHE_NODET_H 'H'
 
+# define RAIL_NODET_BUNQ 'b'
+# define RAIL_NODET_PUNQ 'p'
+# define RAIL_NODET_MUNQ 'm'
+# define RAIL_NODET_HUNQ 'h'
+# define RAIL_NODET_BGRP 'B'
+# define RAIL_NODET_PGRP 'P'
+# define RAIL_NODET_MGRP 'M'
+# define RAIL_NODET_HGRP 'H'
+
 # define CACHE_TAKES_DTG 0x01
 # define CACHE_TAKES_SES 0x02
 

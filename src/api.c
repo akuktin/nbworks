@@ -177,27 +177,27 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   switch (node_type) {
   case CACHE_NODEFLG_B:
     if (group_flg == ISGROUP_YES)
-      command.node_type = 'B';
+      command.node_type = RAIL_NODET_BGRP;
     else
-      command.node_type = 'b';
+      command.node_type = RAIL_NODET_BUNQ;
     break;
   case CACHE_NODEFLG_P:
     if (group_flg == ISGROUP_YES)
-      command.node_type = 'P';
+      command.node_type = RAIL_NODET_PGRP;
     else
-      command.node_type = 'p';
+      command.node_type = RAIL_NODET_PUNQ;
     break;
   case CACHE_NODEFLG_M:
     if (group_flg == ISGROUP_YES)
-      command.node_type = 'M';
+      command.node_type = RAIL_NODET_MGRP;
     else
-      command.node_type = 'm';
+      command.node_type = RAIL_NODET_MUNQ;
     break;
   case CACHE_NODEFLG_H:
     if (group_flg == ISGROUP_YES)
-      command.node_type = 'H';
+      command.node_type = RAIL_NODET_HGRP;
     else
-      command.node_type = 'h';
+      command.node_type = RAIL_NODET_HUNQ;
     break;
 
   default:
@@ -1672,10 +1672,10 @@ void nbworks_hangup_ses(nbworks_session_p sesp) {
 
 #define NUMOF_NODETYPES 8
 node_type_t nbworks_nodetype_templates[NUMOF_NODETYPES][2] = {
-  {CACHE_NODEFLG_B, 'b'}, {CACHE_NODEFLG_P, 'p'},
-  {CACHE_NODEFLG_M, 'm'}, {CACHE_NODEFLG_H, 'h'},
-  {CACHE_NODEGRPFLG_B, 'B'}, {CACHE_NODEGRPFLG_P, 'P'},
-  {CACHE_NODEGRPFLG_M, 'M'}, {CACHE_NODEGRPFLG_H, 'H'}};
+  {CACHE_NODEFLG_B, RAIL_NODET_BUNQ}, {CACHE_NODEFLG_P, RAIL_NODET_PUNQ},
+  {CACHE_NODEFLG_M, RAIL_NODET_MUNQ}, {CACHE_NODEFLG_H, RAIL_NODET_HUNQ},
+  {CACHE_NODEGRPFLG_B, RAIL_NODET_BGRP}, {CACHE_NODEGRPFLG_P, RAIL_NODET_PGRP},
+  {CACHE_NODEGRPFLG_M, RAIL_NODET_MGRP}, {CACHE_NODEGRPFLG_H, RAIL_NODET_HGRP}};
 
 unsigned long nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
 				     unsigned char node_types,

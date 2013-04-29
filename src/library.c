@@ -647,39 +647,39 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   switch (handle->node_type) {
   case CACHE_NODEFLG_H:
     basic_pckt_flags = DTG_NODE_TYPE_M;
-    command.node_type = 'h';
+    command.node_type = RAIL_NODET_HUNQ;
     break;
   case CACHE_NODEGRPFLG_H:
     basic_pckt_flags = DTG_NODE_TYPE_M;
-    command.node_type = 'H';
+    command.node_type = RAIL_NODET_HGRP;
     break;
 
   case CACHE_NODEFLG_M:
     basic_pckt_flags = DTG_NODE_TYPE_M;
-    command.node_type = 'm';
+    command.node_type = RAIL_NODET_MUNQ;
     break;
   case CACHE_NODEGRPFLG_M:
     basic_pckt_flags = DTG_NODE_TYPE_M;
-    command.node_type = 'M';
+    command.node_type = RAIL_NODET_MGRP;
     break;
 
   case CACHE_NODEFLG_P:
     basic_pckt_flags = DTG_NODE_TYPE_P;
-    command.node_type = 'p';
+    command.node_type = RAIL_NODET_PUNQ;
     break;
   case CACHE_NODEGRPFLG_P:
     basic_pckt_flags = DTG_NODE_TYPE_P;
-    command.node_type = 'P';
+    command.node_type = RAIL_NODET_PGRP;
     break;
 
   case CACHE_NODEFLG_B:
     basic_pckt_flags = DTG_NODE_TYPE_B;
-    command.node_type = 'b';
+    command.node_type = RAIL_NODET_BUNQ;
     break;
   case CACHE_NODEGRPFLG_B:
   default:
     basic_pckt_flags = DTG_NODE_TYPE_B;
-    command.node_type = 'B';
+    command.node_type = RAIL_NODET_BGRP;
     break;
   }
   pckt->id = make_weakrandom() & 0xffff;

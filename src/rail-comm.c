@@ -428,28 +428,28 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   }
 
   switch (command->node_type) {
-  case 'h':
+  case RAIL_NODET_HUNQ:
     node_type = CACHE_NODEFLG_H;
     break;
-  case 'H':
+  case RAIL_NODET_HGRP:
     node_type = CACHE_NODEGRPFLG_H;
     break;
-  case 'm':
+  case RAIL_NODET_MUNQ:
     node_type = CACHE_NODEFLG_M;
     break;
-  case 'M':
+  case RAIL_NODET_MGRP:
     node_type = CACHE_NODEGRPFLG_M;
     break;
-  case 'p':
+  case RAIL_NODET_PUNQ:
     node_type = CACHE_NODEFLG_P;
     break;
-  case 'P':
+  case RAIL_NODET_PGRP:
     node_type = CACHE_NODEGRPFLG_P;
     break;
-  case 'b':
+  case RAIL_NODET_BUNQ:
     node_type = CACHE_NODEFLG_B;
     break;
-  case 'B':
+  case RAIL_NODET_BGRP:
     node_type = CACHE_NODEGRPFLG_B;
     break;
 
@@ -633,28 +633,28 @@ int do_rail_delname(int rail_sckt,
 
   if (cache_namecard) {
     switch (command->node_type) {
-    case 'h':
+    case RAIL_NODET_HUNQ:
       node_type = CACHE_NODEFLG_H;
       break;
-    case 'm':
+    case RAIL_NODET_MUNQ:
       node_type = CACHE_NODEFLG_M;
       break;
-    case 'p':
+    case RAIL_NODET_PUNQ:
       node_type = CACHE_NODEFLG_P;
       break;
-    case 'b':
+    case RAIL_NODET_BUNQ:
       node_type = CACHE_NODEFLG_B;
       break;
-    case 'H':
+    case RAIL_NODET_HGRP:
       node_type = CACHE_NODEGRPFLG_H;
       break;
-    case 'M':
+    case RAIL_NODET_MGRP:
       node_type = CACHE_NODEGRPFLG_M;
       break;
-    case 'P':
+    case RAIL_NODET_PGRP:
       node_type = CACHE_NODEGRPFLG_P;
       break;
-    case 'B':
+    case RAIL_NODET_BGRP:
     default:
       node_type = CACHE_NODEGRPFLG_B;
       break;
@@ -764,40 +764,40 @@ int rail_senddtg(int rail_sckt,
 
   if (pckt->type == DIR_GRP_DTG) {
     switch (command->node_type) {
-    case 'H':
-    case 'h':
+    case RAIL_NODET_HGRP:
+    case RAIL_NODET_HUNQ:
       node_type = CACHE_NODEGRPFLG_H;
       break;
-    case 'M':
-    case 'm':
+    case RAIL_NODET_MGRP:
+    case RAIL_NODET_MUNQ:
       node_type = CACHE_NODEGRPFLG_M;
       break;
-    case 'P':
-    case 'p':
+    case RAIL_NODET_PGRP:
+    case RAIL_NODET_PUNQ:
       node_type = CACHE_NODEGRPFLG_P;
       break;
-    case 'B':
-    case 'b':
+    case RAIL_NODET_BGRP:
+    case RAIL_NODET_BUNQ:
     default:
       node_type = CACHE_NODEGRPFLG_B;
       break;
     }
   } else {
     switch (command->node_type) {
-    case 'H':
-    case 'h':
+    case RAIL_NODET_HGRP:
+    case RAIL_NODET_HUNQ:
       node_type = CACHE_NODEFLG_H;
       break;
-    case 'M':
-    case 'm':
+    case RAIL_NODET_MGRP:
+    case RAIL_NODET_MUNQ:
       node_type = CACHE_NODEFLG_M;
       break;
-    case 'P':
-    case 'p':
+    case RAIL_NODET_PGRP:
+    case RAIL_NODET_PUNQ:
       node_type = CACHE_NODEFLG_P;
       break;
-    case 'B':
-    case 'b':
+    case RAIL_NODET_BGRP:
+    case RAIL_NODET_BUNQ:
     default:
       node_type = CACHE_NODEFLG_B;
       break;
@@ -1540,48 +1540,48 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 
   if (command->command == rail_addr_ofXgroup) {
     switch (command->node_type) {
-    case 'H':
-    case 'h':
+    case RAIL_NODET_HGRP:
+    case RAIL_NODET_HUNQ:
       rail_flushrail(command->len, rail_sckt);
       return 0;
       node_type = CACHE_NODEGRPFLG_H;
       break;
-    case 'M':
-    case 'm':
+    case RAIL_NODET_MGRP:
+    case RAIL_NODET_MUNQ:
       rail_flushrail(command->len, rail_sckt);
       return 0;
       node_type = CACHE_NODEGRPFLG_M;
       break;
-    case 'P':
-    case 'p':
+    case RAIL_NODET_PGRP:
+    case RAIL_NODET_PUNQ:
       node_type = CACHE_NODEGRPFLG_P;
       break;
-    case 'B':
-    case 'b':
+    case RAIL_NODET_BGRP:
+    case RAIL_NODET_BUNQ:
     default:
       node_type = CACHE_NODEGRPFLG_B;
       break;
     }
   } else {
     switch (command->node_type) {
-    case 'H':
-    case 'h':
+    case RAIL_NODET_HGRP:
+    case RAIL_NODET_HUNQ:
       rail_flushrail(command->len, rail_sckt);
       return 0;
       node_type = CACHE_NODEFLG_H;
       break;
-    case 'M':
-    case 'm':
+    case RAIL_NODET_MGRP:
+    case RAIL_NODET_MUNQ:
       rail_flushrail(command->len, rail_sckt);
       return 0;
       node_type = CACHE_NODEFLG_M;
       break;
-    case 'P':
-    case 'p':
+    case RAIL_NODET_PGRP:
+    case RAIL_NODET_PUNQ:
       node_type = CACHE_NODEFLG_P;
       break;
-    case 'B':
-    case 'b':
+    case RAIL_NODET_BGRP:
+    case RAIL_NODET_BUNQ:
     default:
       node_type = CACHE_NODEFLG_B;
       break;
