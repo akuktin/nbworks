@@ -656,14 +656,16 @@ int do_rail_delname(int rail_sckt,
   struct nbworks_nbnamelst *scope;
   struct ipv4_addr_list *cur_addr, **last_addr;
   ipv4_addr_t ipv4;
-  int i;
-  node_type_t node_type;
+  int i, killitwithfire;
+  node_type_t node_type, orig_node_type;
   unsigned char buff[LEN_COMM_ONWIRE], *name_ptr;
 
   scope = 0;
 
   if (! (command && rail_isreusable))
     return -1;
+  else
+    killitwithfire = FALSE;
 
   if (command->len)
     rail_flushrail(command->len, rail_sckt);
@@ -715,12 +717,11 @@ int do_rail_delname(int rail_sckt,
     name_ptr = cache_namecard->name;
     ipv4 = nbworks__myip4addr;
 
-    name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			   scope, ipv4, node_type,
-			   ((node_type & (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
-			    TRUE : FALSE));
-
+    orig_node_type = node_type;
+    /* BTW, the below branches are redundant as node_type can
+     * not possibly trigger both conditions. */
     if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
+      killitwithfire = TRUE;
       cache_namecard->unq_token = 0;
       cache_namecard->unq_isinconflict = FALSE;
       node_type |= CACHE_ADDRBLCK_UNIQ_MASK;
@@ -730,9 +731,17 @@ int do_rail_delname(int rail_sckt,
       if (cache_namecard->grp_tokens) {
 	node_type = node_type & CACHE_ADDRBLCK_UNIQ_MASK;
       } else {
+	killitwithfire = TRUE;
 	cache_namecard->grp_isinconflict = 0;
       }
     }
+
+    if (killitwithfire)
+      name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
+			     scope, ipv4, orig_node_type,
+			     ((orig_node_type &
+			       (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
+			      TRUE : FALSE));
 
     for (i=0; i<NUMOF_ADDRSES; i++) {
       if (!(cache_namecard->addrs.recrd[i].node_type & node_type)) {
@@ -1015,7 +1024,8 @@ int rail_add_dtg_server(int rail_sckt,
   if ((! namecard) ||
       (namecard->timeof_death <= cur_time) ||
       (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
-       (does_token_match(namecard->grp_tokens, token) && namecard->grp_isinconflict))) {
+       (does_token_match(namecard->grp_tokens, token) &&
+	namecard->grp_isinconflict))) {
     free(new_rail);
     free(nbname);
     return 1;
@@ -1238,7 +1248,8 @@ int rail_add_ses_server(int rail_sckt,
   if ((! namecard) ||
       (namecard->timeof_death <= cur_time) ||
       (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
-       (does_token_match(namecard->grp_tokens, token) && namecard->grp_isinconflict))) {
+       (does_token_match(namecard->grp_tokens, token) &&
+	namecard->grp_isinconflict))) {
     return 1;
   }
 
