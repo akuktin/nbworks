@@ -19,20 +19,22 @@
 #ifndef NBWORKS_NAMESRVCCNST_H
 # define NBWORKS_NAMESRVCCNST_H 1
 
+# include "name_srvc_cache_data.h"
+
 struct name_srvc_packet *
   name_srvc_make_name_reg_big(unsigned char *name,
                               unsigned char name_type,
                               struct nbworks_nbnamelst *scope,
                               uint32_t ttl,
                               ipv4_addr_t in_address,
-                              unsigned char node_type);
+                              node_type_t node_type);
 struct name_srvc_packet *
   name_srvc_make_name_reg_small(unsigned char *name,
-                               unsigned char name_type,
-                               struct nbworks_nbnamelst *scope,
-                               uint32_t ttl,
-                               ipv4_addr_t in_address,
-                               unsigned char node_type);
+                                unsigned char name_type,
+                                struct nbworks_nbnamelst *scope,
+                                uint32_t ttl,
+                                ipv4_addr_t in_address,
+                                node_type_t node_type);
 struct name_srvc_packet *
   name_srvc_make_name_qry_req(unsigned char *name,
                               unsigned char name_type,

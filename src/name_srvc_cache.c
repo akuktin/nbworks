@@ -198,7 +198,7 @@ struct cache_namenode *add_name(struct cache_namenode *name,
 
 struct cache_namenode *add_nblabel(void *label,
 				   unsigned char labellen,
-				   unsigned short node_types,
+				   node_type_t node_types,
 				   token_t token,
 				   uint16_t dns_type,
 				   uint16_t dns_class,
@@ -298,7 +298,7 @@ struct cache_namenode *find_name(struct cache_namenode *namecard,
 
 struct cache_namenode *find_nblabel(void *label,
 				    unsigned char labellen,
-				    unsigned short node_types,
+				    node_type_t node_types,
 				    uint16_t dns_type,
 				    uint16_t dns_class,
 				    struct nbworks_nbnamelst *scope) {
@@ -389,7 +389,7 @@ struct cache_namenode *find_nextcard(struct cache_namenode *prevcard,
 
 struct cache_namenode *alloc_namecard(void *label,
 				      unsigned char labellen,
-				      unsigned short node_types,
+				      node_type_t node_types,
 				      token_t token,
 				      uint16_t dns_type,
 				      uint16_t dns_class) {

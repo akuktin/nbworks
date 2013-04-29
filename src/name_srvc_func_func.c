@@ -437,7 +437,7 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
 
 /* return: >0=success (return is ttl), 0=fail */
-uint32_t name_srvc_add_name(unsigned short node_type,
+uint32_t name_srvc_add_name(node_type_t node_type,
 			    unsigned char *name,
 			    unsigned char name_type,
 			    struct nbworks_nbnamelst *scope,
@@ -669,7 +669,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 struct cache_namenode *name_srvc_find_name(unsigned char *name,
 					   unsigned char name_type,
 					   struct nbworks_nbnamelst *scope,
-					   unsigned short nodetype, /* Only one node type! */
+					   node_type_t node_type, /* Only one node type! */
 					   unsigned char recursion) {
   struct name_srvc_resource_lst *res, *cur_res;
   struct nbaddress_list *list;//, *cmpnd_lst;
@@ -686,7 +686,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 
   decoded_name[NETBIOS_NAME_LEN] = '\0';
 
-  switch (nodetype) {
+  switch (node_type) {
   case CACHE_NODEFLG_H:
     target_flags = NBADDRLST_GROUP_NO;
     target_flags = target_flags | NBADDRLST_NODET_H;
@@ -794,10 +794,10 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     new_name = alloc_namecard(decode_nbnodename(res->res->name->name,
                                                 decoded_name),
 			      NETBIOS_NAME_LEN,
-			      nodetype, 0,
+			      node_type, 0,
 			      res->res->rrtype, res->res->rrclass);
     if (new_name) {
-      new_name->addrs.recrd[0].node_type = nodetype;
+      new_name->addrs.recrd[0].node_type = node_type;
       new_name->addrs.recrd[0].addr = frstaddrlst;
       frstaddrlst = 0;
 
@@ -834,7 +834,7 @@ int name_srvc_release_name(unsigned char *name,
 			   unsigned char name_type,
 			   struct nbworks_nbnamelst *scope,
 			   ipv4_addr_t my_ip_address,
-			   unsigned char node_types,
+			   node_type_t node_types,
 			   unsigned char recursion) {
   struct sockaddr_in addr;
   struct timespec *sleeptime;
@@ -981,7 +981,7 @@ void *refresh_scopes(void *i_ignore_this) {
   uint32_t wack;
   unsigned int i;
   struct {
-    unsigned int node_types;
+    node_type_t node_types;
     ipv4_addr_t target_address;
     unsigned int auto_update;
   } refresh_desc[2];

@@ -79,7 +79,7 @@ struct name_state {
   short lenof_scope; /* the amount of octets the encoded scope takes,
                       * incl. the terminating NULL in the packet */
   unsigned char label_type; /* the type octet of the name */
-  unsigned char node_type;  /* flag field */
+  node_type_t node_type;  /* flag field */
   unsigned char group_flg;
 
 /* maybe we will daysie-chain them */

@@ -38,7 +38,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
 						     struct nbworks_nbnamelst *scope,
 						     uint32_t ttl,
 						     ipv4_addr_t in_address,
-						     unsigned char node_type) {
+						     node_type_t node_type) {
   struct name_srvc_packet *result;
   struct nbworks_nbnamelst *complete_name;
   struct nbaddress_list *addr;
@@ -161,7 +161,7 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
 						       struct nbworks_nbnamelst *scope,
 						       uint32_t ttl,
 						       ipv4_addr_t in_address,
-						       unsigned char node_type) {
+						       node_type_t node_type) {
   struct name_srvc_packet *result;
   struct nbworks_nbnamelst *complete_name;
   struct nbaddress_list *addr;

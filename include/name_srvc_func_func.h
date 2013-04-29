@@ -20,6 +20,7 @@
 # define NBWORKS_NAMESRVCFUNCFUNC_H 1
 
 # include "service_sector.h"
+# include "name_srvc_cache_data.h"
 
 # ifdef COMPILING_NBNS
 struct latereg_args {
@@ -64,7 +65,7 @@ struct name_srvc_packet *
 
 /* return: >0=success (return is ttl), 0=fail */
 uint32_t
-  name_srvc_add_name(unsigned short node_type,
+  name_srvc_add_name(node_type_t node_type,
                      unsigned char *name,
                      unsigned char name_type,
                      struct nbworks_nbnamelst *scope,
@@ -82,7 +83,7 @@ struct cache_namenode *
   name_srvc_find_name(unsigned char *name,
                       unsigned char name_type,
                       struct nbworks_nbnamelst *scope,
-                      unsigned short nodetype, /* Only one node type! */
+                      node_type_t node_type, /* Only one node type! */
                       unsigned char recursion);
 /* return: 0=success, >0=fail, <0=error */
 int
@@ -90,7 +91,7 @@ int
                          unsigned char name_type,
                          struct nbworks_nbnamelst *scope,
                          ipv4_addr_t my_ip_address,
-                         unsigned char node_types,
+                         node_type_t node_types,
                          unsigned char recursion);
 void *
   refresh_scopes(void *i_ignore_this);

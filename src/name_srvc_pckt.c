@@ -1195,7 +1195,7 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
 					      uint32_t ttl,
 					      enum name_srvc_rdata_type rdata_t,
 					      void *rdata_content,
-					      unsigned char node_type) {
+					      node_type_t node_type) {
   struct name_srvc_resource *result;
 
   if (! label) {
@@ -1257,7 +1257,7 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
 struct nbaddress_list *make_nbaddrlst(struct ipv4_addr_list *ipv4_list,
 				      uint16_t *finallen,
 				      enum name_srvc_rdata_type type,
-				      unsigned char node_type) {
+				      node_type_t node_type) {
   struct nbaddress_list *nbaddrs_frst, *nbaddrs;
   uint16_t len, lenstep = 4;
   uint16_t flags = 0;
@@ -1507,7 +1507,7 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
 struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
 						struct nbworks_nbnamelst *scope,
 						uint32_t *total_lenof_nbaddrs,
-						unsigned int node_types,
+						node_type_t node_types,
 						unsigned int auto_update) {
   struct name_srvc_packet *pckt;
   struct name_srvc_question_lst **qstn_ptr;

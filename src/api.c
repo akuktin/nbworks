@@ -38,6 +38,7 @@
 #include "dtg_srvc_cnst.h"
 #include "rail-flush.h"
 #include "portability.h"
+#include "name_srvc_cache_data.h"
 
 
 void nbworks_libinit(void) {
@@ -1670,7 +1671,7 @@ void nbworks_hangup_ses(nbworks_session_p sesp) {
 
 
 #define NUMOF_NODETYPES 8
-unsigned short nbworks_nodetype_templates[NUMOF_NODETYPES][2] = {
+node_type_t nbworks_nodetype_templates[NUMOF_NODETYPES][2] = {
   {CACHE_NODEFLG_B, 'b'}, {CACHE_NODEFLG_P, 'p'},
   {CACHE_NODEFLG_M, 'm'}, {CACHE_NODEFLG_H, 'h'},
   {CACHE_NODEGRPFLG_B, 'B'}, {CACHE_NODEGRPFLG_P, 'P'},

@@ -27,7 +27,8 @@
 # define ANY_GROUP    ONES
 # define ANY_NODETYPE ONES
 
-/* ALSO DEFINED IN include/nbworks.h */
+/* ALSO DEFINED IN include/nbworks.h!. IF YOU EVER CHANGE THIS,
+ * ALSO CHANGE THE DEFINITIONS THERE! */
 # define CACHE_NODEFLG_B 0x01
 # define CACHE_NODEFLG_P 0x02
 # define CACHE_NODEFLG_M 0x04
@@ -49,6 +50,7 @@
 # define CACHE_TAKES_DTG 0x01
 # define CACHE_TAKES_SES 0x02
 
+typedef uint16_t node_type_t;
 
 struct ipv4_addr_list {
   ipv4_addr_t ip_addr;
@@ -56,7 +58,7 @@ struct ipv4_addr_list {
 };
 
 struct addrlst_block {
-  unsigned char node_type; /* flag field */
+  node_type_t node_type; /* flag field */
   struct ipv4_addr_list *addr;
 };
 
@@ -65,7 +67,7 @@ struct addrlst_cardblock {
 };
 
 struct addrlst_bigblock {
-  unsigned char node_types; /* flag field */
+  node_type_t node_types; /* flag field */
   struct addrlst_cardblock addrs;
 };
 
@@ -79,7 +81,7 @@ struct cache_scopenode {
 struct cache_namenode {
   unsigned char *name;
   unsigned char namelen;
-  unsigned short node_types; /* flag field */
+  node_type_t node_types; /* flag field */
   unsigned char unq_isinconflict;
   unsigned char grp_isinconflict;
   token_t unq_token; /* 0 if name not mine, 1 if name in */

@@ -420,7 +420,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   struct ipv4_addr_list *new_addr, *cur_addr, **last_addr;
   uint32_t refresh_ttl;
   int i;
-  unsigned char *data_buff, node_type;
+  node_type_t node_type;
+  unsigned char *data_buff;
 
   if (! (command && rail_isreusable)) {
     return 0;
@@ -605,7 +606,7 @@ int do_rail_delname(int rail_sckt,
   struct ipv4_addr_list *cur_addr, **last_addr;
   ipv4_addr_t ipv4;
   int i;
-  unsigned short node_type;
+  node_type_t node_type;
   unsigned char buff[LEN_COMM_ONWIRE], *name_ptr;
 
   scope = 0;
@@ -728,7 +729,8 @@ int rail_senddtg(int rail_sckt,
   struct ss_queue *queue;
   union trans_id tid;
   int i;
-  unsigned short node_type, sent;
+  node_type_t node_type;
+  unsigned short sent;
   unsigned char *buff, decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! command)
@@ -1530,7 +1532,7 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
   struct cache_namenode *namecard;
   struct nbworks_nbnamelst *name;
   int i;
-  unsigned char node_type;
+  node_type_t node_type;
   unsigned char *buff, *walker;
 
   if (! (command && rail_isreusable))

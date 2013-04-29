@@ -256,12 +256,12 @@ struct name_srvc_resource *
                      void *rdata_content,
                  /* node_type is ignored if rdata_t is neither
                   * nb_address_list nor nb_NBT_node_ip_address. */
-                     unsigned char node_type);
+                     node_type_t node_type);
 struct nbaddress_list *
   make_nbaddrlst(struct ipv4_addr_list *ipv4_list,
                  uint16_t *finallen,
                  enum name_srvc_rdata_type type,
-                 unsigned char node_type);
+                 node_type_t node_type);
 void
   destroy_name_srvc_pckt(void *packet,
                          unsigned int complete,
@@ -283,7 +283,7 @@ struct name_srvc_packet *
   name_srvc_timer_mkpckt(struct cache_namenode *namecard,
                          struct nbworks_nbnamelst *scope,
                          uint32_t *total_lenof_nbaddrs,
-                         unsigned int node_types,
+                         node_type_t node_types,
                          unsigned int auto_update);
 
 #endif /* NBWORKS_NAMESRVCPCKT_H */
