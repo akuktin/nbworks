@@ -664,8 +664,6 @@ int do_rail_delname(int rail_sckt,
 
   if (! (command && rail_isreusable))
     return -1;
-  else
-    killitwithfire = FALSE;
 
   if (command->len)
     rail_flushrail(command->len, rail_sckt);
@@ -725,52 +723,55 @@ int do_rail_delname(int rail_sckt,
       cache_namecard->unq_token = 0;
       cache_namecard->unq_isinconflict = FALSE;
       node_type |= CACHE_ADDRBLCK_UNIQ_MASK;
-    }
+    } else
+      killitwithfire = FALSE;
     if (node_type & CACHE_ADDRBLCK_GRP_MASK) {
       del_token(&(cache_namecard->grp_tokens), command->token);
       if (cache_namecard->grp_tokens) {
 	node_type = node_type & CACHE_ADDRBLCK_UNIQ_MASK;
       } else {
 	killitwithfire = TRUE;
+	node_type |= CACHE_ADDRBLCK_GRP_MASK;
 	cache_namecard->grp_isinconflict = 0;
       }
     }
 
-    if (killitwithfire)
+    if (killitwithfire) {
       name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
 			     scope, ipv4, orig_node_type,
 			     ((orig_node_type &
 			       (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
 			      TRUE : FALSE));
 
-    for (i=0; i<NUMOF_ADDRSES; i++) {
-      if (!(cache_namecard->addrs.recrd[i].node_type & node_type)) {
-	continue;
-      }
-
-      last_addr = &(cache_namecard->addrs.recrd[i].addr);
-      cur_addr = *last_addr;
-
-      while (cur_addr) {
-	if (cur_addr->ip_addr == ipv4) {
-	  *last_addr = cur_addr->next;
-	  free(cur_addr);
-	} else {
-	  last_addr = &(cur_addr->next);
+      for (i=0; i<NUMOF_ADDRSES; i++) {
+	if (!(cache_namecard->addrs.recrd[i].node_type & node_type)) {
+	  continue;
 	}
 
+	last_addr = &(cache_namecard->addrs.recrd[i].addr);
 	cur_addr = *last_addr;
-      }
 
-      if (! cache_namecard->addrs.recrd[i].addr) {
-	cache_namecard->node_types = cache_namecard->node_types &
-	  (~(cache_namecard->addrs.recrd[i].node_type));
-	cache_namecard->addrs.recrd[i].node_type = 0;
-      }
+	while (cur_addr) {
+	  if (cur_addr->ip_addr == ipv4) {
+	    *last_addr = cur_addr->next;
+	    free(cur_addr);
+	  } else {
+	    last_addr = &(cur_addr->next);
+	  }
 
-      if (! cache_namecard->node_types) {
-	cache_namecard->timeof_death = 0;
-	break;
+	  cur_addr = *last_addr;
+	}
+
+	if (! cache_namecard->addrs.recrd[i].addr) {
+	  cache_namecard->node_types = cache_namecard->node_types &
+	    (~(cache_namecard->addrs.recrd[i].node_type));
+	  cache_namecard->addrs.recrd[i].node_type = 0;
+	}
+
+	if (! cache_namecard->node_types) {
+	  cache_namecard->timeof_death = 0;
+	  break;
+	}
       }
     }
   }
