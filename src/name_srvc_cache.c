@@ -532,6 +532,7 @@ void destroy_namecard(struct cache_namenode *namecard) {
     return;
 
   free(namecard->name);
+  destroy_tokens(namecard->grp_tokens);
   for (i=0; i<NUMOF_ADDRSES; i++) {
     addrlist = namecard->addrs.recrd[i].addr;
     while (addrlist) {
