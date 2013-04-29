@@ -59,8 +59,6 @@
 # define CACHE_TAKES_DTG 0x01
 # define CACHE_TAKES_SES 0x02
 
-typedef uint16_t node_type_t;
-
 struct ipv4_addr_list {
   ipv4_addr_t ip_addr;
   struct ipv4_addr_list *next;

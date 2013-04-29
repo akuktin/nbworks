@@ -145,6 +145,7 @@ extern nbworks_do_align_t nbworks_do_align;
 
 typedef uint64_t token_t;
 typedef uint32_t ipv4_addr_t;
+typedef unsigned short node_type_t;
 
 extern ipv4_addr_t nbworks__myip4addr;
 

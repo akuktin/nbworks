@@ -19,7 +19,7 @@
 #ifndef NBWORKS_NAMESRVCCNST_H
 # define NBWORKS_NAMESRVCCNST_H 1
 
-# include "name_srvc_cache_data.h"
+# include "constdef.h"
 
 struct name_srvc_packet *
   name_srvc_make_name_reg_big(unsigned char *name,

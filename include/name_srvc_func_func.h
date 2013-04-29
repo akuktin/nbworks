@@ -19,8 +19,8 @@
 #ifndef NBWORKS_NAMESRVCFUNCFUNC_H
 # define NBWORKS_NAMESRVCFUNCFUNC_H 1
 
+# include "constdef.h"
 # include "service_sector.h"
-# include "name_srvc_cache_data.h"
 
 # ifdef COMPILING_NBNS
 struct latereg_args {
