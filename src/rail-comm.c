@@ -156,17 +156,14 @@ void *poll_rail(void *args) {
 
 void *handle_rail(void *args) {
   struct pollfd pfd;
-  struct nbworks_nbnamelst *scope;
   struct rail_params params, *release_lock;
   struct com_comm command;
   struct cache_namenode *cache_namecard;
   struct thread_node *last_will;
-  struct ipv4_addr_list *cur_addr, **last_addr;
   ipv4_addr_t ipv4;
-  uint32_t i;
   unsigned int rail_isreusable;
   int ret_val;
-  unsigned char buff[LEN_COMM_ONWIRE], *name_ptr, node_type;
+  unsigned char buff[LEN_COMM_ONWIRE];
 
   if (! args)
     return 0;
@@ -213,11 +210,10 @@ void *handle_rail(void *args) {
     switch (command.command) {
     case rail_regname:
       /* Rail is flushed by do_rail_regname(). */
-
-      cache_namecard = do_rail_regname(params.rail_sckt, &command);
-      if (nbworks_errno) {
+      cache_namecard = do_rail_regname(params.rail_sckt, &command,
+				       &rail_isreusable);
+      if (! rail_isreusable) {
 	close(params.rail_sckt);
-	rail_isreusable = FALSE;
 	break;
       }
       if (cache_namecard) {
@@ -243,98 +239,9 @@ void *handle_rail(void *args) {
       break;
 
     case rail_delname:
-      if (command.len)
-	rail_flushrail(command.len, params.rail_sckt);
-
-      command.command = rail_readcom;
-      command.nbworks_errno = 0;
-      command.len = 0;
-      command.data = 0;
-      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
-				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
-	close(params.rail_sckt);
-	rail_isreusable = FALSE;
-	break;
-      }
-
-      cache_namecard = find_namebytok(command.token, &scope);
-
-      if (cache_namecard) {
-	switch (command.node_type) {
-	case 'h':
-	  node_type = CACHE_NODEFLG_H;
-	  break;
-	case 'm':
-	  node_type = CACHE_NODEFLG_M;
-	  break;
-	case 'p':
-	  node_type = CACHE_NODEFLG_P;
-	  break;
-	case 'b':
-	  node_type = CACHE_NODEFLG_B;
-	  break;
-	case 'H':
-	  node_type = CACHE_NODEGRPFLG_H;
-	  break;
-	case 'M':
-	  node_type = CACHE_NODEGRPFLG_M;
-	  break;
-	case 'P':
-	  node_type = CACHE_NODEGRPFLG_P;
-	  break;
-	case 'B':
-	default:
-	  node_type = CACHE_NODEGRPFLG_B;
-	  break;
-	}
-	name_ptr = cache_namecard->name;
-	ipv4 = nbworks__myip4addr;
-	name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			       scope, ipv4, node_type,
-			       ((node_type & (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
-				TRUE : FALSE));
-	if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
-	  cache_namecard->unq_token = 0;
-	  cache_namecard->unq_isinconflict = FALSE;
-	}
-	if (node_type & CACHE_ADDRBLCK_GRP_MASK) {
-	  cache_namecard->numof_grpholders--;
-	  if (cache_namecard->numof_grpholders <= 0) {
-	    cache_namecard->grp_token = 0;
-	    cache_namecard->grp_isinconflict = FALSE;
-	  } else {
-	    goto jumpover;
-	  }
-	}
-	for (i=0; i<NUMOF_ADDRSES; i++) {
-	  last_addr = &(cache_namecard->addrs.recrd[i].addr);
-	  cur_addr = *last_addr;
-
-	  while (cur_addr) {
-	    if (cur_addr->ip_addr == ipv4) {
-	      *last_addr = cur_addr->next;
-	      free(cur_addr);
-	    } else {
-	      last_addr = &(cur_addr->next);
-	    }
-
-	    cur_addr = *last_addr;
-	  }
-
-	  if (! cache_namecard->addrs.recrd[i].addr) {
-	    cache_namecard->node_types = cache_namecard->node_types &
-	      (~(cache_namecard->addrs.recrd[i].node_type));
-	    cache_namecard->addrs.recrd[i].node_type = 0;
-	  }
-
-	  if (! cache_namecard->node_types) {
-	    cache_namecard->timeof_death = 0;
-	    break;
-	  }
-	}
-
-      jumpover:
+      /* Rail is flushed by do_rail_delname(). */
+      if (0 < do_rail_delname(params.rail_sckt, &command,
+			      &rail_isreusable)) {
 	command.command = rail_delname;
 	command.nbworks_errno = 0;
 	command.len = 0;
@@ -346,16 +253,15 @@ void *handle_rail(void *args) {
 	command.data = 0;
       }
 
-      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
-      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
-				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
-	close(params.rail_sckt);
-	rail_isreusable = FALSE;
+      if (rail_isreusable) {
+	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	  close(params.rail_sckt);
+	  rail_isreusable = FALSE;
+	}
       }
 
-      nbworks_dstr_nbnodename(scope); /* This removes the copy of scope, type
-				  * (struct nbworks_nbnamelst *) that was used
-				  * in operation. */
       break;
 
     case rail_send_dtg:
@@ -444,9 +350,10 @@ void *handle_rail(void *args) {
     case rail_addr_ofXuniq:
     case rail_addr_ofXgroup:
       /* Rail is flushed by rail_whatisaddrX(). */
-      ipv4 = rail_whatisaddrX(params.rail_sckt, &command);
+      ipv4 = rail_whatisaddrX(params.rail_sckt, &command,
+			      &rail_isreusable);
 
-      if (ipv4) {
+      if (ipv4 && rail_isreusable) {
 	command.nbworks_errno = 0;
 	command.len = 4;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
@@ -460,11 +367,12 @@ void *handle_rail(void *args) {
 	if (4 > send(params.rail_sckt, buff, 4, MSG_NOSIGNAL)) {
 	  close(params.rail_sckt);
 	  rail_isreusable = FALSE;
+	  break;
 	}
       } else {
-	if (nbworks_errno) {
+	if (! rail_isreusable) {
 	  close(params.rail_sckt);
-	  rail_isreusable = FALSE;
+	  break;
 	} else {
 	  command.nbworks_errno = ENONET;
 	  command.len = 0;
@@ -504,10 +412,9 @@ void *handle_rail(void *args) {
 }
 
 
-/* nbworks_errno is used as a simple signaling instrument that signals
- * back the usability of the rail: 0 = usable; !0 = not usable */
 struct cache_namenode *do_rail_regname(int rail_sckt,
-				       struct com_comm *command) {
+				       struct com_comm *command,
+				       unsigned int *rail_isreusable) {
   struct cache_namenode *cache_namecard, *grp_namecard;
   struct rail_name_data *namedata;
   struct ipv4_addr_list *new_addr, *cur_addr, **last_addr;
@@ -515,11 +422,8 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   int i;
   unsigned char *data_buff, node_type;
 
-  if (! command) {
-    nbworks_errno = 1;
+  if (! (command && rail_isreusable)) {
     return 0;
-  } else {
-    nbworks_errno = 0;
   }
 
   switch (command->node_type) {
@@ -562,7 +466,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   if (command->len > recv(rail_sckt, data_buff,
 			  command->len, MSG_WAITALL)) {
     /* TODO: error handling */
-    nbworks_errno = 1;
+    *rail_isreusable = FALSE;
     free(data_buff);
     return 0;
   }
@@ -690,6 +594,125 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 #undef cleanup
   /* Never reached. */
   return 0;
+}
+
+/* returns: >0 = success; 0 = fail; <0 = error */
+int do_rail_delname(int rail_sckt,
+		    struct com_comm *command,
+		    unsigned int *rail_isreusable) {
+  struct cache_namenode *cache_namecard;
+  struct nbworks_nbnamelst *scope;
+  struct ipv4_addr_list *cur_addr, **last_addr;
+  ipv4_addr_t ipv4;
+  int i;
+  unsigned short node_type;
+  unsigned char buff[LEN_COMM_ONWIRE], *name_ptr;
+
+  scope = 0;
+
+  if (! (command && rail_isreusable))
+    return -1;
+
+  if (command->len)
+    rail_flushrail(command->len, rail_sckt);
+
+  command->command = rail_readcom;
+  command->nbworks_errno = 0;
+  command->len = 0;
+  command->data = 0;
+  fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+  if (LEN_COMM_ONWIRE > send(rail_sckt, buff,
+			     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+    close(rail_sckt);
+    *rail_isreusable = FALSE;
+    return -1;
+  }
+
+  cache_namecard = find_namebytok(command->token, &scope);
+
+  if (cache_namecard) {
+    switch (command->node_type) {
+    case 'h':
+      node_type = CACHE_NODEFLG_H;
+      break;
+    case 'm':
+      node_type = CACHE_NODEFLG_M;
+      break;
+    case 'p':
+      node_type = CACHE_NODEFLG_P;
+      break;
+    case 'b':
+      node_type = CACHE_NODEFLG_B;
+      break;
+    case 'H':
+      node_type = CACHE_NODEGRPFLG_H;
+      break;
+    case 'M':
+      node_type = CACHE_NODEGRPFLG_M;
+      break;
+    case 'P':
+      node_type = CACHE_NODEGRPFLG_P;
+      break;
+    case 'B':
+    default:
+      node_type = CACHE_NODEGRPFLG_B;
+      break;
+    }
+    name_ptr = cache_namecard->name;
+    ipv4 = nbworks__myip4addr;
+
+    name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
+			   scope, ipv4, node_type,
+			   ((node_type & (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
+			    TRUE : FALSE));
+
+    if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
+      cache_namecard->unq_token = 0;
+      cache_namecard->unq_isinconflict = FALSE;
+    }
+    if (node_type & CACHE_ADDRBLCK_GRP_MASK) {
+      cache_namecard->numof_grpholders--;
+      if (cache_namecard->numof_grpholders <= 0) {
+	cache_namecard->grp_token = 0;
+	cache_namecard->grp_isinconflict = FALSE;
+      } else {
+	goto jumpover;
+      }
+    }
+
+    for (i=0; i<NUMOF_ADDRSES; i++) {
+      last_addr = &(cache_namecard->addrs.recrd[i].addr);
+      cur_addr = *last_addr;
+
+      while (cur_addr) {
+	if (cur_addr->ip_addr == ipv4) {
+	  *last_addr = cur_addr->next;
+	  free(cur_addr);
+	} else {
+	  last_addr = &(cur_addr->next);
+	}
+
+	cur_addr = *last_addr;
+      }
+
+      if (! cache_namecard->addrs.recrd[i].addr) {
+	cache_namecard->node_types = cache_namecard->node_types &
+	  (~(cache_namecard->addrs.recrd[i].node_type));
+	cache_namecard->addrs.recrd[i].node_type = 0;
+      }
+
+      if (! cache_namecard->node_types) {
+	cache_namecard->timeof_death = 0;
+	break;
+      }
+    }
+  }
+
+ jumpover:
+  if (scope)
+    nbworks_dstr_nbnodename(scope);
+  return 1; /* return 1 in all cases becase, if the name was not here
+	     * to begin with, then it *certainly* isn't here now. */
 }
 
 /* returns: 0 = success, >0 = fail, <0 = error */
@@ -1501,19 +1524,17 @@ void *tunnel_stream_sockets(void *arg) {
 
 
 /* WRONG FOR GROUPS! */
-/* nbworks_errno is used to signal that the rail is broken. */
 ipv4_addr_t rail_whatisaddrX(int rail_sckt,
-			     struct com_comm *command) {
+			     struct com_comm *command,
+			     unsigned int *rail_isreusable) {
   struct cache_namenode *namecard;
   struct nbworks_nbnamelst *name;
   int i;
   unsigned char node_type;
   unsigned char *buff, *walker;
 
-  if (! command)
+  if (! (command && rail_isreusable))
     return 0;
-  else
-    nbworks_errno = 0;
 
   if (command->command == rail_addr_ofXgroup) {
     switch (command->node_type) {
@@ -1572,7 +1593,7 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
   }
 
   if (command->len > recv(rail_sckt, buff, command->len, MSG_WAITALL)) {
-    nbworks_errno = ONES;
+    *rail_isreusable = FALSE;
     return 0;
   }
 

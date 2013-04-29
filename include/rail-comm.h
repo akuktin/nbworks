@@ -110,7 +110,12 @@ void *
 
 struct cache_namenode *
   do_rail_regname(int rail_sckt,
-                  struct com_comm *command);
+                  struct com_comm *command,
+                  unsigned int *rail_isreusable);
+int
+  do_rail_delname(int rail_sckt,
+                  struct com_comm *command,
+                  unsigned int *rail_isreusable);
 
 int
   rail_senddtg(int rail_sckt,
@@ -140,7 +145,8 @@ void *
 
 ipv4_addr_t
   rail_whatisaddrX(int rail_sckt,
-                   struct com_comm *command);
+                   struct com_comm *command,
+                   unsigned int *rail_isreusable);
 
 token_t
   make_token(void);
