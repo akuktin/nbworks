@@ -1020,6 +1020,7 @@ int rail_add_dtg_server(int rail_sckt,
   union trans_id tid;
   token_t token;
   time_t cur_time;
+  unsigned char buff[LEN_COMM_ONWIRE];
 
   if (! command)
     return -1;
@@ -1046,6 +1047,18 @@ int rail_add_dtg_server(int rail_sckt,
       (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
        (does_token_match(namecard->grp_tokens, token) &&
 	namecard->grp_isinconflict))) {
+
+    if (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
+	(does_token_match(namecard->grp_tokens, token) &&
+	 namecard->grp_isinconflict)) {
+
+      command->len = 0;
+      command->data = 0;
+      command->nbworks_errno = EADDRINUSE;
+      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      send(rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
+    }
+
     free(new_rail);
     free(nbname);
     return 1;
@@ -1252,6 +1265,7 @@ int rail_add_ses_server(int rail_sckt,
   struct nbworks_nbnamelst nbname;
   token_t token;
   time_t cur_time;
+  unsigned char buff[LEN_COMM_ONWIRE];
 
   if (! command)
     return -1;
@@ -1265,6 +1279,18 @@ int rail_add_ses_server(int rail_sckt,
       (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
        (does_token_match(namecard->grp_tokens, token) &&
 	namecard->grp_isinconflict))) {
+
+    if (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
+	(does_token_match(namecard->grp_tokens, token) &&
+	 namecard->grp_isinconflict)) {
+
+      command->len = 0;
+      command->data = 0;
+      command->nbworks_errno = EADDRINUSE;
+      fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
+      send(rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
+    }
+
     return 1;
   }
 

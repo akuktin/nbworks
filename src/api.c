@@ -603,6 +603,13 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
 	(command.token == handle->token) &&
 	(command.nbworks_errno == 0))) {
     close(daemon);
+
+    if ((command.command == rail_dtg_sckt) &&
+	(command.token == handle->token) &&
+	(command.nbworks_errno == EADDRINUSE)) {
+      nbworks_errno = EADDRINUSE;
+      handle->isinconflict = TRUE;
+    }
     return -1;
   }
 
@@ -706,6 +713,13 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
 	(command.token == handle->token) &&
 	(command.nbworks_errno == 0))) {
     close(daemon);
+
+    if ((command.command == rail_stream_sckt) &&
+	(command.token == handle->token) &&
+	(command.nbworks_errno == EADDRINUSE)) {
+      nbworks_errno = EADDRINUSE;
+      handle->isinconflict = TRUE;
+    }
     return -1;
   }
 
