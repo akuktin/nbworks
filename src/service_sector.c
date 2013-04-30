@@ -706,8 +706,8 @@ void ss__del_sessrv(struct nbworks_nbnamelst *name) {
 }
 
 
-void ss__kill_allservs(unsigned char *name_ptr, /* len == NETBIOS_NAME_LEN */
-		       struct nbworks_nbnamelst *scope) {
+void ss__kill_allservrs(unsigned char *name_ptr, /* len == NETBIOS_NAME_LEN */
+			struct nbworks_nbnamelst *scope) {
   struct nbworks_nbnamelst target_name;
   union trans_id id;
   unsigned char target_label[NETBIOS_CODED_NAME_LEN];

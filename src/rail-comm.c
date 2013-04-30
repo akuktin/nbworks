@@ -732,7 +732,7 @@ int do_rail_delname(int rail_sckt,
       } else {
 	killitwithfire = TRUE;
 	node_type |= CACHE_ADDRBLCK_GRP_MASK;
-	cache_namecard->grp_isinconflict = 0;
+	cache_namecard->grp_isinconflict = FALSE;
       }
     }
 
@@ -743,7 +743,7 @@ int do_rail_delname(int rail_sckt,
 			       (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
 			      TRUE : FALSE));
 
-      ss__kill_allservs(name_ptr, scope);
+      ss__kill_allservrs(name_ptr, scope);
 
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if (!(cache_namecard->addrs.recrd[i].node_type & node_type)) {
