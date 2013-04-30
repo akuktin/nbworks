@@ -39,11 +39,9 @@ unsigned char *decode_nbnodename(const unsigned char *coded_name,
     return 0;
   }
 
-  coded_name_len = strlen((char *)coded_name);
-  if (coded_name_len != NETBIOS_CODED_NAME_LEN) {
-    nbworks_errno = EINVAL;
-    return 0;
-  }
+  /* DON'T check the length of coded_name. This way,
+   * we don't have to use the tramp stamp. */
+
   if (result_buf) {
     decoded_name = result_buf;
   } else {
