@@ -30,6 +30,7 @@ enum rail_commands {
 
   rail_regname,        /* library wants to register a name in the scope */
   rail_delname,        /* library wants to delete a name from the scope */
+  rail_isinconflict,   /* is the name in conflict? */
 
   rail_make_stream,    /* library wants to establist a session with port 139 */
   rail_stream_sckt,    /* library informs the daemon it wants to be a server */
@@ -151,6 +152,8 @@ ipv4_addr_t
   rail_whatisaddrX(int rail_sckt,
                    struct com_comm *command,
                    unsigned int *rail_isreusable);
+uint32_t
+  rail_isnameinconflict(token_t token);
 
 token_t
   make_token(void);

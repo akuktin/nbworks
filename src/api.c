@@ -312,7 +312,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
 int nbworks_delname(nbworks_namestate_p namehandle) {
   struct com_comm command;
   struct name_state *handle;
-  int daemon;
+  int daemon, guarded;
   unsigned char combuff[LEN_COMM_ONWIRE];
 
   handle = namehandle;
@@ -322,13 +322,15 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
   }
 
   if (handle->guard_rail < 0) {
+    guarded = TRUE;
     daemon = lib_daemon_socket();
   } else {
+    guarded = FALSE;
     daemon = handle->guard_rail;
-  }
-  if (daemon < 0) {
-    nbworks_errno = EPIPE;
-    return -1;
+    if (daemon < 0) {
+      nbworks_errno = EPIPE;
+      return -1;
+    }
   }
 
   memset(&command, 0, sizeof(struct com_comm));
@@ -366,7 +368,7 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
 
   default:
     nbworks_errno = EINVAL;
-    if (! (handle->guard_rail < 0))
+    if (! guarded)
       close(daemon);
     return -1;
   }
@@ -1986,6 +1988,73 @@ unsigned long nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
   return result;
 }
 #undef NUMOF_NODETYPES
+
+/* returns: >0 = yes; 0 = no; <0 = error */
+int nbworks_isinconflict(nbworks_namestate_p namehandle) {
+  struct com_comm command;
+  struct name_state *handle;
+  int daemon, guarded;
+  unsigned char buff[LEN_COMM_ONWIRE];
+
+  handle = namehandle;
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  if (handle->guard_rail >= 0) {
+    guarded = TRUE;
+    daemon = handle->guard_rail;
+  } else {
+    guarded = FALSE;
+    daemon = lib_daemon_socket();
+    if (daemon < 0) {
+      nbworks_errno = EPIPE;
+      return -1;
+    }
+  }
+
+  memset(&command, 0, sizeof(command));
+  command.command = rail_isinconflict;
+  command.token = handle->token;
+
+  fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+  if (LEN_COMM_ONWIRE > send(daemon, buff, LEN_COMM_ONWIRE,
+			     MSG_NOSIGNAL)) {
+    if (! guarded)
+      close(daemon);
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (LEN_COMM_ONWIRE > recv(daemon, buff, LEN_COMM_ONWIRE,
+			     MSG_WAITALL)) {
+    if (! guarded)
+      close(daemon);
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (! guarded)
+    close(daemon);
+
+  if (! read_railcommand(buff, (buff + LEN_COMM_ONWIRE), &command)) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  if (!((command.command == rail_isinconflict) &&
+	(command.token == handle->token))) {
+    nbworks_errno = EPROTO;
+    return -1;
+  }
+
+  if (command.nbworks_errno) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
 
 
 void *nbworks_emergencyfix_func1(void *arg) {

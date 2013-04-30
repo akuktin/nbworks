@@ -221,6 +221,9 @@ unsigned long
                          unsigned char node_types, /* can be more than one */
                          unsigned char isgroup,
                          unsigned long len);
+/* returns: >0 = yes; 0 = no; <0 = error */
+int
+  nbworks_isinconflict(nbworks_namestate_p namehandle);
 /* END base API */
 
 

@@ -421,6 +421,22 @@ void *handle_rail(void *args) {
       }
       break;
 
+    case rail_isinconflict:
+      if (command.len)
+	rail_flushrail(command.len, params.rail_sckt);
+      command.nbworks_errno = rail_isnameinconflict(command.token);
+
+      command.len = 0;
+      command.data = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	close(params.rail_sckt);
+	rail_isreusable = FALSE;
+	break;
+      }
+      break;
+
     default:
       /* Unknown command. */
       command.nbworks_errno = EINVAL;
@@ -1695,6 +1711,26 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
   }
 
   return 0;
+}
+
+uint32_t rail_isnameinconflict(token_t token) {
+  struct cache_namenode *namecard;
+
+  namecard = find_namebytok(token, 0);
+  if (namecard) {
+    if (namecard->unq_token == token) {
+      if (namecard->unq_isinconflict)
+	return TRUE;
+      else
+	return FALSE;
+    } else {
+      if (namecard->grp_isinconflict)
+	return TRUE;
+      else
+	return FALSE;
+    }
+  } else
+    return FALSE;
 }
 
 
