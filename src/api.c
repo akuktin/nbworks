@@ -167,6 +167,13 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   result->lenof_scope = lenof_scope;
   result->label_type = name_type;
   result->isinconflict = FALSE;
+  if (0 != pthread_mutex_init(&(result->guard_mutex), 0)) {
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
   result->guard_rail = -1;
 
   memset(&command, 0, sizeof(struct com_comm));
@@ -428,6 +435,7 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
   if (handle->sesin_library)
     lib_dstry_sesslist(handle->sesin_library);
 
+  pthread_mutex_destroy(&(handle->guard_mutex));
 
   free(handle); /* Bye-bye. */
 
@@ -452,7 +460,12 @@ int nbworks_release_railguard(nbworks_namestate_p namehandle) {
   if (handle->guard_rail < 0) {
     return 1;
   } else {
-    rail = handle->guard_rail;
+    if (0 == pthread_mutex_trylock(&(handle->guard_mutex)))
+      rail = handle->guard_rail;
+    else {
+      nbworks_errno = EDEADLK;
+      return 0;
+    }
   }
 
   memset(&command, 0, sizeof(command));
@@ -489,27 +502,32 @@ int nbworks_release_railguard(nbworks_namestate_p namehandle) {
 
   default:
     nbworks_errno = EINVAL;
+    pthread_mutex_unlock(&(handle->guard_mutex));
     return -1;
   }
   if (buff == fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE))) {
     nbworks_errno = ENOBUFS;
+    pthread_mutex_unlock(&(handle->guard_mutex));
     return -1;
   }
 
   if (LEN_COMM_ONWIRE > send(rail, buff, LEN_COMM_ONWIRE,
 			     MSG_NOSIGNAL)) {
     nbworks_errno = EREMOTEIO;
+    pthread_mutex_unlock(&(handle->guard_mutex));
     return 0;
   }
 
   if (LEN_COMM_ONWIRE > recv(rail, buff, LEN_COMM_ONWIRE,
 			     MSG_WAITALL)) {
     nbworks_errno = EREMOTEIO;
+    pthread_mutex_unlock(&(handle->guard_mutex));
     return 0;
   }
 
   if (! read_railcommand(buff, (buff+LEN_COMM_ONWIRE), &command)) {
     nbworks_errno = EREMOTEIO;
+    pthread_mutex_unlock(&(handle->guard_mutex));
     return 0;
   }
 
@@ -517,12 +535,14 @@ int nbworks_release_railguard(nbworks_namestate_p namehandle) {
 	(command.token == handle->token) &&
 	(command.nbworks_errno == 0))) {
     nbworks_errno = EREMOTEIO;
+    pthread_mutex_unlock(&(handle->guard_mutex));
     return 0;
   }
 
   close(rail);
   handle->guard_rail = -1;
 
+  pthread_mutex_unlock(&(handle->guard_mutex));
   return 1;
 }
 
@@ -2040,6 +2060,7 @@ int nbworks_isinconflict(nbworks_namestate_p namehandle) {
   }
 
   if (handle->guard_rail < 0) {
+  open_unguarded_rail:
     guarded = FALSE;
     daemon = lib_daemon_socket();
     if (daemon < 0) {
@@ -2047,6 +2068,8 @@ int nbworks_isinconflict(nbworks_namestate_p namehandle) {
       return -1;
     }
   } else {
+    if (0 != pthread_mutex_trylock(&(handle->guard_mutex)))
+      goto open_unguarded_rail;
     guarded = TRUE;
     daemon = handle->guard_rail;
   }
@@ -2060,6 +2083,8 @@ int nbworks_isinconflict(nbworks_namestate_p namehandle) {
 			     MSG_NOSIGNAL)) {
     if (! guarded)
       close(daemon);
+    else
+      pthread_mutex_unlock(&(handle->guard_mutex));
     nbworks_errno = EPIPE;
     return -1;
   }
@@ -2068,12 +2093,16 @@ int nbworks_isinconflict(nbworks_namestate_p namehandle) {
 			     MSG_WAITALL)) {
     if (! guarded)
       close(daemon);
+    else
+      pthread_mutex_unlock(&(handle->guard_mutex));
     nbworks_errno = EPIPE;
     return -1;
   }
 
   if (! guarded)
     close(daemon);
+  else
+    pthread_mutex_unlock(&(handle->guard_mutex));
 
   if (! read_railcommand(buff, (buff + LEN_COMM_ONWIRE), &command)) {
     nbworks_errno = ENOBUFS;

@@ -83,6 +83,7 @@ struct name_state {
   unsigned int isinconflict;
 
 /* guard rail */
+  pthread_mutex_t guard_mutex;
   int guard_rail;
 
 /* maybe we will daysie-chain them */
