@@ -692,6 +692,7 @@ void ss__del_sessrv(struct nbworks_nbnamelst *name) {
     if (0 == nbworks_cmp_nbnodename(cur_srv->name, name)) {
       *last_srv = cur_srv->next;
       nbworks_dstr_nbnodename(cur_srv->name);
+      close(cur_srv->rail);
       free(cur_srv);
 
       return;
