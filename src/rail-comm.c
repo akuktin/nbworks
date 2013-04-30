@@ -1096,7 +1096,6 @@ int rail_add_dtg_server(int rail_sckt,
 			    dtg_server, &params)) {
       ss_del_queuestorage(&tid, DTG_SRVC);
       nbworks_dstr_nbnodename(nbname);
-      free(new_rail);
 
       return -1;
     }
