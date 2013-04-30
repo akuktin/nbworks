@@ -166,6 +166,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
 
   result->lenof_scope = lenof_scope;
   result->label_type = name_type;
+  result->isinconflict = FALSE;
   result->guard_rail = -1;
 
   memset(&command, 0, sizeof(struct com_comm));
@@ -2050,8 +2051,10 @@ int nbworks_isinconflict(nbworks_namestate_p namehandle) {
   }
 
   if (command.nbworks_errno) {
+    handle->isinconflict = TRUE;
     return 1;
   } else {
+    handle->isinconflict = FALSE;
     return 0;
   }
 }

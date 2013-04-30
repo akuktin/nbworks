@@ -76,10 +76,11 @@ struct name_state {
   struct nbworks_session *sesin_library;
 
 /* metadata for the name and scope */
-  short lenof_scope; /* the amount of octets the encoded scope takes,
-                      * incl. the terminating NULL in the packet */
-  unsigned char label_type; /* the type octet of the name */
-  node_type_t node_type;  /* flag field */
+  short lenof_scope;         /* the amount of octets the encoded scope takes,
+                              * incl. the terminating NULL in the packet */
+  unsigned char label_type;  /* the type octet of the name */
+  node_type_t node_type;     /* flag field */
+  unsigned int isinconflict;
 
 /* guard rail */
   int guard_rail;
