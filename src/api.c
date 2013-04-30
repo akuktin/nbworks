@@ -371,6 +371,8 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
 
   default:
     nbworks_errno = EINVAL;
+    if (! (handle->guard_rail < 0))
+      close(daemon);
     return -1;
   }
 
