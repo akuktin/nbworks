@@ -322,15 +322,15 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
   }
 
   if (handle->guard_rail < 0) {
-    guarded = TRUE;
-    daemon = lib_daemon_socket();
-  } else {
     guarded = FALSE;
-    daemon = handle->guard_rail;
+    daemon = lib_daemon_socket();
     if (daemon < 0) {
       nbworks_errno = EPIPE;
       return -1;
     }
+  } else {
+    guarded = TRUE;
+    daemon = handle->guard_rail;
   }
 
   memset(&command, 0, sizeof(struct com_comm));
@@ -2002,16 +2002,16 @@ int nbworks_isinconflict(nbworks_namestate_p namehandle) {
     return -1;
   }
 
-  if (handle->guard_rail >= 0) {
-    guarded = TRUE;
-    daemon = handle->guard_rail;
-  } else {
+  if (handle->guard_rail < 0) {
     guarded = FALSE;
     daemon = lib_daemon_socket();
     if (daemon < 0) {
       nbworks_errno = EPIPE;
       return -1;
     }
+  } else {
+    guarded = TRUE;
+    daemon = handle->guard_rail;
   }
 
   memset(&command, 0, sizeof(command));
