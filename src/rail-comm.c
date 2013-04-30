@@ -1092,8 +1092,6 @@ int rail_add_dtg_server(int rail_sckt,
 
     if (0 != pthread_create(&(params.thread_id), 0,
 			    dtg_server, &params)) {
-      ss_deregister_dtg_tid(&tid);
-      ss__dstry_recv_queue(&(queue->queue));
       ss_del_queuestorage(&tid, DTG_SRVC);
       nbworks_dstr_nbnodename(nbname);
       free(new_rail);
@@ -1220,8 +1218,6 @@ void *dtg_server(void *arg) {
 
   tid.name_scope = nbname;
 
-  ss_deregister_dtg_tid(&tid);
-  ss__dstry_recv_queue(&(queue->queue));
   ss_del_queuestorage(&tid, DTG_SRVC);
   nbworks_dstr_nbnodename(nbname);
 
