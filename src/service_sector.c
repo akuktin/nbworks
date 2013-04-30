@@ -279,9 +279,13 @@ void ss_del_queuestorage(union trans_id *arg,
 	cur_stor->id.tid == tid) {
       *last_stor = cur_stor->next;
 
+      ss_deregister_tid(arg, branch);
+      ss__dstry_recv_queue(&(cur_stor->queue));
+
       for_del2prim = cur_stor->rail;
       while (for_del2prim) {
 	for_del2 = for_del2prim->next;
+	close(for_del2prim->rail_sckt);
 	free(for_del2prim);
 	for_del2prim = for_del2;
       }
