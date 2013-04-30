@@ -1090,6 +1090,11 @@ void *lib_dtgserver(void *arg) {
   handle->dtg_srv_stop = TRUE;
   handle->in_server = 0;
 
+  if (! (nbworks_libcntl.stop_alldtg_srv ||
+	 handle->dtg_srv_stop)) {
+    nbworks_isinconflict(handle);
+  }
+
   return 0;
 }
 
@@ -1564,6 +1569,11 @@ void *lib_ses_srv(void *arg) {
 
   handle->ses_srv_stop = TRUE;
   handle->sesin_server = 0;
+
+  if (! (nbworks_libcntl.stop_allses_srv ||
+	 handle->ses_srv_stop)) {
+    nbworks_isinconflict(handle);
+  }
 
   return 0;
 }

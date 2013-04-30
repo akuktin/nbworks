@@ -556,7 +556,8 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
     nbworks_errno = 0;
   }
 
-  if (! handle->token) {
+  if ((! handle->token) ||
+      (handle->isinconflict)) {
     nbworks_errno = EPERM;
     return 0;
   }
@@ -658,7 +659,8 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
     nbworks_errno = 0;
   }
 
-  if (! handle->token) {
+  if ((! handle->token) ||
+      (handle->isinconflict)) {
     nbworks_errno = EPERM;
     return 0;
   }
@@ -847,6 +849,11 @@ nbworks_session_p nbworks_sescall(nbworks_namestate_p namehandle,
     return 0;
   } else {
     nbworks_errno = 0;
+  }
+
+  if (handle->isinconflict) {
+    nbworks_errno = EPERM;
+    return 0;
   }
 
   this_is_a_socket = lib_open_session(handle, dst);
@@ -1107,6 +1114,11 @@ ssize_t nbworks_sendto(unsigned char service,
                         via the multiplexing daemon */
     if (! ses->handle) {
       nbworks_errno = EINVAL;
+      return -1;
+    }
+
+    if (ses->handle->isinconflict) {
+      nbworks_errno = EPERM;
       return -1;
     }
 
@@ -1447,8 +1459,13 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    nbworks_errno = EAGAIN;
 	    ret_val = -1;
 	    break;
-	  } else
-	    nanosleep(&sleeptime, 0);
+	  } else {
+	    if (ses->handle->isinconflict) {
+	      nbworks_errno = EPERM;
+	      ret_val = -1;
+	    } else
+	      nanosleep(&sleeptime, 0);
+	  }
 	}
       } else {
 	if (((flags & MSG_DONTWAIT) ||
@@ -1457,8 +1474,13 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  nbworks_errno = EAGAIN;
 	  ret_val = -1;
 	  break;
-	} else
-	  nanosleep(&sleeptime, 0);
+	} else {
+	  if (ses->handle->isinconflict) {
+	    nbworks_errno = EPERM;
+	    ret_val = -1;
+	  } else
+	    nanosleep(&sleeptime, 0);
+	}
       }
     } while (! ret_val);
 
