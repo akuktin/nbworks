@@ -30,7 +30,6 @@
 unsigned char *decode_nbnodename(const unsigned char *coded_name,
 				 unsigned char *result_buf) {
   int coded_name_cntr, decoded_name_cntr;
-  int coded_name_len;
   unsigned char *decoded_name;
   unsigned char nibble_reactor;
 

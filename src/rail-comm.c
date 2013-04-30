@@ -743,6 +743,8 @@ int do_rail_delname(int rail_sckt,
 			       (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
 			      TRUE : FALSE));
 
+      ss__kill_allservs(name_ptr, scope);
+
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if (!(cache_namecard->addrs.recrd[i].node_type & node_type)) {
 	  continue;

@@ -195,6 +195,11 @@ struct ses_srv_rails *
 void
   ss__del_sessrv(struct nbworks_nbnamelst *name);
 
+/* Complicated arguments because this is a convenience function. */
+void
+  ss__kill_allservs(unsigned char *name_ptr, /* len == NETBIOS_NAME_LEN */
+                    struct nbworks_nbnamelst *scope);
+
 struct ses_srv_sessions *
   ss__add_session(token_t token,
                   int out_sckt,
