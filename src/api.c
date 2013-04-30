@@ -340,6 +340,39 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
 
   command.command = rail_delname;
   command.token = handle->token;
+  switch (handle->node_type) {
+  case CACHE_NODEFLG_B:
+    command.node_type = RAIL_NODET_BUNQ;
+    break;
+  case CACHE_NODEGRPFLG_B:
+    command.node_type = RAIL_NODET_BGRP;
+    break;
+
+  case CACHE_NODEFLG_P:
+    command.node_type = RAIL_NODET_PUNQ;
+    break;
+  case CACHE_NODEGRPFLG_P:
+    command.node_type = RAIL_NODET_PGRP;
+    break;
+
+  case CACHE_NODEFLG_M:
+    command.node_type = RAIL_NODET_MUNQ;
+    break;
+  case CACHE_NODEGRPFLG_M:
+    command.node_type = RAIL_NODET_MGRP;
+    break;
+
+  case CACHE_NODEFLG_H:
+    command.node_type = RAIL_NODET_HUNQ;
+    break;
+  case CACHE_NODEGRPFLG_H:
+    command.node_type = RAIL_NODET_HGRP;
+    break;
+
+  default:
+    nbworks_errno = EINVAL;
+    return -1;
+  }
 
   fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE));
   if (LEN_COMM_ONWIRE > send(daemon, combuff, LEN_COMM_ONWIRE,
