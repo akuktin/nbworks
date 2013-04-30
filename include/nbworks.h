@@ -146,13 +146,13 @@ int
 /* BEGIN base API */
 /* BEGIN core API */
 nbworks_namestate_p
-  nbworks_regname(unsigned char *name, /* len <= (NBWORKS_NBNAME_LEN-1) */
-                  unsigned char name_type, /* these are Microsofts idea */
+  nbworks_regname(unsigned char *name,   /* len <= (NBWORKS_NBNAME_LEN-1) */
+                  unsigned char name_type,    /* these are Microsofts idea */
                   struct nbworks_nbnamelst *scope, /* 0 is a valid value */
-                  unsigned char isgroup,   /* boolean */
-                  unsigned char node_type, /* only one type */
-                  unsigned long ttl,       /* seconds */
-                  unsigned int withguard); /* insure yourself or not */
+                  unsigned char isgroup,      /* boolean */
+                  unsigned char node_type,    /* only one type */
+                  unsigned long refresh_time, /* seconds */
+                  unsigned int withguard);    /* insure yourself or not */
 /* returns: >0 = success, 0 = fail, <0 = error */
 int
   nbworks_delname(nbworks_namestate_p handle);
