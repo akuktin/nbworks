@@ -107,17 +107,13 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   int daemon;
   node_type_t real_node_type;
   unsigned int lenof_scope, lenof_name;
-  unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff, group_flg;
+  unsigned char commbuff[LEN_COMM_ONWIRE], *namedtbuff;
 
   if (! name) {
     nbworks_errno = EINVAL;
     return 0;
   } else {
     nbworks_errno = 0;
-    if (isgroup)
-      group_flg = ISGROUP_YES;
-    else
-      group_flg = ISGROUP_NO;
   }
 
   lenof_scope = nbworks_nbnodenamelen(scope);
@@ -170,14 +166,13 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
 
   result->lenof_scope = lenof_scope;
   result->label_type = name_type;
-  result->group_flg = group_flg;
   result->guard_rail = -1;
 
   memset(&command, 0, sizeof(struct com_comm));
   command.command = rail_regname;
   switch (node_type) {
   case NBWORKS_NODE_B:
-    if (group_flg == ISGROUP_YES) {
+    if (isgroup) {
       real_node_type = CACHE_NODEGRPFLG_B;
       command.node_type = RAIL_NODET_BGRP;
     } else {
@@ -186,7 +181,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     }
     break;
   case NBWORKS_NODE_P:
-    if (group_flg == ISGROUP_YES) {
+    if (isgroup) {
       real_node_type = CACHE_NODEGRPFLG_P;
       command.node_type = RAIL_NODET_PGRP;
     } else {
@@ -195,7 +190,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     }
     break;
   case NBWORKS_NODE_M:
-    if (group_flg == ISGROUP_YES) {
+    if (isgroup) {
       real_node_type = CACHE_NODEGRPFLG_M;
       command.node_type = RAIL_NODET_MGRP;
     } else {
@@ -204,7 +199,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     }
     break;
   case NBWORKS_NODE_H:
-    if (group_flg == ISGROUP_YES) {
+    if (isgroup) {
       real_node_type = CACHE_NODEGRPFLG_H;
       command.node_type = RAIL_NODET_HGRP;
     } else {
@@ -1135,8 +1130,7 @@ ssize_t nbworks_sendto(unsigned char service,
 
     ret_val = lib_senddtg_138(ses->handle, peer->name,
 			      (peer->name)[NETBIOS_NAME_LEN-1],
-			      buff, len, ses->handle->group_flg,
-			      (flags & MSG_BRDCAST));
+			      buff, len, (flags & MSG_BRDCAST));
     if (ret_val < len) {
       /* nbworks_errno is already set */
       return -1;

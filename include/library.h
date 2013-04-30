@@ -80,7 +80,6 @@ struct name_state {
                       * incl. the terminating NULL in the packet */
   unsigned char label_type; /* the type octet of the name */
   node_type_t node_type;  /* flag field */
-  unsigned char group_flg;
 
 /* guard rail */
   int guard_rail;
@@ -173,7 +172,6 @@ ssize_t
                   unsigned char recepient_type,
                   void *data,
                   size_t len,
-                  unsigned char group_flg,
                   int isbroadcast);
 
 void *
