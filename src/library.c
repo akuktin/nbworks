@@ -570,9 +570,10 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   struct com_comm command;
   unsigned long pckt_len, hdr_len, max_wholefrag_len;
   int daemon_sckt;
+  unsigned int isgroup;
   uint32_t basic_pckt_flags;
   uint32_t frag_len, max_frag_len, numof_frags, frag_offset, names_len;
-  unsigned char readycommand[LEN_COMM_ONWIRE], *data, group_flg;
+  unsigned char readycommand[LEN_COMM_ONWIRE], *data;
   void *readypacket;
 
   if ((! (handle && recepient)) ||
@@ -634,46 +635,46 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   pckt->for_del = 0;
   switch (handle->node_type) {
   case CACHE_NODEFLG_H:
-    group_flg = ISGROUP_NO;
+    isgroup = FALSE;
     basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = RAIL_NODET_HUNQ;
     break;
   case CACHE_NODEGRPFLG_H:
-    group_flg = ISGROUP_YES;
+    isgroup = TRUE;
     basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = RAIL_NODET_HGRP;
     break;
 
   case CACHE_NODEFLG_M:
-    group_flg = ISGROUP_NO;
+    isgroup = FALSE;
     basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = RAIL_NODET_MUNQ;
     break;
   case CACHE_NODEGRPFLG_M:
-    group_flg = ISGROUP_YES;
+    isgroup = TRUE;
     basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = RAIL_NODET_MGRP;
     break;
 
   case CACHE_NODEFLG_P:
-    group_flg = ISGROUP_NO;
+    isgroup = FALSE;
     basic_pckt_flags = DTG_NODE_TYPE_P;
     command.node_type = RAIL_NODET_PUNQ;
     break;
   case CACHE_NODEGRPFLG_P:
-    group_flg = ISGROUP_YES;
+    isgroup = TRUE;
     basic_pckt_flags = DTG_NODE_TYPE_P;
     command.node_type = RAIL_NODET_PGRP;
     break;
 
   case CACHE_NODEFLG_B:
-    group_flg = ISGROUP_NO;
+    isgroup = FALSE;
     basic_pckt_flags = DTG_NODE_TYPE_B;
     command.node_type = RAIL_NODET_BUNQ;
     break;
   case CACHE_NODEGRPFLG_B:
   default:
-    group_flg = ISGROUP_YES;
+    isgroup = TRUE;
     basic_pckt_flags = DTG_NODE_TYPE_B;
     command.node_type = RAIL_NODET_BGRP;
     break;
@@ -681,8 +682,8 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   /* Is this datagram sent to everyone, all members
    * of a group or only to a single node? */
   pckt->type = (isbroadcast) ? BRDCST_DTG :
-                               ((group_flg & ISGROUP_YES) ? DIR_GRP_DTG :
-                                                            DIR_UNIQ_DTG);
+                               (isgroup ? DIR_GRP_DTG :
+                                          DIR_UNIQ_DTG);
 
   pckt->id = make_weakrandom() & 0xffff;
   pckt->src_address = nbworks__myip4addr;
