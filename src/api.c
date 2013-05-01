@@ -1219,7 +1219,10 @@ int nbworks_poll(unsigned char service,
 	}
       }
     } else {
-      for (count = timeout / 12; count > 0; count--) {
+      count = timeout / 12;
+      if (timeout % 12)
+	count++;
+      for (; count > 0; count--) {
 
 	for (i=0; i<numof_pfd; i++) {
 	  nstate = handles[i].handle;
