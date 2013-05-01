@@ -1,0 +1,125 @@
+.TH NBWORKS_SENDTO 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_sendto, nbworks_send \- send data using NetBIOS
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "ssize_t"
+.br
+.BI "  nbworks_sendto(unsigned char " service ","
+.br
+.BI "                 nbworks_session_p " ses ","
+.br
+.BI "                 void * " buff ","
+.br
+.BI "                 size_t " len ","
+.br
+.BI "                 int " flags ","
+.br
+.BI "                 struct nbworks_nbnamelst * " dst ");"
+.fi
+.sp
+.BI "ssize_t"
+.br
+.BI "  nbworks_send(unsigned char " service ","
+.br
+.BI "               nbworks_session_p " ses ","
+.br
+.BI "               void * " buff ","
+.br
+.BI "               size_t " len ","
+.br
+.BI "               int " flags ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_sendto\fP() and \fBnbworks_send\fP() functions are used
+to send data using NetBIOS. \fBnbworks_send\fP() is implemented as a
+macro wrapper that calls \fBnbworks_sendto\fP() with its own arguments
+and \fIdst\fP set to 0. Because it is a macro, \fBnbworks_send\fP()
+may evaluate its arguments more than once. Beware.
+.PP
+All further text of this manpage references \fBnbworks_sendto\fP(),
+but it also applies to \fBnbworks_send\fP().
+.PP
+The argument \fIservice\fP is used to tell \fBnbworks_sendto\fP() if
+you wish it to operate in session mode or datagram mode. I can be one
+of \fBNBWORKS_SES_SRVC\fP or \fBNBWORKS_DTG_SRVC\fP. Setting
+\fBnbworks_sendto\fP() to operate in the wrong mode for the passed
+session is safe, although it may error out.
+.PP
+The argument \fIses\fP is a session handle that was returned by a
+successfull call to one of \fBnbworks_castdtgsession\fP(),
+\fBnbworks_accept_ses\fP() or \fBnbworks_sescall\fP().
+.PP
+\fBCONFUSION ALERT!\fP
+.br
+Conceptually, nbworks distinguishes \fIsession sessions\fP and
+\fIdatagram sessions\fP. Organically, there is no such thing as a
+\fIdatagram session\fP in NetBIOS. They are only a mirage created for
+your convenience by nbworks.
+.br
+The two classes were originally created to enable code reuse. Later,
+it was found that with only a few tweaks, it was possible to make the
+datagram service emulate true sessions. Thus, what was a cheap hack to
+enable code reuse became a documented feature.
+.br
+\fBEnd confusion alert.\fP
+.PP
+The argument \fIbuff\fP is a pointer to the buffer containing the data
+to be sent. Nbworks does not (at this time) implement the \fBchain
+send\fP functionality described by \fBRFC1001\fP and implemented by
+the original PC implementation of NetBIOS.
+.PP
+The argument \fIlen\fP descibes the length of the stuff pointed to by
+\fIbuff\fP. It is an error to call with this number greater than can
+be returned by the function (because \fIlen\fP is of type \fBsize_t\fP
+which is unsigned and, thus, larger then the return of the function
+which is of type \fBssize_t\fP and is signed). It is an error to
+call with this argument set to 0.
+.PP
+The argument \fIflags\fP is used to pass flags governing the behaviour
+of \fBnbworks_sendto\fP(). They are analogous to the \fIflags\fP field
+in your systems \fBsendto\fP(2), with the caveat that MSG_DONTROUTE is
+made ineffectual.
+.PP
+The argument \fIdst\fP is used only in datagram mode and ignored in
+session mode. Its effect is to send the datagram to the NetBIOS name
+specified in the argument. The first member of \fIdst\fP has to have
+its \fIname\fP field point to a string of exactly
+\fBNBWORKS_NBNAME_LEN\fP bytes. If \fIdst\fP is a linked list, the
+part of the list which specifies the scope is ignored and the datagram
+is sent to the specified name in the same scope as the session's
+handle's name's. If \fIdst\fP is 0, then if the datagram session has a
+default peer, the datagram is sent to that peer. If the datagram
+session does not have a default peer, \fBnbworks_sendto\fP() signals
+an error. The macro \fBnbworks_send\fP() calls \fBnbworks_sendto\fP()
+with this argument set to 0.
+.SH "RETURN VALUE"
+This function returns the number of bytes it sent or -1 in the event
+an error occured.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "OPERATION NOTES"
+If, in datagram mode, the amount of data to send is larger than
+can be made to fit into a single UDP packet, whose maximum length is
+defined in \fInbworks_libcntl.dtg_max_wholefrag_len\fP, then nbworks
+will fragment the datagram. You should use \fBnbworks_maxdtglen\fP()
+to find the limit after which fragmentation starts being used. If the
+amount of data for sending is so large that not even fragmentation
+with overloading can help, \fBnbworks_sendto\fP() aborts and signals
+an error.
+.PP
+\fBnbworks_sendto\fP() is belived to be thread-safe. This belif relies
+on your systems implementation of \fBpthread_mutex_lock\fP() and
+\fBpthread_mutex_trylock\fP().
+.SH "SEE ALSO"
+.BR sendto (2),
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_castdtgsession (3),
+.BR nbworks_maxdtglen (3),
+.BR nbworks_recvfrom (3)
