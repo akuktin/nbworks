@@ -1,0 +1,37 @@
+.TH NBWORKS_HALTSRV 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_haltsrv \- halt a server
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "void"
+.br
+.BI "  nbworks_haltsrv(unsigned int " service ","
+.br
+.BI "                  nbworks_namestate_p " namehandle ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_haltsrv\fP() function halts the execution of the
+server. The receive datagram queue for datagram servers and the
+pending sessions queue for the session listener server are not removed
+by this call and can still be accessesd by the usual calls.
+.PP
+The argument \fIservice\fP is used to tell \fBnbworks_haltsrv\fP()
+which server do you want to halt. If you wish to halt the session
+listener server, call with \fBNBWORKS_SES_SRVC\fP. If you wish to halt
+the datagram server, call with \fBNBWORKS_DTG_SRVC\fP.
+.PP
+The argument \fInamehandle\fP is the name handle returned by a
+previous successfull call to \fBnbworks_regname\fP().
+.SH "RETURN VALUE"
+This function returns a positive number if successfull, zero if it
+failed and a negative number if an error occured.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_listen_dtg (3),
+.BR nbworks_listen_ses (3)
