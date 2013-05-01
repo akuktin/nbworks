@@ -1,0 +1,47 @@
+.TH NBWORKS_MAKESCOPE 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_makescope \- translate a string into a name list
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "struct nbworks_nbnamelst *"
+.br
+.BI "  nbworks_makescope(unsigned char * " buff ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_makescope\fP() function translates the label-and-dot
+notation of a char string into the \fBnbworks_nbnamelst\fP linked list
+format used by nbworks.
+.PP
+The argument \fIbuff\fP is a pointer to a NULL-terminated string
+describing the scope. See "\fBFORMAT OF SCOPE STRING\fP" below for
+more details.
+.SH "RETURN VALUE"
+This function returns a linked list which is a translation of the
+string passed to it, or 0 in the event of an error.
+.PP
+The function will also return 0 if called with a NULL-string as its
+argument.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "FORMAT OF SCOPE STRING"
+String is a NULL-terminated array of (\fBunsigned char\fP) and
+consists of zero or more elements. The string may not have embedded
+NULLs - such elements of the array are interpreted to be the end of
+the array.
+.PP
+Elements of the array which are not dot characters, '\fB.\fP', are
+considered to be a part of the label. No label may be longer than
+0x3f.
+.PP
+NetBIOS specifications require this whole string to be shorter than
+256 bytes. Nbworks does not enforce this.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_clone_nbnodename (3),
+.BR nbworks_dstr_nbnodename (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_buff2nbname (3),
+.BR nbworks_nbname2buff (3)

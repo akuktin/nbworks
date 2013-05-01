@@ -25,6 +25,7 @@
 
 #include "constdef.h"
 #include "nodename.h"
+#include "pckt_routines.h"
 
 
 unsigned char *decode_nbnodename(const unsigned char *coded_name,
@@ -319,6 +320,11 @@ struct nbworks_nbnamelst *nbworks_buff2nbname(unsigned char *buff,
 
   if (! lenof_string)
     lenof_string = strlen((char *)buff);
+  if (lenof_string > MAX_DNS_LABEL_LEN) {
+    free(result);
+    nbworks_errno = EINVAL;
+    return 0;
+  }
   result->len = lenof_string;
 
   result->name = malloc(lenof_string+1);
@@ -391,6 +397,13 @@ struct nbworks_nbnamelst *nbworks_makescope(unsigned char *buff) {
   while (*walker) {
     point = strchrnul(walker, '.');
     name_len = point - walker;
+
+    if (name_len > MAX_DNS_LABEL_LEN) {
+      *result = 0;
+      nbworks_dstr_nbnodename(first);
+      nbworks_errno = EINVAL;
+      return 0;
+    }
 
     *result = malloc(sizeof(struct nbworks_nbnamelst));
     if (! *result) {
