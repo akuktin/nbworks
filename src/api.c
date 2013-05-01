@@ -1175,6 +1175,7 @@ int nbworks_poll(unsigned char service,
   struct timespec sleeptime;
   struct packet_cooked *trgt;
   struct nbworks_session *session;
+  struct name_state *nstate;
   int i, count, ret_val;
 
   if ((! handles) ||
@@ -1194,7 +1195,13 @@ int nbworks_poll(unsigned char service,
     for (i=0; i<numof_pfd; i++) {
       session = handles[i].session;
       if (session) {
-	trgt = session->handle->in_library;
+	nstate = session->handle;
+	if (nstate) {
+	  trgt = nstate->in_library;
+	} else {
+	  nbworks_errno = EINVAL;
+	  return -1;
+	}
       } else {
 	nbworks_errno = EINVAL;
 	return -1;
@@ -1234,7 +1241,13 @@ int nbworks_poll(unsigned char service,
 	for (i=0; i<numof_pfd; i++) {
 	  session = handles[i].session;
 	  if (session) {
-	    trgt = session->handle->in_library;
+	    nstate = session->handle;
+	    if (nstate) {
+	      trgt = nstate->in_library;
+	    } else {
+	      nbworks_errno = EINVAL;
+	      return -1;
+	    }
 	  } else {
 	    nbworks_errno = EINVAL;
 	    return -1;
@@ -1272,7 +1285,13 @@ int nbworks_poll(unsigned char service,
 	for (i=0; i<numof_pfd; i++) {
 	  session = handles[i].session;
 	  if (session) {
-	    trgt = session->handle->in_library;
+	    nstate = session->handle;
+	    if (nstate) {
+	      trgt = nstate->in_library;
+	    } else {
+	      nbworks_errno = EINVAL;
+	      return -1;
+	    }
 	  } else {
 	    nbworks_errno = EINVAL;
 	    return -1;

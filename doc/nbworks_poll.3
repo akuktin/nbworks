@@ -1,0 +1,77 @@
+.TH NBWORKS_POLL 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_poll \- nbworks' wrapper implementation of \fBpoll\fP(2)
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "int"
+.br
+.BI "  nbworks_poll(unsigned char " service ","
+.br
+.BI "               struct nbworks_pollfd * " handles ","
+.br
+.BI "               int " numof_sess ","
+.br
+.BI "               int " timeout ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_poll\fP() function is nbworks' reimplementation
+of \fBpoll\fP(2). In session mode, it is a wrapper around the systems
+\fBpoll\fP(2), while in datagram mode, it is a standalone
+implementation.
+.PP
+The argument \fIservice\fP is used to tell \fBnbworks_poll\fP() if you
+wish it to operate in session mode or datagram mode. I can be one of
+\fBNBWORKS_SES_SRVC\fP or \fBNBWORKS_DTG_SRVC\fP. Setting
+\fBnbworks_poll\fP() to operate in the wrong mode for the passed
+sessions is safe, although it will produce wrong results.
+.PP
+The argument \fIhandles\fP is a pointer to an array of \fBstruct
+nbworks_pollfd\fPs that describe the sessions that are to be
+polled as well as what should be tested for. This structure is a
+rip-off of \fBpoll\fP(2)s \fBstruct pollfd\fP and looks like this:
+.PP
+	\fBstruct nbworks_pollfd\fP {
+.br
+	  \fBnbworks_session_p\fP session;
+.br
+	  \fBshort int\fP events;
+.br
+	  \fBshort int\fP revents;
+.br
+	};
+.PP
+The field \fIsession\fP is the session handle returned by a previous
+succesfull call to one of \fBnbworks_castdtgsession\fP(),
+\fBnbworks_accept_ses\fP() or \fBnbworks_sescall\fP().
+.PP
+The fields \fIevents\fP and \fIrevents\fP are exactly the same as the
+ones used in \fBstruct pollfd\fP. See the documentation for
+\fBpoll\fP(2).
+.PP
+The argument \fInumof_sess\fP describes how many elements are in the
+array pointed to by \fIhandles\fP.
+.PP
+The argument \fItimeout\fP specifies the minimum time
+\fBnbworks_poll\fP() should wait if no events are currently
+available. This is specified in miliseconds. 0 means no waiting, a
+negative number means to wait forever. Use with caution.
+.SH "RETURN VALUE"
+This function returns the number of sessions that have an event
+pending on them. In case of error, a negative number is returned.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH NOTES
+When operating in datagram mode, \fBnbworks_poll\fP() waits in steps
+of 12 miliseconds.
+.SH "SEE ALSO"
+.BR poll (2),
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_castdtgsession (3),
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)
