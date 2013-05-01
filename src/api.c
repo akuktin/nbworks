@@ -909,6 +909,46 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
   return TRUE;
 }
 
+/* returns: >0 = success; 0 = fail; <0 = error */
+int nbworks_update_listentos(unsigned char service,
+			     nbworks_namestate_p namehandle,
+			     struct nbworks_nbnamelst *newlistento) {
+  struct name_state *handle;
+  struct nbworks_nbnamelst *new, *old, **ptr;
+
+  handle = namehandle;
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  } else
+    nbworks_errno = 0;
+
+  switch (service) {
+  case NBWORKS_DTG_SRVC:
+    ptr = &(handle->dtg_listento);
+    break;
+  case NBWORKS_SES_SRVC:
+    ptr = &(handle->ses_listento);
+    break;
+  default:
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  new = nbworks_clone_nbnodename(newlistento);
+  if ((! new) && newlistento) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  old = *ptr;
+  *ptr = new;
+
+  nbworks_dstr_nbnodename(old);
+
+  return 1;
+}
+
 nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
 				     int timeout) {
   struct timespec sleeptime;

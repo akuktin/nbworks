@@ -177,6 +177,11 @@ int
   nbworks_listen_ses(nbworks_namestate_p handle,
                      unsigned char takes_field,
                      struct nbworks_nbnamelst *listento);
+/* returns: >0 = success; 0 = fail; <0 = error */
+int
+  nbworks_update_listentos(unsigned char service,
+                           nbworks_namestate_p namehandle,
+                           struct nbworks_nbnamelst *newlistento);
 nbworks_session_p
   nbworks_accept_ses(nbworks_namestate_p handle,
                      int timeout);
