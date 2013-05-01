@@ -1,0 +1,63 @@
+.TH NBWORKS_WHATISIP4ADDRX 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_whatisIP4addrX \- resolve for X
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "unsigned long"
+.br
+.BI "  nbworks_whatisIP4addrX(struct nbworks_nbnamelst * " X ","
+.br
+.BI "                         unsigned char " node_types ","
+.br
+.BI "                         unsigned char " isgroup ","
+.br
+.BI "                         unsigned long " len ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_whatisIP4addrX\fP() function resolves the IPv4 address
+of a NetBIOS node. It utilises the multiplexing daemon to execute the
+actual resolving.
+.PP
+The argument \fIX\fP is a linked list of \fBstruct
+nbworks_nbnamelst\fP which specifies node name to be resolved. Its
+first member must have its \fIname\fP exactly \fBNBWORKS_NBNAME_LEN\fP
+bytes long. Other list members specify the scope.
+.PP
+The argument \fInode_types\fP is a bitfield which specifies in which
+mode of operation should daemon resolve the name. If more then one bit
+is set, the modes are tried in orded until one hits. To specify modes
+of operation OR one or more of the following: \fBNBWORKS_NODE_B\fP,
+\fBNBWORKS_NODE_P\fP, \fBNBWORKS_NODE_M\fP or \fBNBWORKS_NODE_H\fP.
+.PP
+The argument \fIisgroup\fP is a boolean which, if set to non-zero
+means that resolving should be performed for group names and, if set
+to zero, means that resolving should be performed for unique names.
+.PP
+The argument \fIlen\fP is there to enable a speed hack. If you know in
+advance how long the whole, but unencoded NetBIOS name with scope is
+in the buffer, set \fIlen\fP to that value. Otherwise, set it to 0. It
+is not possible to confuse the nbworks library by setting this to a
+wrong value, although setting it to a too big value may invoke the OOM
+killer. So contain yourself. Unless you're into that sort of thing.
+.SH "RETURN VALUE"
+This function returns the IPv4 address, in host byte order, or 0 if no
+address could be resolved.
+.SH "HOW TO CALCULATE THE LENGTH OF THE WHOLE NETBIOS NAME"
+First, count how many labels the scope has. Put that number into the
+accumulator. Then, add up all the lengths of all the scope's
+labels. Add that number to the accumulator. Add one to the
+accumulator. Add NBWORKS_NBNAME_LEN to the accumulator. Finally,
+add one to the accumulator.
+.PP
+You can also call \fBnbworks_nbnodenamelen\fP() on X.
+.PP
+If you wish to calculate how much space will a name take in a packet
+once encoded, instead of adding \fBNBWORKS_NBNAME_LEN\fP in the above
+calculation, add \fBNBWORKS_CODED_NBNAME_LEN\fP; or add
+\fBNBWORKS_NBNAME_LEN\fP to the result of
+\fBnbworks_nbnodenamelen\fP().
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_nbnodenamelen (3)
