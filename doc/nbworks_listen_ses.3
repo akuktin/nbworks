@@ -1,0 +1,91 @@
+.TH NBWORKS_LISTEN_SES 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_listen_ses \- install a session listener
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "int"
+.br
+.BI "  nbworks_listen_ses(nbworks_namestate_p " handle ","
+.br
+.BI "                     unsigned char " takes_field ","
+.br
+.BI "                     struct nbworks_nbnamelst " *listento ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_listen_ses\fP() function installs a session listener
+server. This server exists in the nbworks multiplexing daemon and is
+connected to the library via an open Unix socket.
+.PP
+The argument \fIhandle\fP is the name handle returned by a previous
+successfull call to \fBnbworks_regname\fP().
+.PP
+The argument \fItakes_field\fP is a boolean. If set to non-zero, the
+server will accept any session request. If set to zero, the caller
+will be checked against the list supplied in the third argument.
+.PP
+The argument \fIlistento\fP is a linked list of \fBstruct
+nbworks_nbnamelst\fP which lists names, all in the same scope as the
+name whose handle is passed in the first argument, that are listened
+to.
+.PP
+When a call comes in, the value of \fItakes_field\fP is first
+consulted. If it is non-zero, the call is accepted and added to the
+queue of pending calls. If \fItakes_field\fP is zero, then the caller
+is matched against an internal copy of the list provided by
+\fIlistento\fP. If it matches, the new session is accepted and added
+to the queue. If it does not match, the call is refused. To use the
+session, first remove it from the queue using
+\fBnbworks_accept_ses\fP().
+.SH "RETURN VALUE"
+This function returns a positive number if is succedes, zero if it
+fails or a negative number if an error occurs.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH INCOMPATIBILITES
+Most (or all?) other implementations of NetBIOS-over-TCP out there
+apparently assume that a single host can only have a name registered
+in one scope and that an enterprising user will never register a same
+name in multiple scopes. Or, at least, that all those names in
+different scopes will be registered by the same application, used for
+the same purpose and have the same effects.
+.PP
+Nbworks makes no such assumptions.
+.PP
+However, these lesser implementations of NetBIOS-over-TCP have made it
+a standard practice to only include the NetBIOS name and not the scope
+as well in the call request packet. To NetBIOS, all such call requests
+look as if they are conducted in the "null scope". This creates grave
+problems in interoperability.
+.PP
+The effect of these incompatibilities is that if a lesser
+implementation of NetBIOS attempts to call a nbworks-registered and
+operated name which exists in a scope other than the null scope,
+nbworks will believe that the other NetBIOS implementation is trying
+to call that name as if it were in the null scope. If a name HAS
+been registered in null scope, the call will be rerouted to that,
+wrong, name. Otherwise, the call request will be rejected.
+.PP
+\fBWORKAROUND:\fP
+.br
+1. Never register the same name in multiple scopes.
+.br
+2. Notwithstanding the previous step, whatever name you register,
+register it both in your desired scope and in the null scope.
+.br
+3. Pray to God Almigthy no other application on your host tries to
+register the same name as you did, in whatever scope, or that there
+is another nbworks user in your networks using this same workaround.
+.PP
+It is the most sincere hope of nbworks' author that other implementors
+will also be bathed in the light of reason and wisdom and change their
+implementations to also send, receive, and parse the scope in call
+requests.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)
