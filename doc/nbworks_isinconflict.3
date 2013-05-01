@@ -1,0 +1,54 @@
+.TH NBWORKS_ISINCONFLICT 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_isinconflict \- find out if the name is in conflict
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "int"
+.br
+.BI "  nbworks_isinconflict(nbworks_namestate_p " namehandle ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_isinconflict\fP() function queries the nbworks
+multiplexing daemon to find out if the name is in conflict.
+.PP
+This function should be called if you find that your servers, server
+listeners, datagram sessions and call attempts have suddenly an
+without explanation stopped working.
+.PP
+The only operation that can be performed on a name in conflict is
+\fBnbworks_delname\fP(). Already open \fIsession sessions\fP are
+unaffected, but everything else ceases to work.
+.PP
+The argument \fInamehandle\fP is the name handle returned by a
+previous successfull call to \fBnbworks_regname\fP().
+.SH "RETURN VALUE"
+This function returns a positive number if the name is in conflict and
+zero if it isn't. Additionally, a negative number is returned if an
+error occurs.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH NOTES
+Unlike many other implementations of NetBIOS where the whole
+implementation resides in one address space, nbworks is split over at
+least two processes. The daemon implements the name service and it is
+the one process whitch has up-to-date information on conflicts. All
+instances of nbworks' library have to query the daemon to get this
+information.
+.PP
+Because of this, it is safe to assume that the information the library
+has is stale.
+.PP
+As an effect of the staleness of libraries information, datagram
+sending and session calling will be fully operational untill the
+library gets the memo that the name is in conflict.
+.PP
+The only way for the library to have up-to-date infomation is if it is
+running at least one server for the name in question. However, you
+still need to call this function to get that information yourself.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3)

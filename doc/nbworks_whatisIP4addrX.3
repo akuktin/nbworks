@@ -44,6 +44,9 @@ killer. So contain yourself. Unless you're into that sort of thing.
 .SH "RETURN VALUE"
 This function returns the IPv4 address, in host byte order, or 0 if no
 address could be resolved.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
 .SH "HOW TO CALCULATE THE LENGTH OF THE WHOLE NETBIOS NAME"
 First, count how many labels the scope has. Put that number into the
 accumulator. Then, add up all the lengths of all the scope's
