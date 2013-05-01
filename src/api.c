@@ -704,9 +704,12 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
     case NBWORKS_TAKES_UNQCST:
       real_takes = HANDLE_TAKES_ALLUNCST;
       break;
-    default:
+    case 0:
       real_takes = 0;
       break;
+    default:
+      nbworks_errno = EINVAL;
+      return -1;
     }
   }
 
