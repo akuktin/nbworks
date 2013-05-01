@@ -164,7 +164,8 @@ int
   nbworks_delname(nbworks_namestate_p handle);
 
 nbworks_session_p
-  nbworks_castdtgsession(nbworks_namestate_p handle);
+  nbworks_castdtgsession(nbworks_namestate_p handle,
+                         struct nbworks_nbnamelst *defaultpeer);
 
 /* returns: >0 = success, 0 = fail, <0 = error */
 int

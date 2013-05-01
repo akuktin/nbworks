@@ -7,7 +7,9 @@ nbworks_castdtgsession \- cast a datagram session
 .sp
 .BI "nbworks_session_p"
 .br
-.BI "  nbworks_castdtgsession(nbworks_namestate_p " handle ");"
+.BI "  nbworks_castdtgsession(nbworks_namestate_p " handle ","
+.br
+.BI "                         nbworks_nbnamelst * " defaultpeer ");"
 .fi
 .SH DESCRIPTION
 The \fBnbworks_castdtgsession\fP() function casts a datagram session
@@ -20,6 +22,14 @@ cast a holding session so that these functions can operate on them.
 .PP
 The argument \fIhandle\fP is the name handle returned by a previous
 successfull call to \fBnbworks_regname\fP().
+.PP
+The argument \fIdefaultpeer\fP is pointer to \fBstruct
+nbworks_nbnamelst\fP which describes the default peer. If this is a
+linked list, those members that would specify a scope are ignored and
+the defult peer is set to have the same scope as the name whose handle
+is being cast. If the first name in \fIdefaultpeer\fP is shorter than
+\fBNBWORKS_NBNAME_LEN\fP, \fBnbworks_castdtgsession\fP() will expand
+it and set its \fIservice type\fP (AKA "name type") to 0x00.
 .SH "RETURN VALUE"
 This function returns a session handle. In case of error, it returns
 0.
@@ -30,5 +40,6 @@ information.
 .BR nbworks (7),
 .BR nbworks_regname (3),
 .BR nbworks_delname (3),
+.BR nbworks_create_nbnodename (3),
 .BR nbworks_sendto (3),
 .BR nbworks_recvfrom (3)

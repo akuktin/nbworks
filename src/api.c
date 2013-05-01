@@ -657,7 +657,12 @@ int nbworks_release_railguard(nbworks_namestate_p namehandle) {
 }
 
 
-nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle) {
+nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle,
+					 struct nbworks_nbnamelst *defaultpeer) {
+  struct name_state *handle;
+  struct nbworks_nbnamelst *peer;
+
+  handle = namehandle;
   if (! namehandle) {
     nbworks_errno = EINVAL;
     return 0;
@@ -665,7 +670,38 @@ nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle) {
     nbworks_errno = 0;
   }
 
-  return lib_make_session(-1, 0, namehandle, FALSE);
+  if (defaultpeer) {
+    if (defaultpeer->len < NETBIOS_NAME_LEN) {
+      peer = malloc(sizeof(*peer));
+      if (! peer) {
+	nbworks_errno = ENOBUFS;
+	return 0;
+      }
+      peer->name = malloc(NETBIOS_NAME_LEN);
+      if (! peer->name) {
+	free(peer);
+	nbworks_errno = ENOBUFS;
+	return 0;
+      }
+      memcpy(peer->name, defaultpeer->name, defaultpeer->len);
+      memset((peer->name + defaultpeer->len), ' ',
+	     (NETBIOS_NAME_LEN - defaultpeer->len));
+    } else {
+      peer = nbworks_clone_nbnodename(defaultpeer);
+      if (peer->next_name)
+	nbworks_dstr_nbnodename(peer->next_name);
+    }
+    peer->next_name = nbworks_clone_nbnodename(handle->scope);
+    if ((! peer->next_name) &&
+	handle->scope) {
+      nbworks_dstr_nbnodename(peer);
+      nbworks_errno = ENOBUFS;
+      return 0;
+    }
+  } else
+    peer = 0;
+
+  return lib_make_session(-1, peer, namehandle, FALSE);
 }
 
 
@@ -1656,9 +1692,22 @@ ssize_t nbworks_recvfrom(unsigned char service,
 		goto jump_to_next_datagram;
 	      }
 	    } else {
+	      if (ses->peer) {
+		if (0 != nbworks_cmp_nbnodename(ses->peer,
+						in_lib->src)) {
+		  goto jump_to_next_datagram;
+		}
+	      }
 	      *src = in_lib->src;
 	    }
 	  } else {
+	    /* From now on, we are enforcing multiplexing. */
+	    if (ses->peer) {
+	      if (0 != nbworks_cmp_nbnodename(ses->peer,
+					      in_lib->src)) {
+		goto jump_to_next_datagram;
+	      }
+	    }
 	    nbworks_dstr_nbnodename(in_lib->src);
 	  }
 	  in_lib->src = 0;
