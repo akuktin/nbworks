@@ -311,7 +311,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   result->token = command.token;
 
   if (withguard)
-    lib_grab_railguard(result);
+    nbworks_grab_railguard(result);
 
   return result;
 }
@@ -449,6 +449,105 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
   free(handle); /* Bye-bye. */
 
   return TRUE;
+}
+
+/* returns: >0 = success; 0 = fail; <0 = error */
+int nbworks_grab_railguard(struct name_state *handle) {
+  struct com_comm command;
+  int rail;
+  unsigned char buff[LEN_COMM_ONWIRE];
+
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  } else {
+    nbworks_errno = 0;
+  }
+
+  memset(&command, 0, sizeof(command));
+  command.command = rail_isguard;
+  command.token = handle->token;
+  switch (handle->node_type) {
+  case CACHE_NODEFLG_B:
+    command.node_type = RAIL_NODET_BUNQ;
+    break;
+  case CACHE_NODEGRPFLG_B:
+    command.node_type = RAIL_NODET_BGRP;
+    break;
+
+  case CACHE_NODEFLG_P:
+    command.node_type = RAIL_NODET_PUNQ;
+    break;
+  case CACHE_NODEGRPFLG_P:
+    command.node_type = RAIL_NODET_PGRP;
+    break;
+
+  case CACHE_NODEFLG_M:
+    command.node_type = RAIL_NODET_MUNQ;
+    break;
+  case CACHE_NODEGRPFLG_M:
+    command.node_type = RAIL_NODET_MGRP;
+    break;
+
+  case CACHE_NODEFLG_H:
+    command.node_type = RAIL_NODET_HUNQ;
+    break;
+  case CACHE_NODEGRPFLG_H:
+    command.node_type = RAIL_NODET_HGRP;
+    break;
+
+  default:
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+  if (buff == fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE))) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  if (handle->guard_rail > -1) {
+    if (0 <= nbworks_release_railguard(handle)) {
+      return 0;
+    }
+  }
+
+  rail = lib_daemon_socket();
+  if (rail < 0) {
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (LEN_COMM_ONWIRE > send(rail, buff, LEN_COMM_ONWIRE,
+			     MSG_NOSIGNAL)) {
+    close(rail);
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (LEN_COMM_ONWIRE > recv(rail, buff, LEN_COMM_ONWIRE,
+			     MSG_WAITALL)) {
+    close(rail); /* This could lead us to losing the name. */
+    nbworks_errno = EREMOTEIO;
+    return -1;
+  }
+
+  if (! read_railcommand(buff, (buff+LEN_COMM_ONWIRE), &command)) {
+    close(rail); /* This COULD lead us to losing the name. */
+    nbworks_errno = EREMOTEIO;
+    return -1;
+  }
+
+  if (!((command.command == rail_isguard) &&
+	(command.token == handle->token) &&
+	(command.nbworks_errno == 0))) {
+    close(rail); /* This COULD lead us to losing the name. */
+    nbworks_errno = EREMOTEIO;
+    return -1;
+  }
+
+  handle->guard_rail = rail;
+
+  return 1;
 }
 
 /* returns: >0 = success; 0 = fail; <0 = error */

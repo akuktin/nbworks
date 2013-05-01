@@ -196,10 +196,6 @@ struct nbworks_session *
 void
   lib_dstry_sesslist(struct nbworks_session *ses);
 
-/* returns: >0 = success; 0 = fail; <0 = error */
-int
-  lib_grab_railguard(struct name_state *handle);
-
 ssize_t
   lib_flushsckt(int socket,
                 ssize_t len,
