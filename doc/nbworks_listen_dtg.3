@@ -1,0 +1,52 @@
+.TH NBWORKS_LISTEN_DTG 3  2013-05-01 "" "Linux Programmer's Manual"
+.SH NAME
+nbworks_listen_dtg \- install a datagram server
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "int"
+.br
+.BI "  nbworks_listen_dtg(nbworks_namestate_p " handle ","
+.br
+.BI "                     unsigned char " takes_field ","
+.br
+.BI "                     struct nbworks_nbnamelst " *listento ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_listen_dtg\fP() function installs a datagram
+server. This server exists in the nbworks multiplexing daemon and is
+connected to the library via an open Unix socket.
+.PP
+The argument \fIhandle\fP is the name handle returned by a previous
+successfull call to \fBnbworks_regname\fP().
+.PP
+The argument \fItakes_field\fP is a bitfield with possible values
+being \fBNBWORKS_TAKES_ALL\fP, \fBNBWORKS_TAKES_BRDCST\fP,
+\fBNBWORKS_TAKES_UNQCST\fP or \fB0\fP which determine if the server
+will accept any datagram at all, any broadcast datagram, any unicast
+datagram or only datagrams originated from names, that are passed in
+the third argument.
+.PP
+The argument \fIlistento\fP is a linked list of \fBstruct
+nbworks_nbnamelst\fP which lists names, all in the same scope as the
+name whose handle is passed in the first argument that are listened
+to.
+.PP
+An incoming datagram is first checked against the rules specified in
+\fItakes_field\fP. If it matches, it is accepted. If it does not
+match, its sending name is matched against an internal copy of the
+list passed in \fIlistento\fP. If it matches those, the datagram is
+accepted. If it fails to match, it is discarded.
+.SH "RETURN VALUE"
+This function returns a positive number if is succedes, zero if it
+fails or a negative number if an error occurs.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)

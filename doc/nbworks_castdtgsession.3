@@ -1,0 +1,34 @@
+.TH NBWORKS_CASTDTGSESSION 3  2013-05-01 "" "Linux Programmer's Manual"
+.SH NAME
+nbworks_castdtgsession \- cast a datagram session
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "nbworks_session_p"
+.br
+.BI "  nbworks_castdtgsession(nbworks_namestate_p " handle ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_castdtgsession\fP() function casts a datagram session
+for use with \fBnbworks_sendto\fP(), \fBnbworks_recvfrom\fP() and
+others.
+.PP
+Nbworks send and receive functions operate only on session
+handles. Since datagrams don't exist as sessions, it is necessary to
+cast a holding session so that these functions can operate on them.
+.PP
+The argument \fIhandle\fP is the name handle returned by a previous
+successfull call to \fBnbworks_regname\fP().
+.SH "RETURN VALUE"
+This function returns a session handle. In case of error, it returns
+0.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)
