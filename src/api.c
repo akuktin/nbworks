@@ -967,17 +967,17 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
   sleeptime.tv_sec = 0;
   sleeptime.tv_nsec = T_12MS;
   if (timeout <= 0) {
-    waits = -1;
+    if (timeout < 0)
+      waits = -1;
+    else
+      waits = 0;
   } else {
     waits = timeout / 12;
+    if (timeout % 12)
+      waits++;
   }
 
-  for (; waits != 0; waits--) {
-    if (waits < 0) {
-      /* Prevent the counter from underflowing. Forewer really means FOREVER. */
-      waits = -1;
-    }
-
+  do {
     if (handle->sesin_library) {
       result = handle->sesin_library;
 
@@ -989,15 +989,13 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
 
 	  if (timeout > 0) {
 	    timeout = timeout - (waits * 12);
-	    if (timeout <= 0) {
-	      goto endof_function;
+	    if (timeout < 0) {
+              timeout = 0;
 	    }
-	  } else {
-	    timeout = 0;
 	  }
 	  return nbworks_accept_ses(handle, timeout);
 	} else {
-	  continue;
+          goto do_wait;
 	}
       }
 
@@ -1034,8 +1032,14 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
       return result;
     }
 
-    nanosleep(&sleeptime, 0);
-  }
+   do_wait:
+    if (waits != 0) {
+      nanosleep(&sleeptime, 0);
+      if (waits > 0)
+        waits--;
+    } else
+      break;
+  } while (404);
 
  endof_function:
   nbworks_errno = EAGAIN;

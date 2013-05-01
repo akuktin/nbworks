@@ -1,0 +1,40 @@
+.TH NBWORKS_ACCEPT_DTG 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_accept_ses \- take a new session
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "nbworks_sesssion_p"
+.br
+.BI "  nbworks_accept_ses(nbworks_namestate_p " handle ","
+.br
+.BI "                     int " timeout ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_accept_ses\fP() function takes a new session from the
+listen servers' queue and makes it available for use.
+.PP
+The argument \fIhandle\fP is the name handle returned by a previous
+successfull call to \fBnbworks_regname\fP().
+.PP
+The argument \fItimeout\fP is the minimum time, in miliseconds, that
+\fBnbworks_accept_ses\fP() should wait for a session to return if no
+new sessions are immediately available. Zero means no
+waiting. Negative number means wait forever. Use with caution.
+.SH "RETURN VALUE"
+This function returns a sesson handle. In case of error, or if the
+timeout expires, it returns 0.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH NOTES
+Waiting, in case \fItimeout\fP is positive, happens in 12-milisecond
+steps.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_listent_ses (3),
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)

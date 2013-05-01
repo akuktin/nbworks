@@ -44,6 +44,10 @@ fails or a negative number if an error occurs.
 .PP
 In case of error, you should check \fInbworks_errno\fP for more
 information.
+.SH NOTES
+Please be aware that nbworks does not enforce the matching of caller
+names contained in a call request and the IP address from which the
+request originated. Spoofing both is possible.
 .SH INCOMPATIBILITES
 Most (or all?) other implementations of NetBIOS-over-TCP out there
 apparently assume that a single host can only have a name registered
