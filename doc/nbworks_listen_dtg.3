@@ -1,4 +1,4 @@
-.TH NBWORKS_LISTEN_DTG 3  2013-05-01 "" "Linux Programmer's Manual"
+.TH NBWORKS_LISTEN_DTG 3  2013-05-01 "" "Nbworks Manual"
 .SH NAME
 nbworks_listen_dtg \- install a datagram server
 .SH SYNOPSIS
@@ -44,6 +44,10 @@ fails or a negative number if an error occurs.
 .PP
 In case of error, you should check \fInbworks_errno\fP for more
 information.
+.SH NOTES
+Please be aware that nbworks does not enforce the matching of sender
+names contained in a datagram and the IP address from which the
+datagram was received. Spoofing both is possible.
 .SH "SEE ALSO"
 .BR nbworks (7),
 .BR nbworks_regname (3),

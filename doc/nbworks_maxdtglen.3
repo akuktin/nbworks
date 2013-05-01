@@ -1,4 +1,4 @@
-.TH NBWORKS_MAXDTGLEN 3  2013-05-01 "" "Linux Programmer's Manual"
+.TH NBWORKS_MAXDTGLEN 3  2013-05-01 "" "Nbworks Manual"
 .SH NAME
 nbworks_maxdtglen \- determine maximum length of datagram
 .SH SYNOPSIS
@@ -24,17 +24,17 @@ that can be accomplished with datagram fragmentation and return back
 an abominably large number (yet not greater than 0x1fffe).
 .PP
 For a much saner number, call with \fIwithfrag\fP set to zero.
-.PP
-Note that not all NetBIOS implementations can handle datagrams of such
-size as nbworks can produce. For best results, don't fragment
-datagrams.
 .SH "RETURN VALUE"
 This function returns the number of bytes (octets) that can be sent by
 a single (perhaps fragmented) datagram.
 .PP
-In the event that either the scope is to long or maximum length of the
-whole datagram (set in \fInbworks_libcntl.dtg_max_wholefrag_len\fP) is
-too short, \fBnbworks_maxdtglen\fP() will return 0.
+In the event that either the scope is too long or maximum length of
+the whole datagram (set in \fInbworks_libcntl.dtg_max_wholefrag_len\fP)
+is too short, \fBnbworks_maxdtglen\fP() will return 0.
+.SH NOTES
+Not all NetBIOS implementations can handle datagrams of such
+size as nbworks can produce. For best results, don't fragment
+datagrams.
 .SH "SEE ALSO"
 .BR nbworks (7),
 .BR nbworks_libcntl (7),
