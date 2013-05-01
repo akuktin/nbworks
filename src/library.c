@@ -1685,6 +1685,11 @@ struct nbworks_session *lib_make_session(int socket,
     free(result);
     return 0;
   }
+  if (0 != pthread_mutex_init(&(result->receive_mutex), 0)) {
+    pthread_mutex_destroy(&(result->mutex));
+    free(result);
+    return 0;
+  }
   result->caretaker_tid = 0;
   result->next = 0;
 
@@ -1705,6 +1710,7 @@ void lib_dstry_sesslist(struct nbworks_session *ses) {
     }
 
     pthread_mutex_destroy(&(ses->mutex));
+    pthread_mutex_destroy(&(ses->receive_mutex));
 
     if (ses->peer)
       nbworks_dstr_nbnodename(ses->peer);

@@ -65,6 +65,7 @@ struct name_state {
   struct dtg_frag_bckbone *dtg_frags;
   struct packet_cooked *in_server;
   struct packet_cooked *in_library;
+  pthread_mutex_t dtg_recv_mutex;
 
 /* session taker server */
   pthread_t ses_srv_tid;
@@ -104,6 +105,7 @@ struct nbworks_session {
   size_t ooblen_offset;
   unsigned char *oob_tmpstor;
   pthread_mutex_t mutex;
+  pthread_mutex_t receive_mutex;
   pthread_t caretaker_tid;
   struct nbworks_session *next;
 };

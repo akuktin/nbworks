@@ -174,6 +174,14 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     nbworks_errno = ENOMEM;
     return 0;
   }
+  if (0 != pthread_mutex_init(&(result->dtg_recv_mutex), 0)) {
+    pthread_mutex_destroy(&(result->guard_mutex));
+    free(result->name->name);
+    free(result->name);
+    free(result);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
   result->guard_rail = -1;
 
   memset(&command, 0, sizeof(struct com_comm));
@@ -445,6 +453,7 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
     lib_dstry_sesslist(handle->sesin_library);
 
   pthread_mutex_destroy(&(handle->guard_mutex));
+  pthread_mutex_destroy(&(handle->dtg_recv_mutex));
 
   free(handle); /* Bye-bye. */
 
@@ -1061,6 +1070,7 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
 	result->socket = -1;
 
 	pthread_mutex_init(&(clone->mutex), 0);
+	pthread_mutex_init(&(clone->receive_mutex), 0);
 
 	result = clone;
       }
@@ -1703,6 +1713,26 @@ ssize_t nbworks_recvfrom(unsigned char service,
       sleeptime.tv_nsec = T_50MS;
     }
 
+    if ((!(flags & MSG_WAITALL)) &&
+	((ses->nonblocking) ||
+	 (flags & MSG_DONTWAIT))) {
+      if (0 != pthread_mutex_trylock(&(ses->receive_mutex))) {
+	if (errno == EBUSY) {
+	  nbworks_errno = EAGAIN;
+	  return -1;
+	} else {
+	  nbworks_errno = errno;
+	  return -1;
+	}
+      }
+    } else {
+      if (0 != pthread_mutex_lock(&(ses->receive_mutex))) {
+	nbworks_errno = errno;
+	return -1;
+      }
+    }
+
+
     do {
       if (ses->handle->in_library) {
 	in_lib = ses->handle->in_library;
@@ -1803,20 +1833,23 @@ ssize_t nbworks_recvfrom(unsigned char service,
       }
     } while (! ret_val);
 
+    pthread_mutex_unlock(&(ses->receive_mutex));
     return ret_val;
 
   case NBWORKS_SES_SRVC:
-#define handle_cancel				\
-    if (ses->cancel_recv) {			\
-      ses->cancel_recv = 0;			\
-      close(ses->socket);			\
-      nbworks_errno = ECANCELED;		\
-      return -1;				\
+#define handle_cancel					\
+    if (ses->cancel_recv) {				\
+      ses->cancel_recv = 0;				\
+      close(ses->socket);				\
+      nbworks_errno = ECANCELED;			\
+      pthread_mutex_unlock(&(ses->receive_mutex));	\
+      return -1;					\
     }
 #define handle_timeout							\
     if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {	\
       *hndllen_left = *hndllen_left + len_left;				\
       nbworks_errno = ETIME;						\
+      pthread_mutex_unlock(&(ses->receive_mutex));			\
       return recved;							\
     }
 
@@ -1829,6 +1862,26 @@ ssize_t nbworks_recvfrom(unsigned char service,
       }
     }
     buff = *buff_pptr;
+
+    if ((!(flags & MSG_WAITALL)) &&
+	((ses->nonblocking) ||
+	 (flags & MSG_DONTWAIT))) {
+      if (0 != pthread_mutex_trylock(&(ses->receive_mutex))) {
+	if (errno == EBUSY) {
+	  nbworks_errno = EAGAIN;
+	  return -1;
+	} else {
+	  nbworks_errno = errno;
+	  return -1;
+	}
+      }
+    } else {
+      if (0 != pthread_mutex_lock(&(ses->receive_mutex))) {
+	nbworks_errno = errno;
+	return -1;
+      }
+    }
+
     start_time = time(0);
 
     recved = 0;
@@ -1855,6 +1908,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  if (! ses->oob_tmpstor) {
 	    nbworks_errno = ENOBUFS;
 	    *hndllen_left = 0;
+	    pthread_mutex_unlock(&(ses->receive_mutex));
 	    return -1;
 	  }
 
@@ -1877,6 +1931,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 			   len_left, flags);
 
 	    if (ret_val <= 0) {
+	      pthread_mutex_unlock(&(ses->receive_mutex));
 	      if (ret_val == 0) {
 		return recved;
 	      } else {
@@ -1906,6 +1961,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 
 	if ((callflags & MSG_EOR) ||
 	    (! notrecved)) {
+	  pthread_mutex_unlock(&(ses->receive_mutex));
 	  if (recved)
 	    return recved;
 	  else {
@@ -1919,6 +1975,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       ret_val = recv(ses->socket, hdrbuff, SES_HEADER_LEN,
 		     ((flags & (ONES ^ MSG_DONTWAIT)) | MSG_WAITALL));
       if (ret_val < SES_HEADER_LEN) {
+	pthread_mutex_unlock(&(ses->receive_mutex));
 	if (ret_val == 0) {
 	  return recved;
 	} else {
@@ -1941,6 +1998,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       if (0 == read_ses_srvc_pckt_header(&walker, (hdrbuff + SES_HEADER_LEN),
 					 &hdr)) {
 	nbworks_errno = EREMOTEIO;
+	pthread_mutex_unlock(&(ses->receive_mutex));
 	return -1;
       }
 
@@ -1951,6 +2009,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  ses->kill_caretaker = TRUE;
 	  pthread_mutex_unlock(&(ses->mutex));
 	  nbworks_errno = EPROTO;
+	  pthread_mutex_unlock(&(ses->receive_mutex));
 	  if (recved) {
 	    return recved;
 	  } else {
@@ -1961,6 +2020,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  ret_val = lib_flushsckt(ses->socket, hdr.len, flags);
 	  if (ret_val <= 0) {
 	    /* nbworks_errno is set */
+	    pthread_mutex_unlock(&(ses->receive_mutex));
 	    return ret_val;
 	  }
 	}
@@ -1976,6 +2036,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  if ((! (flags & MSG_WAITALL)) &&
 	      ((ses->nonblocking) ||
 	       (flags & MSG_DONTWAIT))) {
+	    pthread_mutex_unlock(&(ses->receive_mutex));
 	    if (recved)
 	      return recved;
 	    else {
@@ -1993,6 +2054,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 		       len_left, flags);
 	if (ret_val <= 0) {
 	  if (ret_val == 0) {
+	    pthread_mutex_unlock(&(ses->receive_mutex));
 	    return recved;
 	  } else {
 	    *hndllen_left = *hndllen_left + len_left;
@@ -2000,6 +2062,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 		(errno == EWOULDBLOCK)) {
 	      if (flags & MSG_OOB)
 		break; /* and enter the below if block */
+	      pthread_mutex_unlock(&(ses->receive_mutex));
 	      if (recved)
 		return recved;
 	      else {
@@ -2008,6 +2071,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	      }
 	    } else {
 	      nbworks_errno = errno;
+	      pthread_mutex_unlock(&(ses->receive_mutex));
 	      return -1;
 	    }
 	  }
@@ -2037,6 +2101,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	if (! ses->oob_tmpstor) {
 	  /* Emergency! The stream is about to get desynced. */
 	  nbworks_errno = ENOBUFS;
+	  pthread_mutex_unlock(&(ses->receive_mutex));
 	  return recved;
 	}
 	ses->ooblen_offset = 0;
@@ -2046,6 +2111,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 			 len_left, flags);
 	  if (ret_val <= 0) {
 	    if (ret_val == 0) {
+	      pthread_mutex_unlock(&(ses->receive_mutex));
 	      return recved;
 	    } else {
 	      if ((errno == EAGAIN) ||
@@ -2054,6 +2120,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 		handle_cancel else continue;
 	      } else {
 		nbworks_errno = errno;
+		pthread_mutex_unlock(&(ses->receive_mutex));
 		return -1;
 	      }
 	    }
@@ -2068,6 +2135,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       }
 
       if (callflags & MSG_EOR) {
+	pthread_mutex_unlock(&(ses->receive_mutex));
 	if (recved)
 	  return recved;
 	else {
@@ -2078,6 +2146,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 
     }
 
+    pthread_mutex_unlock(&(ses->receive_mutex));
     return recved;
 #undef handle_timeout
 #undef handle_cancel
@@ -2162,6 +2231,7 @@ void nbworks_hangup_ses(nbworks_session_p sesp) {
   }
 
   pthread_mutex_destroy(&(ses->mutex));
+  pthread_mutex_destroy(&(ses->receive_mutex));
 
   if (ses->peer)
     nbworks_dstr_nbnodename(ses->peer);
