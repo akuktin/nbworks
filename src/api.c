@@ -1704,6 +1704,20 @@ ssize_t nbworks_recvfrom(unsigned char service,
 
   switch (service) {
   case NBWORKS_DTG_SRVC:
+#define handle_dtg_cancel					\
+    if (ses->cancel_recv) {					\
+      ses->cancel_recv = 0;					\
+      nbworks_errno = ECANCELED;				\
+      pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));	\
+      return -1;						\
+    }
+#define handle_dtg_timeout						\
+    if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {	\
+      nbworks_errno = ETIME;						\
+      pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));		\
+      return recved;							\
+    }
+
     if (! ses->handle) {
       nbworks_errno = EINVAL;
       return -1;
@@ -1716,7 +1730,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
     if ((!(flags & MSG_WAITALL)) &&
 	((ses->nonblocking) ||
 	 (flags & MSG_DONTWAIT))) {
-      if (0 != pthread_mutex_trylock(&(ses->receive_mutex))) {
+      if (0 != pthread_mutex_trylock(&(ses->handle->dtg_recv_mutex))) {
 	if (errno == EBUSY) {
 	  nbworks_errno = EAGAIN;
 	  return -1;
@@ -1726,11 +1740,12 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	}
       }
     } else {
-      if (0 != pthread_mutex_lock(&(ses->receive_mutex))) {
+      if (0 != pthread_mutex_lock(&(ses->handle->dtg_recv_mutex))) {
 	nbworks_errno = errno;
 	return -1;
       }
     }
+    start_time = time(0);
 
 
     do {
@@ -1812,8 +1827,11 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    if (ses->handle->isinconflict) {
 	      nbworks_errno = EPERM;
 	      ret_val = -1;
-	    } else
+	    } else {
+	      handle_dtg_timeout;
+	      handle_dtg_cancel;
 	      nanosleep(&sleeptime, 0);
+	    }
 	  }
 	}
       } else {
@@ -1827,13 +1845,16 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  if (ses->handle->isinconflict) {
 	    nbworks_errno = EPERM;
 	    ret_val = -1;
-	  } else
+	  } else {
+	    handle_dtg_timeout;
+	    handle_dtg_cancel;
 	    nanosleep(&sleeptime, 0);
+	  }
 	}
       }
     } while (! ret_val);
 
-    pthread_mutex_unlock(&(ses->receive_mutex));
+    pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));
     return ret_val;
 
   case NBWORKS_SES_SRVC:
