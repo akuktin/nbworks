@@ -1048,7 +1048,6 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
       break;
   } while (404);
 
- endof_function:
   nbworks_errno = EAGAIN;
   return 0;
 }
