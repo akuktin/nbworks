@@ -105,7 +105,6 @@ struct nbworks_nbnamelst {
 };
 
 struct nbworks_pollfd {
-  nbworks_namestate_p handle;
   nbworks_session_p session;
   short int events;
   short int revents;

@@ -1139,7 +1139,6 @@ int nbworks_poll(unsigned char service,
   struct timespec sleeptime;
   struct packet_cooked *trgt;
   struct nbworks_session *session;
-  struct name_state *nstate;
   int i, count, ret_val;
 
   if ((! handles) ||
@@ -1157,8 +1156,13 @@ int nbworks_poll(unsigned char service,
 
     ret_val = 0;
     for (i=0; i<numof_pfd; i++) {
-      nstate = handles[i].handle;
-      trgt = nstate->in_library;
+      session = handles[i].session;
+      if (session) {
+	trgt = session->handle->in_library;
+      } else {
+	nbworks_errno = EINVAL;
+	return -1;
+      }
 
       /* If trgt[i].data is non-NULL, then this particular packet
        * has an unread payload and we do not need to check for the
@@ -1192,8 +1196,13 @@ int nbworks_poll(unsigned char service,
       while (0xce0) {
 
 	for (i=0; i<numof_pfd; i++) {
-	  nstate = handles[i].handle;
-	  trgt = nstate->in_library;
+	  session = handles[i].session;
+	  if (session) {
+	    trgt = session->handle->in_library;
+	  } else {
+	    nbworks_errno = EINVAL;
+	    return -1;
+	  }
 
 	  /* Same as above. */
 	  if (trgt &&
@@ -1225,8 +1234,13 @@ int nbworks_poll(unsigned char service,
       for (; count > 0; count--) {
 
 	for (i=0; i<numof_pfd; i++) {
-	  nstate = handles[i].handle;
-	  trgt = nstate->in_library;
+	  session = handles[i].session;
+	  if (session) {
+	    trgt = session->handle->in_library;
+	  } else {
+	    nbworks_errno = EINVAL;
+	    return -1;
+	  }
 
 	  /* Same as above. */
 	  if (trgt &&
