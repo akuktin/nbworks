@@ -1,0 +1,35 @@
+.TH NBWORKS_HANGUP_SES 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_hangup_ses, nbworks_destroy_ses \- hangup session and free up
+memmory
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "void"
+.br
+.BI "  nbworks_hangup_ses(nbworks_sesion_p " ses ");"
+.fi
+.sp
+.BI "void"
+.br
+.BI "  nbworks_destroy_ses(nbworks_sesion_p " ses ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_hangup_ses\fP() and \fBnbworks_destroy_ses\fP()
+functions hangup (terminate) a session and free resources used by the
+session. \fBnbworks_destroy_ses\fP() is a macro wrapper for
+\fBnbworks_hangup_ses\fP(). Because it is macro,
+\fBnbworks_destroy_ses\fP() may evaluate its arguments more than
+once. Beware.
+.PP
+The argument \fIses\fP is a session handle that was returned by a
+successfull call to one of \fBnbworks_castdtgsession\fP(),
+\fBnbworks_accept_ses\fP() or \fBnbworks_sescall\fP().
+.SH "RETURN VALUE"
+This function does not return a value.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_castdtgsession (3),
+.BR nbworks_accept_ses (3),
+.BR nbworks_sescall (3)
