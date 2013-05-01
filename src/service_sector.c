@@ -635,7 +635,14 @@ inline void ss__dstry_recv_queue(struct ss_queue *trans) {
 
 struct ses_srv_rails *ss__add_sessrv(struct nbworks_nbnamelst *name,
 				     int rail) {
+  struct pollfd pfd;
   struct ses_srv_rails *result, *cur_srv, **last_srv;
+
+  if ((! name) ||
+      (rail < 0))
+    return 0;
+
+  pfd.events = POLLOUT;
 
   result = malloc(sizeof(struct ses_srv_rails));
   if (! result)
@@ -654,14 +661,26 @@ struct ses_srv_rails *ss__add_sessrv(struct nbworks_nbnamelst *name,
 	if (cur_srv == result)
 	  return result;
 	else {
-	  nbworks_dstr_nbnodename(result->name);
-	  free(result);
-	  return 0;
+	  pfd.fd = cur_srv->rail;
+	  poll(&pfd, 1, 0);
+	  if ((pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) &&
+	      (! (pfd.revents & POLLOUT))) {
+	    *last_srv = cur_srv->next;
+	    close(cur_srv->rail);
+	    nbworks_dstr_nbnodename(cur_srv->name);
+	    free(cur_srv);
+
+	  } else {
+	    nbworks_dstr_nbnodename(result->name);
+	    free(result);
+	    return 0;
+	  }
 	}
       } else {
 	last_srv = &(cur_srv->next);
-	cur_srv = *last_srv;
       }
+
+      cur_srv = *last_srv;
     }
 
     *last_srv = result;

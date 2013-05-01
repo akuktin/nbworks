@@ -1,0 +1,40 @@
+.TH NBWORKS_DTGCONNECT 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_dtgconnect \- set the default peer for datagram session
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "nbworks_sesssion_p"
+.br
+.BI "  nbworks_dtgconnect(nbworks_session_p " session ","
+.br
+.BI "                     struct nbworks_nbnamelst * " dst ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_dtgconnect\fP() function sets the new default peer for
+the datagram session.
+.PP
+The argument \fIsession\fP is the session handle returned by a
+previous successfull call to \fBnbworks_castdtgsession\fP().
+.PP
+The argument \fIdst\fP is a pointer to \fBnbworks_nbnamelst\fP that
+defines the new peer. If the new name includes the scope different
+than the one in which the datagram session exists, the new scope is
+ignored in sessions operation. If the name defined in \fIdst\fP is
+shorter than \fBNBWORKS_NBNAME_LEN\fP, then \fBnbworks_dtgconnect\fP()
+creates a new, properly formated name, whose \fIservice type\fP (AKA
+\fI"name type"\fP) equals 0x00.
+.SH "RETURN VALUE"
+This function returns a session handle. In case of error it return 0.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_castdtgsession (3),
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)
