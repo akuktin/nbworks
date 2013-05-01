@@ -2183,7 +2183,7 @@ void nbworks_cancel(nbworks_session_p sesp,
   struct nbworks_session *ses;
 
   ses = sesp;
-  if (! (ses && what)) {
+  if (! ses) {
     nbworks_errno = EINVAL;
     return;
   } else {

@@ -1,0 +1,36 @@
+.TH NBWORKS_CANCEL 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_cancel \- cancel read or write operation
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "void"
+.br
+.BI "  nbworks_cancel(nbworks_session_p " ses ","
+.br
+.BI "                 unsigned char " what ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_cancel\fP() function cancels the executing operation in
+a session.
+.PP
+The argument \fIses\fP is a session handle that was returned by a
+successfull call to one of \fBnbworks_castdtgsession\fP(),
+\fBnbworks_accept_ses\fP() or \fBnbworks_sescall\fP().
+.PP
+The argument \fIwhat\fP is used to specify whether a read operation
+should be canceled, a write operation should be canceled, or should
+both be canceled. If a read operation should be canceled, \fIwhat\fP
+should be ORed with \fBNBWORKS_CANCEL_RECV\fP. If a write operation
+should be canceled, \fIwhat\fP should be ORed with
+\fBNBWORKS_CANCEL_SEND\fP.
+.SH "RETURN VALUE"
+This function does not return a value.
+.SH NOTES
+All operations can be canceled except a send operation in a datagram
+session.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)
