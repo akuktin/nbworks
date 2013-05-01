@@ -2314,7 +2314,8 @@ unsigned long nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
   }
   command.command = cur_command;
 
-  if (len < (1+NETBIOS_NAME_LEN+1)) {
+  if ((len < (1+NETBIOS_NAME_LEN+1)) ||
+      (len > (uint32_t)ONES)) {
   no_bullshit_please:
     len = nbworks_nbnodenamelen(X);
     bullshit = FALSE;
