@@ -827,6 +827,9 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
     nbworks_dstr_nbnodename(handle->dtg_listento);
     handle->dtg_listento = 0;
 
+    handle->in_library = 0;
+    handle->dtg_srv_tid = 0;
+
     return -1;
   }
 
@@ -1198,6 +1201,10 @@ int nbworks_poll(unsigned char service,
 	nstate = session->handle;
 	if (nstate) {
 	  trgt = nstate->in_library;
+	  if (! trgt) {
+	    handles[i].revents = POLLOUT;
+	    continue;
+	  }
 	} else {
 	  nbworks_errno = EINVAL;
 	  return -1;
@@ -1218,9 +1225,8 @@ int nbworks_poll(unsigned char service,
        * One other thing: I am not using the "logical or" operator because
        * I want to exercise total control over memory contents.
        * After all - that is the reason I use C and not PHP. */
-      if (trgt &&
-	  ((trgt->data) ? trgt :
-	   ((trgt = trgt->next), trgt))) {
+      if ((trgt->data) ? trgt :
+	  ((trgt = trgt->next), trgt)) {
 	ret_val++;
 
 	/* Do not report a POLLIN event if the application has not
@@ -1244,6 +1250,9 @@ int nbworks_poll(unsigned char service,
 	    nstate = session->handle;
 	    if (nstate) {
 	      trgt = nstate->in_library;
+	      if (! trgt) {
+		continue;
+	      }
 	    } else {
 	      nbworks_errno = EINVAL;
 	      return -1;
@@ -1254,14 +1263,11 @@ int nbworks_poll(unsigned char service,
 	  }
 
 	  /* Same as above. */
-	  if (trgt &&
-	      ((trgt->data) ? trgt :
-	       ((trgt = trgt->next), trgt))) {
+	  if ((trgt->data) ? trgt :
+	      ((trgt = trgt->next), trgt)) {
 	    ret_val++;
 
 	    handles[i].revents = ((handles[i].events & POLLIN) | POLLOUT);
-	  } else {
-	    handles[i].revents = POLLOUT;
 	  }
 	}
 
@@ -1288,6 +1294,9 @@ int nbworks_poll(unsigned char service,
 	    nstate = session->handle;
 	    if (nstate) {
 	      trgt = nstate->in_library;
+	      if (! trgt) {
+		continue;
+	      }
 	    } else {
 	      nbworks_errno = EINVAL;
 	      return -1;
@@ -1298,14 +1307,11 @@ int nbworks_poll(unsigned char service,
 	  }
 
 	  /* Same as above. */
-	  if (trgt &&
-	      ((trgt->data) ? trgt :
-	       ((trgt = trgt->next), trgt))) {
+	  if ((trgt->data) ? trgt :
+	      ((trgt = trgt->next), trgt)) {
 	    ret_val++;
 
 	    handles[i].revents = ((handles[i].events & POLLIN) | POLLOUT);
-	  } else {
-	    handles[i].revents = POLLOUT;
 	  }
 	}
 
