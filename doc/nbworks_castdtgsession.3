@@ -29,7 +29,9 @@ linked list, those members that would specify a scope are ignored and
 the defult peer is set to have the same scope as the name whose handle
 is being cast. If the first name in \fIdefaultpeer\fP is shorter than
 \fBNBWORKS_NBNAME_LEN\fP, \fBnbworks_castdtgsession\fP() will expand
-it and set its \fIservice type\fP (AKA "name type") to 0x00.
+it and set its \fIservice type\fP (AKA "name type") to 0x00. 0 is a
+valid value for this argument and means that the session accepts any
+datagram (with \fBnbworks_recvfrom\fP).
 .SH "RETURN VALUE"
 This function returns a session handle. In case of error, it returns
 0.
