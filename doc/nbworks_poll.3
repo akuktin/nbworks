@@ -68,7 +68,7 @@ When operating in datagram mode, \fBnbworks_poll\fP() waits in steps
 of 12 miliseconds.
 .PP
 When operating in session mode, \fBnbworks_poll\fP() uses the systems
-\fBpoll\fP(2) function to poll the underlying socket. The however, the
+\fBpoll\fP(2) function to poll the underlying socket. However, the
 systems \fBpoll\fP(2) will react to both the session header and the
 data. Thus, \fBnbworks_poll\fP() will return success even in the event
 an empty packet - the one which only has the header and no data -
