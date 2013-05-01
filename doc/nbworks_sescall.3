@@ -1,0 +1,91 @@
+.TH NBWORKS_SESCALL 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_sescall \- call someone and establish a session
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "nbworks_sesssion_p"
+.br
+.BI "  nbworks_sescall(nbworks_namestate_p " handle ","
+.br
+.BI "                  struct nbworks_nbnamelst * " dst ","
+.br
+.BI "                  int " keepalive ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_sescall\fP() function calls a remote name and
+establishes a session in case the call is accepted. The multiplexing
+daemon is consulted for the IP address of the called name. Redirecting
+may be involved and happens transparently to the application.
+.PP
+The argument \fIhandle\fP is the name handle returned by a previous
+successfull call to \fBnbworks_regname\fP().
+.PP
+The argument \fIdst\fP is interpreted to create a fully qualified
+NetBIOS name. The call is conducted in the scope of the \fIhandle\fP
+name. In case \fIdst\fP specifies a scope, that scope is ignored.
+.PP
+The \fIname\fP field of \fIdst\fP has to be \fBNBWORKS_NBNAME_LEN\fP
+bytes long. Failure to comply with this requirement will lead to
+over-reading of the buffer and may produce a segfault or sensitive
+information leak.
+.PP
+The argument \fIkeepalive\fP is currently not implemented. Ignore the
+following paragraf.
+.PP
+The argument \fIkeepalive\fP is a boolean. If it is set to non-zero,
+nbworks spawns a caretaker thread which periodically sends keepalive
+packets down the session.
+.SH "RETURN VALUE"
+This function returns a session handle. In case of error, it returns
+0.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH INCOMPATIBILITIES
+Most (or all?) other implementations of NetBIOS-over-TCP out there
+apparently assume that a single host can only have a name registered
+in one scope and that an enterprising user will never register a same
+name in multiple scopes. Or, at least, that all those names in
+different scopes will be registered by the same application, used for
+the same purpose and have the same effects.
+.PP
+Nbworks makes no such assumptions.
+.PP
+However, these lesser implementations of NetBIOS-over-TCP have made it
+a standard practice to only include the NetBIOS name and not the scope
+as well in the call request packet. Other implementations of NetBIOS
+may not able to understand nbworks' call requests if they are
+conducted in a scope other than null scope.
+.PP
+The effect of these incompatibilities is that, if the node you are
+calling is running one of the lesser implementations of NetBIOS, and
+you call in a scope other than null scope, your call probably won't be
+accepted, or you may be rerouted to a different application than the one
+you intended to call, or your call may be accepted and session then
+immediatelly closed, or your communique may be garbled beyond
+recognition. Or worse.
+.PP
+\fBWORKAROUND:\fP
+.br
+1. Never register the same name in multiple scopes.
+.br
+2. Notwithstanding the previous step, whatever name you register,
+register it both in your desired scope and in the null scope.
+.br
+3. Pray to God Almigthy no other application on your host tries to
+register the same name as you did, in whatever scope, or that there
+is another nbworks user in your networks using this same workaround.
+.PP
+It is the most sincere hope of nbworks' author that other implementors
+will also be bathed in the light of reason and wisdom and change their
+implementations to also send, receive, and parse the scope in call
+requests.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)
