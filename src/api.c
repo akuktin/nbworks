@@ -1645,6 +1645,25 @@ ssize_t nbworks_recvfrom(unsigned char service,
     do {
       if (ses->handle->in_library) {
 	in_lib = ses->handle->in_library;
+
+	if (in_lib->src) {
+	  if (src) {
+	    if (*src) {
+	      if (0 == nbworks_cmp_nbnodename(*src,
+					      in_lib->src)) {
+		nbworks_dstr_nbnodename(in_lib->src);
+	      } else {
+		goto jump_to_next_datagram;
+	      }
+	    } else {
+	      *src = in_lib->src;
+	    }
+	  } else {
+	    nbworks_dstr_nbnodename(in_lib->src);
+	  }
+	  in_lib->src = 0;
+	}
+
 	if (in_lib->data) {
 	  if (*buff_pptr) {
 	    if (len < in_lib->len) {
@@ -1672,13 +1691,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  in_lib->data = 0;
 	}
 
-	if (in_lib->src) {
-	  if (src)
-	    *src = in_lib->src;
-	  else
-	    nbworks_dstr_nbnodename(in_lib->src);
-	  in_lib->src = 0;
-	}
+      jump_to_next_datagram:
 	if (in_lib->next) {
 	  ses->handle->in_library = in_lib->next;
 	  free(in_lib);
