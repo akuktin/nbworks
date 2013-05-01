@@ -1966,6 +1966,21 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	len_left = notrecved;
       } else {
 	len_left = hdr.len;
+	if (len_left == 0) {
+	  if ((! (flags & MSG_WAITALL)) &&
+	      ((ses->nonblocking) ||
+	       (flags & MSG_DONTWAIT))) {
+	    if (recved)
+	      return recved;
+	    else {
+	      nbworks_errno = EAGAIN;
+	      return -1;
+	    }
+	  } else {
+	    handle_timeout;
+	    handle_cancel;
+	  }
+	}
       }
       while (len_left) {
 	ret_val = recv(ses->socket, (char *)(buff + (len - notrecved)),
