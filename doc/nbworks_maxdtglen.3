@@ -1,0 +1,41 @@
+.TH NBWORKS_MAXDTGLEN 3  2013-05-01 "" "Linux Programmer's Manual"
+.SH NAME
+nbworks_maxdtglen \- determine maximum length of datagram
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "unsigned long"
+.br
+.BI "  nbworks_maxdtglen(nbworks_namestate_p " handle ","
+.br
+.BI "                    unsigned int " withfrag ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_maxdtglen\fP() function determines the maximum length
+of data that can be sent through a NetBIOS datagram.
+.PP
+Argument \fIhandle\fP is the name handle that was returned by a
+successfull call to \fBnbworks_regname\fP().
+.PP
+If argument \fIwithfrag\fP is set to non-zero, while calculating the
+answer, \fBnbworks_maxdtglen\fP() will take into account everything
+that can be accomplished with datagram fragmentation and return back
+an abominably large number (yet not greater than 0x1fffe).
+.PP
+For a much saner number, call with \fIwithfrag\fP set to zero.
+.PP
+Note that not all NetBIOS implementations can handle datagrams of such
+size as nbworks can produce. For best results, don't fragment
+datagrams.
+.SH "RETURN VALUE"
+This function returns the number of bytes (octets) that can be sent by
+a single (perhaps fragmented) datagram.
+.PP
+In the event that either the scope is to long or maximum length of the
+whole datagram (set in \fInbworks_libcntl.dtg_max_wholefrag_len\fP) is
+too short, \fBnbworks_maxdtglen\fP() will return 0.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_libcntl (7),
+.BR nbworks_regname (3)

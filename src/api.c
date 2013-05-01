@@ -385,13 +385,19 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
   if (LEN_COMM_ONWIRE > send(daemon, combuff, LEN_COMM_ONWIRE,
 			     MSG_NOSIGNAL)) {
     close(daemon);
-    return 0;
+    if (guarded)
+      return 1;
+    else
+      return 0;
   }
 
   /* Wait on the daemon, so our day does not get screwed up. */
   if (LEN_COMM_ONWIRE > recv(daemon, combuff, LEN_COMM_ONWIRE, 0)) {
     close(daemon);
-    return 0;
+    if (guarded)
+      return 1;
+    else
+      return 0;
   }
   close(daemon);
 
@@ -403,7 +409,10 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
   if ((! ((command.command == rail_delname) ||
 	  (command.command == rail_readcom))) ||
       (command.token != handle->token)) {
-    return 0;
+    if (guarded)
+      goto do_delete_everything;
+    else
+      return 0;
   }
 
  do_delete_everything:

@@ -1,0 +1,87 @@
+.TH NBWORKS_REGNAME 3  2013-05-01 "" "Linux Programmer's Manual"
+.SH NAME
+nbworks_regname \- register NetBIOS name
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "nbworks_namestate_p"
+.br
+.BI "  nbworks_regname(unsigned char " *name ","
+.br
+.BI "                  unsigned char " name_type ","
+.br
+.BI "                  struct nbworks_nbnamelst " *scope ","
+.br
+.BI "                  unsigned char " isgroup ","
+.br
+.BI "                  unsigned char " node_type ","
+.br
+.BI "                  unsigned long " refresh_time ","
+.br
+.BI "                  unsigned int " withguard ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_regname\fP() function registers a NetBIOS name. It
+interacts with the nbworks multiplexing daemon to accomplish this
+task.
+.PP
+Argument \fIname\fP is a pointer to a NULL-terminated string not
+longer than \fB(NBWORKS_NBNAME_LEN-1)\fP bytes. Argument
+\fIname_type\fP is the \fBNBWORKS_NBNAME_LEN'th\fP byte of the
+name. This byte is, in nbworks parlance, also called the \fI"service
+type"\fP byte because it is normally used to signal other nodes on
+the network what is the kind of resource that can be accessed through
+the name thus registered.
+.PP
+The argument \fIscope\fP is a pointer to a structure of type
+\fBnbworks_nbnamelst\fP which may have other such structures attached
+to itself. This linked list informs \fBnbworks_regname\fP() of the
+scope for the name. Each structure in the list is equivalent to a
+label in the properly formated NetBIOS name. 0 is a valid value for
+this argument and means "root scope" also known as "null scope".
+.PP
+The argument \fIisgroup\fP is a boolean which determines if the new
+name can be shared with other nodes (AKA, if it is a \fI"group
+name"\fP) or if the name is unique to this application (node).
+.PP
+The argument \fInode_type\fP determines the node type AKA, in nbworks
+parlance, the \fImode of operation\fP. This field can have one of the
+following values: \fBNBWORKS_NODE_B\fP, \fBNBWORKS_NODE_P\fP,
+\fBNBWORKS_NODE_M\fP or \fBNBWORKS_NODE_H\fP. See \fBnbworks\fP(7) for
+details on various modes of operation.
+.PP
+Once the name has been registred, the daemon will automatically defend
+it and send periodic updates about its continual holding of the name
+to the rest of the network until the name has been deleted.
+.PP
+The argument \fIrefresh_time\fP is used to inform the daemon on the
+interval of time that should pass between two updates of the network
+regarding the registered name. Updates are sent out a few seconds
+before the timer expires.
+.PP
+The argument \fIwithguard\fP is used to determine if the library
+should install the dead mans insurance at the daemon. If
+\fIwithguard\fP is set to non-zero, after the name has been registerd,
+\fBnbworks_regname\fP() opens a Unix socket to the daemon and informs
+the daemon that that socket is a \fI"guard socket"\fP. If your
+application crashes, the operating system will close the guard
+socket. This will be picked up by the daemon and it will then execute
+the name deletion routine for the name you registered. Thus, a name
+held by a dead application is freed and made available for further
+reuse.
+.PP
+\fIIt is \fB*NOT*\fP otherwise possible to recover the name in a case
+of application crash unless the daemon is stopped and then started
+again!\fP
+.SH "RETURN VALUE"
+This function returns the name handle. Keep it secret. Keep it safe.
+.PP
+In case of error, the function returns 0. You should check
+\fInbworks_errno\fP for more information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_delname (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_dstr_nbnodename (3),
+.BR nbworks_makescope (3)

@@ -5,7 +5,9 @@ nbworks_init \- initialize nbworks library
 .nf
 .B #include <nbworks.h>
 .sp
-.BI "void nbworks_libinit(void);"
+.BI "void"
+.br
+.BI "  nbworks_libinit(void);"
 .fi
 .SH DESCRIPTION
 The \fBnbworks_init\fP() function initializes the internal state
@@ -13,7 +15,7 @@ of the nbworks library control data fields. It should be called once after
 loading the library, and that call should be before any other calls to
 nbworks functions.
 .PP
-Aditional calls to \fBnbworks_init\fP() reset the internal state of 
+Aditional calls to \fBnbworks_init\fP() reset the internal state of
 the libraries control structure.
 .SH "RETURN VALUE"
 This function does not have a return value.
