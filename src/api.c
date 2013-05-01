@@ -452,11 +452,13 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
 }
 
 /* returns: >0 = success; 0 = fail; <0 = error */
-int nbworks_grab_railguard(struct name_state *handle) {
+int nbworks_grab_railguard(nbworks_namestate_p namehandle) {
   struct com_comm command;
+  struct name_state *handle;
   int rail;
   unsigned char buff[LEN_COMM_ONWIRE];
 
+  handle = namehandle;
   if (! handle) {
     nbworks_errno = EINVAL;
     return -1;
