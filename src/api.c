@@ -973,8 +973,15 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
       waits = 0;
   } else {
     waits = timeout / 12;
-    if (timeout % 12)
+    if (timeout % 12) {
       waits++;
+      timeout = timeout - (timeout % 12);
+      timeout = timeout + 12;
+      if (timeout < 12) {
+        /* Safety first. */
+        timeout = (int)ZEROONES;
+      }
+    }
   }
 
   do {
