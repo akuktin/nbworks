@@ -42,6 +42,10 @@
 # define NBWORKS_NODE_ALL   (NBWORKS_NODE_B | NBWORKS_NODE_P | \
                              NBWORKS_NODE_M | NBWORKS_NODE_H)
 
+# define NBWORKS_TAKES_ALL    0xff
+# define NBWORKS_TAKES_BRDCST 0x0f
+# define NBWORKS_TAKES_UNQCST 0xf0
+
 # define NBWORKS_MAXLEN_LABEL 0x3f
 
 extern const char nbworks_jokername[];

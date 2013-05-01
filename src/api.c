@@ -674,7 +674,7 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
   struct com_comm command;
   struct name_state *handle;
   int daemon;
-  unsigned char buff[LEN_COMM_ONWIRE];
+  unsigned char buff[LEN_COMM_ONWIRE], real_takes;
 
   handle = namehandle;
   if (! handle) {
@@ -693,6 +693,21 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
   if (! (listento || takes_field)) {
     nbworks_errno = EINVAL;
     return -1;
+  } else {
+    switch (takes_field) {
+    case NBWORKS_TAKES_ALL:
+      real_takes = HANDLE_TAKES_ALL;
+      break;
+    case NBWORKS_TAKES_BRDCST:
+      real_takes = HANDLE_TAKES_ALLBRDCST;
+      break;
+    case NBWORKS_TAKES_UNQCST:
+      real_takes = HANDLE_TAKES_ALLUNCST;
+      break;
+    default:
+      real_takes = 0;
+      break;
+    }
   }
 
   if (handle->dtg_srv_tid) {
@@ -749,7 +764,7 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
   if (handle->dtg_listento)
     nbworks_dstr_nbnodename(handle->dtg_listento);
   handle->dtg_listento = nbworks_clone_nbnodename(listento);
-  handle->dtg_takes = takes_field;
+  handle->dtg_takes = real_takes;
   if (handle->dtg_frags) {
     lib_destroy_allfragbckbone(handle->dtg_frags);
     handle->dtg_frags = 0;
@@ -859,7 +874,10 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
   if (handle->ses_listento)
     nbworks_dstr_nbnodename(handle->ses_listento);
   handle->ses_listento = nbworks_clone_nbnodename(listento);
-  handle->ses_takes = takes_field;
+  if (takes_field)
+    handle->ses_takes = HANDLE_TAKES_ALL;
+  else
+    handle->ses_takes = 0;
   handle->sesin_server = 0;
   if (handle->sesin_library) {
     lib_dstry_sesslist(handle->sesin_library);
