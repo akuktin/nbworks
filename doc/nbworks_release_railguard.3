@@ -1,0 +1,51 @@
+.TH NBWORKS_RELEASE_RAILGUARD 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_release_railguard \- release the guard rail
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "int"
+.br
+.BI "  nbworks_release_railguard(nbworks_namestate_p " namehandle ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_release_railguard\fP() function releases a previously
+installed railguard for the name. Railguard is used as a dead-mans
+insurance that the name will be released if the application that
+registered the name crashes.
+.PP
+The argument \fInamehandle\fP is the name handle returned by a
+previous successfull call to \fBnbworks_regname\fP().
+.PP
+A \fI"rail"\fP is the name for the Unix socket used for communication
+between the daemon and the library. A \fI"rail guard"\fP is an
+insurance mechanism that is usualy installed by
+\fBnbworks_regname\fP() when registering a name. It works by opening a
+rail and keeping it open. The library informs the daemon that said
+rail is a \fI"guard rail"\fP and the daemon respond affirmativelly. If
+your application crashes, the operating system will close the guard
+rail. This will be picked up by the daemon and it will then execute
+the name deletion routine for the name you registered the guard
+against. Thus, a name held by a dead application is freed and made
+available for further reuse.
+.PP
+\fIIt is \fB*NOT*\fP otherwise possible to recover the name in a case
+of application crash unless the daemon is stopped and then started
+again!\fP
+.SH "RETURN VALUE"
+This function returns a positive number if the deinstalation was
+succesfull, zero if it failed and a negative number if an error
+occured.
+.PP
+If this function fails, the previous rail guard may or may not have
+been deinstalled. If it errors, the old guard has \fInot\fP been
+deinstalled.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_grab_railguard (3)

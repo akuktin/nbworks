@@ -1,0 +1,66 @@
+.TH NBWORKS_GRAB_RAILGUARD 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_grab_railguard \- grab the guard rail
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "int"
+.br
+.BI "  nbworks_grab_railguard(nbworks_namestate_p " namehandle ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_grab_railguard\fP() function grabs a railguard which is
+used as a dead-mans insurance that the name will be released if the
+calling application crashes.
+.PP
+The argument \fInamehandle\fP is the name handle returned by a
+previous successfull call to \fBnbworks_regname\fP().
+.PP
+A \fI"rail"\fP is the name for the Unix socket used for communication
+between the daemon and the library. A \fI"rail guard"\fP is an
+insurance mechanism that is usualy installed by
+\fBnbworks_regname\fP() when registering a name. It works by opening a
+rail and keeping it open. The library informs the daemon that said
+rail is a \fI"guard rail"\fP and the daemon respond affirmativelly. If
+your application crashes, the operating system will close the guard
+rail. This will be picked up by the daemon and it will then execute
+the name deletion routine for the name you registered the guard
+against. Thus, a name held by a dead application is freed and made
+available for further reuse.
+.PP
+\fIIt is \fB*NOT*\fP otherwise possible to recover the name in a case
+of application crash unless the daemon is stopped and then started
+again!\fP
+.PP
+Note that this operation is inherently dangerous if the connection
+between the library and the daemon is not bulletproof. It is possible
+that the daemon installs the railguard, but that the return message
+does not reach the library which will then proceed to close the
+rail. This will trigger the guard and the daemon will execute the name
+deletion routine.
+.PP
+\fBRECOVERY:\fP In this case, you will experience that all servers and
+datagram sessions for the name will cease to operate. Session calling
+is implemented entirely in the library and will not be affected. Also,
+already existing sessions, wether they were initiated by you, or if
+they are passing through the daemon, will be unaffected.
+.br
+In this case, the easiest way to recover is to re-register the name
+using \fBnbworks_regname\fP().
+.SH "RETURN VALUE"
+This function returns a positive number if the instalation was
+succesfull, zero if it failed and a negative number if an error
+occured.
+.PP
+If this function fails, the previous rail guard may or may not have
+been deinstalled. If it errors, no new guards have been installed,
+however, an old guard may still be present.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_relese_railguard (3)
