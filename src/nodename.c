@@ -345,7 +345,7 @@ unsigned long nbworks_nbname2buff(unsigned char **destination,
   unsigned char *result, *walker;
   unsigned long len;
 
-  if (! (name && destination)) {
+  if (! destination) {
     nbworks_errno = EINVAL;
     return 0;
   } else
@@ -355,7 +355,7 @@ unsigned long nbworks_nbname2buff(unsigned char **destination,
   len--;
 
   if (! (*destination)) {
-    *destination = malloc(len);
+    *destination = malloc(len +1);
     if (! *destination) {
       nbworks_errno = ENOMEM;
       return 0;
@@ -363,6 +363,10 @@ unsigned long nbworks_nbname2buff(unsigned char **destination,
   }
 
   result = *destination;
+  if (! name) {
+    *result = 0;
+    return 0;
+  }
 
   walker = result;
   while (0xe5) {

@@ -1,0 +1,57 @@
+.TH NBWORKS_NBNAME2BUFF 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_nbname2buff \- translate a name list into a string
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "unsigned long"
+.br
+.BI "  nbworks_nbname2buff(unsigned char ** " destination ","
+.br
+.BI "                      struct nbworks_nbnamelst * " name ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_nbname2buff\fP() function translates the
+\fBnbworks_nbnamelst\fP linked list format used by nbworks into the
+label-and-dot notation of a char string.
+.PP
+The argument \fIdestination\fP is a pointer to a pointer to a buffer
+where the result should be written. If \fIdestination\fP is a pointer
+to 0, \fBnbworks_nbname2buff\fP will \fBmalloc\fP() the buffer of the
+appropriate size and write a pointer to in into \fI*destination\fP.
+.PP
+The argument \fIname\fP is a pointer to the linked list describing the
+name to be written out.
+.PP
+\fINo check is performed to verify that the contents of
+\fP\fBname\fP\fI don't have NULLs embeded in them!\fP Code
+accodingly.
+.SH "RETURN VALUE"
+This function returns the number of chars it wrote out, \fINOT
+counting the terminating NULL\fP, or 0 in the event of an error.
+.PP
+The function will also return 0 if called with \fIname\fP that equals
+zero or if the \fIname\fP list has only one member with no length.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "FORMAT OF SCOPE STRING"
+String is a NULL-terminated array of (\fBunsigned char\fP) and
+consists of zero or more elements. The string may not have embedded
+NULLs - such elements of the array are interpreted to be the end of
+the array.
+.PP
+Elements of the array which are not dot characters, '\fB.\fP', are
+considered to be a part of the label. No label may be longer than
+0x3f.
+.PP
+NetBIOS specifications require this whole string to be shorter than
+256 bytes. Nbworks does not enforce this.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_clone_nbnodename (3),
+.BR nbworks_dstr_nbnodename (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_buff2nbname (3),
+.BR nbworks_makescope (3)
