@@ -963,7 +963,7 @@ int nbworks_update_listentos(unsigned char service,
 			     unsigned char newtakes_field,
 			     struct nbworks_nbnamelst *newlistento) {
   struct name_state *handle;
-  struct nbworks_nbnamelst *new, *old, **ptr;
+  struct nbworks_nbnamelst *new, *old;
 
   handle = namehandle;
   if (! handle) {
