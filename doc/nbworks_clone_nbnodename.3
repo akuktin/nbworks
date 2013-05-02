@@ -1,0 +1,31 @@
+.TH NBWORKS_CLONE_NBNODENAME 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_clone_nbnodename \- clones a NetBIOS node name
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "struct nbworks_nbnamelst *"
+.br
+.BI "  nbworks_clone_nbnodename(struct nbworks_nbnamelst * " nbnodename ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_clone_nbnodename\fP() function clones a name.
+.PP
+The argument \fInbnodename\fP is a pointer to a linked list (or just a
+single structure) that describes the name to be cloned
+.SH "RETURN VALUE"
+This function returns a pointer to a new name. In the event of an
+error, it returns 0.
+.PP
+This function may also return 0 if it is called with \fInbnodename\fP
+equaling 0.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_nbname2buff (3),
+.BR nbworks_buff2nbname (3),
+.BR nbworks_makescope (3)

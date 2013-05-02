@@ -215,11 +215,12 @@ struct nbworks_nbnamelst *nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbn
   struct nbworks_nbnamelst *original, *clone, *first_clone;
 
   original = nbnodename;
+  nbworks_errno = 0;
 
   if (original) {
     clone = malloc(sizeof(struct nbworks_nbnamelst));
     if (! clone) {
-      /* TODO: errno signaling stuff */
+      nbworks_errno = ENOMEM;
       return 0;
     }
     first_clone = clone;
@@ -231,8 +232,9 @@ struct nbworks_nbnamelst *nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbn
       if (original->name) {
         clone->name = malloc(clone->len +1);
         if (! clone->name) {
-	  /* TODO: errno signaling stuff */
+          clone->next_name = 0;
 	  nbworks_dstr_nbnodename(first_clone);
+          nbworks_errno = ENOMEM;
 	  return 0;
         }
         memcpy(clone->name, original->name, clone->len);
@@ -244,8 +246,8 @@ struct nbworks_nbnamelst *nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbn
 	original = original->next_name;
 	clone->next_name = malloc(sizeof(struct nbworks_nbnamelst));
 	if (! clone->next_name) {
-	  /* TODO: errno signaling stuff */
 	  nbworks_dstr_nbnodename(first_clone);
+          nbworks_errno = ENOMEM;
 	  return 0;
 	}
 	clone = clone->next_name;
