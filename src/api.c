@@ -1835,10 +1835,18 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	}
 
       jump_to_next_datagram:
-	if ((in_lib->next) &&
-	    (ses->handle->in_library == in_lib)) {
-	  ses->handle->in_library = in_lib->next;
-	  free(in_lib);
+	if (in_lib->next) {
+	  if ((ses->handle->in_library == in_lib) &&
+	      (! (in_lib->data &&
+		  in_lib->src))) {
+	    /* Only move the queue if this datagram has already
+	     * been disemboweled. */
+	    ses->handle->in_library = in_lib->next;
+	    free(in_lib);
+	    in_lib = ses_handle->in_library;
+	  } else {
+	    in_lib = in_lib->next;
+	  }
 	} else {
 	  if (ret_val)
 	    break;
@@ -1852,10 +1860,12 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    if (ses->handle->isinconflict) {
 	      nbworks_errno = EPERM;
 	      ret_val = -1;
+	      break;
 	    } else {
 	      handle_dtg_timeout;
 	      handle_dtg_cancel;
 	      nanosleep(&sleeptime, 0);
+	      /* don't break */
 	    }
 	  }
 	}
@@ -1870,10 +1880,13 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  if (ses->handle->isinconflict) {
 	    nbworks_errno = EPERM;
 	    ret_val = -1;
+	    break;
 	  } else {
 	    handle_dtg_timeout;
 	    handle_dtg_cancel;
 	    nanosleep(&sleeptime, 0);
+	    in_lib = ses->handle->in_library;
+	    /* don't break */
 	  }
 	}
       }
@@ -2349,11 +2362,18 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
       }
 
     jump_to_next_datagram:
-      if ((in_lib->next) &&
-	  (ses->handle->in_library == in_lib)) {
-	ses->handle->in_library = in_lib->next;
-	free(in_lib);
-	break;
+      if (in_lib->next) {
+	if ((ses->handle->in_library == in_lib) &&
+	    (! (in_lib->data &&
+		in_lib->src))) {
+	  /* Only move the queue if this datagram has already
+	   * been disemboweled. */
+	  ses->handle->in_library = in_lib->next;
+	  free(in_lib);
+	  in_lib = ses_handle->in_library;
+	} else {
+	  in_lib = in_lib->next;
+	}
       } else {
 	if (ret_val)
 	  break;
@@ -2372,6 +2392,10 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
 	    handle_dtg_timeout;
 	    handle_dtg_cancel;
 	    nanosleep(&sleeptime, 0);
+
+	    if (waitsteps > 0) {
+	      waitsteps--;
+	    }
 	    /* don't break */
 	  }
 	}
@@ -2392,15 +2416,16 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
 	  handle_dtg_timeout;
 	  handle_dtg_cancel;
 	  nanosleep(&sleeptime, 0);
+
+	  if (waitsteps > 0) {
+	    waitsteps--;
+	  }
 	  in_lib = ses->handle->in_library;
 	  /* don't break */
 	}
       }
     }
 
-    if (waitsteps > 0) {
-      waitsteps--;
-    }
   } while ((! ret_val) ||
 	   (waitsteps != 0));
 
