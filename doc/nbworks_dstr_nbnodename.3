@@ -1,0 +1,25 @@
+.TH NBWORKS_DSTR_NBNODENAME 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_dstr_nbnodename \- destroys a NetBIOS node name
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "void"
+.br
+.BI "  nbworks_dstr_nbnodename(struct nbworks_nbnamelst * " nbnodename ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_dstr_nbnodename\fP() function destroys (frees) a name.
+.PP
+The argument \fInbnodename\fP is a pointer to a linked list (or just a
+single structure) that describes the name to be destroyed.
+.SH "RETURN VALUE"
+This function returns no value.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_clone_nbnodename (3),
+.BR nbworks_nbname2buff (3),
+.BR nbworks_buff2nbname (3),
+.BR nbworks_makescope (3)
