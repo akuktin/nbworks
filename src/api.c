@@ -960,6 +960,7 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
 /* returns: >0 = success; 0 = fail; <0 = error */
 int nbworks_update_listentos(unsigned char service,
 			     nbworks_namestate_p namehandle,
+			     unsigned char newtakes_field,
 			     struct nbworks_nbnamelst *newlistento) {
   struct name_state *handle;
   struct nbworks_nbnamelst *new, *old, **ptr;
@@ -971,26 +972,47 @@ int nbworks_update_listentos(unsigned char service,
   } else
     nbworks_errno = 0;
 
+  new = nbworks_clone_nbnodename(newlistento);
+  if (newlistento && (! new)) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
   switch (service) {
   case NBWORKS_DTG_SRVC:
-    ptr = &(handle->dtg_listento);
+    switch (newtakes_field) {
+    case NBWORKS_TAKES_ALL:
+      handle->dtg_takes = HANDLE_TAKES_ALL;
+      break;
+    case NBWORKS_TAKES_BRDCST:
+      handle->dtg_takes = HANDLE_TAKES_ALLBRDCST;
+      break;
+    case NBWORKS_TAKES_UNQCST:
+      handle->dtg_takes = HANDLE_TAKES_ALLUNCST;
+      break;
+    case 0:
+      handle->dtg_takes = 0;
+      break;
+    default:
+      nbworks_dstr_nbnodename(new);
+      nbworks_errno = EINVAL;
+      return -1;
+    }
+    old = handle->dtg_listento;
+    handle->dtg_listento = new;
     break;
   case NBWORKS_SES_SRVC:
-    ptr = &(handle->ses_listento);
+    if (newtakes_field)
+      handle->ses_takes = HANDLE_TAKES_ALL;
+    else
+      handle->ses_takes = 0;
+    old = handle->ses_listento;
+    handle->ses_listento = new;
     break;
   default:
     nbworks_errno = EINVAL;
     return -1;
   }
-
-  new = nbworks_clone_nbnodename(newlistento);
-  if ((! new) && newlistento) {
-    nbworks_errno = ENOBUFS;
-    return -1;
-  }
-
-  old = *ptr;
-  *ptr = new;
 
   nbworks_dstr_nbnodename(old);
 

@@ -184,6 +184,7 @@ int
 int
   nbworks_update_listentos(unsigned char service,
                            nbworks_namestate_p namehandle,
+                           unsigned char newtakes_field,
                            struct nbworks_nbnamelst *newlistento);
 nbworks_session_p
   nbworks_accept_ses(nbworks_namestate_p handle,
