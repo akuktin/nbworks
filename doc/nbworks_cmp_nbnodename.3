@@ -1,0 +1,33 @@
+.TH NBWORKS_CMP_NBNODENAME 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_cmp_nbnodename \- compare two names name
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "int"
+.br
+.BI "  nbworks_cmp_nbnodename(struct nbworks_nbnamelst * " name_one ","
+.br
+.BI "                         struct nbworks_nbnamelst * " name_two ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_cmp_nbnodename\fP() function compares two names.
+.PP
+The argument \fIname_one\fP is a pointer to a linked list (or just a
+single structure) that describes the name to be compared.
+.PP
+The argument \fIname_two\fP is a pointer to a linked list (or just a
+single structure) that describes the name to be compared.
+.SH "RETURN VALUE"
+This function returns 1 if the two names are \fInot\fP equal and 0 if
+they \fIare\fP equal.
+.PP
+This function can not fail.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_nbnodenamelen (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_nbname2buff (3),
+.BR nbworks_buff2nbname (3),
+.BR nbworks_makescope (3)
