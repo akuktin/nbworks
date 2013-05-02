@@ -1610,6 +1610,7 @@ void *lib_caretaker(void *arg) {
     poll(&pfd, 1, 0);
     if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
       close(handle->socket);
+      handle->socket = -1;
       break;
     }
 
@@ -1627,6 +1628,7 @@ void *lib_caretaker(void *arg) {
 	  if ((errno != EAGAIN) ||
 	      (errno != EWOULDBLOCK)) {
 	    close(handle->socket);
+	    handle->socket = -1;
 	    handle->kill_caretaker = TRUE;
 	    return 0;
 	  } else
@@ -1642,6 +1644,7 @@ void *lib_caretaker(void *arg) {
 	/* This is a fatal error. If the mutex can not be unlocked,
 	 * then the socket is useless. Therefore, close it and apologize. */
 	close(handle->socket);
+	handle->socket = -1;
 	/* apologize(); */
 	break;
       }

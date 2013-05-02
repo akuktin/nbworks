@@ -1460,12 +1460,14 @@ ssize_t nbworks_sendto(unsigned char service,
     if (ses->cancel_send) {			\
       ses->cancel_send = 0;			\
       close(ses->socket);			\
+      ses->socket = -1;				\
       nbworks_errno = ECANCELED;		\
       return -1;				\
     }
 #define handle_timeout							\
     if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {	\
       close(ses->socket);						\
+      ses->socket = -1;							\
       nbworks_errno = ETIME;						\
       return -1;							\
     }
@@ -1862,6 +1864,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
     if (ses->cancel_recv) {				\
       ses->cancel_recv = 0;				\
       close(ses->socket);				\
+      ses->socket = -1;					\
       nbworks_errno = ECANCELED;			\
       pthread_mutex_unlock(&(ses->receive_mutex));	\
       return -1;					\
@@ -2027,6 +2030,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	if (! ((hdr.type == SESSION_KEEP_ALIVE) ||
 	       (hdr.type == POS_SESSION_RESPONSE))) {
 	  close(ses->socket);
+	  ses->socket = -1;
 	  ses->kill_caretaker = TRUE;
 	  pthread_mutex_unlock(&(ses->mutex));
 	  nbworks_errno = EPROTO;
