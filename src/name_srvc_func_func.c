@@ -675,7 +675,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   struct nbaddress_list *list;//, *cmpnd_lst;
   struct ipv4_addr_list *addrlst, *frstaddrlst;
   struct cache_namenode *new_name;
-  time_t curtime;
+  time_t cur_time;
   uint32_t ttl;
   ipv4_addr_t nbns_addr;
   uint16_t target_flags;
@@ -803,12 +803,14 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 
       if (add_scope(scope, new_name, nbns_addr) ||
 	  add_name(new_name, scope)) {
-	curtime = time(0);
-	new_name->endof_conflict_chance = curtime +
+	cur_time = time(0);
+	new_name->endof_conflict_chance = cur_time +
 	  nbworks_namsrvc_cntrl.conflict_timer;
-	/* Fun fact: the below can overflow. No,
-	 * I'm not gonna make a test for that. */
-	new_name->timeof_death = curtime + ttl;
+        if (new_name->endof_conflict_chance < cur_time)
+          new_name->endof_conflict_chance = INFINITY;
+	new_name->timeof_death = cur_time + ttl;
+        if (new_name->timeof_death < cur_time)
+          new_name->timeof_death = INFINITY;
 	new_name->refresh_ttl = ttl;
 
 	destroy_name_srvc_res_lst(res, TRUE, TRUE);
@@ -1259,11 +1261,8 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	if (cache_namecard &&
 	    ((cache_namecard->unq_token) && (! cache_namecard->unq_isinconflict)) &&
 	    (cache_namecard->timeof_death > cur_time)) {
-	                                        /* Paired with the DOS_BUG in the
-						 * POSITIVE NAME QUERY RESPONSE
-						 * section, this can be abused to
-						 * execute a hostile name takeover.
-						 */
+	  /* Paired with the DOS_BUG in the POSITIVE NAME QUERY RESPONSE
+	   * section, this can be abused to execute a hostile name takeover. */
 	  /* Someone is trying to take my name. */
 
 	  in_addr = 0;
@@ -1277,8 +1276,10 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	  }
 
 	  if (i<NUMOF_ADDRSES) {
-	    pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
+	    pckt = name_srvc_make_name_reg_small(decoded_name,
+                                                 decoded_name[NETBIOS_NAME_LEN-1],
 						 res->res->name->next_name,
+                                                 /* Y2k38 */
 						 (cache_namecard->timeof_death
 						  - cur_time),
 						 in_addr,
@@ -1513,7 +1514,8 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	  continue;
 	} else {
 	  memset(&(addrblck.addrs), 0, sizeof(struct addrlst_cardblock));
-	  cache_namecard->timeof_death = cur_time + res->res->ttl;
+          /* overflows in a safe way */
+          cache_namecard->timeof_death = cur_time + res->res->ttl;
 	  cache_namecard->refresh_ttl = res->res->ttl;
 
 	  succeded++;
@@ -2136,6 +2138,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   struct cache_namenode *cache_namecard;
   struct nbaddress_list *nbaddr_list, *nbaddr_list_frst, **nbaddr_list_last;
   struct ipv4_addr_list *ipv4_addr_list;
+  uint64_t overflow_test;
   unsigned long i, lenof_addresses;
   uint32_t numof_answers, flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1], istruncated;
@@ -2446,12 +2449,15 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 	  res->res->name = nbworks_clone_nbnodename(qstn->qstn->name);
 	  res->res->rrtype = qstn->qstn->qtype;
 	  res->res->rrclass = qstn->qstn->qclass;
-	  /* It is theorethically possible for 32-bit RDATA_TTL
-	   * to overflow. This is nbworks speciffic. */
-	  res->res->ttl = (lowest_deathtime - cur_time);
-	  if (! res->res->ttl) {
+          if (lowest_deathtime > cur_time) {
+            overflow_test = lowest_deathtime - cur_time;
+            if (overflow_test < (uint32_t)ONES)
+	      res->res->ttl = overflow_test;
+            else
+              res->res->ttl = (uint32_t)ONES;
+          } else {
 	    /* *NEVER* send infinite answers. */
-	    res->res->ttl = 1;
+            res->res->ttl = 1;
 	  }
 
 #ifdef COMPILING_NBNS
@@ -3214,12 +3220,17 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 
 	    if (res->res->ttl) {
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
+              if (cache_namecard->timeof_death < cur_time)
+                cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
 	      cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = 0;
 	    }
-	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
+	    cache_namecard->endof_conflict_chance = cur_time +
+                                        nbworks_namsrvc_cntrl.conflict_timer;
+            if (cache_namecard->endof_conflict_chance < cur_time)
+              cache_namecard->endof_conflict_chance = INFINITY;
 
 	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->addrs),
 		   sizeof(struct addrlst_cardblock));
@@ -3269,12 +3280,17 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    /* BUG: The number of problems a rogue node can create is mind boggling. */
 	    if (res->res->ttl) {
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
+              if (cache_namecard->timeof_death < cur_time)
+                cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
 	      cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = 0;
 	    }
-	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
+	    cache_namecard->endof_conflict_chance = cur_time +
+                                        nbworks_namsrvc_cntrl.conflict_timer;
+            if (cache_namecard->endof_conflict_chance < cur_time)
+              cache_namecard->endof_conflict_chance = INFINITY;
 
 	    for (i=0; i<NUMOF_ADDRSES; i++) {
 #ifndef COMPILING_NBNS
@@ -3337,12 +3353,17 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 
 	    if (res->res->ttl) {
 	      cache_namecard->timeof_death = cur_time + res->res->ttl;
+              if (cache_namecard->timeof_death < cur_time)
+                cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = res->res->ttl;
 	    } else {
 	      cache_namecard->timeof_death = INFINITY;
 	      cache_namecard->refresh_ttl = 0;
 	    }
-	    cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
+	    cache_namecard->endof_conflict_chance = cur_time +
+                                        nbworks_namsrvc_cntrl.conflict_timer;
+            if (cache_namecard->endof_conflict_chance < cur_time)
+              cache_namecard->endof_conflict_chance = INFINITY;
 
 	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->addrs),
 		   sizeof(struct addrlst_cardblock));
@@ -3392,12 +3413,17 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 	    if (! cache_namecard->unq_token) {
 	      if (res->res->ttl) {
 		cache_namecard->timeof_death = cur_time + res->res->ttl;
+                if (cache_namecard->timeof_death < cur_time)
+                  cache_namecard->timeof_death = INFINITY;
 		cache_namecard->refresh_ttl = res->res->ttl;
 	      } else {
 		cache_namecard->timeof_death = INFINITY;
 		cache_namecard->refresh_ttl = 0;
 	      }
-	      cache_namecard->endof_conflict_chance = cur_time + nbworks_namsrvc_cntrl.conflict_timer;
+	      cache_namecard->endof_conflict_chance = cur_time +
+                                          nbworks_namsrvc_cntrl.conflict_timer;
+              if (cache_namecard->endof_conflict_chance < cur_time)
+                cache_namecard->endof_conflict_chance = INFINITY;
 
 	      for (i=0; i<NUMOF_ADDRSES; i++) {
 #ifndef COMPILING_NBNS

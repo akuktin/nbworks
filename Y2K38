@@ -1,0 +1,25 @@
+This is a possibly partial and incomplete list of the things that will happen
+as all signed 32-bit time_t type counters overflow on 2038-01-19 03:14:07 UTC.
+
+Nbworks handles time_t in a type-agnostic way. For this reason, it is possible
+to increase time_t transparently to the source code.
+
+Any points in the code that should have special attention drawn to them are
+marked with "Y2K38".
+
+
+The List:
+
+caretaker sends like crazy
+name refresher sends like crazy
+send and receive will have their timeouts become ineffectual over the overflow
+fragments will become stuck over the overflow
+old scopes will become stuck over the overflow
+before the overflow names are not deleted if their deathtimes are INFINITY
+after the overflow, no old names are deleted
+no new servers will be installed in the last second
+old queuestorages in the service sector will become stuck over the overflow
+names whose deathtimes are updated will have their deathtimes stuck in INFINITY
+names are not defended during the last second
+names are not used for answering queries during the last second
+name conflicts are not taken into account during the last second

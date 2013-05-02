@@ -2241,7 +2241,7 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
   ssize_t ret_val;
   long waitsteps;
   int flags;
-  time_t start_time;
+  time_t start_time, end_time;
 
   ses = session;
   if ((! (session && buff_pptr)) ||
