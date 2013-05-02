@@ -1279,7 +1279,7 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	    pckt = name_srvc_make_name_reg_small(decoded_name,
                                                  decoded_name[NETBIOS_NAME_LEN-1],
 						 res->res->name->next_name,
-                                                 /* Y2k38 */
+                                                 /* Y2K38 */
 						 (cache_namecard->timeof_death
 						  - cur_time),
 						 in_addr,
