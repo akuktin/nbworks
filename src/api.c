@@ -1406,7 +1406,7 @@ ssize_t nbworks_sendto(unsigned char service,
   struct nbworks_nbnamelst *peer;
   struct ses_srvc_packet pckt;
   struct nbworks_session *ses;
-  time_t start_time;
+  time_t start_time, end_times;
   ssize_t ret_val, sent, notsent;
   int flags;
   unsigned char pcktbuff[SES_HEADER_LEN], *buff;
@@ -1487,7 +1487,10 @@ ssize_t nbworks_sendto(unsigned char service,
       return -1;				\
     }
 #define handle_timeout							\
-    if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {	\
+    end_times = start_time + nbworks_libcntl.close_timeout;		\
+    if (end_times < start_time)						\
+      end_times = INFINITY; /* A statement laden with meaning */	\
+    if (end_times < time(0)) {						\
       close(ses->socket);						\
       ses->socket = -1;							\
       nbworks_errno = ETIME;						\
@@ -1706,7 +1709,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
   struct packet_cooked *in_lib;
   struct ses_srvc_packet hdr;
   struct nbworks_session *ses;
-  time_t start_time;
+  time_t start_time, end_time;
   ssize_t recved, notrecved, ret_val, torecv;
   size_t *hndllen_left, len_left;
   int flags;
@@ -1737,7 +1740,10 @@ ssize_t nbworks_recvfrom(unsigned char service,
       return -1;						\
     }
 #define handle_dtg_timeout						\
-    if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {	\
+    end_time = start_time + nbworks_libcntl.close_timeout;		\
+    if (end_time < start_time)						\
+      end_time = INFINITY;						\
+    if (end_time < time(0)) {						\
       nbworks_errno = ETIME;						\
       pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));		\
       return recved;							\
@@ -1906,7 +1912,10 @@ ssize_t nbworks_recvfrom(unsigned char service,
       return -1;					\
     }
 #define handle_timeout							\
-    if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {	\
+    end_time = start_time + nbworks_libcntl.close_timeout;		\
+    if (end_time < start_time)						\
+      end_time = INFINITY;						\
+    if (end_time < time(0)) {						\
       *hndllen_left = *hndllen_left + len_left;				\
       nbworks_errno = ETIME;						\
       pthread_mutex_unlock(&(ses->receive_mutex));			\
@@ -2145,7 +2154,10 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	if (! (flags & MSG_OOB)) {
 	  handle_timeout;
 	} else {
-	  if ((start_time + nbworks_libcntl.close_timeout) > time(0)) {
+	  end_time = start_time + nbworks_libcntl.close_timeout;
+	  if (end_time < start_time)
+	    end_time = INFINITY;
+	  if (end_time < time(0)) {
 	    *hndllen_left = *hndllen_left + len_left;
 	    break; /* and enter the below if block */
 	  }
@@ -2254,7 +2266,10 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
     return -1;							\
   }
 #define handle_dtg_timeout						\
-  if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {		\
+  end_time = start_time + nbworks_libcntl.close_timeout;		\
+  if (end_time < start_time)						\
+    end_time = INFINITY;						\
+  if (end_time < time(0)) {						\
     nbworks_errno = ETIME;						\
     pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));		\
     return recved;							\
