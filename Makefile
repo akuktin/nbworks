@@ -126,16 +126,8 @@ $(OBJDIR_DAEMON):
 $(OBJDIR_LIBRARY):
 	$(MKDIR) $(OBJDIR_LIBRARY)
 
-# $(sort) is to remove the duplicate entries if $(EPREFIX) expands to $(PREFIX)
-$(sort $(INSTALL_DIRS)):
-	if [ ! -d $(PREFIX)  ]; then $(MKDIR) $(PREFIX) ; fi
-	if [ ! -d $(EPREFIX) ];	then $(MKDIR) $(EPREFIX); fi
-	if [ ! -d $(BINDIR)  ]; then $(MKDIR) $(BINDIR) ; fi
-	if [ ! -d $(LIBDIR)  ]; then $(MKDIR) $(LIBDIR) ; fi
-	if [ ! -d $(INCLUDEDIR) ]; then $(MKDIR) $(INCLUDEDIR); fi
-	if [ ! -d $(DATAROOTDIR) ]; then $(MKDIR) $(DATAROOTDIR); fi
-	if [ ! -d $(MANDIR)  ]; then $(MKDIR) $(MANDIR) ; fi
-	if [ ! -d $(MANDIR)/man3 ]; then $(MKDIR) $(MANDIR)/man3; fi
-	if [ ! -d $(MANDIR)/man5 ]; then $(MKDIR) $(MANDIR)/man5; fi
-	if [ ! -d $(MANDIR)/man8 ]; then $(MKDIR) $(MANDIR)/man8; fi
-#	if [ ! -d $(DOCDIR)  ]; then $(MKDIR) $(DOCDIR) ; fi
+$(PREFIX)/%:
+	$(MKDIR) $@
+
+$(PREFIX):
+	$(MKDIR) $(PREFIX)
