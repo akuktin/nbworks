@@ -1,0 +1,49 @@
+.TH NBWORKS_BUFF2NBNAME 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_2nbname \- translate a string into a nbnamelst
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "struct nbworks_nbnamelst *"
+.br
+.BI "  nbworks_buff2nbname(unsigned char * " buff ","
+.br
+.BI "                      unsigned long " lenof_string ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_buff2nbname\fP() function translates a string
+signifying a single label into the \fBstruct nbworks_nbnamelst\fP
+structure.
+.PP
+The argument \fIbuff\fP is a pointer to a string to be translated.
+.PP
+The argument \fIlenof_string\fP is a number describing the length of
+the string to be translated. It may not be larger than 0x3f. If unsure
+or don't care of the length of the string, call with this argument set
+to zero. However beware, in this case, the string pointed to by
+\fIbuff\fP must be NULL-terminated.
+.SH "RETURN VALUE"
+This function returns the newly allocated structure. In case an error
+occured, it returns 0.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH NOTES
+This is only really usefull for assembling the scope one label at a
+time.
+.PP
+\fBIMPORTANT:\fP If you wish to execute a single function call to
+generate a NetBIOS name that is guaranteed to be
+\fBNBWORKS_NBNAME_LEN\fP long - the length all nbworks function require you
+to - you are really looking for \fBnbworks_create_nbnodename\fP().
+.PP
+This function does not test for embedded NULLs in the string pointed
+to by \fIbuff\fP.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_clone_nbnodename (3),
+.BR nbworks_dstr_nbnodename (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_nbname2buff (3),
+.BR nbworks_makescope (3)
