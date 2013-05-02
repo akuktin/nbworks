@@ -16,11 +16,30 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+PREFIX ?= /usr/local
+EPREFIX ?= $(PREFIX)
+
+####################
+
+BINDIR = $(EPREFIX)/bin
+LIBDIR = $(EPREFIX)/lib
+INCLUDEDIR = $(PREFIX)/include
+
+DATAROOTDIR = $(PREFIX)/share
+MANDIR = $(DATAROOTDIR)/man
+#DOCDIR = $(DATAROOTDIR)/doc/nbworks
+
+INSTALL_DIRS = $(PREFIX) $(EPREFIX) $(BINDIR) $(LIBDIR) $(INCLUDEDIR)       \
+               $(DATAROOTDIR) $(MANDIR) $(MANDIR)/man3 $(MANDIR)/man5       \
+               $(MANDIR)/man8 $(DOCDIR)
+
+
 CFLAGS ?= -O3 -g -Wall
 CC ?= gcc
-MKDIR ?= mkdir
-RM ?= rm
-RF ?= -rf
+MKDIR ?= mkdir -p
+RM_RF ?= rm -rf
+LN_SV ?= ln -s
+INSTALL ?= install
 
 SYSTEM_IS_MACRO = -DSYSTEM_IS_LINUX
 
@@ -51,14 +70,27 @@ OBJS_FOR_DAEMON = $(addprefix $(OBJDIR_DAEMON)/,$(FILES_FOR_DAEMON:.c=.o) \
                                                 $(DAEMON_STARTER:.c=.o))
 OBJS_FOR_LIBRARY = $(addprefix $(OBJDIR_LIBRARY)/,$(FILES_FOR_LIBRARY:.c=.o))
 
-#.PHONY all: nbworksd libnbworks.so.0.0 nbworksnbnsd
-.PHONY all: nbworksd libnbworks.so.0.0
+.PHONY : all lib clean install
 
-.PHONY lib: libnbworks.so.0.0
+all: nbworksd libnbworks.so.0.0 # nbworksnbnsd
 
-.PHONY clean:
-	$(RM) $(RF) $(OBJDIR_NBNS) $(OBJDIR_DAEMON) $(OBJDIR_LIBRARY) \
-	      nbworksd libnbworks.* nbworksnbnsd
+lib: libnbworks.so.0.0
+
+clean:
+	$(RM_RF) $(OBJDIR_NBNS) $(OBJDIR_DAEMON) $(OBJDIR_LIBRARY) \
+	    nbworksd libnbworks.* nbworksnbnsd
+
+install: all | $(sort $(INSTALL_DIRS))
+	$(INSTALL) nbworksd $(BINDIR)
+	$(INSTALL) libnbworks.so.0.0 $(LIBDIR)
+	if [ -e $(LIBDIR)/libnbworks.so.0 ]; then $(RM_RF) $(LIBDIR)/libnbworks.so.0; fi
+	$(LN_SV) libnbworks.so.0.0 $(LIBDIR)/libnbworks.so.0
+	if [ -e $(LIBDIR)/libnbworks.so ]; then $(RM_RF) $(LIBDIR)/libnbworks.so; fi
+	$(LN_SV) libnbworks.so.0 $(LIBDIR)/libnbworks.so
+	$(INSTALL) include/nbworks.h $(INCLUDEDIR)
+	$(INSTALL) doc/*.3 $(MANDIR)/man3
+	$(INSTALL) doc/*.5 $(MANDIR)/man5
+	$(INSTALL) doc/*.8 $(MANDIR)/man8
 
 nbworksd: $(OBJS_FOR_DAEMON)
 	$(CC) $(CFLAGS)  $+ -o $@ -lpthread
@@ -93,3 +125,17 @@ $(OBJDIR_DAEMON):
 
 $(OBJDIR_LIBRARY):
 	$(MKDIR) $(OBJDIR_LIBRARY)
+
+# $(sort) is to remove the duplicate entries if $(EPREFIX) expands to $(PREFIX)
+$(sort $(INSTALL_DIRS)):
+	if [ ! -d $(PREFIX)  ]; then $(MKDIR) $(PREFIX) ; fi
+	if [ ! -d $(EPREFIX) ];	then $(MKDIR) $(EPREFIX); fi
+	if [ ! -d $(BINDIR)  ]; then $(MKDIR) $(BINDIR) ; fi
+	if [ ! -d $(LIBDIR)  ]; then $(MKDIR) $(LIBDIR) ; fi
+	if [ ! -d $(INCLUDEDIR) ]; then $(MKDIR) $(INCLUDEDIR); fi
+	if [ ! -d $(DATAROOTDIR) ]; then $(MKDIR) $(DATAROOTDIR); fi
+	if [ ! -d $(MANDIR)  ]; then $(MKDIR) $(MANDIR) ; fi
+	if [ ! -d $(MANDIR)/man3 ]; then $(MKDIR) $(MANDIR)/man3; fi
+	if [ ! -d $(MANDIR)/man5 ]; then $(MKDIR) $(MANDIR)/man5; fi
+	if [ ! -d $(MANDIR)/man8 ]; then $(MKDIR) $(MANDIR)/man8; fi
+#	if [ ! -d $(DOCDIR)  ]; then $(MKDIR) $(DOCDIR) ; fi
