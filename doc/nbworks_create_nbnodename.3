@@ -1,0 +1,41 @@
+.TH NBWORKS_CREATE_NBNODENAME 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_create_nbnodename \- creates a proper NetBIOS name label structure
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "struct nbworks_nbnamelst *"
+.br
+.BI "  nbworks_create_nbnodename(unsigned char * " string ","
+.br
+.BI "                            unsigned char " type_char ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_create_nbnodename\fP() function creates a
+\fBnbworks_nbnamelst\fP structure containing a properly formatted
+string (char array) that can be used as a NetBIOS name.
+.PP
+The argument \fIstring\fP is a pointer to a NULL-terminated string to
+be used in manufacture. This string should not be longer than
+\fBNBWORKS_NBNAME_LEN\fP bytes. If it is \fBNBWORKS_NBNAME_LEN\fP
+bytes long, the last character of the string, once copied into the
+result buffer, will be overwritten by the value of \fItype_char\fP.
+.PP
+The argument \fItype_char\fP is the last character of the name and is
+known in nbworks parlance as the \fI"service type"\fP. It is used to
+inform other nodes in the NetBIOS network about what kinds of
+resources can be accessed through this name.
+.SH "RETURN VALUE"
+This function returns a pointer to the new structure. In the event of
+an error, it returns 0.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_create_nbnamelabel (3),
+.BR nbworks_dstr_nbnodename (3),
+.BR nbworks_nbname2buff (3),
+.BR nbworks_buff2nbname (3),
+.BR nbworks_makescope (3)
