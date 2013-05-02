@@ -114,10 +114,13 @@ void
   nbworks_libinit(void);
 
 /* BEGIN auxiliary API */
+struct nbworks_nbnamelst *
+  nbworks_create_nbnodename(unsigned char *string,
+                            unsigned char type_char);
 unsigned char *
-  nbworks_create_nbnodename(const unsigned char *string,
-                            const unsigned char type_char,
-                            unsigned char *field);
+  nbworks_create_nbnamelabel(const unsigned char *string,
+                             const unsigned char type_char,
+                             unsigned char *field);
 void
   nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename);
 struct nbworks_nbnamelst *

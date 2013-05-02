@@ -154,9 +154,37 @@ unsigned char *nbworks_make_nbnodename(const unsigned char *string,
   return(encode_nbnodename(prepared_name, field));
 }
 
-unsigned char *nbworks_create_nbnodename(const unsigned char *string,
-				         const unsigned char type_char,
-				         unsigned char *field) {
+struct nbworks_nbnamelst *nbworks_create_nbnodename(unsigned char *string,
+                                                    unsigned char type_char) {
+  struct nbworks_nbnamelst *result;
+
+  if (! string) {
+    nbworks_errno = EINVAL;
+    return 0;
+  }
+
+  result = malloc(sizeof(struct nbworks_nbnamelst));
+  if (! result) {
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+
+  result->name = nbworks_create_nbnamelabel(string, type_char, 0);
+  if (! result->name) {
+    free(result);
+    /* nbworks_errno is already set */
+    return 0;
+  }
+
+  result->len = NETBIOS_NAME_LEN;
+  result->next_name = 0;
+
+  return result;
+}
+
+unsigned char *nbworks_create_nbnamelabel(const unsigned char *string,
+				          const unsigned char type_char,
+				          unsigned char *field) {
   int j, len;
   unsigned char *result;
 
@@ -181,7 +209,7 @@ unsigned char *nbworks_create_nbnodename(const unsigned char *string,
     result = field;
   }
 
-  strncpy((char *)result, (char *)string, NETBIOS_NAME_LEN -1);
+  memcpy((char *)result, (char *)string, len);
 
   for (j = 0; j < len; j++) {
     result[j] = toupper(result[j]);

@@ -1,0 +1,48 @@
+.TH NBWORKS_CREATE_NBNAMELABEL 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_create_nbnamelabel \- creates a proper NetBIOS name label
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "unsigned char *"
+.br
+.BI "  nbworks_create_nbnamelabel(unsigned char * " string ","
+.br
+.BI "                             unsigned char " type_char ","
+.br
+.BI "                             unsigned char * " field ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_create_nbnamelabel\fP() function creates a properly
+formatted string (char array) that can be used as a NetBIOS name.
+.PP
+The argument \fIstring\fP is a pointer to a NULL-terminated string to
+be used in manufacture. This string should not be longer than
+\fBNBWORKS_NBNAME_LEN\fP bytes. If it is \fBNBWORKS_NBNAME_LEN\fP
+bytes long, the last character of the string, once copied into the
+result buffer, will be overwritten by the value of \fItype_char\fP.
+.PP
+The argument \fItype_char\fP is the last character of the name and is
+known in nbworks parlance as the \fI"service type"\fP. It is used to
+inform other nodes in the NetBIOS network about what kinds of
+resources can be accessed through this name.
+.PP
+The argument \fIfield\fP, if set to non-zero, is a pointer to a buffer
+where the result will be written. That buffer has to be at least
+\fBNBWORKS_NBNAME_LEN\fP bytes long. If \fIfield\fP is zero, then
+\fBnbworks_create_nbnamelabel\fP() will \fBmalloc\fP() the buffer
+itself.
+.SH "RETURN VALUE"
+This function returns a pointer to a new label. In the event of an
+error, it returns 0.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_dstr_nbnodename (3),
+.BR nbworks_nbname2buff (3),
+.BR nbworks_buff2nbname (3),
+.BR nbworks_makescope (3)
