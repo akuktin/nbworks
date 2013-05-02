@@ -1,15 +1,13 @@
-.TH NBWORKS_RECVFROM 3  2013-05-01 "" "Nbworks Manual"
+.TH NBWORKS_RECVWAIT 3  2013-05-01 "" "Nbworks Manual"
 .SH NAME
-nbworks_recvfrom, nbworks_recv \- receive data using NetBIOS
+nbworks_recvwait \- receive data using NetBIOS within a timeframe
 .SH SYNOPSIS
 .nf
 .B #include <nbworks.h>
 .sp
 .BI "ssize_t"
 .br
-.BI "  nbworks_recvfrom(unsigned char " service ","
-.br
-.BI "                   nbworks_session_p " ses ","
+.BI "  nbworks_recvwait(nbworks_session_p " ses ","
 .br
 .BI "                   void ** " buff ","
 .br
@@ -17,41 +15,22 @@ nbworks_recvfrom, nbworks_recv \- receive data using NetBIOS
 .br
 .BI "                   int " flags ","
 .br
+.BI "                   int " timeout ","
+.br
 .BI "                   struct nbworks_nbnamelst ** " src ");"
 .fi
-.sp
-.BI "ssize_t"
-.br
-.BI "  nbworks_recv(unsigned char " service ","
-.br
-.BI "               nbworks_session_p " ses ","
-.br
-.BI "               void ** " buff ","
-.br
-.BI "               size_t " len ","
-.br
-.BI "               int " flags ");"
-.fi
 .SH DESCRIPTION
-The \fBnbworks_recvfrom\fP() and \fBnbworks_recv\fP() functions are
-used to receive data using NetBIOS. \fBnbworks_recv\fP() is
-implemented as a macro wrapper that calls \fBnbworks_recvfrom\fP()
-with its own arguments and \fIsrc\fP set to 0. Because it is a macro,
-\fBnbworks_recv\fP() may evaluate its arguments more than
-once. Beware.
-.PP
-All further text of this manpage references \fBnbworks_recvfrom\fP(),
-but it also applies to \fBnbworks_recv\fP().
-.PP
-The argument \fIservice\fP is used to tell \fBnbworks_recvfrom\fP() if
-you wish it to operate in session mode or datagram mode. It can be one
-of \fBNBWORKS_SES_SRVC\fP or \fBNBWORKS_DTG_SRVC\fP. Setting
-\fBnbworks_sendto\fP() to operate in the wrong mode for the passed
-session is safe, although it may error out.
+The \fBnbworks_recvwait\fP() function is used to receive data using
+NetBIOS within a specified time frame. This is a convenience function
+which combines the functionality of \fBnbworks_recvfrom\fP() in
+datagram mode and \fBnbworks_poll\fP() run on a single session.
 .PP
 The argument \fIses\fP is a session handle that was returned by a
-successfull call to one of \fBnbworks_castdtgsession\fP(),
-\fBnbworks_accept_ses\fP() or \fBnbworks_sescall\fP().
+successfull call to \fBnbworks_castdtgsession\fP().
+.PP
+The function \fBnbworks_recvwait\fP() only operates in datagram
+mode. Calling it with a \fIsession session\fP is safe but will produce
+wrong results (and may hang indefinitely).
 .PP
 \fBCONFUSION ALERT!\fP
 .br
@@ -69,26 +48,17 @@ enable code reuse became a documented feature.
 .PP
 The argument \fIbuff\fP is a pointer to a pointer to the buffer where
 the recieved data will be written. For your convenience, and as a
-speed hack in datagram mode, it is possible to call
-\fBnbworks_recvfrom\fP() with this argument being a pointer to 0. In
-that case, \fIbuff\fP is a non-zero pointer which points to a pointer
-that equals 0. If this setup is detected, \fBnbworks_recvfrom\fP()
-will operate in the following manner, dependent on the mode:
+speed hack, it is possible to call \fBnbworks_recvwait\fP() with this
+argument being a pointer to 0. In that case, \fIbuff\fP is a non-zero
+pointer which points to a pointer that equals 0. If this setup is
+detected, \fBnbworks_recvwait\fP() will operate in the following
+manner:
 .br
-\fBDATAGRAM MODE:\fP \fBnbworks_recvfrom\fP() will overwrite the NULL
-pointer (pointed to by \fIbuff\fP) by a pointer to the buffer it uses
-internally to store the datagrams data untill your
-\fBnbworks_recvfrom\fP() call retrieves said data. This buffer \fIhas
-to be \fP\fBfree\fP\fI()d\fP after you are done using it and it is
-\fIyour\fP responsibility to do so.
-.br
-\fBSESSION MODE:\fP \fBnworks_recvfrom\fP() will use \fBmalloc\fP(3)
-to allocate enough space for writing the entirety of the data you
-requested. Some or all of this buffer may remain unused if
-\fBnbworks_recvfrom\fP() returns without having read everything you
-requested. Check the return value. Again, this buffer \fIhas
-to be \fP\fBfree\fP\fI()d\fP after you are done using it and it is
-\fIyour\fP responsibility to do so.
+\fBnbworks_recvwait\fP() will overwrite the NULL pointer (pointed to
+by \fIbuff\fP) by a pointer to the buffer it uses internally to store
+the datagrams data untill your \fBnbworks_recvwait\fP() call retrieves
+said data. This buffer \fIhas to be \fP\fBfree\fP\fI()d\fP after you
+are done using it and it is \fIyour\fP responsibility to do so.
 .PP
 The argument \fIlen\fP descibes the amount of data you want read. It
 is an error to call with this number greater than can be returned by
@@ -102,21 +72,24 @@ of \fBnbworks_sendto\fP(). They are analogous to the \fIflags\fP field
 in your systems \fBrecvfrom\fP(2), with the caveat that MSG_PEEK and
 MSG_ERRQUEUE are made ineffectual.
 .PP
-The argument \fIsrc\fP is used only in datagram mode and is ignored in
-session mode. It affect which datagrams in the receive queue are taken
-into account for being read. See the section "\fBDATAGRAM SELECTION FOR
-READING\fP" below for more details. The first member of \fIsrc\fP has
-to have its \fIname\fP field point to a string of exactly
-\fBNBWORKS_NBNAME_LEN\fP bytes. If \fIsrc\fP is a linked list, the
-part of the list which specifies the scope is \fB*NOT*\fP ignored and
-specifing this to a scope other then session's handle's names's will
-result in \fBnbworks_recvfrom\fP() not returning a datagram. If the
-\fIflags\fP field has been OR'd to include MSG_WAITALL,
-\fBnbworks_recvfrom\fP() will hang indefinetely. You have been warned,
+The argument \fItimeout\fP specifies the minimum time
+\fBnbworks_recvwait\fP() should wait if no datagrams are currently
+available. This is specified in miliseconds. 0 means no waiting, a
+negative number means to wait forever. Use with caution. However, see
+\fBNOTES\fP below as well.
+.PP
+The argument \fIsrc\fP affects which datagrams in the receive queue
+are taken into account for being read. See the section "\fBDATAGRAM
+SELECTION FOR READING\fP" below for more details. The first member of
+\fIsrc\fP has to have its \fIname\fP field point to a string of
+exactly \fBNBWORKS_NBNAME_LEN\fP bytes. If \fIsrc\fP is a linked list,
+the part of the list which specifies the scope is \fB*NOT*\fP ignored
+and specifing this to a scope other then session's handle's names's
+will result in \fBnbworks_recvwait\fP() not returning a datagram. If
+the \fIflags\fP field has been OR'd to include MSG_WAITALL, and the
+\fItimeout\fP argument is set to a negative value,
+\fBnbworks_recvwait\fP() will hang indefinetely. You have been warned,
 thread carefully.
-.br
-The macro \fBnbworks_recv\fP() calls \fBnbworks_recvfrom\fP()
-with this argument set to 0.
 .SH "RETURN VALUE"
 This function returns the number of bytes it read or -1 in the event
 an error occured.
@@ -132,7 +105,7 @@ and fragmented datagrams enter when they are assembled.
 In order to emulate the \fIsession session\fP, \fIdatagram sessions\fP
 have a default peer.
 .PP
-If \fBnbworks_recvfrom\fP() is called with argument \fIsrc\fP set to 0
+If \fBnbworks_recvwait\fP() is called with argument \fIsrc\fP set to 0
 or pointing to 0, then this default peer is consulted when selecting
 datagrams.
 .br
@@ -141,13 +114,13 @@ tested for a match agains the default peer. If they match, the
 datagram is selected for reading, if not, the process repeats on the
 next datagram in the queue. This process lasts untill all datagrams
 are exausted. When that happens, and no match has been found,
-\fBnbworks_recvfrom\fP() executes its normal no-packets-found
+\fBnbworks_recvwait\fP() executes its normal no-packets-found
 routine (which may block).
 .br
 If the default peer is \fInot set\fP, then the first datagram on the
 queue is selected and used for reading.
 .PP
-If \fBnbworks_revfrom\fP() is called with argument \fIsrc\fP pointing
+If \fBnbworks_recvwait\fP() is called with argument \fIsrc\fP pointing
 to a pointer to \fBstruct nbworks_nbnamelst\fP (either one or a linked
 list), then this struct is used for datagram sender matching instead
 of the default peer, as described in the previous paragraf.
@@ -162,7 +135,7 @@ After reading, if \fIsrc\fP is set, it will point to a pointer to the
 datagram. You should call \fBnbworks_dstr_nbnodename\fP() on this
 pointer (\fI*src\fP) when you are done using it.
 .SH NOTES
-\fBnbworks_recvfrom\fP() is belived to be thread-safe. This belif relies
+\fBnbworks_recvwait\fP() is belived to be thread-safe. This belif relies
 on your systems implementation of \fBpthread_mutex_lock\fP() and
 \fBpthread_mutex_trylock\fP().
 .PP
@@ -174,15 +147,7 @@ multiple datagram sessions existing for a given name handle, and one
 of them enters a long blocking read, the other datagram sessions will
 be locked out untill the blocking operation terminates.
 .PP
-The \fBnbworks_poll\fP() function, when operating on datagram
-sessions, tests for the existance of any unread datagrams in the
-receive queue. If the name handle multiplexes several datagram
-sessions, and one of those sessions has not emptied all of its
-datagrams from the queue, calls to \fBnbworks_poll\fP() from the
-context of other datagram sessions extending from the same name handle
-will return a false positive.
-.PP
-All read operations conducted by \fBnbworks_readfrom\fP() can be
+All read operations conducted by \fBnbworks_readwait\fP() can be
 canceled using \fBnbworks_cancel\fP() and they can timeout. Timeout
 value can be set through \fInbworks_libcntl.close_timeout\fP.
 .PP
@@ -202,4 +167,5 @@ trust NetBIOS datagrams in the same way you trust UDP datagrams.
 .BR nbworks_castdtgsession (3),
 .BR nbworks_dtgconnect (3),
 .BR nbworks_maxdtglen (3),
-.BR nbworks_sendto (3)
+.BR nbworks_sendto (3),
+.BR nbworks_recvfrom (3)

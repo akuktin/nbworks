@@ -1773,10 +1773,9 @@ ssize_t nbworks_recvfrom(unsigned char service,
     start_time = time(0);
 
 
+    in_lib = ses->handle->in_library;
     do {
-      if (ses->handle->in_library) {
-	in_lib = ses->handle->in_library;
-
+      if (in_lib) {
 	if (in_lib->src) {
 	  if (src) {
 	    if (*src) {
@@ -1836,7 +1835,8 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	}
 
       jump_to_next_datagram:
-	if (in_lib->next) {
+	if ((in_lib->next) &&
+	    (ses->handle->in_library == in_lib)) {
 	  ses->handle->in_library = in_lib->next;
 	  free(in_lib);
 	} else {
@@ -2203,6 +2203,209 @@ ssize_t nbworks_recvfrom(unsigned char service,
     nbworks_errno = EINVAL;
     return -1;
   }
+}
+
+ssize_t nbworks_recvwait(nbworks_session_p session,
+			 void **buff_pptr,
+			 size_t len,
+			 int callflags,
+			 int timeout,
+			 struct nbworks_nbnamelst **src) {
+  struct timespec sleeptime;
+  struct nbworks_session *ses;
+  ssize_t ret_val;
+  long waitsteps;
+  int flags;
+  time_t start_time;
+
+  ses = session;
+  if ((! (session && buff_pptr)) ||
+      (len <= 0) ||
+      (len >= (SIZE_MAX / 2))) { /* This hack may not work everywhere. */
+    nbworks_errno = EINVAL;
+    return -1;
+  } else {
+    nbworks_errno = 0;
+    ret_val = 0;
+    recved = 0;
+
+    /* Turn off some flags. */
+    flags = callflags & (ONES ^ (MSG_EOR | MSG_PEEK | MSG_ERRQUEUE));
+  }
+
+#define handle_dtg_cancel					\
+  if (ses->cancel_recv) {					\
+    ses->cancel_recv = 0;					\
+    nbworks_errno = ECANCELED;					\
+    pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));	\
+    return -1;							\
+  }
+#define handle_dtg_timeout						\
+  if ((start_time + nbworks_libcntl.close_timeout) < time(0)) {		\
+    nbworks_errno = ETIME;						\
+    pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));		\
+    return recved;							\
+  }
+
+  if (! ses->handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  } else {
+    sleeptime.tv_sec = 0;
+    sleeptime.tv_nsec = T_12MS;
+  }
+  if (timeout > 0) {
+    waitsteps = timeout / 12;
+    if (timeout % 12) {
+      waitsteps++;
+    }
+  } else {
+    if (timeout == 0) {
+      waitsteps = 0;
+    } else {
+      waitsteps = -1;
+    }
+  }
+
+  if ((!(flags & MSG_WAITALL)) &&
+      ((ses->nonblocking) ||
+       (flags & MSG_DONTWAIT))) {
+    if (0 != pthread_mutex_trylock(&(ses->handle->dtg_recv_mutex))) {
+      if (errno == EBUSY) {
+	nbworks_errno = EAGAIN;
+	return -1;
+      } else {
+	nbworks_errno = errno;
+	return -1;
+      }
+    }
+  } else {
+    if (0 != pthread_mutex_lock(&(ses->handle->dtg_recv_mutex))) {
+      nbworks_errno = errno;
+      return -1;
+    }
+  }
+  start_time = time(0);
+
+  in_lib = ses->handle->in_library;
+  do {
+    if (in_lib) {
+      if (in_lib->src) {
+	if (src) {
+	  if (*src) {
+	    if (0 == nbworks_cmp_nbnodename(*src,
+					    in_lib->src)) {
+	      nbworks_dstr_nbnodename(in_lib->src);
+	    } else {
+	      goto jump_to_next_datagram;
+	    }
+	  } else {
+	    if (ses->peer) {
+	      if (0 != nbworks_cmp_nbnodename(ses->peer,
+					      in_lib->src)) {
+		goto jump_to_next_datagram;
+	      }
+	    }
+	    *src = in_lib->src;
+	  }
+	} else {
+	  /* From now on, we are enforcing multiplexing. */
+	  if (ses->peer) {
+	    if (0 != nbworks_cmp_nbnodename(ses->peer,
+					    in_lib->src)) {
+	      goto jump_to_next_datagram;
+	    }
+	  }
+	  nbworks_dstr_nbnodename(in_lib->src);
+	}
+	in_lib->src = 0;
+      }
+
+      if (in_lib->data) {
+	if (*buff_pptr) {
+	  if (len < in_lib->len) {
+	    if (flags & MSG_TRUNC) {
+	      ret_val = in_lib->len;
+	    } else {
+	      ret_val = len;
+	    }
+	  } else {
+	    ret_val = in_lib->len;
+	    len = ret_val;
+	  }
+
+	  memcpy(*buff_pptr, in_lib->data, len);
+	  free(in_lib->data);
+
+	} else {
+	  ret_val = in_lib->len;
+
+	  if (ret_val)
+	    *buff_pptr = in_lib->data;
+	  else
+	    free(in_lib->data);
+	}
+	in_lib->data = 0;
+      }
+
+    jump_to_next_datagram:
+      if ((in_lib->next) &&
+	  (ses->handle->in_library == in_lib)) {
+	ses->handle->in_library = in_lib->next;
+	free(in_lib);
+	break;
+      } else {
+	if (ret_val)
+	  break;
+	if (((flags & MSG_DONTWAIT) ||
+	     (ses->nonblocking)) &&
+	    (! (flags & MSG_WAITALL))) {
+	  nbworks_errno = EAGAIN;
+	  ret_val = -1;
+	  break;
+	} else {
+	  if (ses->handle->isinconflict) {
+	    nbworks_errno = EPERM;
+	    ret_val = -1;
+	    break;
+	  } else {
+	    handle_dtg_timeout;
+	    handle_dtg_cancel;
+	    nanosleep(&sleeptime, 0);
+	    /* don't break */
+	  }
+	}
+      }
+    } else {
+      if (((flags & MSG_DONTWAIT) ||
+	   (ses->nonblocking)) &&
+	  (! (flags & MSG_WAITALL))) {
+	nbworks_errno = EAGAIN;
+	ret_val = -1;
+	break;
+      } else {
+	if (ses->handle->isinconflict) {
+	  nbworks_errno = EPERM;
+	  ret_val = -1;
+	  break;
+	} else {
+	  handle_dtg_timeout;
+	  handle_dtg_cancel;
+	  nanosleep(&sleeptime, 0);
+	  in_lib = ses->handle->in_library;
+	  /* don't break */
+	}
+      }
+    }
+
+    if (waitsteps > 0) {
+      waitsteps--;
+    }
+  } while ((! ret_val) ||
+	   (waitsteps != 0));
+
+  pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));
+  return ret_val;
 }
 
 void nbworks_cancel(nbworks_session_p sesp,

@@ -219,6 +219,13 @@ ssize_t
                    int callflags,
                    struct nbworks_nbnamelst **src);
 # define nbworks_recv(a, b, c, d, e) nbworks_recvfrom(a, b, c, d, e, 0)
+ssize_t
+  nbworks_recvwait(nbworks_session_p session,
+                   void **buff,
+                   size_t len,
+                   int callflags,
+                   int timeout,
+                   struct nbworks_nbnamelst **src);
 void
   nbworks_cancel(nbworks_session_p ses,
                  unsigned char what);
