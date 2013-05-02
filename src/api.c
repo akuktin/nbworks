@@ -1699,6 +1699,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
   } else {
     nbworks_errno = 0;
     ret_val = 0;
+    recved = 0;
 
     /* Turn off some flags. */
     flags = callflags & (ONES ^ (MSG_EOR | MSG_PEEK | MSG_ERRQUEUE));
@@ -1908,7 +1909,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 
     start_time = time(0);
 
-    recved = 0;
+    /* recved is already set. */
     notrecved = len;
     if (flags & MSG_OOB) {
       hndllen_left = &(ses->ooblen_left);
