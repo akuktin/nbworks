@@ -30,6 +30,10 @@ This function does not return a value.
 .SH NOTES
 All operations can be canceled except a send operation in a datagram
 session.
+.PP
+Since the cancelation signal is not removed untill a cancelation
+actually happens, it is possible for this function to cause a cancel
+for the next operation on the session.
 .SH "SEE ALSO"
 .BR nbworks (7),
 .BR nbworks_sendto (3),

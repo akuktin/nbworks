@@ -125,7 +125,7 @@ void
   nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename);
 struct nbworks_nbnamelst *
   nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbnodename);
-/* returns: 0 = equal, >0 = not equal, <0 = error */
+/* returns: 0 = equal, !0 = not equal */
 int
   nbworks_cmp_nbnodename(struct nbworks_nbnamelst *name_one,
                          struct nbworks_nbnamelst *name_two);

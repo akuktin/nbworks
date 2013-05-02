@@ -35,8 +35,9 @@ consulted. If it is non-zero, the call is accepted and added to the
 queue of pending calls. If \fItakes_field\fP is zero, then the caller
 is matched against an internal copy of the list provided by
 \fIlistento\fP. If it matches, the new session is accepted and added
-to the queue. If it does not match, the call is refused. To use the
-session, first remove it from the queue using
+to the queue. If it does not match, the call is refused.
+.PP
+To use the session, first remove it from the queue using
 \fBnbworks_accept_ses\fP().
 .SH "RETURN VALUE"
 This function returns a positive number if is succedes, zero if it
