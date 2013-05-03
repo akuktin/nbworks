@@ -320,7 +320,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
 
   case payloadpayload:
     if (! content->payload) {
-      BULLSHIT_IN_PACKET(4);
+      BULLSHIT_IN_PACKET(5);
       memset(field, 0, content->len);
       return endof_buff;
     }
