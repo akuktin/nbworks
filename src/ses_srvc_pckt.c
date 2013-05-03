@@ -234,7 +234,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
 					       unsigned char *endof_pckt) {
   struct ses_pckt_pyld_two_names *two_names_payload;
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
-  unsigned char *walker, *endof_buff, *save_walker;
+  unsigned char *walker, *endof_buff, *save_walker, *remember_walker;
 
   if (! (content && field))
     return field;

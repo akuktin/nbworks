@@ -249,11 +249,11 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
       return walker;
     normal_pckt = content->payload;
     if (((walker + normal_pckt->len +2+2) > endof_pckt) ||
-	(normal_pckt->len < 2)) {
+	(normal_pckt->len <= 2)) {
       if ((walker + normal_pckt->len +2+2) > endof_pckt) {
 	OUT_OF_BOUNDS(30);
       }
-      if (normal_pckt->len < 2) {
+      if (normal_pckt->len <= 2) {
 	BULLSHIT_IN_PACKET(5);
       }
       return walker;
