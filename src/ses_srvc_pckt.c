@@ -283,7 +283,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
       return field;
     }
     if (endof_buff > walker)
-      memset(walker, 0, (endof_buff, walker));
+      memset(walker, 0, (endof_buff - walker));
     return endof_buff;
     break;
 
