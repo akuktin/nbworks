@@ -672,6 +672,7 @@ int nbworks_release_railguard(nbworks_namestate_p namehandle) {
 
 nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle,
 					 struct nbworks_nbnamelst *defaultpeer) {
+  nbworks_session_p new_ses;
   struct name_state *handle;
   struct nbworks_nbnamelst *peer;
 
@@ -683,9 +684,11 @@ nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle,
     nbworks_errno = 0;
   }
 
+  /* FIXME: speed this up */
+
   if (defaultpeer) {
     if (defaultpeer->len < NETBIOS_NAME_LEN) {
-      peer = malloc(sizeof(*peer));
+      peer = malloc(sizeof(struct nbworks_nbnamelst));
       if (! peer) {
 	nbworks_errno = ENOBUFS;
 	return 0;
@@ -699,6 +702,7 @@ nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle,
       memcpy(peer->name, defaultpeer->name, defaultpeer->len);
       memset((peer->name + defaultpeer->len), ' ',
 	     (NETBIOS_NAME_LEN - defaultpeer->len));
+      peer->len = NETBIOS_NAME_LEN;
     } else {
       peer = nbworks_clone_nbnodename(defaultpeer);
       if (peer->next_name)
@@ -714,7 +718,9 @@ nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle,
   } else
     peer = 0;
 
-  return lib_make_session(-1, peer, namehandle, FALSE);
+  new_ses = lib_make_session(-1, peer, namehandle, FALSE);
+  nbworks_dstr_nbnodename(peer);
+  return new_ses;
 }
 
 
