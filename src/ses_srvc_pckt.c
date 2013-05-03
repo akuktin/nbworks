@@ -37,7 +37,7 @@ struct ses_srvc_packet *read_ses_srvc_pckt_header(unsigned char **master_packet_
     return 0;
 
   if ((*master_packet_walker + 4) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(43);
     /* TODO: errno signaling stuff */
     return 0;
   }
@@ -79,7 +79,7 @@ unsigned char *fill_ses_packet_header(struct ses_srvc_packet *content,
   walker = field;
 
   if ((walker +4) > endof_pckt) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(44);
     /* TODO: errno signaling stuff */
     return walker;
   }
@@ -108,22 +108,27 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
   if (! master_packet_walker)
     return 0;
 
-  if ((! *master_packet_walker) ||
-      (*master_packet_walker < start_of_packet) ||
+  if ((*master_packet_walker < start_of_packet) ||
       (*master_packet_walker > end_of_packet)) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(45);
     /* TODO: errno signaling stuff */
     packet->payload_t = unknown_ses;
     return 0;
   }
 
   walker = *master_packet_walker;
+  if ((walker + packet->len) > end_of_packet) {
+    OUT_OF_BOUNDS(46);
+    *master_packet_walker = end_of_packet;
+    return 0;
+  } else
+    *master_packet_walker = walker + packet->len;
 
   switch (understand_ses_pckt_type(packet->type)) {
   case two_names:
     packet->payload_t = two_names;
     if ((walker +2) > end_of_packet) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(47);
       /* TODO: errno signaling stuff */
       return 0;
     }
@@ -140,7 +145,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
       read_all_DNS_labels(&walker, start_of_packet, end_of_packet,
                           0, 0, 0, 0);
     if (! two_names_payload->called_name) {
-      /* TODO: errno signaling stuff */
+      DIDNT_READ_NAME(5);
       free(two_names_payload);
       return 0;
     }
@@ -148,7 +153,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
     walker = align(remember_walker, walker, 4);
 
     if ((walker +1) > end_of_packet) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(48);
       /* TODO: errno signaling stuff */
       free(two_names_payload->called_name);
       free(two_names_payload);
@@ -159,14 +164,13 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
       read_all_DNS_labels(&walker, start_of_packet, end_of_packet,
                           0, 0, 0, 0);
     if (! two_names_payload->calling_name) {
+      DIDNT_READ_NAME(6);
       /* TODO: errno signaling stuff */
       free(two_names_payload->called_name);
       free(two_names_payload);
       return 0;
     }
 
-    /* No aligning do the 32-bit boundary in this case. */
-    *master_packet_walker = walker;
     return two_names_payload;
     break;
 
@@ -179,7 +183,8 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
     packet->payload_t = error_code_ses;
     if (walker < end_of_packet) {
       packet->error_code = *walker;
-      *master_packet_walker = walker +1;
+    } else {
+      OUT_OF_BOUNDS(49);
     }
     return 0;
     break;
@@ -187,7 +192,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
   case retarget_blob_rfc1002:
     packet->payload_t = retarget_blob_rfc1002;
     if ((walker + 4 + 2) > end_of_packet) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(50);
       /* TODO: errno signaling stuff */
       return 0;
     }
@@ -199,24 +204,18 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
 
     walker = read_32field(walker, &(retarget_payload->new_address));
     walker = read_16field(walker, &(retarget_payload->new_port));
-    *master_packet_walker = walker;
     return retarget_payload;
     break;
 
   case payloadpayload:
     packet->payload_t = payloadpayload;
-    if ((walker + packet->len) > end_of_packet) {
-      /* OUT_OF_BOUNDS */
-      /* TODO: errno signaling stuff */
-      return 0;
-    }
+    /* Bounds already checked. */
     payload_ptr = malloc(packet->len);
     if (! payload_ptr) {
       /* TODO: errno signaling stuff */
       return packet;
     }
-    *master_packet_walker = mempcpy(payload_ptr, walker,
-				    packet->len);
+    memcpy(payload_ptr, walker, packet->len);
     return payload_ptr;
     break;
 
@@ -235,86 +234,112 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
 					       unsigned char *endof_pckt) {
   struct ses_pckt_pyld_two_names *two_names_payload;
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
-  unsigned char *walker, *remember_walker;
+  unsigned char *walker, *endof_buff;
 
   if (! (content && field))
     return field;
 
+  if ((field + content->len) > endof_pckt) {
+    OUT_OF_BOUNDS(51);
+    return field;
+  }
   walker = field;
+  endof_buff = walker + content->len;
 
   switch (content->payload_t) {
   case two_names:
-    if (! content->payload)
-      return walker;
-    two_names_payload = content->payload;
-    if ((walker +2) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
-      /* TODO: errno signaling stuff */
-      return walker;
+    if (! content->payload) {
+      BULLSHIT_IN_PACKET(4);
+      memset(field, 0, content->len);
+      return endof_buff;
     }
-    remember_walker = walker +1;
+
+    two_names_payload = content->payload;
+    if ((walker +2) > endof_buff) {
+      OUT_OF_BOUNDS(52);
+      memset(field, 0, content->len);
+      return field;
+    }
+
     walker = fill_all_DNS_labels(two_names_payload->called_name, walker,
 				 endof_pckt, 0);
 
-    walker = align(remember_walker, walker, 4);
-    if ((walker +1) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
-      /* TODO: errno signaling stuff */
-      return walker;
+    if ((walker +1) > endof_buff) {
+      OUT_OF_BOUNDS(53);
+      memset(field, 0, content->len);
+      return field;
     }
-    return fill_all_DNS_labels(two_names_payload->calling_name, walker,
-			       endof_pckt, 0);
+
+    walker = fill_all_DNS_labels(two_names_payload->calling_name, walker,
+				 endof_pckt, 0);
+    if (walker > endof_buff) {
+      OUT_OF_BOUNDS(54);
+      memset(field, 0, content->len);
+      return field;
+    }
+    return endof_buff;
     break;
 
   case null:
-    return walker;
+    memset(field, 0, content->len);
+    return endof_buff;
     break;
 
   case error_code_ses:
-    if ((walker +1) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
-      /* TODO: errno signaling stuff */
-      return walker;
+    if ((walker +1) > endof_buff) {
+      OUT_OF_BOUNDS(55);
+      memset(field, 0, content->len);
+      return field;
     }
     *walker = content->error_code;
     walker++;
-    return walker;
+    if (endof_buff > walker)
+      memset(walker, 0, (endof_buff - walker));
+    return endof_buff;
     break;
 
   case retarget_blob_rfc1002:
-    if (! content->payload)
-      return walker;
-    if ((walker +4+2) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
-      /* TODO: errno signaling stuff */
-      return walker;
+    if (! content->payload) {
+      BULLSHIT_IN_PACKET(4);
+      memset(field, 0, content->len);
+      return endof_buff;
+    }
+
+    if ((walker +4+2) > endof_buff) {
+      OUT_OF_BOUNDS(56);
+      memset(field, 0, content->len);
+      return field;
     }
     retarget_payload = content->payload;
     walker = fill_32field(retarget_payload->new_address, walker);
     walker = fill_16field(retarget_payload->new_port, walker);
-    return walker;
+    if (endof_buff > walker)
+      memset(walker, 0, (endof_buff - walker));
+    return endof_buff;
     break;
 
   case payloadpayload:
-    if (! content->payload)
-      return walker;
-    if ((walker + content->len) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
-      /* TODO: errno signaling stuff */
-      return walker;
+    if (! content->payload) {
+      BULLSHIT_IN_PACKET(4);
+      memset(field, 0, content->len);
+      return endof_buff;
     }
+
+    /* Bounds already checked. */
     walker = mempcpy(walker, content->payload, content->len);
     return walker;
     break;
 
   case bad_type_ses:
   default:
-    return walker;
+    memset(field, 0, content->len);
+    return endof_buff;
     break;
   }
 
   /* Never reached. */
-  return walker;
+  memset(field, 0, content->len);
+  return endof_buff;
 }
 
 inline enum ses_packet_payload_t understand_ses_pckt_type(unsigned char type_octet) {
@@ -380,7 +405,7 @@ struct ses_srvc_packet *master_ses_srvc_pckt_reader(void *packet,
 
 /* Call with whole packet, len is total len of whole packet. */
 struct nbworks_nbnamelst *ses_srvc_get_calledname(void *packet,
-						unsigned long len) {
+						  unsigned long len) {
   unsigned char *walker, *startof_pckt;
 
   if ((! packet) ||
@@ -396,7 +421,7 @@ struct nbworks_nbnamelst *ses_srvc_get_calledname(void *packet,
 
 /* Call with whole packet, len is total len of whole packet. */
 struct nbworks_nbnamelst *ses_srvc_get_callingname(void *packet_ptr,
-						 unsigned long len) {
+						   unsigned long len) {
   unsigned char *packet;
   unsigned char *walker;
 
@@ -412,6 +437,10 @@ struct nbworks_nbnamelst *ses_srvc_get_callingname(void *packet_ptr,
   fastfrwd_all_DNS_labels(&walker, packet+len);
 
   align(packet, walker, 4);
+  if (walker >= (packet + len)) {
+    OUT_OF_BOUNDS(57);
+    return 0;
+  }
 
   return read_all_DNS_labels(&walker, packet, (packet + len), 0, 0, 0, 0);
 }
@@ -425,6 +454,10 @@ void *master_ses_srvc_pckt_writer(void *packet_ptr,
   if (! (packet_ptr && pckt_len)) {
     /* TODO: errno signaling stuff */
     return 0;
+  }
+  if (*pckt_len < SES_HEADER_LEN) {
+    *pckt_len = 0;
+    return packet_ptr;
   }
 
   packet = packet_ptr;

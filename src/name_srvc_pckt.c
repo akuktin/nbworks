@@ -45,7 +45,7 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_
 
   if ((! *master_packet_walker) ||
       ((*master_packet_walker + 6 * 2) > end_of_packet)) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(1);
     //    *do_kill_yourself = TRUE;
     return 0;
   }
@@ -88,7 +88,7 @@ unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *he
   walker = field;
 
   if ((walker + 6*2) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(2);
     //    *do_kill_yourself = TRUE;
     return walker;
   }
@@ -122,7 +122,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   if ((! *master_packet_walker) ||
       (*master_packet_walker < start_of_packet) ||
       (*master_packet_walker >= end_of_packet)) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(3);
     //    *do_kill_yourself = TRUE;
     return 0;
   }
@@ -153,6 +153,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
 				       start_of_packet, end_of_packet,
 				       0, 0, 0, 0);
   if (! question->name) {
+    DIDNT_READ_NAME(1);
     //    *do_kill_yourself = TRUE;
     return 0;
   }
@@ -161,7 +162,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
   walker = align(remember_walker, *master_packet_walker, 4);
 
   if ((walker + 2 * 2) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(4);
     //    *do_kill_yourself = TRUE;
     nbworks_dstr_nbnodename(question->name);
     free(question);
@@ -192,7 +193,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
   }
 
   if ((walker +1 +1 +4) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(5);
     //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
@@ -201,7 +202,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 
   walker = fill_all_DNS_labels(question->name, walker, end_of_packet, 0);
   if (walker == field) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(6);
     //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
@@ -213,7 +214,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
   walker = align(field, walker, 4);
 
   if ((walker +4) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(7);
     //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
@@ -240,7 +241,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   if ((! *master_packet_walker) ||
       (*master_packet_walker < start_of_packet) ||
       (*master_packet_walker >= end_of_packet)) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(8);
     //    *do_kill_yourself = TRUE;
     return 0;
   }
@@ -258,6 +259,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
 				       start_of_packet, end_of_packet,
 				       0, 0, 0, 0);
   if (! resource->name) {
+    DIDNT_READ_NAME(2);
     //    *do_kill_yourself = TRUE;
     free(resource);
     return 0;
@@ -267,7 +269,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   walker = align(remember_walker, *master_packet_walker, 4);
 
   if ((walker + ((2*2)+4+2)) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(9);
     //    *do_kill_yourself = TRUE;
     nbworks_dstr_nbnodename(resource->name);
     free(resource);
@@ -305,7 +307,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 
   walker = fill_all_DNS_labels(resource->name, walker, end_of_packet, 0);
   if (walker == field) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(10);
     //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
@@ -317,7 +319,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
   walker = align(field, walker, 4);
 
   if ((walker +3*2+4+ resource->rdata_len) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(11);
     //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
@@ -336,6 +338,7 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 		       end_of_packet : (walker +VIRTUAL_OVERHANG +resource->rdata_len)));
 
   if (walker > (save_walker + resource->rdata_len)) {
+    OUT_OF_BOUNDS(12);
     /* Overflow. */
     /* Hypothesis #1: the data itself is fucked up, probably a loose pointer.
      *                This implies that we are currently undergoing a fandago-on-core
@@ -370,7 +373,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   if ((! *start_and_end_of_walk) ||
       (*start_and_end_of_walk < start_of_packet) ||
       (*start_and_end_of_walk + resource->rdata_len) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(13);
     //    *do_kill_yourself = TRUE;
     return 0;
   }
@@ -407,7 +410,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   case nb_nodename:
     resource->rdata_t = nb_nodename;
     if (! resource->rdata_len) {
-      /* BULLSHIT_IN_PACKET */
+      BULLSHIT_IN_PACKET(1);
       return 0;
     }
     weighted_companion_cube = *start_and_end_of_walk;
@@ -451,7 +454,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   case nb_statistics_rfc1002:
     resource->rdata_t = nb_statistics_rfc1002;
     if (! resource->rdata_len) {
-      /* BULLSHIT_IN_PACKET */
+      BULLSHIT_IN_PACKET(2);
       return 0;
     }
     walker = *start_and_end_of_walk;
@@ -482,7 +485,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       nbstat->listof_names = listof_names;
       while (0xbeefbeef) {
 	if (walker >= end_of_packet) {
-	  /* OUT_OF_BOUNDS */
+	  OUT_OF_BOUNDS(14);
 	  //	  *do_kill_yourself = TRUE;
 	  abort_stats;
 	  return 0;
@@ -492,7 +495,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
                               0, 0, 0, 0);
 	walker = align(weighted_companion_cube, walker, 4);
 	if ((walker + 2) > end_of_packet) {
-	  /* OUT_OF_BOUNDS */
+	  OUT_OF_BOUNDS(15);
 	  //	  *do_kill_yourself = TRUE;
 	  abort_stats;
 	  return 0;
@@ -522,7 +525,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     /* ********************************************************** */
 
     if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(16);
       //      *do_kill_yourself = TRUE;
       abort_stats;
       return 0;
@@ -598,7 +601,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
   walker = field;
 
   if ((walker + content->rdata_len) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(17);
     //    *do_kill_yourself = TRUE;
     return walker;
   }
@@ -625,7 +628,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
   case nb_nodename:
     walker = fill_all_DNS_labels(content->rdata, walker, end_of_packet, 0);
     if (walker == field) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(18);
       memset(field, 0, content->rdata_len);
       return (field + content->rdata_len);
     }
@@ -649,7 +652,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     if ((walker + SIZEOF_STATRFC1002_BLOCK +
 	 (nbstat->numof_names * (1+NETBIOS_CODED_NAME_LEN +2)))
 	> end_of_packet) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(19);
       //      *do_kill_yourself = TRUE;
       memset(field, 0, content->rdata_len);
       return (field + content->rdata_len);
@@ -660,7 +663,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
     while (names) {
       walker = fill_all_DNS_labels(names->nbnodename, walker, end_of_packet, 0);
       if (walker == field) {
-	/* OUT_OF_BOUNDS */
+	OUT_OF_BOUNDS(20);
 	//	*do_kill_yourself = TRUE;
 	memset(field, 0, (((walker-field) > content->rdata_len) ?
 			  (walker-field) : content->rdata_len));
@@ -670,7 +673,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       save_walker = walker;
       walker = align(field, walker, 4);
       if ((walker + 2 + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
-	/* OUT_OF_BOUNDS */
+	OUT_OF_BOUNDS(21);
 	//	*do_kill_yourself = TRUE;
 	memset(field, 0, (((save_walker-field) > content->rdata_len) ?
 			  (save_walker-field) : content->rdata_len));
@@ -681,7 +684,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       names = names->next_nbnodename;
     }
     if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(22);
       //      *do_kill_yourself = TRUE;
       memset(field, 0, (((walker-field) > content->rdata_len) ?
 			(walker-field) : content->rdata_len));

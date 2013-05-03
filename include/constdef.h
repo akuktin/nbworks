@@ -149,4 +149,20 @@ typedef unsigned short node_type_t;
 
 extern ipv4_addr_t nbworks__myip4addr;
 
+
+/* DEBUG */
+# ifdef VISIBLE_BREAKERS
+#  include <stdio.h>
+#  define OUT_OF_BOUNDS(a) { \
+     fprintf(stderr, "OUT_OF_BOUNDS  location id: %i\n", a); };
+#  define BULLSHIT_IN_PACKET(a) { \
+     fprintf(stderr, "BULLSHIT_IN_PACKET  location id: %i\n", a); };
+#  define DIDNT_READ_NAME(a) { \
+     fprintf(stderr, "DIDNT_READ_NAME  location id: %i\n", a); };
+# else
+#  define OUT_OF_BOUNDS(a)
+#  define BULLSHIT_IN_PACKET(a)
+#  define DIDNT_READ_NAME(a)
+# endif
+
 #endif /* NBWORKS_CONSTDEF_H */

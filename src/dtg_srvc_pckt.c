@@ -38,7 +38,7 @@ struct dtg_srvc_packet *read_dtg_packet_header(unsigned char **master_packet_wal
 
   if ((! *master_packet_walker) ||
       ((*master_packet_walker + 10) > end_of_packet)) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(23);
     /* TODO: errno signaling stuff */
     return 0;
   }
@@ -75,7 +75,7 @@ unsigned char *fill_dtg_packet_header(struct dtg_srvc_packet *content,
   walker = field;
 
   if ((walker + 5*2) > endof_pckt) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(24);
     /* TODO: errno signaling stuff */
     return walker;
   }
@@ -105,7 +105,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
   /* There must be at least one octet for us to read. */
   if (*master_packet_walker > end_of_packet ||
       *master_packet_walker < start_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(25);
     /* TODO: errno signaling stuff */
     return 0;
   }
@@ -116,7 +116,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
   case normal:
     packet->payload_t = normal;
     if ((walker + 2 + (2*2)) > end_of_packet) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(26);
       /* TODO: errno signaling stuff */
       return 0;
     }
@@ -128,9 +128,9 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
     walker = read_16field(walker, &(normal_pckt->len));
     walker = read_16field(walker, &(normal_pckt->offset));
-    if ((normal_pckt->len >= 2) &&
+    if ((normal_pckt->len <= 2) ||
 	((walker + normal_pckt->len) > end_of_packet)) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(27);
       /* TODO: errno signaling stuff */
       free(normal_pckt);
       return 0;
@@ -142,7 +142,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     normal_pckt->src_name = read_all_DNS_labels(&walker, start_of_packet,
 						end_of_packet, 0, 0, 0, 0);
     if (! normal_pckt->src_name) {
-      /* OUT_OF_BOUNDS */
+      DIDNT_READ_NAME(3);
       /* TODO: errno signaling stuff */
       free(normal_pckt);
       return 0;
@@ -150,7 +150,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
     walker = align(remember_walker, walker, 4);
     if (walker >= endof_buff) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(28);
       /* TODO: errno signaling stuff */
       nbworks_dstr_nbnodename(normal_pckt->src_name);
       free(normal_pckt);
@@ -161,7 +161,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     normal_pckt->dst_name = read_all_DNS_labels(&walker, start_of_packet,
 						end_of_packet, 0, 0, 0, 0);
     if (! normal_pckt->dst_name) {
-      /* OUT_OF_BOUNDS */
+      DIDNT_READ_NAME(4);
       /* TODO: errno signaling stuff */
       nbworks_dstr_nbnodename(normal_pckt->src_name);
       free(normal_pckt);
@@ -172,7 +172,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     walker = align(remember_walker, walker, 4);
 
     if (walker > endof_buff) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(29);
       /* TODO: errno signaling stuff */
       nbworks_dstr_nbnodename(normal_pckt->src_name);
       nbworks_dstr_nbnodename(normal_pckt->dst_name);
@@ -247,8 +247,8 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     if (! content->payload)
       return walker;
     normal_pckt = content->payload;
-    if ((walker + normal_pckt->len +2) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
+    if ((walker + normal_pckt->len) > endof_pckt) {
+      OUT_OF_BOUNDS(30);
       /* TODO: errno signaling stuff */
       return walker;
     }
@@ -263,7 +263,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     save_walker = walker;
     walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->lenof_data +1) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(31);
       /* TODO: errno signaling stuff */
       memset(field, 0, (save_walker-field));
       return field;
@@ -275,7 +275,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     save_walker = walker;
     walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->lenof_data) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(32);
       /* TODO: errno signaling stuff */
       memset(field, 0, (save_walker-field));
       return field;
@@ -287,7 +287,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
 
   case error_code:
     if ((walker +1) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(33);
       /* TODO: errno signaling stuff */
       return walker;
     }

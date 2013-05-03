@@ -211,7 +211,7 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
    * problem. It does, however, expose us to failure on architectures where one
    * is not allowed to use pointers will-nilly, for example, in cases where an
    * architecture prevents the function to use a single pointer type for objects
-   * on the stack an objects on the heap. */
+   * on the stack and objects on the heap. */
   struct pointer_clip {
     unsigned int offset;
     struct pointer_clip *next;
@@ -322,7 +322,8 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
     if (*walker <= MAX_DNS_LABEL_LEN) {
       name_len = *walker;
       if ((walker + name_len +1) >= end_of_packet) {
-	/* OUT_OF_BOUNDS */
+	/* That +1 is to account for the labels' len field */
+	OUT_OF_BOUNDS(34);
 	handle_abort;
       }
 
@@ -351,7 +352,7 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
 
     } else { /* that is, *walker > MAX_DNS_LABEL_LEN */
       if ((walker +1) >= end_of_packet) {
-	/* OUT_OF_BOUNDS */
+	OUT_OF_BOUNDS(35);
 	handle_abort;
       }
 
@@ -439,7 +440,7 @@ unsigned char *fill_all_DNS_labels(struct nbworks_nbnamelst *content,
   /* I have to check if I can fit the terminating 0 into
    * the packet here because content may be NULL. */
   if ((walker +1) > endof_pckt) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(36);
     /* TODO: errno signaling stuff */
     return walker;
   }
@@ -454,7 +455,7 @@ unsigned char *fill_all_DNS_labels(struct nbworks_nbnamelst *content,
 
   while (iterator) {
     if (iterator->len > MAX_DNS_LABEL_LEN) {
-      /* BULLSHIT_IN_PACKET */
+      BULLSHIT_IN_PACKET(3);
       /* TODO: errno signaling stuff */
       if (state)
 	*state = 0;
@@ -464,7 +465,7 @@ unsigned char *fill_all_DNS_labels(struct nbworks_nbnamelst *content,
     /* field + 1 octet for the len + 1 octet for the
      * terminating 0 + the len of the label */
     if ((field + 2 + iterator->len) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(37);
       /* TODO: errno signaling stuff */
       if (state) {
 	*state = iterator;
@@ -534,17 +535,19 @@ struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk
   unsigned char *walker;
 
   if ((*start_and_end_of_walk + len_of_addresses) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(38);
     /* TODO: errno signaling stuff */
     *start_and_end_of_walk = end_of_packet;
     return 0;
   }
 
+  walker = *start_and_end_of_walk;
+
+  *start_and_end_of_walk = walker + len_of_addresses;
   if (len_of_addresses < 2) {
-    *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
     return 0;
   }
-  walker = *start_and_end_of_walk;
+
 
   return_result = malloc(sizeof(struct nbaddress_list));
   if (! return_result) {
@@ -566,7 +569,7 @@ struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk
     } else {
       result->there_is_an_address = FALSE;
       /* Presumably, this is the end of the list. */
-      /* Master packet walker is updated before the return. */
+      /* Master packet walker is already updated. */
       result->next_address = 0;
       break;
     }
@@ -590,8 +593,6 @@ struct nbaddress_list *read_nbaddress_list(unsigned char **start_and_end_of_walk
 
   }
 
-  *start_and_end_of_walk = walker + len_of_addresses;
-
   return return_result;
 }
 
@@ -601,7 +602,7 @@ unsigned char *fill_nbaddress_list(struct nbaddress_list *content,
   while (content) {
     if (content->there_is_an_address == TRUE) {
       if ((walker +6) > endof_pckt) {
-	/* OUT_OF_BOUNDS */
+	OUT_OF_BOUNDS(39);
 	/* TODO: errno signaling stuff */
 	return walker;
       }
@@ -609,7 +610,7 @@ unsigned char *fill_nbaddress_list(struct nbaddress_list *content,
       walker = fill_32field(content->address, walker);
     } else {
       if ((walker +2) > endof_pckt) {
-	/* OUT_OF_BOUNDS */
+	OUT_OF_BOUNDS(40);
 	/* TODO: errno signaling stuff */
 	return walker;
       }
@@ -640,22 +641,21 @@ struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_w
   unsigned char *walker;
 
   if ((*start_and_end_of_walk + len_of_addresses) > end_of_packet) {
-    /* OUT_OF_BOUNDS */
+    OUT_OF_BOUNDS(41);
     /* TODO: errno signaling stuff */
     *start_and_end_of_walk = end_of_packet;
     return 0;
   }
 
+  walker = *start_and_end_of_walk;
+  *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
   if (len_of_addresses < 4) {
-    *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
     return 0;
   }
-  walker = *start_and_end_of_walk;
 
   return_result = malloc(sizeof(struct nbaddress_list));
   if (! return_result) {
     /* TODO: errno signaling stuff */
-    *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
     return 0;
   }
   return_result->next_address = 0;
@@ -674,17 +674,14 @@ struct nbaddress_list *read_ipv4_address_list(unsigned char **start_and_end_of_w
 	  free(return_result);
 	  return_result = result;
 	}
-        *start_and_end_of_walk = *start_and_end_of_walk +len_of_addresses;
 	return 0;
       }
       result = result->next_address;
-      result->next_address = 0;
     } else {
+      result->next_address = 0;
       break;
     }
   }
-
-  *start_and_end_of_walk = walker + len_of_addresses;
 
   return return_result;
 }
@@ -694,7 +691,7 @@ unsigned char *fill_ipv4_address_list(struct nbaddress_list *content,
 				      unsigned char *endof_pckt) {
   while (content) {
     if ((walker +4) > endof_pckt) {
-      /* OUT_OF_BOUNDS */
+      OUT_OF_BOUNDS(42);
       /* TODO: errno signaling stuff */
       return walker;
     }
