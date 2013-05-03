@@ -570,6 +570,8 @@ int name_srvc_enter_conflict(unsigned char group_flg,
 
   ss__kill_allservrs(name_ptr, scope);
 
+  /* FIXME: signal sender goes here --> */
+
   return 1;
 }
 

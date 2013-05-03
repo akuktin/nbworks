@@ -2774,7 +2774,7 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 		  cache_namecard->timeof_death = 0;
 		else {
 		  /* Impossible. */
-		  name_srcv_enter_conflict(ISGROUP_NO, cache_namecard,
+		  name_srvc_enter_conflict(ISGROUP_NO, cache_namecard,
 					   decoded_name,
 					   res->res->name->next_name);
 		}
