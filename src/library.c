@@ -587,7 +587,8 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 
   /* Which FUCKING IDIOT came up with the idea to include
    * the length of the names in the datagram_length field??? */
-  names_len = ((1+NETBIOS_CODED_NAME_LEN) *2) + (handle->lenof_scope *2);
+  names_len = align_incr(0, (1 + NETBIOS_CODED_NAME_LEN +
+			     handle->lenof_scope), 4)*2;
   /* ALIGNMENT */
   hdr_len = DTG_HDR_LEN + 2 + 2 + names_len;
 

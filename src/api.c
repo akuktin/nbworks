@@ -76,13 +76,15 @@ unsigned long nbworks_maxdtglen(nbworks_namestate_p handle,
   long result;
 
   result = nbworks_libcntl.dtg_max_wholefrag_len -
-    (DTG_HDR_LEN + (2 + 2 + (2*(1+NETBIOS_CODED_NAME_LEN))));
+    (DTG_HDR_LEN + (2 + 2));
 
   name = handle;
   if (name)
-    result = result - (2*name->lenof_scope);
+    result = result - (2 * align_incr(0, (1 + NETBIOS_CODED_NAME_LEN +
+					  name->lenof_scope), 4));
   else
-    result = result - 2;
+    result = result - (2 * align_incr(0, (1 + NETBIOS_CODED_NAME_LEN +
+					  1), 4));
 
   if (result > 0) {
     if (withfrag)
