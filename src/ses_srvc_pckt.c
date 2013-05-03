@@ -234,7 +234,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
 					       unsigned char *endof_pckt) {
   struct ses_pckt_pyld_two_names *two_names_payload;
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
-  unsigned char *walker, *endof_buff;
+  unsigned char *walker, *endof_buff, *save_walker;
 
   if (! (content && field))
     return field;
@@ -261,14 +261,19 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
       return field;
     }
 
+    remember_walker = walker +1;
     walker = fill_all_DNS_labels(two_names_payload->called_name, walker,
 				 endof_pckt, 0);
 
+    save_walker = walker;
+    walker = align(remember_walker, walker, 4);
     if ((walker +1) > endof_buff) {
       OUT_OF_BOUNDS(53);
       memset(field, 0, content->len);
       return field;
     }
+    if (save_walker < walker)
+      memset(save_walker, 0, (walker - save_walker));
 
     walker = fill_all_DNS_labels(two_names_payload->calling_name, walker,
 				 endof_pckt, 0);
@@ -277,6 +282,8 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
       memset(field, 0, content->len);
       return field;
     }
+    if (endof_buff > walker)
+      memset(walker, 0, (endof_buff, walker));
     return endof_buff;
     break;
 
@@ -326,8 +333,8 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
     }
 
     /* Bounds already checked. */
-    walker = mempcpy(walker, content->payload, content->len);
-    return walker;
+    memcpy(walker, content->payload, content->len);
+    return endof_buff;
     break;
 
   case bad_type_ses:

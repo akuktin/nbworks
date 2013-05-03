@@ -1200,15 +1200,9 @@ int lib_open_session(struct name_state *handle,
   twins.called_name = her;
   twins.calling_name = name_id;
 
-  lenof_pckt = (2 * (1+ NETBIOS_CODED_NAME_LEN)) +
-    (2 * handle->lenof_scope);
-
-  if (nbworks_do_align) {
-    /* Questions, questions: if I leave it like this, how
-     * many NetBIOS implementations are going to choke on it? */
-    /* Choking hazard: trailing octets behind the end of the last name. */
-    lenof_pckt = lenof_pckt + (2 * 4);
-  }
+  lenof_pckt = 2 * align(0, (1 + NETBIOS_CODED_NAME_LEN +
+			     handle->lenof_scope),
+			 4);
 
   pckt.len = lenof_pckt;
   pckt.type = SESSION_REQUEST;
