@@ -123,8 +123,11 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   lenof_scope = nbworks_nbnodenamelen(scope);
   if ((lenof_scope + (1+NETBIOS_CODED_NAME_LEN)) >
       ARBITRARY_MAXIMUM_LENOF_NAME) {
-    nbworks_errno = EOVERFLOW;
+    nbworks_errno = EINVAL;
     return 0;
+  }
+  if (*name == '*') {
+    nbworks_errno = EINVAL;
   }
 
   result = calloc(1, sizeof(struct name_state));
