@@ -1724,7 +1724,6 @@ ssize_t nbworks_recvfrom(unsigned char service,
   } else {
     nbworks_errno = 0;
     ret_val = 0;
-    recved = 0;
 
     /* Turn off some flags. */
     flags = callflags & (ONES ^ (MSG_EOR | MSG_PEEK | MSG_ERRQUEUE));
@@ -1746,7 +1745,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
     if (end_time < time(0)) {						\
       nbworks_errno = ETIME;						\
       pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));		\
-      return recved;							\
+      return -1;							\
     }
 
     if (! ses->handle) {
@@ -1849,7 +1848,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	     * been disemboweled. */
 	    ses->handle->in_library = in_lib->next;
 	    free(in_lib);
-	    in_lib = ses_handle->in_library;
+	    in_lib = ses->handle->in_library;
 	  } else {
 	    in_lib = in_lib->next;
 	  }
@@ -1953,7 +1952,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 
     start_time = time(0);
 
-    /* recved is already set. */
+    recved = 0;
     notrecved = len;
     if (flags & MSG_OOB) {
       hndllen_left = &(ses->ooblen_left);
@@ -2242,6 +2241,7 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
   long waitsteps;
   int flags;
   time_t start_time, end_time;
+  struct packet_cooked *in_lib;
 
   ses = session;
   if ((! (session && buff_pptr)) ||
@@ -2252,7 +2252,6 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
   } else {
     nbworks_errno = 0;
     ret_val = 0;
-    recved = 0;
 
     /* Turn off some flags. */
     flags = callflags & (ONES ^ (MSG_EOR | MSG_PEEK | MSG_ERRQUEUE));
@@ -2272,7 +2271,7 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
   if (end_time < time(0)) {						\
     nbworks_errno = ETIME;						\
     pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));		\
-    return recved;							\
+    return -1;							\
   }
 
   if (! ses->handle) {
@@ -2385,7 +2384,7 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
 	   * been disemboweled. */
 	  ses->handle->in_library = in_lib->next;
 	  free(in_lib);
-	  in_lib = ses_handle->in_library;
+	  in_lib = ses->handle->in_library;
 	} else {
 	  in_lib = in_lib->next;
 	}
