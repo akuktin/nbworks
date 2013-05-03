@@ -2401,9 +2401,8 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
       } else {
 	if (ret_val)
 	  break;
-	if (((flags & MSG_DONTWAIT) ||
-	     (ses->nonblocking)) &&
-	    (! (flags & MSG_WAITALL))) {
+	if ((! (flags & MSG_WAITALL)) &&
+	    (flags & MSG_DONTWAIT)) {
 	  nbworks_errno = EAGAIN;
 	  ret_val = -1;
 	  break;
@@ -2425,9 +2424,8 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
 	}
       }
     } else {
-      if (((flags & MSG_DONTWAIT) ||
-	   (ses->nonblocking)) &&
-	  (! (flags & MSG_WAITALL))) {
+      if ((! (flags & MSG_WAITALL)) &&
+	  (flags & MSG_DONTWAIT)) {
 	nbworks_errno = EAGAIN;
 	ret_val = -1;
 	break;
