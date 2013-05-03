@@ -93,6 +93,13 @@ struct cache_namenode *
 void
   destroy_namecard(struct cache_namenode *namecard);
 
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  name_srvc_enter_conflict(unsigned char group_flg,
+                           struct cache_namenode *namecard,
+                           unsigned char *name_ptr, /* len == NETBIOS_NAME_LEN */
+                           struct nbworks_nbnamelst *scope);
+
 struct ipv4_addr_list *
   merge_addrlists(struct ipv4_addr_list *master,
                   struct ipv4_addr_list *mergee);

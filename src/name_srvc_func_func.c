@@ -2714,9 +2714,10 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 		if (! cache_namecard->grp_tokens)
 		  cache_namecard->timeof_death = 0;
 		else {
-		  cache_namecard->grp_isinconflict = TRUE;  /* WRONG! But how do I fix it? */
-		  ss__kill_allservrs(decoded_name,
-				     res->res->name->next_name);
+		  /* WRONG! But how do I fix it? */
+		  name_srvc_enter_conflict(ISGROUP_YES, cache_namecard,
+					   decoded_name,
+					   res->res->name->next_name);
 		}
 		break;
 	      }
@@ -2773,9 +2774,9 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 		  cache_namecard->timeof_death = 0;
 		else {
 		  /* Impossible. */
-		  cache_namecard->unq_isinconflict = TRUE;
-		  ss__kill_allservrs(decoded_name,
-				     res->res->name->next_name);
+		  name_srcv_enter_conflict(ISGROUP_NO, cache_namecard,
+					   decoded_name,
+					   res->res->name->next_name);
 		}
 		break;
 	      }
@@ -2861,9 +2862,10 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 				      res->res->name->next_name);
 	if (cache_namecard) {
 	  if (cache_namecard->grp_tokens) {
-	    cache_namecard->grp_isinconflict = TRUE; /* WRONG ? */
-	    ss__kill_allservrs(decoded_name,
-			       res->res->name->next_name);
+	    /* WRONG ? */
+	    name_srvc_enter_conflict(ISGROUP_YES, cache_namecard,
+				     decoded_name,
+				     res->res->name->next_name);
 	  }
 	}
       }
@@ -2876,9 +2878,9 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 				      res->res->name->next_name);
 	if (cache_namecard) {
 	  if (cache_namecard->unq_token) {
-	    cache_namecard->unq_isinconflict = TRUE;
-	    ss__kill_allservrs(decoded_name,
-			       res->res->name->next_name);
+	    name_srvc_enter_conflict(ISGROUP_NO, cache_namecard,
+				     decoded_name,
+				     res->res->name->next_name);
 	  }
 	}
       }
