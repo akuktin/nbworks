@@ -19,6 +19,15 @@
 #ifndef NBWORKS_RANDOMNESS_H
 # define NBWORKS_RANDOMNESS_H 1
 
-uint32_t make_weakrandom(void);
+# include "constdef.h"
+
+uint32_t
+  make_weakrandom(void);
+
+uint16_t
+  make_id(void);
+
+token_t
+  make_token(void);
 
 #endif /* NBWORKS_RANDOMNESS_H */

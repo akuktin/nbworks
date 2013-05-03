@@ -155,7 +155,4 @@ ipv4_addr_t
 uint32_t
   rail_isnameinconflict(token_t token);
 
-token_t
-  make_token(void);
-
 #endif /* NBWORKS_RAILCOMM_H */

@@ -36,3 +36,26 @@ uint32_t make_weakrandom(void) {
 
   return rand_r(&(nbworks_random_state.weakstate));
 }
+
+
+uint16_t make_id(void) {
+  uint16_t result;
+
+  do {
+    result = make_weakrandom() & 0xffff;
+  } while (result == 0);
+
+  return result;
+}
+
+
+token_t make_token(void) {
+  token_t result;
+
+  do {
+    result = make_weakrandom();
+    result = result << (8*(sizeof(uint64_t)/2));
+    result = make_weakrandom() + result;
+  } while (! result);
+  return result;
+}

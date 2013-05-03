@@ -1759,15 +1759,3 @@ uint32_t rail_isnameinconflict(token_t token) {
   } else
     return FALSE;
 }
-
-
-token_t make_token(void) {
-  token_t result;
-
-  do {
-    result = make_weakrandom();
-    result = result << (8*(sizeof(uint64_t)/2));
-    result = make_weakrandom() + result;
-  } while (! result);
-  return result;
-}
