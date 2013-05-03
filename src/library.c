@@ -685,7 +685,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
                                (isgroup ? DIR_GRP_DTG :
                                           DIR_UNIQ_DTG);
 
-  pckt->id = make_weakrandom() & 0xffff;
+  pckt->id = make_id();
   pckt->src_address = nbworks__myip4addr;
   pckt->src_port = 138;
 

@@ -97,7 +97,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
     return 0;
   }
 
-  tid.tid = make_weakrandom();
+  tid.tid = make_id();
 
   trans = ss_register_name_tid(&tid);
   if (! trans) {

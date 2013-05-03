@@ -511,7 +511,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
     return 0;
   }
 
-  tid.tid = make_weakrandom();
+  tid.tid = make_id();
 
   trans = ss_register_name_tid(&tid);
   if (! trans) {
@@ -874,7 +874,7 @@ int name_srvc_release_name(unsigned char *name,
     return -1;
   }
 
-  tid.tid = make_weakrandom();
+  tid.tid = make_id();
 
   trans = ss_register_name_tid(&tid);
   if (! trans) {
@@ -1020,7 +1020,7 @@ void *refresh_scopes(void *i_ignore_this) {
 
 	  if (pckt) {
 	    if (! trans) {
-	      tid.tid = make_weakrandom();
+	      tid.tid = make_id();
 	      trans = ss_register_name_tid(&tid);
 	      if (! trans) {
 		destroy_name_srvc_pckt(pckt, 1, 1);
