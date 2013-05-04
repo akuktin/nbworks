@@ -30,7 +30,7 @@ MANDIR = $(DATAROOTDIR)/man
 #DOCDIR = $(DATAROOTDIR)/doc/nbworks
 
 INSTALL_DIRS = $(PREFIX) $(EPREFIX) $(BINDIR) $(LIBDIR) $(INCLUDEDIR)       \
-               $(DATAROOTDIR) $(MANDIR) $(MANDIR)/man3 $(MANDIR)/man5       \
+               $(DATAROOTDIR) $(MANDIR) $(MANDIR)/man3 $(MANDIR)/man7       \
                $(MANDIR)/man8 $(DOCDIR)
 
 
@@ -90,7 +90,7 @@ install: all | $(sort $(INSTALL_DIRS))
 	$(LN_SV) libnbworks.so.0 $(LIBDIR)/libnbworks.so
 	$(INSTALL) include/nbworks.h $(INCLUDEDIR)
 	$(INSTALL) doc/*.3 $(MANDIR)/man3
-	$(INSTALL) doc/*.5 $(MANDIR)/man5
+	$(INSTALL) doc/*.7 $(MANDIR)/man7
 	$(INSTALL) doc/*.8 $(MANDIR)/man8
 
 nbworksd: $(OBJS_FOR_DAEMON)
