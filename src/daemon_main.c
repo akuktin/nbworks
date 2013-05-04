@@ -46,14 +46,17 @@ int main() {
   if (0 != sigaction(SIGTERM, &signal_action, 0)) {
     return 2;
   }
-
-  signal_action.sa_handler = SIG_IGN;
-  if (0 != sigaction(SIGPIPE, &signal_action, 0)) {
+  if (0 != sigaction(SIGUSR2, &signal_action, 0)) {
     return 3;
   }
 
-  if (! daemon_allstart(&tcache)) {
+  signal_action.sa_handler = SIG_IGN;
+  if (0 != sigaction(SIGPIPE, &signal_action, 0)) {
     return 4;
+  }
+
+  if (! daemon_allstart(&tcache)) {
+    return 5;
   }
 
   sleeptime.tv_sec = 0;

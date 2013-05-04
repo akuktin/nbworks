@@ -56,7 +56,7 @@ struct ses_srv_rails *nbworks_all_session_srvrs;
 struct ses_srv_sessions *nbworks_all_sessions;
 
 
-void init_service_sector(void) {
+void init_service_sector_runonce(void) {
   nbworks_all_transactions[0] = 0;
   nbworks_all_transactions[1] = 0;
 
@@ -65,7 +65,9 @@ void init_service_sector(void) {
 
   nbworks_all_session_srvrs = 0;
   nbworks_all_sessions = 0;
+}
 
+void init_service_sector(void) {
   nbworks_all_port_cntl.all_stop = 0;
   nbworks_all_port_cntl.sleeptime.tv_sec = 0;
   nbworks_all_port_cntl.sleeptime.tv_nsec = T_12MS;

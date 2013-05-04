@@ -48,37 +48,8 @@ struct thread_cache *daemon_allstart(struct thread_cache *tcache) {
       return 0;
   }
 
-  init_service_sector_threads();
-  init_rail();
-  init_service_sector();
-  init_name_srvc_cache();
-  init_default_nbns();
-  init_brdcts_addr();
-  init_my_ip4_address();
-
-  nbworks_pruners_cntrl.all_stop = 0;
-  nbworks_pruners_cntrl.timeout.tv_sec = 0;
-  nbworks_pruners_cntrl.timeout.tv_nsec = T_250MS;
-  nbworks_pruners_cntrl.passes_ses_srv_ses = 8; /* AKA 2 seconds */
-  nbworks_pruners_cntrl.lifetimeof_queue_storage = 25; /* seconds */
-
-
-  nbworks_namsrvc_cntrl.NBNSnewtid_sleeptime.tv_sec = 0;
-  nbworks_namsrvc_cntrl.NBNSnewtid_sleeptime.tv_nsec = T_250MS;
-  nbworks_namsrvc_cntrl.NBNS_retries = 3;
-  nbworks_namsrvc_cntrl.bcast_sleeptime.tv_sec = BCAST_REQ_RETRY_TIMEOUT_s;
-  nbworks_namsrvc_cntrl.bcast_sleeptime.tv_nsec = BCAST_REQ_RETRY_TIMEOUT_ns;
-  nbworks_namsrvc_cntrl.bcast_req_retry_count = BCAST_REQ_RETRY_COUNT;
-  nbworks_namsrvc_cntrl.ucast_sleeptime.tv_sec = UCAST_REQ_RETRY_TIMEOUT_s;
-  nbworks_namsrvc_cntrl.ucast_sleeptime.tv_nsec = UCAST_REQ_RETRY_TIMEOUT_ns;
-  nbworks_namsrvc_cntrl.ucast_req_retry_count = UCAST_REQ_RETRY_COUNT;
-
-  nbworks_namsrvc_cntrl.max_wack_sleeptime = 120;
-  nbworks_namsrvc_cntrl.NBNS_threshold_ttl = 5; /* Ignore ultra-short leases. */
-  nbworks_namsrvc_cntrl.refresh_threshold = 4;
-
-  nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len = MAX_DATAGRAM_LENGTH;
-  nbworks_namsrvc_cntrl.conflict_timer = CONFLICT_TTL;
+  daemon_init_nonresetables();
+  daemon_init_resetables();
 
   do_configure();
 
@@ -205,11 +176,62 @@ void *daemon_allstop(struct thread_cache *tcache) {
 }
 
 void daemon_sighandler(int signal) {
-  if (signal == SIGTERM) {
+  switch (signal) {
+  case SIGTERM:
     scram = TRUE;
+    break;
+
+  case SIGUSR1: /* Not used. */
+    do_configure();
+    break;
+ 
+  case SIGUSR2:
+    daemon_init_resetables();
+    break;
+
+  default:
+    break;
   }
 
   return;
+}
+
+void daemon_init_resetables(void) {
+  init_rail();
+  init_service_sector();
+  init_default_nbns();
+  init_brdcts_addr();
+  init_my_ip4_address();
+
+  nbworks_pruners_cntrl.all_stop = 0;
+  nbworks_pruners_cntrl.timeout.tv_sec = 0;
+  nbworks_pruners_cntrl.timeout.tv_nsec = T_250MS;
+  nbworks_pruners_cntrl.passes_ses_srv_ses = 8; /* AKA 2 seconds */
+  nbworks_pruners_cntrl.lifetimeof_queue_storage = 25; /* seconds */
+
+
+  nbworks_namsrvc_cntrl.NBNSnewtid_sleeptime.tv_sec = 0;
+  nbworks_namsrvc_cntrl.NBNSnewtid_sleeptime.tv_nsec = T_250MS;
+  nbworks_namsrvc_cntrl.NBNS_retries = 3;
+  nbworks_namsrvc_cntrl.bcast_sleeptime.tv_sec = BCAST_REQ_RETRY_TIMEOUT_s;
+  nbworks_namsrvc_cntrl.bcast_sleeptime.tv_nsec = BCAST_REQ_RETRY_TIMEOUT_ns;
+  nbworks_namsrvc_cntrl.bcast_req_retry_count = BCAST_REQ_RETRY_COUNT;
+  nbworks_namsrvc_cntrl.ucast_sleeptime.tv_sec = UCAST_REQ_RETRY_TIMEOUT_s;
+  nbworks_namsrvc_cntrl.ucast_sleeptime.tv_nsec = UCAST_REQ_RETRY_TIMEOUT_ns;
+  nbworks_namsrvc_cntrl.ucast_req_retry_count = UCAST_REQ_RETRY_COUNT;
+
+  nbworks_namsrvc_cntrl.max_wack_sleeptime = 120;
+  nbworks_namsrvc_cntrl.NBNS_threshold_ttl = 5; /* Ignore ultra-short leases. */
+  nbworks_namsrvc_cntrl.refresh_threshold = 4;
+
+  nbworks_namsrvc_cntrl.name_srvc_max_udppckt_len = MAX_DATAGRAM_LENGTH;
+  nbworks_namsrvc_cntrl.conflict_timer = CONFLICT_TTL;
+}
+
+void daemon_init_nonresetables(void) {
+  init_service_sector_threads();
+  init_service_sector_runonce();
+  init_name_srvc_cache();
 }
 
 

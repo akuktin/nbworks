@@ -140,6 +140,8 @@ extern struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
 # endif
 
 void
+  init_service_sector_runonce(void);
+void
   init_service_sector(void);
 
 struct ss_queue *
