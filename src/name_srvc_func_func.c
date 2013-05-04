@@ -798,7 +798,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 			      res->res->rrtype, res->res->rrclass);
     if (new_name) {
       new_name->addrs.recrd[0].node_type = node_type;
-      new_name->addrs.recrd[0].addr = 
+      new_name->addrs.recrd[0].addr =
 	merge_addrlists(0, frstaddrlst);
 
       if (add_scope(scope, new_name, nbns_addr) ||
