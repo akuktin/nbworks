@@ -798,8 +798,8 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 			      res->res->rrtype, res->res->rrclass);
     if (new_name) {
       new_name->addrs.recrd[0].node_type = node_type;
-      new_name->addrs.recrd[0].addr = frstaddrlst;
-      frstaddrlst = 0;
+      new_name->addrs.recrd[0].addr = 
+	merge_addrlists(0, frstaddrlst);
 
       if (add_scope(scope, new_name, nbns_addr) ||
 	  add_name(new_name, scope)) {
@@ -1438,10 +1438,7 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 		      cache_namecard->addrs.recrd[j].node_type =
 			addrblck.addrs.recrd[i].node_type;
 		      cache_namecard->addrs.recrd[j].addr =
-			addrblck.addrs.recrd[i].addr;
-		      /* Delete the reference to the address
-		       * list so it does not get freed. */
-		      addrblck.addrs.recrd[i].addr = 0;
+			merge_addrlists(0, addrblck.addrs.recrd[i].addr);
 
 		      cache_namecard->node_types |= addrblck.addrs.recrd[i].node_type;
 
@@ -1868,10 +1865,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 		  cache_namecard->addrs.recrd[j].node_type =
 		    addrses->recrd[i].node_type;
 		  cache_namecard->addrs.recrd[j].addr =
-		    addrses->recrd[i].addr;
-		  /* Delete the reference to the address
-		   * list so it does not get freed. */
-		  addrses->recrd[i].addr = 0;
+		    merge_addrlists(0, addrses->recrd[i].addr);
 
 		  cache_namecard->node_types |= addrses->recrd[i].node_type;
 
@@ -2032,10 +2026,7 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 	    cache_namecard->addrs.recrd[j].node_type =
 	      addrses->recrd[i].node_type;
 	    cache_namecard->addrs.recrd[j].addr =
-	      addrses->recrd[i].addr;
-	    /* Delete the reference to the address
-	     * list so it does not get freed. */
-	    addrses->recrd[i].addr = 0;
+	      merget_addrlists(0, addrses->recrd[i].addr);
 
 	    cache_namecard->node_types |= addrses->recrd[i].node_type;
 
@@ -3232,12 +3223,18 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
             if (cache_namecard->endof_conflict_chance < cur_time)
               cache_namecard->endof_conflict_chance = INFINITY;
 
-	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->addrs),
-		   sizeof(struct addrlst_cardblock));
+	    /* Remove doubles. */
+	    for (i=0; i<NUMOF_ADDRSES; i++) {
+	      if (addr_bigblock->addrs.recrd[i].node_type) {
+		cache_namecard->addrs.recrd[i].node_type =
+		  addr_bigblock->addrs.recrd[i].node_type;
+		cache_namecard->addrs.recrd[i].addr =
+		  merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);
 
-	    /* Delete the reference to the the address
-	     * lists so they do not get freed. */
-	    memset(&(addr_bigblock->addrs), 0, sizeof(struct addrlst_cardblock));
+		cache_namecard->node_types |=
+		  cache_namecard->addrs.recrd[i].node_type;
+	      }
+	    }
 
 #ifndef COMPILING_NBNS
 	    /* This cachenode is not yet in the cache. It is maybe having its
@@ -3317,10 +3314,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 		      cache_namecard->addrs.recrd[j].node_type =
 			addr_bigblock->addrs.recrd[i].node_type;
 		      cache_namecard->addrs.recrd[j].addr =
-			addr_bigblock->addrs.recrd[i].addr;
-		      /* Delete the reference to the address
-		       * list so it does not get freed. */
-		      addr_bigblock->addrs.recrd[i].addr = 0;
+			merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);
 
 		      cache_namecard->node_types |= addr_bigblock->addrs.recrd[i].node_type;
 
@@ -3365,12 +3359,18 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
             if (cache_namecard->endof_conflict_chance < cur_time)
               cache_namecard->endof_conflict_chance = INFINITY;
 
-	    memcpy(&(cache_namecard->addrs), &(addr_bigblock->addrs),
-		   sizeof(struct addrlst_cardblock));
+	    /* Remove doubles. */
+	    for (i=0; i<NUMOF_ADDRSES; i++) {
+	      if (addr_bigblock->addrs.recrd[i].node_type) {
+		cache_namecard->addrs.recrd[i].node_type =
+		  addr_bigblock->addrs.recrd[i].node_type;
+		cache_namecard->addrs.recrd[i].addr =
+		  merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);
 
-	    /* Delete the reference to the the address
-	     * lists so they do not get freed. */
-	    memset(&(addr_bigblock->addrs), 0, sizeof(struct addrlst_cardblock));
+		cache_namecard->node_types |=
+		  cache_namecard->addrs.recrd[i].node_type;
+	      }
+	    }
 
 #ifndef COMPILING_NBNS
 	    /* This cachenode is not yet in the cache. It is maybe having its
@@ -3450,10 +3450,7 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			cache_namecard->addrs.recrd[j].node_type =
 			  addr_bigblock->addrs.recrd[i].node_type;
 			cache_namecard->addrs.recrd[j].addr =
-			  addr_bigblock->addrs.recrd[i].addr;
-			/* Delete the reference to the address
-			 * list so it does not get freed. */
-			addr_bigblock->addrs.recrd[i].addr = 0;
+			  merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);
 
 			cache_namecard->node_types |= addr_bigblock->addrs.recrd[i].node_type;
 

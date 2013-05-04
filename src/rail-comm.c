@@ -478,6 +478,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
   struct rail_name_data *namedata;
   struct ipv4_addr_list *new_addr, *cur_addr, **last_addr;
   token_t new_token;
+  ipv4_addr_t new_ipv4;
   uint32_t refresh_ttl;
   int i;
   node_type_t node_type;
@@ -588,11 +589,23 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
 	grp_namecard->addrs.recrd[i].node_type = node_type;
 	grp_namecard->node_types |= node_type;
 
+	new_ipv4 = nbworks__myip4addr;
+
+	/* First, check to see if the address is already in the cache. */
+	cur_addr = grp_namecard->addrs.recrd[i].addr;
+	while (cur_addr) {
+	  if (cur_addr->ip_addr == new_ipv4)
+	    return grp_namecard;
+	  else
+	    cur_addr = cur_addr->next;
+	}
+
+	/* If it isn't, add it. */
 	new_addr = malloc(sizeof(struct ipv4_addr_list));
 	if (! new_addr) {
 	  return 0;
 	}
-	new_addr->ip_addr = nbworks__myip4addr;
+	new_addr->ip_addr = new_ipv4;
 	new_addr->next = 0;
 
 	while (0xd0) {
