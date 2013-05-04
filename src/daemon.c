@@ -184,7 +184,7 @@ void daemon_sighandler(int signal) {
   case SIGUSR1: /* Not used. */
     do_configure();
     break;
- 
+
   case SIGUSR2:
     daemon_init_resetables();
     break;
