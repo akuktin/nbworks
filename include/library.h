@@ -176,7 +176,7 @@ ssize_t
                   unsigned char recepient_type,
                   void *data,
                   size_t len,
-                  int isbroadcast);
+                  int brdcst_or_grp);
 
 void *
   lib_dtgserver(void *arg);

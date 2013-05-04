@@ -564,13 +564,12 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 			unsigned char recepient_type,
 			void *data_ptr,
 			size_t len,
-			int isbroadcast) {
+			int brdcst_or_grp) {
   struct dtg_srvc_packet *pckt;
   struct dtg_pckt_pyld_normal *pyld;
   struct com_comm command;
   unsigned long pckt_len, hdr_len, max_wholefrag_len;
   int daemon_sckt;
-  unsigned int isgroup;
   uint32_t basic_pckt_flags;
   uint32_t frag_len, max_frag_len, numof_frags, frag_offset, names_len;
   unsigned char readycommand[LEN_COMM_ONWIRE], *data;
@@ -626,6 +625,24 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   /* Hold on to this frag_len, as it will be reused below. */
   frag_len = pckt_len;
 
+  /* Is this datagram sent to everyone, all members
+   * of a group or only to a single node? */
+  /* Reused below. */
+  switch (brdcst_or_grp) {
+  case DTGIS_BRDCST:
+    brdcst_or_grp = BRDCST_DTG;
+    break;
+  case DTGIS_GRPCST:
+    brdcst_or_grp = DIR_GRP_DTG;
+    break;
+  case DTGIS_UNQCST:
+    brdcst_or_grp = DIR_UNIQ_DTG;
+    break;
+  default:
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
   pckt = malloc(sizeof(struct dtg_srvc_packet));
   if (! pckt) {
     nbworks_errno = ENOBUFS;
@@ -635,55 +652,43 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   pckt->for_del = 0;
   switch (handle->node_type) {
   case CACHE_NODEFLG_H:
-    isgroup = FALSE;
     basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = RAIL_NODET_HUNQ;
     break;
   case CACHE_NODEGRPFLG_H:
-    isgroup = TRUE;
     basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = RAIL_NODET_HGRP;
     break;
 
   case CACHE_NODEFLG_M:
-    isgroup = FALSE;
     basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = RAIL_NODET_MUNQ;
     break;
   case CACHE_NODEGRPFLG_M:
-    isgroup = TRUE;
     basic_pckt_flags = DTG_NODE_TYPE_M;
     command.node_type = RAIL_NODET_MGRP;
     break;
 
   case CACHE_NODEFLG_P:
-    isgroup = FALSE;
     basic_pckt_flags = DTG_NODE_TYPE_P;
     command.node_type = RAIL_NODET_PUNQ;
     break;
   case CACHE_NODEGRPFLG_P:
-    isgroup = TRUE;
     basic_pckt_flags = DTG_NODE_TYPE_P;
     command.node_type = RAIL_NODET_PGRP;
     break;
 
   case CACHE_NODEFLG_B:
-    isgroup = FALSE;
     basic_pckt_flags = DTG_NODE_TYPE_B;
     command.node_type = RAIL_NODET_BUNQ;
     break;
   case CACHE_NODEGRPFLG_B:
   default:
-    isgroup = TRUE;
     basic_pckt_flags = DTG_NODE_TYPE_B;
     command.node_type = RAIL_NODET_BGRP;
     break;
   }
-  /* Is this datagram sent to everyone, all members
-   * of a group or only to a single node? */
-  pckt->type = (isbroadcast) ? BRDCST_DTG :
-                               (isgroup ? DIR_GRP_DTG :
-                                          DIR_UNIQ_DTG);
+  pckt->type = brdcst_or_grp;
 
   pckt->id = make_id();
   pckt->src_address = nbworks__myip4addr;

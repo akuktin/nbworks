@@ -90,7 +90,7 @@ unsigned long nbworks_maxdtglen(nbworks_namestate_p handle,
 
   if (result > 0) {
     if (withfrag)
-      result = result + 0xffff;
+      result = result + DTG_MAXOFFSET;
 
     return result;
   } else
@@ -1481,9 +1481,19 @@ ssize_t nbworks_sendto(unsigned char service,
 	return -1;
       }
 
+    if (callflags & MSG_BRDCAST) {
+      flags = DTGIS_BRDCST;
+    } else {
+      if (callflags & MSG_GROUP)
+	flags = DTGIS_GRPCST;
+      else
+	flags = DTGIS_UNQCST;
+    }
+
     ret_val = lib_senddtg_138(ses->handle, peer->name,
 			      (peer->name)[NETBIOS_NAME_LEN-1],
-			      buff, len, (flags & MSG_BRDCAST));
+			      buff, len, flags);
+
     if (ret_val < len) {
       /* nbworks_errno is already set */
       return -1;

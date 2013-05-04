@@ -51,7 +51,9 @@
 /* Maximum offset the datagram can handle. */
 # define DTG_MAXOFFSET (0xffff)
 
-# define FRAG_TIMEOUT  1 /* seconds */
+# define DTGIS_BRDCST 1
+# define DTGIS_GRPCST 2
+# define DTGIS_UNQCST 0
 
 enum dtg_packet_payload_t {
   unknown = 0,

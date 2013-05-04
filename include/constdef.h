@@ -141,7 +141,8 @@ extern nbworks_do_align_t nbworks_do_align;
 # define DTG_SRVC  0
 # define SES_SRVC  2
 
-# define MSG_BRDCAST MSG_PROXY /* Trying hard to be portable. */
+# define MSG_BRDCAST MSG_PROXY     /* Trying hard to be portable... */
+# define MSG_GROUP   MSG_DONTROUTE /* by fitting everything into a uint16_t. */
 
 typedef uint64_t token_t;
 typedef uint32_t ipv4_addr_t;

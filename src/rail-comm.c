@@ -1048,9 +1048,10 @@ int rail_add_dtg_server(int rail_sckt,
        (does_token_match(namecard->grp_tokens, token) &&
 	namecard->grp_isinconflict))) {
 
-    if (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
-	(does_token_match(namecard->grp_tokens, token) &&
-	 namecard->grp_isinconflict)) {
+    if (namecard &&
+	(((namecard->unq_token == token) && namecard->unq_isinconflict) ||
+	 (does_token_match(namecard->grp_tokens, token) &&
+	  namecard->grp_isinconflict))) {
 
       command->len = 0;
       command->data = 0;
@@ -1280,9 +1281,10 @@ int rail_add_ses_server(int rail_sckt,
        (does_token_match(namecard->grp_tokens, token) &&
 	namecard->grp_isinconflict))) {
 
-    if (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
-	(does_token_match(namecard->grp_tokens, token) &&
-	 namecard->grp_isinconflict)) {
+    if (namecard &&
+	(((namecard->unq_token == token) && namecard->unq_isinconflict) ||
+	 (does_token_match(namecard->grp_tokens, token) &&
+	  namecard->grp_isinconflict))) {
 
       command->len = 0;
       command->data = 0;

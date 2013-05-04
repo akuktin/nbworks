@@ -20,6 +20,12 @@
 # define NBWORKS_NBWORKS_H 1
 
 # include <unistd.h>
+/***********************/
+# include <sys/socket.h>
+
+# define MSG_BRDCAST MSG_PROXY     /* Trying hard to be portable... */
+# define MSG_GROUP   MSG_DONTROUTE /* by fitting everything into a uint16_t. */
+/***********************/
 
 # define NBWORKS_NBNAME_LEN 16
 # define NBWORKS_CODED_NBNAME_LEN 32
