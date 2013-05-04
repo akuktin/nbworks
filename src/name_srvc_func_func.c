@@ -1239,59 +1239,57 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 	(res->res->rdata_t == nb_address_list) &&
 	(sort_nbaddrs(res->res->rdata, &addrblock_ptr))) {
 
-      if (addrblock.node_types & (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P))) {
-	decode_nbnodename(res->res->name->name, decoded_name);
+      decode_nbnodename(res->res->name->name, decoded_name);
 
-	cache_namecard = find_nblabel(decoded_name,
-				      NETBIOS_NAME_LEN,
-				      (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P)),
-				      res->res->rrtype,
-				      res->res->rrclass,
-				      res->res->name->next_name);
+      cache_namecard = find_nblabel(decoded_name,
+				    NETBIOS_NAME_LEN,
+				    CACHE_ADDRBLCK_UNIQ_MASK,
+				    res->res->rrtype,
+				    res->res->rrclass,
+				    res->res->name->next_name);
 
-	/*
-	 * RATIONALE: Names can be either group names or unique names. Since
-	 * we jump over group names, that means we are only looking for unique
-	 * names. Furthermore, we are only looking for our names. If we fail to
-	 * find a record for the asked unique name, that means we have no problem.
-	 * Also, if we find a record, but the name is not ours, we again have
-	 * no problem.
-	 */
+      /*
+       * RATIONALE: Names can be either group names or unique names. Since
+       * we jump over group names, that means we are only looking for unique
+       * names. Furthermore, we are only looking for our names. If we fail to
+       * find a record for the asked unique name, that means we have no problem.
+       * Also, if we find a record, but the name is not ours, we again have
+       * no problem.
+       */
 
-	if (cache_namecard &&
-	    ((cache_namecard->unq_token) && (! cache_namecard->unq_isinconflict)) &&
-	    (cache_namecard->timeof_death > cur_time)) {
-	  /* Paired with the DOS_BUG in the POSITIVE NAME QUERY RESPONSE
-	   * section, this can be abused to execute a hostile name takeover. */
-	  /* Someone is trying to take my name. */
+      if (cache_namecard &&
+	  ((cache_namecard->unq_token) && (! cache_namecard->unq_isinconflict)) &&
+	  (cache_namecard->timeof_death > cur_time)) {
+	/* Paired with the DOS_BUG in the POSITIVE NAME QUERY RESPONSE
+	 * section, this can be abused to execute a hostile name takeover. */
+	/* Someone is trying to take my name. */
 
-	  in_addr = 0;
-	  for (i=0; i<NUMOF_ADDRSES; i++) {
-	    if (cache_namecard->addrs.recrd[i].addr &&
-		(cache_namecard->addrs.recrd[i].node_type &
-		 (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P)))) {
-	      in_addr = cache_namecard->addrs.recrd[i].addr->ip_addr;
-	      break;
-	    }
+	in_addr = 0;
+	for (i=0; i<NUMOF_ADDRSES; i++) {
+	  if (cache_namecard->addrs.recrd[i].addr &&
+	      (cache_namecard->addrs.recrd[i].node_type &
+	       CACHE_ADDRBLCK_UNIQ_MASK)) {
+	    in_addr = cache_namecard->addrs.recrd[i].addr->ip_addr;
+	    break;
 	  }
+	}
 
-	  if (i<NUMOF_ADDRSES) {
-	    pckt = name_srvc_make_name_reg_small(decoded_name,
-                                                 decoded_name[NETBIOS_NAME_LEN-1],
-						 res->res->name->next_name,
-                                                 /* Y2K38 */
-						 (cache_namecard->timeof_death
-						  - cur_time),
-						 in_addr,
-						 cache_namecard->addrs.recrd[i].node_type);
-	    if (pckt) {
-	      pckt->header->transaction_id = tid;
-	      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-	      pckt->header->nm_flags = FLG_AA;
-	      pckt->header->rcode = RCODE_CFT_ERR;
-	      pckt->for_del = TRUE;
-	      ss_name_send_pckt(pckt, addr, trans);
-	    }
+	if (i<NUMOF_ADDRSES) {
+	  pckt = name_srvc_make_name_reg_small(decoded_name,
+					       decoded_name[NETBIOS_NAME_LEN-1],
+					       res->res->name->next_name,
+					       /* Y2K38 */
+					       (cache_namecard->timeof_death
+						- cur_time),
+					       in_addr,
+					       cache_namecard->addrs.recrd[i].node_type);
+	  if (pckt) {
+	    pckt->header->transaction_id = tid;
+	    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+	    pckt->header->nm_flags = FLG_AA;
+	    pckt->header->rcode = RCODE_CFT_ERR;
+	    pckt->for_del = TRUE;
+	    ss_name_send_pckt(pckt, addr, trans);
 	  }
 	}
       }
