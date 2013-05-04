@@ -945,9 +945,20 @@ void *lib_dtgserver(void *arg) {
 	}
 	break;
 
-	/* I think I implemented the below wrong (groups again). */
       case DIR_UNIQ_DTG:
+	if (! (handle->node_type & CACHE_ADDRBLCK_UNIQ_MASK))
+	  break;
+	if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
+	  take_dtg = TRUE;
+	} else {
+	  take_dtg = lib_doeslistento(&decoded_nbnodename,
+				      handle->dtg_listento);
+	}
+	break;
+
       case DIR_GRP_DTG:
+	if (! (handle->node_type & CACHE_ADDRBLCK_GRP_MASK))
+	  break;
 	if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
 	  take_dtg = TRUE;
 	} else {

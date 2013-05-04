@@ -561,6 +561,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
     node_type = node_type & CACHE_ADDRBLCK_GRP_MASK;
 
     if (node_type &&
+	(! (grp_namecard->node_types & CACHE_ADDRBLCK_UNIQ_MASK)) &&
 	/* (! grp_namecard->grp_isinconflict) && // maybe? */
 	/* Tell the world (actually optional for B nodes). */
 	(refresh_ttl = name_srvc_add_name(node_type, namedata->name,
