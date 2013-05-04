@@ -1,0 +1,24 @@
+Sometimes, VERY rarely, the daemon echoes a packet back to the sender.
+  After spending some time thinking about it and checking my code, there is
+  only one explanation that I can think of. Maybe calloc() is malfunctioning.
+  The mode of failure can only occur if calloc() first nulls out the memory
+  block and only then reserves and returns it. It is possible, in a multi-
+  threaded enviroment, that calloc() nulls out the data, but a free() moves
+  some pointer or something and makes calloc return a different memory block,
+  of the same size but with its contents not nulled out.
+  This explanation relies on several things: (1) that calloc() first nulls and
+  then mallocs, (2) that memory blocks are stored in arrays of predefined sizes
+  from which they are then retrieved, (3) that there is some sort of a central
+  pointer or counter of these blocks and (4) that that pointer or counter is
+  not lock-protected.
+  (added later) However, it is ALSO possible for the presumed malfunction to
+  manifest itself if the condition 2 is not fullfilled, however, that would
+  then require (5) that there is some sort of a stack of memory, where the top
+  of the stack before the calloc() call is occupied by a block of the same size
+  as struct ss_unif_pckt_list that then gets free()d, a central pointer gets
+  moved one block frame lower and calloc() reserves and returns a wrong block.
+ SOLUTION:
+  I have written a calloc() reimplementation which first mallocs and then
+  nulls. I have not yet replaced calloc()s with nbw_calloc()s because I want
+  to see the bug manifest itself at least once more. Then I will replace
+  calloc()s and again see if the bug manifests itself.

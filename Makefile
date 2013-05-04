@@ -49,11 +49,12 @@ FILES_FOR_DAEMON = config.c daemon.c daemon_externals.c dtg_srvc_func.c     \
                    name_srvc_func_func.c name_srvc_pckt.c nodename.c        \
                    pckt_routines.c portability.c rail-comm.c rail-flush.c   \
                    randomness.c service_sector.c service_sector_threads.c   \
-                   ses_srvc_pckt.c
+                   ses_srvc_pckt.c c-lib.c
 
 FILES_FOR_LIBRARY = api.c dtg_srvc_cnst.c dtg_srvc_pckt.c library.c         \
                     library_externals.c nodename.c pckt_routines.c          \
-                    portability.c rail-flush.c randomness.c ses_srvc_pckt.c
+                    portability.c rail-flush.c randomness.c ses_srvc_pckt.c \
+                    c-lib.c
 
 DAEMON_STARTER = daemon_main.c
 NBNS_STARTER = nbns_main.c

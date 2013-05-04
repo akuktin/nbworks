@@ -165,4 +165,6 @@ extern ipv4_addr_t nbworks__myip4addr;
 #  define DIDNT_READ_NAME(a)
 # endif
 
+# include "c-lib.h"
+
 #endif /* NBWORKS_CONSTDEF_H */
