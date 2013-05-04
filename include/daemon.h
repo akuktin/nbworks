@@ -37,6 +37,10 @@ void *
   daemon_allstop(struct thread_cache *tcache);
 void
   daemon_sighandler(int signal);
+void
+  daemon_init_resetables(void);
+void
+  daemon_init_nonresetables(void);
 
 void *
   pruners(void *arg_ignored);
