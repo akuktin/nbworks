@@ -33,9 +33,11 @@ int main() {
   struct sigaction signal_action;
   struct thread_cache tcache;
 
+#ifndef VISIBLE_BREAKERS
   if (0 != daemon(0, 0)) {
     return 1;
   }
+#endif
 
   memset(&signal_action, 0, sizeof(struct sigaction));
   memset(&tcache, 0, sizeof(struct thread_cache));

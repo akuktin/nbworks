@@ -436,7 +436,8 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
 
   readhead = startof_pckt;
   readhead = readhead + (DTG_HDR_LEN +2+2);
-  if (! fastfrwd_all_DNS_labels(&readhead, (startof_pckt + len))) {
+  if (0 == fastfrwd_all_DNS_labels(&readhead, (startof_pckt + len))) {
+    DIDNT_READ_NAME(7);
     free(result);
     return 0;
   }
@@ -446,6 +447,7 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
   result->dst = read_all_DNS_labels(&readhead, packet, (startof_pckt + len),
 				    0, 0, 0, 0);
   if (! result->dst) {
+    DIDNT_READ_NAME(8);
     free(result);
     return 0;
   }
@@ -561,21 +563,23 @@ void destroy_dtg_srvc_pckt(void *packet_ptr,
 
   packet = packet_ptr;
 
-  if (packet->payload_t == normal) {
-    normal_pyld = packet->payload;
+  if (packet->payload) {
+    if (packet->payload_t == normal) {
+      normal_pyld = packet->payload;
 
-    nbworks_dstr_nbnodename(normal_pyld->src_name);
-    nbworks_dstr_nbnodename(normal_pyld->dst_name);
-    if (normal_pyld->do_del_pyldpyld)
-      free(normal_pyld->payload);
-    else
-      free(normal_pyld->pyldpyld_delptr);
-    free(normal_pyld);
-  } else
-    if (packet->payload_t == nbnodename)
-      nbworks_dstr_nbnodename(packet->payload);
-    else
-      free(packet->payload);
+      nbworks_dstr_nbnodename(normal_pyld->src_name);
+      nbworks_dstr_nbnodename(normal_pyld->dst_name);
+      if (normal_pyld->do_del_pyldpyld)
+	free(normal_pyld->payload);
+      else
+	free(normal_pyld->pyldpyld_delptr);
+      free(normal_pyld);
+    } else
+      if (packet->payload_t == nbnodename)
+	nbworks_dstr_nbnodename(packet->payload);
+      else
+	free(packet->payload);
+  }
 
   free(packet);
 

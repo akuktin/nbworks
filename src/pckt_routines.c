@@ -231,6 +231,7 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
       (*start_and_end_of_walk < startof_packet ||
        *start_and_end_of_walk >= end_of_packet)) {
     /* TODO: errno signaling stuff */
+    OUT_OF_BOUNDS(59);
     return 0;
   }
   /* --- sanity check --- */
@@ -278,7 +279,7 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
   } else {							\
     /* TODO: errno signaling stuff */				\
     *cur_label = 0;						\
-    nbworks_dstr_nbnodename(first_label);				\
+    nbworks_dstr_nbnodename(first_label);			\
 								\
     del_clip;							\
     return 0;							\
@@ -374,6 +375,7 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
       do {
 	if (clip_ptr->offset == name_offset) {
 	  /* Infinite loop. */
+	  BULLSHIT_IN_PACKET(9);
 	  kill_yourself;
 	}
 
@@ -396,13 +398,19 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
 
       if (offsetof_start <= name_offset) {
 	walker = startof_packet + (name_offset - offsetof_start);
+	if (walker >= end_of_packet) {
+	  OUT_OF_BOUNDS(63);
+	  handle_abort;
+	}
       } else {
 	if (startblock) {
 	  walker = startblock + name_offset;
 	  if (walker >= (startblock + lenof_startblock)) {
+	    OUT_OF_BOUNDS(61);
 	    handle_abort;
 	  }
 	} else {
+	  OUT_OF_BOUNDS(62);
 	  kill_yourself;
 	}
       }
@@ -500,6 +508,7 @@ unsigned char *fastfrwd_all_DNS_labels(unsigned char **start_and_end_of_walk,
     return 0;
   } else {
     if (*start_and_end_of_walk >= endof_pckt) {
+      OUT_OF_BOUNDS(60);
       return 0;
     }
   }
@@ -517,8 +526,10 @@ unsigned char *fastfrwd_all_DNS_labels(unsigned char **start_and_end_of_walk,
 	break;
     }
 
-    if (walker >= endof_pckt)
+    if (walker >= endof_pckt) {
+      OUT_OF_BOUNDS(58);
       return 0;
+    }
   }
 
   walker = walker + step + 1;
