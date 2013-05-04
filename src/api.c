@@ -1885,17 +1885,17 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	  if (((flags & MSG_DONTWAIT) ||
 	       (ses->nonblocking)) &&
 	      (! (flags & MSG_WAITALL))) {
-	    nbworks_errno = EAGAIN;
-	    ret_val = -1;
 	    if (kill_name)
 	      nbworks_dstr_nbnodename(*src); /* Plug a leak. */
+	    nbworks_errno = EAGAIN;
+	    ret_val = -1;
 	    break;
 	  } else {
 	    if (ses->handle->isinconflict) {
-	      nbworks_errno = EPERM;
-	      ret_val = -1;
 	      if (kill_name)
 		nbworks_dstr_nbnodename(*src); /* Plug a leak. */
+	      nbworks_errno = EPERM;
+	      ret_val = -1;
 	      break;
 	    } else {
 	      handle_dtg_timeout;
@@ -2483,13 +2483,12 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
 
   pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));
   if ((ret_val == 0) &&
-      (waitsteps == 0)) {
+      (waitsteps == 0) &&
+      (kill_name == FALSE)) {
     /* Entering this means nothing happened. EXCEPT! That an empty
      * datagram will look just like this too. And because it is
      * indistiguishable from an empty exit, I need to do things
      * like this. Also: I *HATE* that kill_name kludge! */
-    if (kill_name)
-      nbworks_dstr_nbnodename(*src);
     ret_val = -1;
     nbworks_errno = EAGAIN;
   }
