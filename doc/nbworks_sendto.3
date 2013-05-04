@@ -80,8 +80,23 @@ call with this argument set to 0.
 .PP
 The argument \fIflags\fP is used to pass flags governing the behaviour
 of \fBnbworks_sendto\fP(). They are analogous to the \fIflags\fP field
-in your systems \fBsendto\fP(2), with the caveat that MSG_DONTROUTE is
-made ineffectual.
+in your systems \fBsendto\fP(2), with a few map-overs, see below.
+.PP
+All sessions are intrinsically semi-blocking when sending. Sending of
+datagrams blocks untill the datagram and all its fragments clear the
+rail (socket connecting the nbworks daemon and library) and this can
+not be affected by flags. Sending of session data is non-blocking
+while (attempting to) send headers but becomes blocking once the data
+referenced by the sent header is being sent. Failure to send all the
+data header specifies would desync the stream and destroy the session.
+.PP
+When sending datagrams, a flag \fBMSG_BRDCAST\fP is defined through a
+map-over of \fBMSG_PROXY\fP. The data for that datagram will be sent
+with a broadcast datagram. An additional flag \fBMSG_GROUP\fP is
+defined through a map-over of \fBMSG_DONTROUTE\fP. When this flag is
+set, nbworks will attempt to send a datagram to a group name. When
+none of these two flags are set, the datagram is sent to a unique
+name.
 .PP
 The argument \fIdst\fP is used only in datagram mode and is ignored in
 session mode. Its effect is to send the datagram to the NetBIOS name

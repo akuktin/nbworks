@@ -102,6 +102,10 @@ of \fBnbworks_sendto\fP(). They are analogous to the \fIflags\fP field
 in your systems \fBrecvfrom\fP(2), with the caveat that MSG_PEEK and
 MSG_ERRQUEUE are made ineffectual.
 .PP
+All sessions are intrinsically non-blocking when receiving. If you
+wish it to block, call \fBnbworks_recvfrom\fP() with flag
+\fBMSG_WAITALL\fP.
+.PP
 The argument \fIsrc\fP is used only in datagram mode and is ignored in
 session mode. It affect which datagrams in the receive queue are taken
 into account for being read. See the section "\fBDATAGRAM SELECTION FOR

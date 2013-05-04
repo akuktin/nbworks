@@ -72,6 +72,12 @@ of \fBnbworks_sendto\fP(). They are analogous to the \fIflags\fP field
 in your systems \fBrecvfrom\fP(2), with the caveat that MSG_PEEK and
 MSG_ERRQUEUE are made ineffectual.
 .PP
+All sessions are intrinsically non-blocking when receiving. However,
+\fBnbworks_recvwait\fP() always blocks for the \fItimeout\fP you
+specified or less, if a datagram arrives. Setting the flag
+MSG_DONTWAIT without also setting MSG_WAITALL however, makes it
+operate as if the \fItimeout\fP were equal to zero.
+.PP
 The argument \fItimeout\fP specifies the minimum time
 \fBnbworks_recvwait\fP() should wait if no datagrams are currently
 available. This is specified in miliseconds. 0 means no waiting, a

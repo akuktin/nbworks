@@ -1973,6 +1973,8 @@ ssize_t nbworks_recvfrom(unsigned char service,
       }
     }
 
+    if (src)
+      *src = nbworks_clone_nbnodename(ses->peer);
     start_time = time(0);
 
     recved = 0;
