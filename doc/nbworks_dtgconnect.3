@@ -31,6 +31,12 @@ This function returns a session handle. In case of error it returns
 .PP
 In case of error, you should check \fInbworks_errno\fP for more
 information.
+.SH NOTES
+After a name has been succesfully deleted, all \fIdatagram sessions\fP
+extending from that name \fBmust\fP be destroyed or, at the very
+least, not used in datagram mode. Using them after their name has been
+deleted will produce a segfault in the best case and a fandago on core
+in the worst.
 .SH "SEE ALSO"
 .BR nbworks (7),
 .BR nbworks_regname (3),

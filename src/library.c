@@ -393,16 +393,19 @@ struct dtg_frag *lib_order_frags(struct dtg_frag **frags,
 	  /* The situation described below, when two identical
 	   * but not *the same* fragment streams get interwoven
 	   * on the same wire, can still happen in this case too.
-	   * Unfortunately (or, in my case as the implementor,
-	   * fortunately), there is no way for the NetBIOS layer
-	   * to detect that the data does not make any sense.
-	   * It is up to the application to not trust datagrams. */
+	   * It turns out there IS a way to detect this. */
+
+	  if (0 != memcmp(best_offer->data, remove->data, offered_len)) {
+	    goto fatal_error;
+	  }
+
 	  *last = remove->next;
 	  free(remove->data);
 	  free(remove);
 	  remove = *last;
 	  continue;
 	} else {
+	fatal_error:
 	  /* There has been a BIG fuckup. */
 	  /* Basically, this sort of situation can happen if two
 	   * datagram streams get iterwoven, if the wire carries

@@ -102,6 +102,10 @@ an error occured.
 In case of error, you should check \fInbworks_errno\fP for more
 information.
 .SH "OPERATION NOTES"
+\fBnbworks_sendto\fP() is belived to be thread-safe. This belif relies
+on your systems implementation of \fBpthread_mutex_lock\fP() and
+\fBpthread_mutex_trylock\fP().
+.PP
 If, in datagram mode, the amount of data to send is larger than
 can be made to fit into a single UDP packet, whose maximum length is
 defined in \fInbworks_libcntl.dtg_max_wholefrag_len\fP, then nbworks
@@ -111,9 +115,11 @@ amount of data for sending is so large that not even fragmentation
 with overloading can help, \fBnbworks_sendto\fP() aborts and signals
 an error.
 .PP
-\fBnbworks_sendto\fP() is belived to be thread-safe. This belif relies
-on your systems implementation of \fBpthread_mutex_lock\fP() and
-\fBpthread_mutex_trylock\fP().
+After a name has been succesfully deleted, all \fIdatagram sessions\fP
+extending from that name \fBmust\fP be destroyed or, at the very
+least, not used in datagram mode. Using them after their name has been
+deleted will produce a segfault in the best case and a fandago on core
+in the worst.
 .SH "SEE ALSO"
 .BR sendto (2),
 .BR nbworks (7),

@@ -186,13 +186,11 @@ All read operations conducted by \fBnbworks_readfrom\fP() can be
 canceled using \fBnbworks_cancel\fP() and they can timeout. Timeout
 value can be set through \fInbworks_libcntl.close_timeout\fP.
 .PP
-Although it may be fashionable to believe that UDPs checksum protects
-the internal contents of datagrams, nothing could be further from the
-truth. Because of datagram fragmentation, it is possible, unlikely but
-still possible, for the NetBIOS implementation to garble the contents
-of individual datagrams. There is no way for the NetBIOS implementation
-to know for certain it did this. You should exercise caution and not
-trust NetBIOS datagrams in the same way you trust UDP datagrams.
+After a name has been succesfully deleted, all \fIdatagram sessions\fP
+extending from that name \fBmust\fP be destroyed or, at the very
+least, not used in datagram mode. Using them after their name has been
+deleted will produce a segfault in the best case and a fandago on core
+in the worst.
 .SH "SEE ALSO"
 .BR recvfrom (2),
 .BR nbworks (7),
