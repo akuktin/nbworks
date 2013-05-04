@@ -1529,7 +1529,7 @@ ssize_t nbworks_sendto(unsigned char service,
 	(flags & MSG_DONTWAIT)) {
       if (0 != pthread_mutex_trylock(&(ses->mutex))) {
 	if (errno == EBUSY) {
-	  nbworks_errno = EAGAIN;
+	  nbworks_errno = EBUSY;
 	  return -1;
 	} else {
 	  nbworks_errno = errno;
@@ -1735,7 +1735,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
   time_t start_time, end_time;
   ssize_t recved, notrecved, ret_val, torecv;
   size_t *hndllen_left, len_left;
-  int flags;
+  int flags, kill_name;
   unsigned char hdrbuff[SES_HEADER_LEN], *walker, *buff;
 
   ses = sesp;
@@ -1778,6 +1778,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
       ret_val = 0;
       sleeptime.tv_sec = 0;
       sleeptime.tv_nsec = T_50MS;
+      kill_name = FALSE;
     }
 
     if ((!(flags & MSG_WAITALL)) &&
@@ -1785,7 +1786,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	 (flags & MSG_DONTWAIT))) {
       if (0 != pthread_mutex_trylock(&(ses->handle->dtg_recv_mutex))) {
 	if (errno == EBUSY) {
-	  nbworks_errno = EAGAIN;
+	  nbworks_errno = EBUSY;
 	  return -1;
 	} else {
 	  nbworks_errno = errno;
@@ -1820,7 +1821,10 @@ ssize_t nbworks_recvfrom(unsigned char service,
 		  goto jump_to_next_datagram;
 		}
 	      }
+	      if (kill_name)
+		nbworks_dstr_nbnodename(*src); /* Plug a memory leak. */
 	      *src = in_lib->src;
+	      kill_name = TRUE;
 	    }
 	  } else {
 	    /* From now on, we are enforcing multiplexing. */
@@ -1883,11 +1887,15 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	      (! (flags & MSG_WAITALL))) {
 	    nbworks_errno = EAGAIN;
 	    ret_val = -1;
+	    if (kill_name)
+	      nbworks_dstr_nbnodename(*src); /* Plug a leak. */
 	    break;
 	  } else {
 	    if (ses->handle->isinconflict) {
 	      nbworks_errno = EPERM;
 	      ret_val = -1;
+	      if (kill_name)
+		nbworks_dstr_nbnodename(*src); /* Plug a leak. */
 	      break;
 	    } else {
 	      handle_dtg_timeout;
@@ -1959,7 +1967,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	 (flags & MSG_DONTWAIT))) {
       if (0 != pthread_mutex_trylock(&(ses->receive_mutex))) {
 	if (errno == EBUSY) {
-	  nbworks_errno = EAGAIN;
+	  nbworks_errno = EBUSY;
 	  return -1;
 	} else {
 	  nbworks_errno = errno;
@@ -2264,7 +2272,7 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
   struct nbworks_session *ses;
   ssize_t ret_val;
   long waitsteps;
-  int flags;
+  int flags, kill_name;
   time_t start_time, end_time;
   struct packet_cooked *in_lib;
 
@@ -2277,6 +2285,7 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
   } else {
     nbworks_errno = 0;
     ret_val = 0;
+    kill_name = FALSE;
 
     /* Turn off some flags. */
     flags = callflags & (ONES ^ (MSG_EOR | MSG_PEEK | MSG_ERRQUEUE));
@@ -2324,7 +2333,7 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
        (flags & MSG_DONTWAIT))) {
     if (0 != pthread_mutex_trylock(&(ses->handle->dtg_recv_mutex))) {
       if (errno == EBUSY) {
-	nbworks_errno = EAGAIN;
+	nbworks_errno = EBUSY;
 	return -1;
       } else {
 	nbworks_errno = errno;
@@ -2358,7 +2367,10 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
 		goto jump_to_next_datagram;
 	      }
 	    }
+	    if (kill_name)
+	      nbworks_dstr_nbnodename(*src); /* Plug a memory leak. */
 	    *src = in_lib->src;
+	    kill_name = TRUE;
 	  }
 	} else {
 	  /* From now on, we are enforcing multiplexing. */
@@ -2420,11 +2432,15 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
 	    (flags & MSG_DONTWAIT)) {
 	  nbworks_errno = EAGAIN;
 	  ret_val = -1;
+	  if (kill_name)
+	    nbworks_dstr_nbnodename(*src); /* Plug a leak. */
 	  break;
 	} else {
 	  if (ses->handle->isinconflict) {
 	    nbworks_errno = EPERM;
 	    ret_val = -1;
+	    if (kill_name)
+	      nbworks_dstr_nbnodename(*src); /* Plug a leak. */
 	    break;
 	  } else {
 	    handle_dtg_timeout;
@@ -2462,11 +2478,21 @@ ssize_t nbworks_recvwait(nbworks_session_p session,
 	}
       }
     }
-
-  } while ((! ret_val) ||
+  } while ((! ret_val) &&
 	   (waitsteps != 0));
 
   pthread_mutex_unlock(&(ses->handle->dtg_recv_mutex));
+  if ((ret_val == 0) &&
+      (waitsteps == 0)) {
+    /* Entering this means nothing happened. EXCEPT! That an empty
+     * datagram will look just like this too. And because it is
+     * indistiguishable from an empty exit, I need to do things
+     * like this. Also: I *HATE* that kill_name kludge! */
+    if (kill_name)
+      nbworks_dstr_nbnodename(*src);
+    ret_val = -1;
+    nbworks_errno = EAGAIN;
+  }
   return ret_val;
 }
 
