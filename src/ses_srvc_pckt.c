@@ -416,8 +416,10 @@ struct nbworks_nbnamelst *ses_srvc_get_calledname(void *packet,
   unsigned char *walker, *startof_pckt;
 
   if ((! packet) ||
-      (len < (2 + SES_HEADER_LEN)))
+      (len < (2 + SES_HEADER_LEN))) {
+    OUT_OF_BOUNDS(65);
     return 0;
+  }
 
   startof_pckt = packet;
   walker = startof_pckt + SES_HEADER_LEN;
@@ -434,6 +436,7 @@ struct nbworks_nbnamelst *ses_srvc_get_callingname(void *packet_ptr,
 
   if ((! packet_ptr) ||
       (len < (2 + SES_HEADER_LEN))) {
+    OUT_OF_BOUNDS(66);
     return 0;
   } else {
     packet = packet_ptr;
