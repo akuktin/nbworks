@@ -1273,12 +1273,14 @@ void *ss__udp_recver(void *sckts_ptr) {
 	}
       }
 
+#ifndef VISIBLE_BREAKERS
       /* A *HORRIBLE* hack to enable us to receive datagrams
        * sent to other nodes on this same machine. */
       if ((his_addr.sin_addr.s_addr == discard_addr.sin_addr.s_addr) &&
-	  (sckts.branch != DTG_SRVC)) {
-	continue;
+      	  (sckts.branch != DTG_SRVC)) {
+      	continue;
       }
+#endif
 
 
       new_pckt = malloc(sizeof(struct ss_unif_pckt_list));

@@ -128,6 +128,12 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
 
     walker = read_16field(walker, &(normal_pckt->len));
     walker = read_16field(walker, &(normal_pckt->offset));
+    /* NOTETOSELF: Since you are constantly getting ideas about how
+     *             good an idea it would be to change the below '<='
+     *             into a '<', I have to tell you: DON'T DO IT BECAUSE
+     *             YOU ARE A FUCKING MORON AND WILL DESTROY PERFECTLY
+     *             GOOD AND WORKING CODE! If you must, change it to
+     *             (normal_pckt->len < 3) but not anything else. */
     if ((normal_pckt->len <= 2) ||
 	((walker + normal_pckt->len) > end_of_packet)) {
       if ((walker + normal_pckt->len) > end_of_packet) {
@@ -419,8 +425,10 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
   unsigned char *readhead, *startof_pckt;
 
   if ((! packet) ||
-      (len < (DTG_HDR_LEN +2+2+1+1)))
+      (len < (DTG_HDR_LEN +2+2+1+1))) {
+    OUT_OF_BOUNDS(64);
     return 0;
+  }
 
   startof_pckt = packet;
 
@@ -436,7 +444,7 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
 
   readhead = startof_pckt;
   readhead = readhead + (DTG_HDR_LEN +2+2);
-  if (0 == fastfrwd_all_DNS_labels(&readhead, (startof_pckt + len))) {
+  if (! fastfrwd_all_DNS_labels(&readhead, (startof_pckt + len))) {
     DIDNT_READ_NAME(7);
     free(result);
     return 0;
