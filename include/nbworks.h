@@ -20,7 +20,6 @@
 # define NBWORKS_NBWORKS_H 1
 
 # include <unistd.h>
-# include <stdint.h>
 /***********************/
 # include <sys/socket.h>
 
