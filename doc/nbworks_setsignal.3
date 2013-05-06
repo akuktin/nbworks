@@ -1,0 +1,40 @@
+.TH NBWORKS_SETSIGNAL 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_setsignal \- install the conflict signaler
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "int"
+.br
+.BI "  nbworks_setsignal(nbworks_namestate_p " namehandle ","
+.br
+.BI "                    int" signal ");"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_setsignal\fP() function installs a signaler at the
+daemon. This signaler will inform you about your names entering
+conflicts.
+.PP
+The argument \fInamehandle\fP is the name handle returned by a
+previous successfull call to \fBnbworks_regname\fP().
+.PP
+The argument \fIsignal\fP specifies the signal to be sent to your
+application by the nbworks multiplexing daemon when a name enters a
+conflict. It is then up to you to figure out (by calling
+\fBnbworks_isinconflict\fP()) which one of your infinitelly many names
+is the one that is in conflict.
+.SH "RETURN VALUE"
+This function returns a positive number if the instalation was
+succesfull, zero if it failed and a negative number if an error
+occured.
+.PP
+In case of error, you should check \fInbworks_errno\fP for more
+information.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_regname (3),
+.BR nbworks_delname (3),
+.BR nbworks_rmsignal (3),
+.BR nbworks_grab_railguard (3),
+.BR nbworks_release_railguard (3)

@@ -84,6 +84,8 @@ struct cache_scopenode {
 
 struct group_tokenlst {
   token_t token;
+  pid_t signal_pid;
+  int signal;
   struct group_tokenlst *next;
 };
 
@@ -94,6 +96,8 @@ struct cache_namenode {
   unsigned char unq_isinconflict;
   unsigned char grp_isinconflict;
   token_t unq_token; /* 0 if name not mine */
+  pid_t unq_signal_pid;
+  int unq_signal_sig;
   struct group_tokenlst *grp_tokens; /* 0 if name not mine */
   uint16_t dns_type;
   uint16_t dns_class;

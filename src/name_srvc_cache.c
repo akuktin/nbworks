@@ -22,7 +22,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
-
+#include <sys/types.h>
+#include <signal.h>
 #include <pthread.h>
 
 #include "constdef.h"
@@ -53,6 +54,18 @@ unsigned int does_token_match(struct group_tokenlst *list,
   return FALSE;
 }
 
+struct group_tokenlst *find_token(struct group_tokenlst *list,
+                                  token_t token) {
+  while (list) {
+    if (list->token == token)
+      return list;
+    else
+      list = list->next;
+  }
+
+  return 0;
+}
+
 struct group_tokenlst *add_token(struct group_tokenlst **anchor,
 				 token_t token) {
   struct group_tokenlst *grptkn, **lasttkn, *result;
@@ -60,12 +73,14 @@ struct group_tokenlst *add_token(struct group_tokenlst **anchor,
   if (! (anchor && token))
     return 0;
 
-  result = malloc(sizeof(*result));
+  result = malloc(sizeof(struct group_tokenlst));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
   }
   result->token = token;
+  result->signal_pid = 0;
+  result->signal = SIGCHLD; /* This signal is ignored by default. */
   result->next = 0;
 
   while (5050) {
@@ -310,6 +325,8 @@ struct cache_namenode *add_nblabel(void *label,
   result->grp_isinconflict = FALSE;
   if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
     result->unq_token = token;
+    result->unq_signal_pid = 0;
+    result->unq_signal_sig = SIGCHLD; /* This signal is ignored by default. */
   } else {
     result->unq_token = 0;
   }
@@ -498,6 +515,8 @@ struct cache_namenode *alloc_namecard(void *label,
   result->namelen = labellen;
   result->node_types = node_types;
   result->unq_isinconflict = FALSE;
+  result->unq_signal_pid = 0;
+  result->unq_signal_sig = SIGCHLD; /* This signal is ignored by default. */
   result->grp_isinconflict = FALSE;
   if (node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
     result->unq_token = token;
@@ -552,6 +571,8 @@ int name_srvc_enter_conflict(unsigned char group_flg,
 			     struct cache_namenode *namecard,
 			     unsigned char *name_ptr, /* len == NETBIOS_NAME_LEN */
 			     struct nbworks_nbnamelst *scope) {
+  struct group_tokenlst *cur_token;
+
   if (! namecard)
     return -1;
 
@@ -566,6 +587,17 @@ int name_srvc_enter_conflict(unsigned char group_flg,
 
   default:
     return -1;
+  }
+
+  if (namecard->unq_signal_pid) {
+    kill(namecard->unq_signal_pid, namecard->unq_signal_sig);
+  }
+  cur_token = namecard->grp_tokens;
+  while (cur_token) {
+    if (cur_token->signal_pid) {
+      kill(cur_token->signal_pid, cur_token->signal);
+    }
+    cur_token = cur_token->next;
   }
 
   ss__kill_allservrs(name_ptr, scope);

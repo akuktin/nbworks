@@ -757,7 +757,6 @@ ssize_t lib_senddtg_138(struct name_state *handle,
     command.command = rail_send_dtg;
     command.token = handle->token;
     command.len = pckt_len;
-    command.data = readypacket;
 
     fill_railcommand(&command, readycommand, (readycommand + LEN_COMM_ONWIRE));
 

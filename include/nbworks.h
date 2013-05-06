@@ -159,6 +159,14 @@ int
 /* returns: >0 = success; 0 = fail; <0 = error */
 int
   nbworks_release_railguard(nbworks_namestate_p namehandle);
+
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  nbworks_setsignal(nbworks_namestate_p namehandle,
+                    int signal);
+/* returns: >0 = success, 0 = fail, <0 = error */
+int
+  nbworks_rmsignal(nbworks_namestate_p namehandle);
 /* END auxiliatry API */
 
 /* BEGIN base API */

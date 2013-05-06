@@ -46,7 +46,10 @@ enum rail_commands {
   rail_addr_ofXgroup,  /* what is the address of X (group)? */
 
   rail_isguard,        /* library wants to use rail as insurance for crashes */
-  rail_isnotguard      /* library wants to release the guard on the rail */
+  rail_isnotguard,     /* library wants to release the guard on the rail */
+
+  rail_setsignal,      /* library wants to be signaled in conflict */
+  rail_rmsignal        /* library does not want to be signaled in conflict */
 };
 
 # define LEN_COMM_ONWIRE (1+8+(2+4)+1+4+4)
@@ -62,7 +65,6 @@ struct com_comm {
                             * flags are used internally */
   uint32_t nbworks_errno;
   uint32_t len;
-  void *data;
 };
 
 # define LEN_NAMEDT_ONWIREMIN ((NETBIOS_NAME_LEN+1)+4)
@@ -154,5 +156,15 @@ ipv4_addr_t
                    unsigned int *rail_isreusable);
 uint32_t
   rail_isnameinconflict(token_t token);
+
+/* returns: >0 = success; 0 = fail; <0 = error */
+int
+  rail_do_setsignal(int rail,
+                    struct com_comm *command,
+                    unsigned int *rail_isreusable);
+/* returns: >0 = success; 0 = fail; <0 = error */
+int
+  rail_do_rmsignal(int rail,
+                   struct com_comm *command);
 
 #endif /* NBWORKS_RAILCOMM_H */

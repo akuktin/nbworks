@@ -31,6 +31,9 @@ unsigned int
   does_token_match(struct group_tokenlst *list,
                    token_t token);
 struct group_tokenlst *
+  find_token(struct group_tokenlst *list,
+             token_t token);
+struct group_tokenlst *
   add_token(struct group_tokenlst **anchor,
             token_t token);
 void

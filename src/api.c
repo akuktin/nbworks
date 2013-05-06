@@ -567,6 +567,8 @@ int nbworks_grab_railguard(nbworks_namestate_p namehandle) {
     return -1;
   }
 
+  if (command.len)
+    rail_flushrail(command.len, rail);
   handle->guard_rail = rail;
 
   return 1;
@@ -2812,14 +2814,21 @@ int nbworks_isinconflict(nbworks_namestate_p namehandle) {
     return -1;
   }
 
-  if (! guarded)
-    close(daemon);
-  else
-    pthread_mutex_unlock(&(handle->guard_mutex));
-
   if (! read_railcommand(buff, (buff + LEN_COMM_ONWIRE), &command)) {
+    if (! guarded)
+      close(daemon);
+    else
+      pthread_mutex_unlock(&(handle->guard_mutex));
     nbworks_errno = ENOBUFS;
     return -1;
+  }
+
+  if (! guarded)
+    close(daemon);
+  else {
+    if (command.len)
+      rail_flushrail(command.len, daemon);
+    pthread_mutex_unlock(&(handle->guard_mutex));
   }
 
   if (!((command.command == rail_isinconflict) &&
@@ -2834,6 +2843,202 @@ int nbworks_isinconflict(nbworks_namestate_p namehandle) {
   } else {
     handle->isinconflict = FALSE;
     return 0;
+  }
+}
+
+
+/* returns: >0 = success, 0 = fail, <0 = error */
+int nbworks_setsignal(nbworks_namestate_p namehandle,
+		      int signal) {
+  struct com_comm command;
+  struct name_state *handle;
+  int64_t transit;
+  pid_t pid;
+  int rail, isguarded;
+  unsigned char buff[LEN_COMM_ONWIRE+(8*2)];
+
+  handle = namehandle;
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  memset(&command, 0, sizeof(struct com_comm));
+
+  command.command = rail_setsignal;
+  command.token = handle->token;
+  command.len = (8*2);
+  if (buff >= fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE))) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  pid = getpid();
+  transit = pid;
+  fill_64field((uint64_t)transit, (buff + LEN_COMM_ONWIRE));
+  transit = signal;
+  fill_64field((uint64_t)transit, (buff + LEN_COMM_ONWIRE+8));
+
+  if (!(handle->guard_rail < 0)) {
+    if (0 != pthread_mutex_trylock(&(handle->guard_mutex))) {
+      goto regular_socket;
+    } else {
+      isguarded = TRUE;
+      rail = handle->guard_rail;
+    }
+  } else {
+  regular_socket:
+    isguarded = FALSE;
+    rail = lib_daemon_socket();
+    if (rail < 0) {
+      nbworks_errno = EPIPE;
+      return -1;
+    }
+  }
+
+  if ((LEN_COMM_ONWIRE+(8*2)) > send(rail, buff,
+				     (LEN_COMM_ONWIRE+(8*2)), 0)) {
+    if (isguarded) {
+      pthread_mutex_unlock(&(handle->guard_mutex));
+    } else {
+      close(rail);
+    }
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (LEN_COMM_ONWIRE > recv(rail, buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
+    if (isguarded) {
+      pthread_mutex_unlock(&(handle->guard_mutex));
+    } else {
+      close(rail);
+    }
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (! read_railcommand(buff, (buff + LEN_COMM_ONWIRE), &command)) { 
+    if (isguarded) {
+      pthread_mutex_unlock(&(handle->guard_mutex));
+    } else {
+      close(rail);
+    }
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  if (isguarded) {
+    if (command.len)
+      rail_flushrail(command.len, rail);
+    pthread_mutex_unlock(&(handle->guard_mutex));
+  } else {
+    close(rail);
+  }
+
+  if ((command.command != rail_setsignal) ||
+      (command.command != handle->token)) {
+    nbworks_errno = EPROTO;
+    return -1;
+  }
+
+  if (command.nbworks_errno) {
+    nbworks_errno = command.nbworks_errno;
+    return 0;
+  } else {
+    nbworks_errno = 0;
+    return 1;
+  }
+}
+
+/* returns: >0 = success, 0 = fail, <0 = error */
+int nbworks_rmsignal(nbworks_namestate_p namehandle) {
+  struct com_comm command;
+  struct name_state *handle;
+  int rail, isguarded;
+  unsigned char buff[LEN_COMM_ONWIRE];
+
+  handle = namehandle;
+  if (! handle) {
+    nbworks_errno = EINVAL;
+    return -1;
+  }
+
+  memset(&command, 0, sizeof(struct com_comm));
+
+  command.command = rail_rmsignal;
+  command.token = handle->token;
+  if (buff >= fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE))) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  if (!(handle->guard_rail < 0)) {
+    if (0 != pthread_mutex_trylock(&(handle->guard_mutex))) {
+      goto regular_socket;
+    } else {
+      isguarded = TRUE;
+      rail = handle->guard_rail;
+    }
+  } else {
+  regular_socket:
+    isguarded = FALSE;
+    rail = lib_daemon_socket();
+    if (rail < 0) {
+      nbworks_errno = EPIPE;
+      return -1;
+    }
+  }
+
+  if (LEN_COMM_ONWIRE > send(rail, buff, LEN_COMM_ONWIRE, 0)) {
+    if (isguarded) {
+      pthread_mutex_unlock(&(handle->guard_mutex));
+    } else {
+      close(rail);
+    }
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (LEN_COMM_ONWIRE > recv(rail, buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
+    if (isguarded) {
+      pthread_mutex_unlock(&(handle->guard_mutex));
+    } else {
+      close(rail);
+    }
+    nbworks_errno = EPIPE;
+    return -1;
+  }
+
+  if (! read_railcommand(buff, (buff + LEN_COMM_ONWIRE), &command)) { 
+    if (isguarded) {
+      pthread_mutex_unlock(&(handle->guard_mutex));
+    } else {
+      close(rail);
+    }
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
+  if (isguarded) {
+    if (command.len)
+      rail_flushrail(command.len, rail);
+    pthread_mutex_unlock(&(handle->guard_mutex));
+  } else {
+    close(rail);
+  }
+
+  if ((command.command != rail_rmsignal) ||
+      (command.command != handle->token)) {
+    nbworks_errno = EPROTO;
+    return -1;
+  }
+
+  if (command.nbworks_errno) {
+    nbworks_errno = command.nbworks_errno;
+    return 0;
+  } else {
+    nbworks_errno = 0;
+    return 1;
   }
 }
 

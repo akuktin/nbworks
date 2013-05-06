@@ -88,7 +88,6 @@ struct com_comm *read_railcommand(unsigned char *packet,
   walker = read_32field(walker, &(result->len));
 
   result->addr.sin_family = AF_INET;
-  result->data = 0;
 
   return result;
 }

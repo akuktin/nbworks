@@ -25,10 +25,11 @@
 #include <pthread.h>
 #include <errno.h>
 #include <unistd.h>
-
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/poll.h>
+#include <sys/types.h>
+#include <signal.h>
 
 #include "constdef.h"
 #include "daemon_control.h"
@@ -229,7 +230,6 @@ void *handle_rail(void *args) {
       }
 
       command.len = 0;
-      command.data = 0;
       fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -249,12 +249,10 @@ void *handle_rail(void *args) {
 	command.command = rail_delname;
 	command.nbworks_errno = 0;
 	command.len = 0;
-	command.data = 0;
       } else {
 	command.command = rail_delname;
 	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
 	command.len = 0;
-	command.data = 0;
       }
 
       if (rail_isreusable) {
@@ -275,7 +273,6 @@ void *handle_rail(void *args) {
 	if (ret_val == 0) {
 	  command.nbworks_errno = 0;
 	  command.len = 0;
-	  command.data = 0;
 	  fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	  if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -297,7 +294,6 @@ void *handle_rail(void *args) {
 	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
 
 	command.len = 0;
-	command.data = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -314,7 +310,6 @@ void *handle_rail(void *args) {
 				   &command)) {
 	command.nbworks_errno = 0;
 	command.len = 0;
-	command.data = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -334,7 +329,6 @@ void *handle_rail(void *args) {
 				   &command)) {
 	command.nbworks_errno = 0;
 	command.len = 0;
-	command.data = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				   LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -381,7 +375,6 @@ void *handle_rail(void *args) {
 	} else {
 	  command.nbworks_errno = ENONET;
 	  command.len = 0;
-	  command.data = 0;
 	  fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
 	  if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				     LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -411,7 +404,6 @@ void *handle_rail(void *args) {
       if (command.len)
 	rail_flushrail(command.len, params.rail_sckt);
       command.len = 0;
-      command.data = 0;
       fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -427,7 +419,41 @@ void *handle_rail(void *args) {
       command.nbworks_errno = rail_isnameinconflict(command.token);
 
       command.len = 0;
-      command.data = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	close(params.rail_sckt);
+	rail_isreusable = FALSE;
+	break;
+      }
+      break;
+
+    case rail_setsignal:
+      /* rail is flushed by rail_do_setsignal() */
+      if (0 < rail_do_setsignal(params.rail_sckt, &command,
+				&rail_isreusable)) {
+	command.nbworks_errno = 0;
+      } else {
+	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
+      }
+      command.len = 0;
+      fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
+      if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
+				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
+	close(params.rail_sckt);
+	rail_isreusable = FALSE;
+	break;
+      }
+      break;
+
+    case rail_rmsignal:
+      /* rail is flushed by rail_do_rmsignal() */
+      if (0 < rail_do_rmsignal(params.rail_sckt, &command)) {
+	command.nbworks_errno = 0;
+      } else {
+	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
+      }
+      command.len = 0;
       fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       if (LEN_COMM_ONWIRE > send(params.rail_sckt, buff,
 				 LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -441,7 +467,6 @@ void *handle_rail(void *args) {
       /* Unknown command. */
       command.nbworks_errno = EINVAL;
       command.len = 0;
-      command.data = 0;
 
       fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
       send(params.rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
@@ -703,7 +728,6 @@ int do_rail_delname(int rail_sckt,
     command->command = rail_readcom;
     command->nbworks_errno = 0;
     command->len = 0;
-    command->data = 0;
     fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
     if (LEN_COMM_ONWIRE > send(rail_sckt, buff,
 			       LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
@@ -752,6 +776,8 @@ int do_rail_delname(int rail_sckt,
     if (node_type & CACHE_ADDRBLCK_UNIQ_MASK) {
       killitwithfire = TRUE;
       cache_namecard->unq_token = 0;
+      cache_namecard->unq_signal_pid = 0;
+      cache_namecard->unq_signal_sig = SIGCHLD; /* This signal is ignored by default. */
       cache_namecard->unq_isinconflict = FALSE;
       node_type |= CACHE_ADDRBLCK_UNIQ_MASK;
     } else
@@ -1068,7 +1094,6 @@ int rail_add_dtg_server(int rail_sckt,
 	  namecard->grp_isinconflict))) {
 
       command->len = 0;
-      command->data = 0;
       command->nbworks_errno = EADDRINUSE;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
       send(rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
@@ -1301,7 +1326,6 @@ int rail_add_ses_server(int rail_sckt,
 	  namecard->grp_isinconflict))) {
 
       command->len = 0;
-      command->data = 0;
       command->nbworks_errno = EADDRINUSE;
       fill_railcommand(command, buff, (buff+LEN_COMM_ONWIRE));
       send(rail_sckt, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL);
@@ -1774,4 +1798,97 @@ uint32_t rail_isnameinconflict(token_t token) {
     }
   } else
     return FALSE;
+}
+
+/* returns: >0 = success; 0 = fail; <0 = error */
+int rail_do_setsignal(int rail,
+		      struct com_comm *command,
+		      unsigned int *rail_isreusable) {
+  struct cache_namenode *namecard;
+  struct group_tokenlst *cur_token;
+  int64_t transitory;
+  pid_t pid;
+  int signal;
+  unsigned char buff[8*2];
+
+  if ((! command) ||
+      (rail < 0) ||
+      (! rail_isreusable)) {
+    return -1;
+  }
+
+  if ((command->len < (8*2)) ||
+      (! command->token)) {
+    rail_flushrail(command->len, rail);
+    return 0;
+  }
+
+  if ((8*2) > recv(rail, buff, (8*2), MSG_WAITALL)) {
+    *rail_isreusable = FALSE;
+    return -1;
+  } else {
+    if ((8*2) < command->len) {
+      rail_flushrail((command->len - (8*2)), rail);
+    }
+  }
+
+  /* VAXism below */
+  read_64field(buff, (uint64_t *)&transitory);
+  pid = transitory;
+  read_64field((buff +8), (uint64_t *)&transitory);
+  signal = transitory;
+
+  namecard = find_namebytok(command->token, 0);
+  if (namecard) {
+    if (namecard->unq_token == command->token) {
+      namecard->unq_signal_pid = pid;
+      namecard->unq_signal_sig = signal;
+    }
+    cur_token = namecard->grp_tokens;
+    while (cur_token) {
+      if (cur_token->token == command->token) {
+	cur_token->signal_pid = pid;
+	cur_token->signal = signal;
+      }
+
+      cur_token = cur_token->next;
+    }
+  }
+
+  return 1;
+}
+
+/* returns: >0 = success; 0 = fail; <0 = error */
+int rail_do_rmsignal(int rail,
+		     struct com_comm *command) {
+  struct cache_namenode *namecard;
+  struct group_tokenlst *cur_token;
+
+  if ((! command) ||
+      (rail < 0)) {
+    return -1;
+  }
+
+  if (command->len) {
+    rail_flushrail(command->len, rail);
+  }
+
+  namecard = find_namebytok(command->token, 0);
+  if (namecard) {
+    if (namecard->unq_token == command->token) {
+      namecard->unq_signal_pid = 0;
+      namecard->unq_signal_sig = SIGCHLD; /* This signal is ignored by default. */
+    }
+    cur_token = namecard->grp_tokens;
+    while (cur_token) {
+      if (cur_token->token == command->token) {
+	cur_token->signal_pid = 0;
+	cur_token->signal = SIGCHLD; /* This signal is ignored by default. */
+      }
+
+      cur_token = cur_token->next;
+    }
+  }
+
+  return 1;
 }
