@@ -54,18 +54,6 @@ unsigned int does_token_match(struct group_tokenlst *list,
   return FALSE;
 }
 
-struct group_tokenlst *find_token(struct group_tokenlst *list,
-                                  token_t token) {
-  while (list) {
-    if (list->token == token)
-      return list;
-    else
-      list = list->next;
-  }
-
-  return 0;
-}
-
 struct group_tokenlst *add_token(struct group_tokenlst **anchor,
 				 token_t token) {
   struct group_tokenlst *grptkn, **lasttkn, *result;
@@ -601,8 +589,6 @@ int name_srvc_enter_conflict(unsigned char group_flg,
   }
 
   ss__kill_allservrs(name_ptr, scope);
-
-  /* FIXME: signal sender goes here --> */
 
   return 1;
 }
