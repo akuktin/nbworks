@@ -971,7 +971,8 @@ int rail_senddtg(int rail_sckt,
     if ((pckt->type == BRDCST_DTG) ||
 	(0 == memcmp(JOKER_NAME_CODED, normal_pyld->dst_name->name,
 		     NETBIOS_CODED_NAME_LEN))) {
-      /* FIXME: different operation in P-type modes. */
+      /* FIXME: different operation in P-type modes.
+       * However, this should produce the same final results as sending to NBDD. */
       /* VAXism below. */
       fill_32field(brdcst_addr, (unsigned char *)&(dst_addr.sin_addr.s_addr));
 
@@ -1000,7 +1001,8 @@ int rail_senddtg(int rail_sckt,
       }
       if (i<NUMOF_ADDRSES) {
 	if (namecard->addrs.recrd[i].node_type & CACHE_ADDRBLCK_GRP_MASK) {
-	  /* FIXME: this should also be fixed for P-type modes. */
+	  /* FIXME: this should also be fixed for P-type modes.
+	   * However, this should produce the same final results as sending to NBDD. */
 	  group_addrs = namecard->addrs.recrd[i].addr;
 	  while (group_addrs->next) {
             /* VAXism below */

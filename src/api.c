@@ -357,6 +357,7 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
     }
   } else {
     guarded = TRUE;
+    pthread_mutex_lock(&(handle->guard_rail));
     daemon = handle->guard_rail;
   }
 
@@ -397,26 +398,31 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
     nbworks_errno = EINVAL;
     if (! guarded)
       close(daemon);
+    else
+      pthread_mutex_unlock(&(handle->guard_mutex));
     return -1;
   }
 
   fill_railcommand(&command, combuff, (combuff + LEN_COMM_ONWIRE));
   if (LEN_COMM_ONWIRE > send(daemon, combuff, LEN_COMM_ONWIRE,
 			     MSG_NOSIGNAL)) {
-    close(daemon);
-    if (guarded)
-      return 1;
-    else
+    if (guarded) {
+      close(daemon);
+      goto do_delete_everything;
+    } else {
+      close(daemon)
       return 0;
+    }
   }
 
   /* Wait on the daemon, so our day does not get screwed up. */
   if (LEN_COMM_ONWIRE > recv(daemon, combuff, LEN_COMM_ONWIRE, 0)) {
     close(daemon);
-    if (guarded)
-      return 1;
-    else
+    if (guarded) {
+      goto do_delete_everything;
+    } else {
       return 0;
+    }
   }
   close(daemon);
 
@@ -999,6 +1005,8 @@ int nbworks_update_listentos(unsigned char service,
 
   switch (service) {
   case NBWORKS_DTG_SRVC:
+    old = handle->dtg_listento;
+    handle->dtg_listento = new;
     switch (newtakes_field) {
     case NBWORKS_TAKES_ALL:
       handle->dtg_takes = HANDLE_TAKES_ALL;
@@ -1017,16 +1025,14 @@ int nbworks_update_listentos(unsigned char service,
       nbworks_errno = EINVAL;
       return -1;
     }
-    old = handle->dtg_listento;
-    handle->dtg_listento = new;
     break;
   case NBWORKS_SES_SRVC:
+    old = handle->ses_listento;
+    handle->ses_listento = new;
     if (newtakes_field)
       handle->ses_takes = HANDLE_TAKES_ALL;
     else
       handle->ses_takes = 0;
-    old = handle->ses_listento;
-    handle->ses_listento = new;
     break;
   default:
     nbworks_errno = EINVAL;
