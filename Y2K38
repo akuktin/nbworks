@@ -23,3 +23,4 @@ names whose deathtimes are updated will have their deathtimes stuck in INFINITY
 names are not defended during the last second
 names are not used for answering queries during the last second
 name conflicts are not taken into account during the last second
+daemon checks and rechecks its IPv4 address like crazy

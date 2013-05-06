@@ -66,6 +66,7 @@ extern struct nbworks_pruners_cntrl_t {
   struct timespec timeout;
   unsigned int passes_ses_srv_ses;
   time_t lifetimeof_queue_storage;
+  time_t addrcheck_interval;
 } nbworks_pruners_cntrl;
 
 extern ipv4_addr_t nbworks__default_nbns;

@@ -69,6 +69,10 @@ void nbworks_libinit(void) {
   init_my_ip4_address();
 }
 
+void nbworks_reinit_myIP4address(void) {
+  init_my_ip4_address();
+}
+
 
 unsigned long nbworks_maxdtglen(nbworks_namestate_p handle,
 				unsigned int withfrag) {

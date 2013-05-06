@@ -1,0 +1,22 @@
+.TH NBWORKS_REINIT_MYIP4ADDRESS 3  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_retinit_myIP4address \- reinitialize the ipv4 address
+.SH SYNOPSIS
+.nf
+.B #include <nbworks.h>
+.sp
+.BI "void"
+.br
+.BI "  nbworks_reinit_myIP4address(void);"
+.fi
+.SH DESCRIPTION
+The \fBnbworks_reinit_myIP4address\fP() function reinitializes the libraries
+idea of your IPv4 address.
+.PP
+Call this whenever your IPv4 address changes.
+.SH "RETURN VALUE"
+This function does not have a return value.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_libcntl (7),
+.BR nbworks_libinit (3)

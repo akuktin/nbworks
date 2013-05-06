@@ -20,6 +20,7 @@
 # define NBWORKS_NBWORKS_H 1
 
 # include <unistd.h>
+# include <stdint.h>
 /***********************/
 # include <sys/socket.h>
 
@@ -118,6 +119,8 @@ struct nbworks_pollfd {
 
 void
   nbworks_libinit(void);
+void
+  nbworks_reinit_myIP4address(void);
 
 /* BEGIN auxiliary API */
 struct nbworks_nbnamelst *
@@ -150,6 +153,7 @@ struct nbworks_nbnamelst *
 unsigned long
   nbworks_maxdtglen(nbworks_namestate_p handle,
                     unsigned int withfrag);
+
 /* returns: >0 = success; 0 = fail; <0 = error */
 int
   nbworks_grab_railguard(nbworks_namestate_p namehandle);

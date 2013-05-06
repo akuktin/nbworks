@@ -208,6 +208,7 @@ void daemon_init_resetables(void) {
   nbworks_pruners_cntrl.timeout.tv_nsec = T_250MS;
   nbworks_pruners_cntrl.passes_ses_srv_ses = 8; /* AKA 2 seconds */
   nbworks_pruners_cntrl.lifetimeof_queue_storage = 25; /* seconds */
+  nbworks_pruners_cntrl.addrcheck_interval = 60;
 
 
   nbworks_namsrvc_cntrl.NBNSnewtid_sleeptime.tv_sec = 0;
@@ -236,7 +237,13 @@ void daemon_init_nonresetables(void) {
 
 
 void *pruners(void *arg_ignored) {
-  time_t now;
+  time_t now, next_check, check_interval;
+
+  next_check = time(0);
+  check_interval = nbworks_pruners_cntrl.addrcheck_interval;
+  next_check = next_check + check_interval;
+  if (next_check < check_interval)
+    next_check = INFINITY;
 
   do {
     now = time(0);
@@ -249,6 +256,17 @@ void *pruners(void *arg_ignored) {
     ss__prune_sessions();
     ss_check_all_ses_server_rails();
     thread_joiner();
+
+    if (now == next_check) {
+      init_default_nbns();
+      init_brdcts_addr();
+      init_my_ip4_address();
+
+      check_interval = nbworks_pruners_cntrl.addrcheck_interval;
+      next_check = next_check + check_interval;
+      if (next_check < check_interval)
+	next_check = INFINITY;
+    }
 
     nanosleep(&(nbworks_pruners_cntrl.timeout), 0);
   } while (! nbworks_pruners_cntrl.all_stop);
