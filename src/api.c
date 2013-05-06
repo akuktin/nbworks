@@ -357,7 +357,7 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
     }
   } else {
     guarded = TRUE;
-    pthread_mutex_lock(&(handle->guard_rail));
+    pthread_mutex_lock(&(handle->guard_mutex));
     daemon = handle->guard_rail;
   }
 
@@ -410,7 +410,7 @@ int nbworks_delname(nbworks_namestate_p namehandle) {
       close(daemon);
       goto do_delete_everything;
     } else {
-      close(daemon)
+      close(daemon);
       return 0;
     }
   }

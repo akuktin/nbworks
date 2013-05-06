@@ -34,7 +34,7 @@ INSTALL_DIRS = $(PREFIX) $(EPREFIX) $(BINDIR) $(LIBDIR) $(INCLUDEDIR)       \
                $(MANDIR)/man8 $(DOCDIR)
 
 
-CFLAGS ?= -O3 -g -Wall
+CFLAGS ?= -g -Wall
 CC ?= gcc
 MKDIR ?= mkdir -p
 RM_RF ?= rm -rf
