@@ -1,0 +1,28 @@
+# This file must be in an ASCII-compatible encoding.
+
+# Lines beggining with a hash are comments.
+  # Lines that have whitespace before the hash are also comments.
+# White space equals ' ' or a tab character.
+
+# To set an option, first write the option name, then the equals sign, then
+# the option value, in a option-specific format. Like this (without the leading
+# hash):
+# shadowfax_command = show us the meaning of haste
+
+
+# OPTION: default_nbns
+# DESCRIPTION: this option specifies the default NBNS used when operating in
+#              P-class modes of operation. While the code of nbworksd is
+#              capable of using different NBNS-ses for different scopes,
+#              currently there is no way to specify different NBNS-ses for
+#              different scopes. All scopes use the same one.
+# VALUE: the IPv4 address of the default NBNS.
+# VALUE FORMAT: the standard four-numbers-with-digits format used for IPv4
+#               addresses everywhere.
+# DEFAULT VALUE: host 1 in your network. Value is computed from your IPv4
+#                address and netmask which are bitwise-ANDed to produce the
+#                network prefix. This value is then incremented by one and the
+#                resulting number is used for an address. For example, a host
+#                10.0.50.14 in network 10.0.0.0/8 will compute a default
+#                NBNS address of 10.0.0.1.
+# defauld_nbns = 192.168.1.1

@@ -1,0 +1,63 @@
+.TH NBWORKSD 8  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworksd \- nbworks multiplexing daemon
+.SH SYNOPSIS
+.nf
+.B  "nbworks"
+.fi
+.SH DESCRIPTION
+Nbworks is an implementation of the NetBIOS-over-TCP protocol
+(NBT). It consists of a multiplexing daemon which runs in the
+background and a library which gets linked into every process which
+wants to use NetBIOS.
+.PP
+The daemon binds to ports 137/UDP, 138/UDP and 139/TCP. When nbworks
+gets completed, the daemon will also bind port 137/TCP and a packet
+socket. Because the daemon binds these ports, it must be run as root
+or with appropriate priviliges.
+.PP
+The nbworks multiplexing daemon implements the NBT \fIname
+service\fP. Currently, only the UDP-based part of the service is
+implemented, the TCP-based part is scheduled for implementation
+soon. The daemon also implements part of the server side of the
+\fIdatagram service\fP and part of the server side of the \fIsession
+service\fP. The other parts of respecive services are implemented by
+the nbworks library.
+.SH CONFIGURATION
+\fBnbworksd\fP ignores all command-line arguments.
+.PP
+The daemon can be configured by the configuration file which is one of
+the following, in order: \fB~/.nbworks.conf\fP,
+\fB/etc/nbworks.conf\fP.
+.PP
+Currently, there is only one configuration option that is read and
+interpreted from the config file:
+.PP
+\fBdefault_nbns\fP
+.br
+  Set the default NetBIOS Name Server.
+.PP
+Please refer to the sample configuration file in the packege's source
+for a much more verbose documentation of the configuration file.
+.SH BUGS
+For a list of known bugs, see file \fBBUGS\fP in the package's
+source.
+.PP
+Please report bugs to: <\fBakuktin@gmail.com\fP>
+.br
+Please prefix the contents of the Subject field of your e-mail's
+header with \fB[nbworks-bugs]\fP for easier sorting and management of
+bug reports on my part.
+.SH AUTHOR
+Nbworks has been written by Aleksandar Kuktin.
+.SH COPYRIGHT
+Copyright \(co 2013 Aleksandar Kuktin <akuktin@gmail.com>
+.br
+Nbworks is licensed under GPLv3 or later, see
+<http://gnu.org/licenses/gpl.html> or file COPYING in the packege's
+source. Commercial licensing for people or institutions unable or
+unwilling to be bound by GPLv3 (or later) is available.
+.br
+There is NO WARRANTY, to the extent permitted by law.
+.SH "SEE ALSO"
+.BR nbworks (7)
