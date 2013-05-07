@@ -97,7 +97,7 @@ nbworksd: $(OBJS_FOR_DAEMON)
 	$(CC) $(CFLAGS)  $+ -o $@ -lpthread
 
 libnbworks.so.0.0: $(OBJS_FOR_LIBRARY)
-	$(CC) $(CFLAGS) -fpic $+ -shared -o $@ -lpthread
+	$(CC) $(CFLAGS) -fpic -fPIC $+ -shared -o $@ -lpthread
 
 nbworksnbnsd: $(OBJS_FOR_NBNS)
 	$(CC) $(CFLAGS)  $+ -o $@ -lpthread
@@ -110,7 +110,7 @@ $(OBJDIR_DAEMON)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -DCOMPILING_DAEMON $(SYSTEM_IS_MACRO)  -Iinclude -c -o $@ $<
 
 $(OBJDIR_LIBRARY)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) $(SYSTEM_IS_MACRO) -fpic -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) $(SYSTEM_IS_MACRO) -fpic -fPIC -Iinclude -c -o $@ $<
 
 $(OBJS_FOR_NBNS): | $(OBJDIR_NBNS)
 

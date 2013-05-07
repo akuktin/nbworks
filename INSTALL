@@ -1,0 +1,19 @@
+To install, first checkout the Makefile and see if all the installation paths
+relative to $(PREFIX) are okay. Then, build with:
+
+    make
+
+Once `make' finishes, decide on a installation prefix and install with:
+
+    make PREFIX=/what/ever/ install
+
+The default prefix is `/usr/local'.
+
+
+***************************
+
+Currently, there is a problem when compling with at least GCC of at least
+version 4.4.6. Namely, when ANY sort of optimization is used (-O1, -O2, -O3 or
+-Os), GCC just completely drops the ball and turns the busywait locks that are
+used to prevent use-after-frees into inescapable infinite loops. So, don't use
+optimization if you redefine $CFLAGS untill this problem gets worked out.

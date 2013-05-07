@@ -22,3 +22,11 @@ Sometimes, VERY rarely, the daemon echoes a packet back to the sender.
   nulls. I have not yet replaced calloc()s with nbw_calloc()s because I want
   to see the bug manifest itself at least once more. Then I will replace
   calloc()s and again see if the bug manifests itself.
+
+GCC-4.4.6 consistenly miscompiles the code into a unworkable mess whenever code
+  optimization of any level is set. Infinite loops are inserted, most notably
+  at the end of daemon_allstart(). This has something to do with with my
+  busywait locks (while (lock_set) {};). I have tested if it is related to
+  passing structures on the stack and it is not.
+ SOLUTION:
+  Reimplement busywait locks? Probably.  
