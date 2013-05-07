@@ -29,4 +29,4 @@ GCC-4.4.6 consistenly miscompiles the code into a unworkable mess whenever code
   busywait locks (while (lock_set) {};). I have tested if it is related to
   passing structures on the stack and it is not.
  SOLUTION:
-  Reimplement busywait locks? Probably.  
+  Reimplement busywait locks? Probably.
