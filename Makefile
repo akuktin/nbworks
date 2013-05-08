@@ -16,6 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+ETCDIR ?= /etc
 PREFIX ?= /usr/local
 EPREFIX ?= $(PREFIX)
 
@@ -29,9 +30,9 @@ DATAROOTDIR = $(PREFIX)/share
 MANDIR = $(DATAROOTDIR)/man
 #DOCDIR = $(DATAROOTDIR)/doc/nbworks
 
-INSTALL_DIRS = $(PREFIX) $(EPREFIX) $(BINDIR) $(LIBDIR) $(INCLUDEDIR)       \
-               $(DATAROOTDIR) $(MANDIR) $(MANDIR)/man3 $(MANDIR)/man7       \
-               $(MANDIR)/man8 $(DOCDIR)
+INSTALL_DIRS = $(ETCDIR) $(PREFIX) $(EPREFIX) $(BINDIR) $(LIBDIR)       \
+               $(INCLUDEDIR) $(DATAROOTDIR) $(MANDIR) $(MANDIR)/man3    \
+               $(MANDIR)/man7 $(MANDIR)/man8 $(DOCDIR)
 
 
 CFLAGS ?= -g -Wall
@@ -89,6 +90,7 @@ install: all | $(sort $(INSTALL_DIRS))
 	if [ -e $(LIBDIR)/libnbworks.so ]; then $(RM_RF) $(LIBDIR)/libnbworks.so; fi
 	$(LN_SV) libnbworks.so.0 $(LIBDIR)/libnbworks.so
 	$(INSTALL) include/nbworks.h $(INCLUDEDIR)
+	$(INSTALL) nbworks.conf.SAMPLE $(ETCDIR)/nbworks.conf
 	$(INSTALL) doc/*.3 $(MANDIR)/man3
 	$(INSTALL) doc/*.7 $(MANDIR)/man7
 	$(INSTALL) doc/*.8 $(MANDIR)/man8
@@ -127,8 +129,5 @@ $(OBJDIR_DAEMON):
 $(OBJDIR_LIBRARY):
 	$(MKDIR) $(OBJDIR_LIBRARY)
 
-$(PREFIX)/%:
+$(ETCDIR) $(PREFIX) $(PREFIX)/%:
 	$(MKDIR) $@
-
-$(PREFIX):
-	$(MKDIR) $(PREFIX)
