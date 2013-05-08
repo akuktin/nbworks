@@ -1,0 +1,239 @@
+.TH NBWORKS 7  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks \- an implementation of NetBIOS-over-TCP
+.SH DESCRIPTION
+Nbworks is an implementation of the NetBIOS-over-TCP protocol
+(NBT). It consists of a multiplexing daemon which runs in the
+background and a library which gets linked into every process which
+wants to use NetBIOS.
+.PP
+The daemon binds to ports 137/UDP, 138/UDP and 139/TCP. When nbworks
+gets completed, the daemon will also bind port 137/TCP and a packet
+socket. Because the daemon binds these ports, it must be run as root
+or with appropriate priviliges.
+.PP
+The nbworks multiplexing daemon implements the NBT \fIname
+service\fP. Currently, only the UDP-based part of the service is
+implemented, the TCP-based part is scheduled for implementation
+soon. The daemon also implements part of the server side of the
+\fIdatagram service\fP and part of the server side of the \fIsession
+service\fP. The other parts of respecive services are implemented by
+the nbworks library.
+.PP
+The library is linked into every process that requires NetBIOS
+functionality. It implements the sending sides and part of the
+\fIdatagram service\fP server as well as the call and parts of the
+\fIsession service\fP servers.
+.PP
+The two are connected by \fIrails\fP which are fancy internal names
+for Unix sockets. The protocol used on these sockets is considered an
+interal implementation interface and is therefore prone to sudden,
+fundamental and whooly incompatible changes at any time. If you
+reimplement the nbworks library, no tears will be shed for your
+problems.
+.SH CONCEPTS
+\fBNetBIOS is zeroconf network incarnate.\fP It is an API used for
+connecting applications over a network. It was originaly designed for
+use with IBM PC-s, but has since been ported to the Internet. There
+are two main incarnations of NetBIOS. The older one is \fBNetBIOS
+Frames\fP (NBF). NBF runs on top of ethernet-like network protocols
+and, as such, can not be internetworked in an Internet fashion. The
+newer one is \fBNetBIOS-over-TCP\fP (NBT). NBT runs over IP/UDP and
+IP/TCP.
+.PP
+Currently, nbworks implements only NBT, sans TCP name
+service. Implementation of TCP name service and NBF is scheduled
+soon.
+.PP
+NetBIOS is designed to provide three services: the \fIname service\fP,
+which is used to register own names and find others, the \fIdatagram
+service\fP which provides a packet-like, unreliable method for sending
+short messages and finally, the \fIsession service\fP which is used to
+connect two NetBIOS-capable applications with a two-way, reliable data
+stream.
+.PP
+.SH "NetBIOS NAME SERVICE"
+A \fINetBIOS name\fP is an identifier that nodes use to identify
+themselves and others. A "name" consists of a first-level name ("name"
+or "label") and a scope. A name (first level) is exactly 16 bytes
+(octets) long, no more, no less. If a name to be registered is shorter
+than 16 bytes, it is merely padded with space characters untill it is
+16 bytes long. A name may \fBNOT\fP begin with an asterix (*). It is
+standard that the name is in all-caps. Nbworks will always convert the
+name into uppercase when registering that name. Nbworks does not
+convert a name into uppercase in any other situations.
+.PP
+The 16'th byte is treated in a special way. It is called the \fI"name
+type"\fP byte or, in nbworks parlance, the \fI"service type"\fP
+byte. It is used to tell other nodes what kinds of resources can be
+accessed through this node.
+.PP
+Beyond the previously mentioned first-level name, the complete NetBIOS
+name also has a scope. Scopes are used to virtually cut up the
+first-level address space into several non-overlaping networks which
+may contain the same name. HOWEVER, see the section
+\fBNetBIOS SESSION SERVICE\fP below. Scopes are structured just like
+DNS domains and all the rules that apply to DNS also apply to scopes.
+.PP
+Names may be group names or unique names. Group names may be shared
+between several applications, while there can be only one unique name
+in a scope.
+.SH "NetBIOS DATAGRAM SERVICE"
+This service sends and receives unreliable datagrams.
+.PP
+Organically, the datagrams exist and are exchanged as-such. However,
+nbworks is capable of creating a mirage of a \fIdatagram
+session\fP. When received or assembled (if the datagram was
+fragmented), the datagram enters a received-datagrams queue that
+nbworks maintains for all registered names running a datagram
+server. The datagrams in this queue have a record of the sender which
+can be used for selective datagram reading. It is possible, when
+using \fBnbworks_dtgconnect\fP(), to specify a default peer. Then, by
+using \fBnbworks_send\fP() and \fBnbworks_recv\fP(), all read/write
+operations are conducted with the default peer as the other side of
+the imaginary session. See the manpage for \fBnbworks_sendto\fP() and
+\fBnbworks_recvfrom\fP() for details.
+.SH "NetBIOS SESSION SERVICE"
+This service establishes, and disestablishes real sessions. They are
+tunneled over TCP and are reliable. The communication in this fashion
+is packet based. TCP stream carries NetBIOS session packets. Nbworks
+gives you the option, by using or not the \fBMSG_EOR\fP flag with
+\fBnbworks_send\fP() and \fBnbworks_recv\fP() of abstracting these
+packets into a contiguous stream of data, if \fBMSG_EOR\fP is not set,
+or viewing the packets as existant, if the flag is set.
+.PP
+Most (or all?) other implementations of NetBIOS-over-TCP out there
+apparently assume that a single host can only have a name registered
+in one scope and that an enterprising user will never register a same
+name in multiple scopes. Or, at least, that all those names in
+different scopes will be registered by the same application, used for
+the same purpose and have the same effects.
+.PP
+Nbworks makes no such assumptions.
+.PP
+However, these lesser implementations of NetBIOS-over-TCP have made it
+a standard practice to only include the NetBIOS name and not the scope
+as well in the call request packet. To NetBIOS, all such call requests
+look as if they are conducted in the "null scope". In an opposite way,
+when nbworks calls others, it includes the scope in the call
+request. Other implementations of NetBIOS may not able to understand
+nbworks' call requests if they are conducted in a scope other than
+null scope. This creates grave problems in interoperability.
+.PP
+The effect of these incompatibilities is that if a lesser
+implementation of NetBIOS attempts to call a nbworks-registered and
+operated name which exists in a scope other than the null scope,
+nbworks will believe that the other NetBIOS implementation is trying
+to call that name as if it were in the null scope. If a name HAS
+been registered in null scope, the call will be rerouted to that,
+wrong, name. Otherwise, the call request will be rejected. And, in the
+other direction, if the node you are calling is running one of the
+lesser implementations of NetBIOS, and you call in a scope other than
+null scope, your call probably won't be accepted, or you may be
+rerouted to a different application than the one you intended to call,
+or your call may be accepted and session then immediatelly closed, or
+your communique may be garbled beyond recognition. Or worse.
+.PP
+\fBWORKAROUND:\fP
+.br
+1. Never register the same name in multiple scopes.
+.br
+2. Notwithstanding the previous step, whatever name you register,
+register it both in your desired scope and in the null scope.
+.br
+3. Pray to God Almigthy no other application on your host tries to
+register the same name as you did, in whatever scope, or that there
+is another nbworks user in your networks using this same workaround.
+.PP
+It is the most sincere hope of nbworks' author that other implementors
+will also be bathed in the light of reason and wisdom and change their
+implementations to also send, receive, and parse the scope in call
+requests.
+.SH "MODES OF OPERATION"
+These govern the way the name service goes about doing its business.
+.PP
+\fBB-mode\fP
+.br
+  There is no central authority. Nodes use broadcast packets to inform
+  one another of name registration and deletion as well as find one
+  another.
+.PP
+\fBP-mode\fP
+.br
+  Everything relies on a central name server. Additionally, datagram
+  sending in some cases relies on a datagram distributor (note:
+  nbworks does not currently use the distributor). All name
+  transactions are conducted between the node and the central server.
+.PP
+\fBM-mode\fP
+.br
+  A central server is the authority, however, nodes first use
+  B-mode-like processing to try to find answers to their questions
+  without using the name server.
+.PP
+\fBH-mode\fP
+.br
+  Similar to \fBM-mode\fP, but turned on its head. Nodes first query
+  the name server (which is supposed to be authoritative) and if the
+  server fails, broadcast the queries to everyone in hopes of a
+  result. Invented by Microsoft, obviously.
+.PP
+The B mode is implemented and tested. The P mode is implemented but
+not tested. M and H modes will be implemented soon.
+.SH BUGS
+For a list of known bugs, see file \fBBUGS\fP in the package's
+source.
+.PP
+Please report bugs to: <\fBakuktin@gmail.com\fP>
+.br
+Please prefix the contents of the Subject field of your e-mail's
+header with \fB[nbworks-bugs]\fP for easier sorting and management of
+bug reports on my part.
+.SH AUTHOR
+Nbworks has been written by Aleksandar Kuktin.
+.SH COPYRIGHT
+Copyright \(co 2013 Aleksandar Kuktin <akuktin@gmail.com>
+.br
+Nbworks is licensed under GPLv3 or later, see
+<http://gnu.org/licenses/gpl.html> or file COPYING in the packege's
+source. Commercial licensing for people or institutions unable or
+unwilling to be bound by GPLv3 (or later) is available.
+.br
+There is NO WARRANTY, to the extent permitted by law.
+.SH "SEE ALSO"
+.BR nbworks_libcntl (7),
+.BR nbworks_libinit (3),
+.BR nbworks_reinit_myIP4address (3),
+.BR nbworks_accept_ses (3),
+.BR nbworks_buff2nbname (3),
+.BR nbworks_cancel (3),
+.BR nbworks_castdtgsession (3),
+.BR nbworks_clone_nbnodename (3),
+.BR nbworks_cmp_nbnodename (3),
+.BR nbworks_create_nbnamelabel (3),
+.BR nbworks_create_nbnodename (3),
+.BR nbworks_delname (3),
+.BR nbworks_dstr_nbnodename (3),
+.BR nbworks_dtgconnect (3),
+.BR nbworks_grab_railguard (3),
+.BR nbworks_haltsrv (3),
+.BR nbworks_hangup_ses (3),
+.BR nbworks_isinconflict (3),
+.BR nbworks_listen_dtg (3),
+.BR nbworks_listen_ses (3),
+.BR nbworks_makescope (3),
+.BR nbworks_maxdtglen (3),
+.BR nbworks_nbname2buff (3),
+.BR nbworks_nbnodenamelen (3),
+.BR nbworks_poll (3),
+.BR nbworks_recvfrom (3),
+.BR nbworks_recvwait (3),
+.BR nbworks_regname (3),
+.BR nbworks_release_railguard (3),
+.BR nbworks_rmsignal (3),
+.BR nbworks_sendto (3),
+.BR nbworks_sescall (3),
+.BR nbworks_setsignal (3),
+.BR nbworks_update_listentos (3),
+.BR nbworks_whatisIP4addrX (3),
+.BR nbworksd (8)
