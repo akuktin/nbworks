@@ -96,20 +96,20 @@ install: all | $(sort $(INSTALL_DIRS))
 	$(INSTALL) doc/*.8 $(MANDIR)/man8
 
 nbworksd: $(OBJS_FOR_DAEMON)
-	$(CC) $(CFLAGS)  $+ -o $@ -lpthread
+	$(CC) $(CFLAGS) -fpie -fPIE $+ -o $@ -lpthread
 
 libnbworks.so.0.0: $(OBJS_FOR_LIBRARY)
 	$(CC) $(CFLAGS) -fpic -fPIC $+ -shared -o $@ -lpthread
 
 nbworksnbnsd: $(OBJS_FOR_NBNS)
-	$(CC) $(CFLAGS)  $+ -o $@ -lpthread
+	$(CC) $(CFLAGS) -fpie -fPIE $+ -o $@ -lpthread
 
 
 $(OBJDIR_NBNS)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -DCOMPILING_NBNS $(SYSTEM_IS_MACRO)  -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) -DCOMPILING_NBNS $(SYSTEM_IS_MACRO) -fpie -fPIE -Iinclude -c -o $@ $<
 
 $(OBJDIR_DAEMON)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -DCOMPILING_DAEMON $(SYSTEM_IS_MACRO)  -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) -DCOMPILING_DAEMON $(SYSTEM_IS_MACRO) -fpie -fPIE -Iinclude -c -o $@ $<
 
 $(OBJDIR_LIBRARY)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) $(SYSTEM_IS_MACRO) -fpic -fPIC -Iinclude -c -o $@ $<
