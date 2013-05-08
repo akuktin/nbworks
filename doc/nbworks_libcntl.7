@@ -1,0 +1,139 @@
+.TH NBWORKS_LIBCNTL 7  2013-05-01 "" "Nbworks Manual"
+.SH NAME
+nbworks_libcntl \- nbworks library control structure
+.SH CONTENTS
+	\fBstruct nbworks_libcntl_t\fP {
+.br
+	  \fBunsigned char\fP stop_alldtg_srv;
+.br
+	  \fBunsigned char\fP stop_allses_srv;
+.PP
+	  \fBint\fP dtg_srv_polltimeout;
+.br
+	  \fBint\fP ses_srv_polltimeout;
+.PP
+	  \fBunsigned int\fP max_ses_retarget_retries;
+.br
+	  \fBunsigned long\fP keepalive_interval;
+.PP
+	  \fBunsigned long\fP close_timeout;
+.br
+	  \fBunsigned long\fP dtg_frag_keeptime;
+.PP
+	  \fBunsigned int\fP dtg_max_wholefrag_len;
+.PP
+	  \fBunsigned long\fP emergencyfix_long1;
+.br
+	  \fBunsigned long\fP emergencyfix_long2;
+.br
+	  \fBunsigned long\fP emergencyfix_long3;
+.br
+	  \fBunsigned long\fP emergencyfix_long4;
+.br
+	  \fBvoid *\fPemergencyfix_voidp1;
+.br
+	  \fBvoid *\fPemergencyfix_voidp2;
+.br
+	  \fBvoid *\fPemergencyfix_voidp3;
+.br
+	  \fBvoid *\fPemergencyfix_voidp4;
+.br
+	} nbworks_libcntl;
+.SH DESCRIPTION
+The \fBnbworks_libcntl\fP() structure contains the fields for values
+that control various aspects of the libraries operation. A call to
+\fBnbworks_libinit\fP() sets the contents of this structure to its
+default value. The function \fBnbworks_libinit\fP() also sets the
+contents of several other internal data fields and should be called
+even if you are manually filling out this structure at program start.
+.SH FIELDS
+\fBstop_alldtg_srv\fP
+.br
+  Stop all datagram servers. Field is boolean in nature. Non-zero
+  means to stop servers, zero means to keep them running. Change in
+  status is carried out ASAP.
+.br
+  \fBDEFAULT VALUE\fP: 0
+.PP
+\fBstop_allses_srv\fP
+.br
+  Stop all session server listeners. Field is boolean in
+  nature. Non-zero means to stop servers, zero means to keep them
+  running. Change in status is carried out ASAP.
+.br
+  \fBDEFAULT VALUE\fP: 0
+.PP
+\fBdtg_srv_polltimeout\fP
+.br
+  Sets the latency of datagram servers. Systems \fBpoll\fP(2) is
+  called with this value as its \fItimeout\fP argument.
+.br
+  \fBDEFAULT VALUE\fP: 100 miliseconds
+.PP
+\fBses_srv_polltimeout\fP
+.br
+  Sets the latency of session server listeners. Systems \fBpoll\fP(2)
+  is called with this value as its \fItimeout\fP argument.
+.br
+  \fBDEFAULT VALUE\fP: 100 miliseconds
+.PP
+\fBmax_ses_retarget_retries\fP
+.br
+  Sets the maximum number of times establishing a session is
+  attempted. TAKE NOTE: redirects also count towards this limit. Zero
+  means no retries.
+.br
+  \fBDEFAULT VALUE\fP: 4
+.PP
+\fBkeepalive_interval\fP
+.br
+  Sets the interval between sending of two NetBIOS session service
+  keepalive packets.
+.br
+  \fBDEFAULT VALUE\fP: 60 seconds
+.PP
+\fBclose_timeout\fP
+.br
+  Sets the timeout value used when sending or receiving on a
+  \fIsession session\fP. Timeout on a \fIsession session\fP closes
+  that session. Non-standard, nbworks also uses this when reading on
+  \fIdatagram sessions\fP. A timeout on a \fIdatagram session\fP does
+  not close that session, mainly because \fIdatagram sessions\fP don't
+  actually exist and therefore can not be closed.
+.br
+  \fBDEFAULT VALUE\fP: 30 seconds
+.PP
+\fBdtg_frag_keeptime\fP
+.br
+  Sets the time that the datagram server keeps the datagram fragments
+  lying around, waiting for the other parts of the datagram to
+  arrive. If the datagram can not be reassembled when this timer
+  expires, the datagram is discarded.
+.br
+  \fBDEFAULT VALUE\fP: 2 seconds
+.PP
+\fBdtg_max_wholefrag_len\fP
+.br
+  Sets the maximum length of the WHOLE NetBIOS datagram when
+  sending. The length includes everything that gets passed to the UDP
+  layer, namely: (1) the header of the datagram, (2) the sending and
+  receiving node name and finally, (3) the payload data carried in
+  that particular fragment of the whole datagram (which may be the
+  whole of data to be carried). Setting this to a value that is too
+  low may result in an inability to send any datagrams. Use
+  \fBnbworks_maxdtglen\fP() to determine if the value is set too
+  low. It is not possible to meaningfully set this field to a value
+  greater than 0xfff7 (65527), the maximum length of a UDP packet
+  payload.
+.br
+  \fBDEFAULT VALUE\fP: 576 bytes (that is, octets)
+.PP
+The fields starting with \fIemergencyfix\fP are placeholders which
+enable changing the API without changing the ABI. They are ment for
+use in hotfixes for users which are unable, for various reasons, to
+change the ABI of their copy of libnbworks. It remains to be seen if
+this provision will ever get used in a meaningfull way.
+.SH "SEE ALSO"
+.BR nbworks (7),
+.BR nbworks_libinit (3),
+.BR nbworks_reinit_myIP4address (3)
