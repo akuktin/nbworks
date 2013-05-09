@@ -133,6 +133,14 @@ void *
   name_srvc_NBNShndl_latereg(void *args);
 # endif /* COMPILING_NBNS */
 
+struct name_srvc_resource *
+  name_srvc_func_nodestat(struct name_srvc_question *qstn,
+                          time_t cur_time,
+                          unsigned int *istruncated);
+struct name_srvc_resource *
+  name_srvc_func_namqry(struct name_srvc_question *qstn,
+                        time_t cur_time,
+                        unsigned int *istruncated);
 void
   name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
                               struct sockaddr_in *addr,
