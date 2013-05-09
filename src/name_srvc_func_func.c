@@ -2809,14 +2809,93 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
   return;
 }
 
+void name_srvc_func_namcftdem(struct name_srvc_resource *res,
+			      ipv4_addr_t in_addr,
+			      uint32_t name_flags) {
+  unsigned int status, sender_is_nbns;
+
+  /* This function fully shadows the difference
+   * between B mode and P mode operation. */
+
+  if (!((res) &&
+	(res->name) &&
+	(res->name->name) &&
+	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
+	(res->rdata_t == nb_address_list)))
+    return;
+
+  status = STATUS_DID_NONE;
+
+  if ((in_addr == get_nbnsaddr(res->name->next_name)) &&
+      ((name_flags ^ FLG_B) & FLG_B))
+    sender_is_nbns = TRUE;
+  else
+    sender_is_nbns = FALSE;
+  decode_nbnodename(res->name->name, decoded_name);
+
+  nbaddr_list = res->rdata;
+  while (nbaddr_list) {
+    if (((nbaddr_list->flags & NBADDRLST_NODET_MASK) == NBADDRLST_NODET_P) ?
+	/* When running in P mode, only enter if the sender is NBNS. */
+	(sender_is_nbns) :
+	/* Otherwise, only enter if the sender lists itself as the owner of the name. */
+	(nbaddr_list->there_is_an_address &&
+	 (nbaddr_list->address == in_addr))) {
+
+      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
+	status = status | STATUS_DID_GROUP;
+      else
+	status = status | STATUS_DID_UNIQ;
+    }
+
+    if (status & (STATUS_DID_UNIQ | STATUS_DID_GROUP))
+      break;
+    else
+      nbaddr_list = nbaddr_list->next_address;
+  }
+
+  /* Group and unique are separate because the two classes
+   * used to be stored separately in the cache. */
+  if (status & STATUS_DID_GROUP) {
+    cache_namecard = find_nblabel(decoded_name,
+				  NETBIOS_NAME_LEN,
+				  CACHE_ADDRBLCK_GRP_MASK,
+				  res->rrtype,
+				  res->rrclass,
+				  res->name->next_name);
+    if (cache_namecard) {
+      if (cache_namecard->grp_tokens) {
+	/* WRONG ? */
+	name_srvc_enter_conflict(ISGROUP_YES, cache_namecard,
+				 decoded_name,
+				 res->name->next_name);
+      }
+    }
+  }
+  if (status & STATUS_DID_UNIQ) {
+    cache_namecard = find_nblabel(decoded_name,
+				  NETBIOS_NAME_LEN,
+				  CACHE_ADDRBLCK_UNIQ_MASK,
+				  res->rrtype,
+				  res->rrclass,
+				  res->name->next_name);
+    if (cache_namecard) {
+      if (cache_namecard->unq_token) {
+	name_srvc_enter_conflict(ISGROUP_NO, cache_namecard,
+				 decoded_name,
+				 res->name->next_name);
+      }
+    }
+  }
+
+  return;
+}
+
 void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 			    struct sockaddr_in *addr) {
-  struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
-  struct nbaddress_list *nbaddr_list;
   ipv4_addr_t in_addr;
-  uint32_t status, sender_is_nbns, name_flags;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+  uint32_t name_flags;
 
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
@@ -2831,71 +2910,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 
   res = outpckt->answers;
   while (res) {
-    status = STATUS_DID_NONE;
-
-    if ((res->res) &&
-	(res->res->name) &&
-	(res->res->name->name) &&
-	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
-	(res->res->rdata_t == nb_address_list)) {
-
-      if ((in_addr == get_nbnsaddr(res->res->name->next_name)) &&
-	  ((name_flags ^ FLG_B) & FLG_B))
-        sender_is_nbns = TRUE;
-      else
-        sender_is_nbns = FALSE;
-      decode_nbnodename(res->res->name->name, decoded_name);
-
-      nbaddr_list = res->res->rdata;
-      while (nbaddr_list) {
-	if (((nbaddr_list->flags & NBADDRLST_NODET_MASK) ==
-	        NBADDRLST_NODET_P) ?
-	    (sender_is_nbns) :
-	    TRUE) {
-	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
-	    status = status | STATUS_DID_GROUP;
-	  else
-	    status = status | STATUS_DID_UNIQ;
-	}
-
-	if (status & (STATUS_DID_UNIQ | STATUS_DID_GROUP))
-	  break;
-	else
-	  nbaddr_list = nbaddr_list->next_address;
-      }
-
-      if (status & STATUS_DID_GROUP) {
-	cache_namecard = find_nblabel(decoded_name,
-				      NETBIOS_NAME_LEN,
-				      CACHE_ADDRBLCK_GRP_MASK,
-				      res->res->rrtype,
-				      res->res->rrclass,
-				      res->res->name->next_name);
-	if (cache_namecard) {
-	  if (cache_namecard->grp_tokens) {
-	    /* WRONG ? */
-	    name_srvc_enter_conflict(ISGROUP_YES, cache_namecard,
-				     decoded_name,
-				     res->res->name->next_name);
-	  }
-	}
-      }
-      if (status & STATUS_DID_UNIQ) {
-	cache_namecard = find_nblabel(decoded_name,
-				      NETBIOS_NAME_LEN,
-				      CACHE_ADDRBLCK_UNIQ_MASK,
-				      res->res->rrtype,
-				      res->res->rrclass,
-				      res->res->name->next_name);
-	if (cache_namecard) {
-	  if (cache_namecard->unq_token) {
-	    name_srvc_enter_conflict(ISGROUP_NO, cache_namecard,
-				     decoded_name,
-				     res->res->name->next_name);
-	  }
-	}
-      }
-    }
+    name_srvc_func_namcftdem(res->res, in_addr, name_flags);
 
     res = res->next;
   }
