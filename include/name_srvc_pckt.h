@@ -273,6 +273,10 @@ void
                             unsigned int complete,
                             unsigned int really_complete);
 void
+  destroy_name_srvc_res(struct name_srvc_resource_lst *cur_res,
+                        unsigned int complete,
+                        unsigned int really_complete);
+void
   destroy_name_srvc_res_data(struct name_srvc_resource *res,
                              unsigned int complete,
                              unsigned int really_complete);

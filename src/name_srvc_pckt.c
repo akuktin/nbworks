@@ -1422,22 +1422,33 @@ void destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
   while (cur_res) {
     res = cur_res->next;
     if (cur_res->res) {
-      if (complete) {
-	nbworks_dstr_nbnodename(cur_res->res->name);
-      } else {
-	if (cur_res->res->name) {
-	  free(cur_res->res->name->name);
-	  free(cur_res->res->name);
-	}
-      }
-
-      destroy_name_srvc_res_data(cur_res->res, complete, really_complete);
-
-      free(cur_res->res);
+      destroy_name_srvc_res(cur_res->res, complete, really_complete);
     }
     free(cur_res);
     cur_res = res;
   }
+}
+
+void destroy_name_srvc_res(struct name_srvc_resource *res,
+                           unsigned int complete,
+                           unsigned int really_complete) {
+  if (! res)
+    return;
+
+  if (complete) {
+    nbworks_dstr_nbnodename(res->name);
+  } else {
+    if (res->name) {
+      free(res->name->name);
+      free(res->name);
+    }
+  }
+
+  destroy_name_srvc_res_data(cur_res->res, complete, really_complete);
+
+  free(res);
+
+  return;
 }
 
 void destroy_name_srvc_res_data(struct name_srvc_resource *res,
