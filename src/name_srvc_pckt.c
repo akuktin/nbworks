@@ -1421,9 +1421,7 @@ void destroy_name_srvc_res_lst(struct name_srvc_resource_lst *cur_res,
 
   while (cur_res) {
     res = cur_res->next;
-    if (cur_res->res) {
-      destroy_name_srvc_res(cur_res->res, complete, really_complete);
-    }
+    destroy_name_srvc_res(cur_res->res, complete, really_complete);
     free(cur_res);
     cur_res = res;
   }
@@ -1444,7 +1442,7 @@ void destroy_name_srvc_res(struct name_srvc_resource *res,
     }
   }
 
-  destroy_name_srvc_res_data(cur_res->res, complete, really_complete);
+  destroy_name_srvc_res_data(res, complete, really_complete);
 
   free(res);
 
