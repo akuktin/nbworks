@@ -163,14 +163,17 @@ void
                              struct sockaddr_in *addr,
                              struct ss_queue *trans,
                              uint32_t tid,
-                             time_t cur_time);
+                             time_t cur_time,
+                             struct name_srvc_resource_lst *state,
+                             unsigned long *numof_responses);
 void
   name_srvc_func_namcftdem(struct name_srvc_resource *res,
                            ipv4_addr_t in_addr,
                            uint32_t name_flags);
 void
   name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
-                         struct sockaddr_in *addr);
+                         struct sockaddr_in *addr,
+                         struct name_srvc_resource_lst *state);
 /* returns: !0 = success, 0 = failure */
 unsigned int
   name_srvc_func_namrelreq(struct name_srvc_resource *res,

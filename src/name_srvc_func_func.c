@@ -160,7 +160,7 @@ void *name_srvc_handle_newtid(void *input) {
 	(outpckt->header->rcode == RCODE_CFT_ERR) &&
 	(outpckt->header->nm_flags & FLG_AA)) {
 
-      name_srvc_do_namcftdem(outpckt, &(outside_pckt->addr));
+      name_srvc_do_namcftdem(outpckt, &(outside_pckt->addr), 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1122,7 +1122,7 @@ void *refresh_scopes(void *i_ignore_this) {
 
 	  } else {
 
-	    name_srvc_do_namcftdem(pckt, &(outside_pckt->addr));
+	    name_srvc_do_namcftdem(pckt, &(outside_pckt->addr), 0);
 
 	  }
 
@@ -2829,7 +2829,7 @@ struct name_srvc_resource_lst *
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
-  if (! ((outpckt && addr && trans) || state))
+  if (! (((outpckt && trans) || state) && addr))
     return 0;
 
   last_respns = &frst_respns;
@@ -2839,7 +2839,10 @@ struct name_srvc_resource_lst *
   /* VAXism below. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
 
-  res = outpckt->answers;
+  if (state)
+    res = *state;
+  else
+    res = outpckt->answers;
   while (res) {
     answer = name_srvc_func_posnamqryresp(res->res, addr, trans, tid,
 					  cur_time, in_addr);
@@ -2974,7 +2977,8 @@ void name_srvc_func_namcftdem(struct name_srvc_resource *res,
 }
 
 void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
-			    struct sockaddr_in *addr) {
+			    struct sockaddr_in *addr,
+			    struct name_srvc_resource_lst *state) {
   struct name_srvc_resource_lst *res;
   ipv4_addr_t in_addr;
   uint32_t name_flags;
@@ -2982,7 +2986,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
-  if (! (outpckt && addr))
+  if (! ((outpckt || state) && addr))
     return;
 
   /* Make sure we only listen to NBNS in P mode. */
@@ -2990,7 +2994,10 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
   name_flags = outpckt->header->nm_flags;
 
-  res = outpckt->answers;
+  if (state)
+    res = *state;
+  else
+    res = outpckt->answers;
   while (res) {
     name_srvc_func_namcftdem(res->res, in_addr, name_flags);
 
