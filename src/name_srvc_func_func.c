@@ -172,9 +172,9 @@ void *name_srvc_handle_newtid(void *input) {
 				     OPCODE_RELEASE)) &&
 	(outpckt->header->rcode == 0)) {
 
-      name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr)
+      name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr),
 #ifdef COMPILING_NBNS
-			     , params.trans, params.id.tid, 0, 0,
+			     params.trans, params.id.tid, 0, 0,
 #endif
 			     0);
 
@@ -1211,7 +1211,7 @@ struct name_srvc_resource *
   name_srvc_func_namregreq(struct name_srvc_resource *res,
 			   time_t cur_time) {
   struct addrlst_bigblock addrblock, *addrblock_ptr;
-  struct name_srvc_resource_lst *answer;
+  struct name_srvc_resource *answer;
   struct cache_namenode *cache_namecard;
   ipv4_addr_t in_addr;
   uint32_t i;
@@ -1299,7 +1299,7 @@ struct name_srvc_resource_lst *
    * between B mode and P mode operation. */
 
   if (! ((outpckt && addr && trans) || state))
-    return;
+    return 0;
 
   last_answr = &answer;
   numof_responses = 0;
@@ -1340,14 +1340,14 @@ struct name_srvc_resource_lst *
     pckt->header->rcode = RCODE_CFT_ERR;
 
     pckt->header->numof_answers = numof_responses;
-    pckt->header->answers = answer;
+    pckt->answers = answer;
 
     ss_name_send_pckt(pckt, addr, trans);
   } else {
     destroy_name_srvc_res_lst(answer, 1, 1);
   }
 
-  return;
+  return 0;
 }
 
 #ifdef COMPILING_NBNS
@@ -2863,6 +2863,8 @@ struct name_srvc_resource_lst *
 			     struct name_srvc_resource_lst *state,
 			     unsigned long *numof_responses) {
   struct name_srvc_resource_lst *res, *response, *frst_respns, **last_respns;
+  struct name_srvc_resource *answer;
+  struct name_srvc_packet *pckt;
   unsigned long numof_clicks;
   ipv4_addr_t in_addr;
 
@@ -2880,12 +2882,12 @@ struct name_srvc_resource_lst *
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
 
   if (state)
-    res = *state;
+    res = state;
   else
     res = outpckt->answers;
   while (res) {
     answer = name_srvc_func_posnamqryresp(res->res, addr, trans, tid,
-					  cur_time, in_addr);
+					    cur_time, in_addr);
 
     if (answer) {
       *last_respns = malloc(sizeof(struct name_srvc_resource_lst));
@@ -2920,7 +2922,7 @@ struct name_srvc_resource_lst *
     pckt->header->rcode = RCODE_CFT_ERR;
 
     pckt->header->numof_answers = numof_clicks;
-    pckt->header->answers = frst_respns;
+    pckt->answers = frst_respns;
 
     ss_name_send_pckt(pckt, addr, trans);
 
@@ -3035,7 +3037,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
   name_flags = outpckt->header->nm_flags;
 
   if (state)
-    res = *state;
+    res = state;
   else
     res = outpckt->answers;
   while (res) {
@@ -3198,9 +3200,9 @@ unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
 
 struct name_srvc_resource_lst *
   name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
-			 struct sockaddr_in *addr
+			 struct sockaddr_in *addr,
 #ifdef COMPILING_NBNS
-			 ,struct ss_queue *trans,
+			 struct ss_queue *trans,
 			 uint32_t tid,
 			 unsigned long *numof_OK,
 			 unsigned long *numof_notOK,

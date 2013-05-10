@@ -146,7 +146,7 @@ struct name_srvc_resource_lst *
                               struct ss_queue *trans,
                               uint32_t tid,
                               time_t cur_time,
-                              struct name_srvc_question_lst *state,
+                              struct name_srvc_question_lst **state,
                               unsigned long *numof_founds,
                               unsigned long *numof_notfounds);
 struct name_srvc_resource *
@@ -156,7 +156,7 @@ struct name_srvc_resource *
                                uint32_t tid,
                                time_t cur_time,
                                ipv4_addr_t in_addr);
-void
+struct name_srvc_resource_lst *
   name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
                              struct sockaddr_in *addr,
                              struct ss_queue *trans,
@@ -179,10 +179,10 @@ unsigned int
                            uint32_t name_flags);
 struct name_srvc_resource_lst *
   name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
-                         struct sockaddr_in *addr
+                         struct sockaddr_in *addr,
 #ifdef COMPILING_NBNS
-                         ,struct ss_queue *trans,
-                         uint32_t tid
+                         struct ss_queue *trans,
+                         uint32_t tid,
                          unsigned long *numof_OK,
                          unsigned long *numof_notOK,
 #endif
