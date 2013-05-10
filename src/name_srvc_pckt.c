@@ -362,7 +362,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   struct nbworks_nbnamelst *nbnodename;
   struct nbnodename_list_backbone *listof_names;
   struct name_srvc_statistics_rfc1002 *nbstat;
-  unsigned char *weighted_companion_cube, *walker, num_names;
+  unsigned char *weighted_companion_cube, *walker, num_names, *endof_buff;
   void *result;
 
   if ((! start_and_end_of_walk) ||
@@ -452,14 +452,16 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
   case nb_statistics_rfc1002:
     resource->rdata_t = nb_statistics_rfc1002;
-    if (! resource->rdata_len) {
+    walker = *start_and_end_of_walk;
+    endof_buff = walker + resource->rdata_len;
+    /* Instead of adjusting *start_and_end_of_walk before
+     * every return, just do it once. Here. */
+    *start_and_end_of_walk = endof_buff;
+
+    if (resource->rdata_len < SIZEOF_STATRFC1002_BLOCK) {
       BULLSHIT_IN_PACKET(2);
       return 0;
     }
-    walker = *start_and_end_of_walk;
-    /* Instead of adjusting *start_and_end_of_walk before
-     * every return, just do it once. Here. */
-    *start_and_end_of_walk = *start_and_end_of_walk + resource->rdata_len;
 
     nbstat = malloc(sizeof(struct name_srvc_statistics_rfc1002));
     if (! nbstat) {
@@ -483,7 +485,10 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       listof_names->nbnodename = 0;
       nbstat->listof_names = listof_names;
       while (0xbeefbeef) {
-	if (walker >= end_of_packet) {
+        /* walker + 2 octets for the flags field
+         * SIZEOF_STATRFC1002_BLOCK - the numof_names field +
+         * 2 octets for the DNS encoding of the name. */
+	if ((walker +2 + (SIZEOF_STATRFC1002_BLOCK -1+2)) > endof_buff) {
 	  OUT_OF_BOUNDS(14);
 	  //	  *do_kill_yourself = TRUE;
 	  abort_stats;
@@ -493,7 +498,9 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
           read_all_DNS_labels(&walker, start_of_packet, end_of_packet,
                               0, 0, 0, 0);
 	walker = align(weighted_companion_cube, walker, 4);
-	if ((walker + 2) > end_of_packet) {
+        /* walker + 2 octets for the flags field
+         * SIZEOF_STATRFC1002_BLOCK - the numof_names field */
+	if ((walker +2 + (SIZEOF_STATRFC1002_BLOCK -1)) > endof_buff) {
 	  OUT_OF_BOUNDS(15);
 	  //	  *do_kill_yourself = TRUE;
 	  abort_stats;
@@ -523,7 +530,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     /*                                                            */
     /* ********************************************************** */
 
-    if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
+    /* SIZEOF_STATRFC1002_BLOCK - the numof_names field */
+    if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > endof_buff) {
       OUT_OF_BOUNDS(16);
       //      *do_kill_yourself = TRUE;
       abort_stats;
