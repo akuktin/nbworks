@@ -169,9 +169,6 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
-    free(complete_name);
-    free(addr);
     return 0;
   }
 
