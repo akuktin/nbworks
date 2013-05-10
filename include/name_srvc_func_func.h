@@ -185,8 +185,10 @@ void
 #ifdef COMPILING_NBNS
                          ,struct ss_queue *trans,
                          uint32_t tid
+                         unsigned long *numof_OK,
+                         unsigned long *numof_notOK,
 #endif
-                         );
+                         struct name_srvc_resource_lst **state);
 /* returns: !0 = success, 0 = failure */
 unsigned int
   name_srvc_func_updtreq(struct name_srvc_resource *res,

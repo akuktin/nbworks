@@ -174,9 +174,9 @@ void *name_srvc_handle_newtid(void *input) {
 
       name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr)
 #ifdef COMPILING_NBNS
-			     , params.trans, params.id.tid
+			     , params.trans, params.id.tid, 0, 0,
 #endif
-			     );
+			     0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -396,7 +396,7 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
       name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr),
 			     &(ss_alltrans[index].trans),
-			     index);
+			     index, 0, 0, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -3160,9 +3160,11 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 			    struct sockaddr_in *addr
 #ifdef COMPILING_NBNS
 			    ,struct ss_queue *trans,
-			    uint32_t tid
+			    uint32_t tid,
+			    unsigned long *numof_OK,
+			    unsigned long *numof_notOK,
 #endif
-			    ) {
+			    struct name_srvc_resource_lst **state) {
   struct name_srvc_resource_lst *res;
   ipv4_addr_t in_addr;
   uint32_t name_flags;
@@ -3175,7 +3177,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
-  if (! (outpckt && addr))
+  if (! ((outpckt || (state && *state)) && addr))
     return;
 
   /* Make sure noone spoofs the release request. */
@@ -3183,7 +3185,10 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
 
 #ifdef COMPILING_NBNS
-  last_res = &(outpckt->aditionals);
+  if (state && *state)
+    last_res = state;
+  else
+    last_res = &(outpckt->aditionals);
 
   last_answr = &(answer);
 
@@ -3192,7 +3197,10 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 #endif
   name_flags = outpckt->header->nm_flags;
 
-  res = outpckt->aditionals;
+  if (state && *state)
+    res = *state;
+  else
+    res = outpckt->aditionals;
   while (res) {
 #ifdef COMPILING_NBNS
     if (name_srvc_func_namrelreq(res->res, in_addr,
@@ -3217,6 +3225,18 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 #ifdef COMPILING_NBNS
   *last_answr = 0;
   *last_res = 0;
+
+  if (state) {
+    if (numof_OK)
+      *numof_OK = numof_succedded;
+    if (numof_notOK)
+      *numof_notOK = numof_failed;
+
+    /* Failed ones are already resigning on *state and
+     * therefore there is nothing that needs to be done. */
+
+    return answer;
+  }
 
   if (numof_succedded) {
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
@@ -3258,7 +3278,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   }
 #endif
 
-  return;
+  return 0;
 }
 #undef STATUS_DID_NONE
 #undef STATUS_DID_GROUP
