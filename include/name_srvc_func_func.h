@@ -118,7 +118,8 @@ void
                          struct sockaddr_in *addr,
                          struct ss_queue *trans,
                          uint32_t tid,
-                         time_t cur_time);
+                         time_t cur_time,
+                         struct name_srvc_resource_lst *state);
 # ifdef COMPILING_NBNS
 /* returns: numof_laters */
 uint32_t
@@ -141,12 +142,15 @@ struct name_srvc_resource *
   name_srvc_func_namqry(struct name_srvc_question *qstn,
                         time_t cur_time,
                         unsigned int *istruncated);
-void
+struct name_srvc_resource_lst *
   name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
                               struct sockaddr_in *addr,
                               struct ss_queue *trans,
                               uint32_t tid,
-                              time_t cur_time);
+                              time_t cur_time,
+                              struct name_srvc_question_lst *state,
+                              unsigned long *numof_founds,
+                              unsigned long *numof_notfounds);
 void
   name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
                                struct sockaddr_in *addr,

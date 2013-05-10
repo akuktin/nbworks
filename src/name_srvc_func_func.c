@@ -117,7 +117,7 @@ void *name_srvc_handle_newtid(void *input) {
 
       name_srvc_do_namregreq(outpckt, &(outside_pckt->addr),
 			     params.trans, params.id.tid,
-			     cur_time);
+			     cur_time, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -132,7 +132,7 @@ void *name_srvc_handle_newtid(void *input) {
 
       name_srvc_do_namqrynodestat(outpckt, &(outside_pckt->addr),
 				  params.trans, params.id.tid,
-				  cur_time);
+				  cur_time, 0, 0, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -362,7 +362,7 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
       name_srvc_do_namqrynodestat(outpckt, &(outside_pckt->addr),
 				  &(ss_alltrans[index].trans),
-				  index, cur_time);
+				  index, cur_time, 0, 0, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1293,16 +1293,17 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
 			    struct sockaddr_in *addr,
 			    struct ss_queue *trans,
 			    uint32_t tid,
-			    time_t cur_time) {
+			    time_t cur_time,
+			    struct name_srvc_resource_lst *state) {
   struct name_srvc_resource_lst *res;
 
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
-  if (! (outpckt && addr && trans))
+  if (! ((outpckt && addr && trans) || state))
     return;
 
-  for (res = outpckt->aditionals;
+  for ((state ? (res = state) : (res = outpckt->aditionals));
        res != 0;      /* Maybe test in questions too. */
        res = res->next) {
     name_srvc_func_namregreq(res->res, addr, trans, tid, cur_time);
@@ -2427,34 +2428,48 @@ struct name_srvc_resource *name_srvc_func_namqry(struct name_srvc_question *qstn
     return 0;
 }
 
-void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
-				 struct sockaddr_in *addr,
-				 struct ss_queue *trans,
-				 uint32_t tid,
-				 time_t cur_time) {
+struct name_srvc_resource_lst *
+  name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
+			      struct sockaddr_in *addr,
+			      struct ss_queue *trans,
+			      uint32_t tid,
+			      time_t cur_time,
+			      struct name_srvc_question_lst **state,
+			      unsigned long *numof_founds,
+			      unsigned long *numof_notfounds) {
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *frst_res, *res, **answer_lst;
   struct name_srvc_question_lst *qstn;
   struct name_srvc_resource *answer;
   unsigned int istruncated;
-  uint32_t numof_answers;
+  unsigned long numof_answers, numof_failed;
 #ifdef COMPILING_NBNS
-  uint32_t numof_failed, succedded;
   struct name_srvc_question_lst **last_qstn, *unknown, **last_unknown;
   struct name_srvc_resource_lst **last_res;
 #endif
 
-  numof_answers = 0;
+  if (! ((outpckt && addr && trans) || (state && *state)))
+    return 0;
+
+  numof_failed = numof_answers = 0;
   answer_lst = &frst_res;
   istruncated = FALSE;
   numof_answers = 0;
 
 #ifdef COMPILING_NBNS
-  last_qstn = &(outpckt->questions);
+  if (state && *state) {
+    last_qstn = state;
+  } else {
+    last_qstn = &(outpckt->questions);
+  }
+  qstn = *last_qstn;
   last_unknown = &unknown;
-  numof_failed = 0;
+#else
+  if (state && *state)
+    qstn = *state;
+  else
+    qstn = outpckt->questions;
 #endif
-  qstn = outpckt->questions;
   while (qstn) {
     if (! qstn->qstn) {
       qstn = qstn->next;
@@ -2482,17 +2497,38 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 
 #ifdef COMPILING_NBNS
       last_qstn = &(qstn->next);
+#endif
     } else {
+#ifdef COMPILING_NBNS
       *last_unknown = qstn;
       last_unknown = &(qstn->next);
 
       *last_qstn = qstn->next;
 #endif
+
+      numof_failed++;
     }
 
     qstn = qstn->next;
   }
   *answer_lst = 0;
+#ifdef COMPILING_NBNS
+  *last_unknown = 0;
+#endif
+
+  if (state && *state) {
+    if (numof_notfounds) {
+      *numof_notfounds = numof_failed;
+#ifdef COMPILING_NBNS
+      destroy_name_srvc_qstn_lst(*state, 1);
+      *state = unknown;
+#endif
+    }
+    if (numof_founds)
+      *numof_founds = numof_answers;
+
+    return frst_res;
+  }
 
   if (frst_res) {
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
@@ -2519,7 +2555,6 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
     }
   }
 #ifdef COMPILING_NBNS
-  *last_unknown = 0;
   /* Since we (presumably) have recursion, I should actually
    * recursivelly ask upstream servers for the names I did not find. */
   if (unknown) {
@@ -2575,7 +2610,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
   }
 #endif
 
-  return;
+  return 0;
 }
 
 #define STATUS_DID_NONE   0x00
