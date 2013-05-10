@@ -34,6 +34,13 @@ struct name_srvc_packet *
                                 uint32_t ttl,
                                 ipv4_addr_t in_address,
                                 node_type_t node_type);
+struct name_srvc_resource *
+  name_srvc_make_res_nbaddrlst(unsigned char *name,
+                               unsigned char name_type,
+                               struct nbworks_nbnamelst *scope,
+                               uint32_t ttl,
+                               ipv4_addr_t in_address,
+                               node_type_t node_type);
 struct name_srvc_packet *
   name_srvc_make_name_qry_req(unsigned char *name,
                               unsigned char name_type,

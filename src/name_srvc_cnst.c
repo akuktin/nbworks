@@ -162,6 +162,38 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
 						       ipv4_addr_t in_address,
 						       node_type_t node_type) {
   struct name_srvc_packet *result;
+
+  if (! name)
+    return 0;
+
+  result = alloc_name_srvc_pckt(0, 1, 0, 0);
+  if (! result) {
+    /* TODO: errno signaling stuff */
+    free(complete_name->name);
+    free(complete_name);
+    free(addr);
+    return 0;
+  }
+
+  result->answers->next = 0;
+  result->answers->res = name_srvc_make_res_nbaddrlst(name, name_type, scope,
+						      ttl, in_address, node_type);
+  if (! result->answers->res) {
+    /* TODO: errno signaling stuff */
+    destroy_name_srvc_pckt(result, 1, 1);
+    return 0;
+  }
+
+  return result;
+}
+
+struct name_srvc_resource *name_srvc_make_res_nbaddrlst(unsigned char *name,
+						        unsigned char name_type,
+							struct nbworks_nbnamelst *scope,
+							uint32_t ttl,
+							ipv4_addr_t in_address,
+							node_type_t node_type) {
+  struct name_srvc_resource *result;
   struct nbworks_nbnamelst *complete_name;
   struct nbaddress_list *addr;
 
@@ -232,33 +264,22 @@ struct name_srvc_packet *name_srvc_make_name_reg_small(unsigned char *name,
     break;
   }
 
-  result = alloc_name_srvc_pckt(0, 1, 0, 0);
+  result = malloc(sizeof(struct name_srvc_resource));
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
-    free(complete_name);
-    free(addr);
-    return 0;
-  }
-
-  result->answers->next = 0;
-  result->answers->res = malloc(sizeof(struct name_srvc_resource));
-  if (! result->answers->res) {
-    /* TODO: errno signaling stuff */
     free(addr);
     free(complete_name->name);
     free(complete_name);
-    destroy_name_srvc_pckt(result, 1, 1);
     return 0;
   }
 
-  result->answers->res->name = complete_name;
-  result->answers->res->rrtype = RRTYPE_NB;
-  result->answers->res->rrclass = RRCLASS_IN;
-  result->answers->res->ttl = ttl;
-  result->answers->res->rdata_len = 6;
-  result->answers->res->rdata_t = nb_address_list;
-  result->answers->res->rdata = addr;
+  result->name = complete_name;
+  result->rrtype = RRTYPE_NB;
+  result->rrclass = RRCLASS_IN;
+  result->ttl = ttl;
+  result->rdata_len = 6;
+  result->rdata_t = nb_address_list;
+  result->rdata = addr;
 
   return result;
 }
