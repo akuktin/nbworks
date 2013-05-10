@@ -117,7 +117,7 @@ void *name_srvc_handle_newtid(void *input) {
 
       name_srvc_do_namregreq(outpckt, &(outside_pckt->addr),
 			     params.trans, params.id.tid,
-			     cur_time, 0);
+			     cur_time, 0, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -192,9 +192,9 @@ void *name_srvc_handle_newtid(void *input) {
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
 #ifdef COMPILING_NBNS
-			   params.trans, params.id.tid,
+			   params.trans, params.id.tid, 0, 0,
 #endif
-			   cur_time);
+			   cur_time, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -412,7 +412,7 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
 			   &(ss_alltrans[index].trans),
-			   index, cur_time);
+			   index, 0, 0, cur_time, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1116,9 +1116,9 @@ void *refresh_scopes(void *i_ignore_this) {
 
 	    name_srvc_do_updtreq(pckt, &(outside_pckt->addr),
 #ifdef COMPILING_NBNS
-				 trans, tid.tid,
+				 trans, tid.tid, 0, 0,
 #endif
-				 cur_time);
+				 cur_time, 0);
 
 	  } else {
 
@@ -1207,13 +1207,11 @@ void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
   return;
 }
 
-void name_srvc_func_namregreq(struct name_srvc_resource *res,
-			      struct sockaddr_in *addr,
-			      struct ss_queue *trans,
-			      uint32_t tid,
-			      time_t cur_time) {
+struct name_srvc_resource *
+  name_srvc_func_namregreq(struct name_srvc_resource *res,
+			   time_t cur_time) {
   struct addrlst_bigblock addrblock, *addrblock_ptr;
-  struct name_srvc_packet *pckt;
+  struct name_srvc_resource_lst *answer;
   struct cache_namenode *cache_namecard;
   ipv4_addr_t in_addr;
   uint32_t i;
@@ -1223,6 +1221,7 @@ void name_srvc_func_namregreq(struct name_srvc_resource *res,
    * between B mode and P mode operation. */
 
   addrblock_ptr = &addrblock;
+  answer = 0;
 
   if (!((res) &&
 	(res->name) &&
@@ -1230,7 +1229,7 @@ void name_srvc_func_namregreq(struct name_srvc_resource *res,
 	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->rdata_t == nb_address_list) &&
 	(sort_nbaddrs(res->rdata, &addrblock_ptr))))
-    return;
+    return 0;
 
   decode_nbnodename(res->name->name, decoded_name);
 
@@ -1253,7 +1252,7 @@ void name_srvc_func_namregreq(struct name_srvc_resource *res,
   if (!(cache_namecard &&
 	((cache_namecard->unq_token) && (! cache_namecard->unq_isinconflict)) &&
 	(cache_namecard->timeof_death > cur_time)))
-    return;
+    return 0;
 
   /* Paired with the DOS_BUG in the POSITIVE NAME QUERY RESPONSE
    * section, this can be abused to execute a hostile name takeover. */
@@ -1270,32 +1269,31 @@ void name_srvc_func_namregreq(struct name_srvc_resource *res,
   }
 
   if (i<NUMOF_ADDRSES) {
-    pckt = name_srvc_make_name_reg_small(decoded_name,
-					 decoded_name[NETBIOS_NAME_LEN-1],
-					 res->name->next_name,
-					 /* Y2K38 */
-					 (cache_namecard->timeof_death
-					  - cur_time),
-					 in_addr,
-					 cache_namecard->addrs.recrd[i].node_type);
-    if (pckt) {
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-      pckt->header->nm_flags = FLG_AA;
-      pckt->header->rcode = RCODE_CFT_ERR;
-      pckt->for_del = TRUE;
-      ss_name_send_pckt(pckt, addr, trans);
-    }
+    answer = name_srvc_make_res_nbaddrlst(decoded_name,
+					  decoded_name[NETBIOS_NAME_LEN-1],
+					  res->name->next_name,
+					  /* Y2K38 */
+					  (cache_namecard->timeof_death
+					   - cur_time),
+					  in_addr,
+					  cache_namecard->addrs.recrd[i].node_type);
   }
+
+  return answer;
 }
 
-void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
-			    struct sockaddr_in *addr,
-			    struct ss_queue *trans,
-			    uint32_t tid,
-			    time_t cur_time,
-			    struct name_srvc_resource_lst *state) {
-  struct name_srvc_resource_lst *res;
+struct name_srvc_resource_lst *
+  name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
+			 struct sockaddr_in *addr,
+			 struct ss_queue *trans,
+			 uint32_t tid,
+			 time_t cur_time,
+			 unsigned long *numof_answers,
+			 struct name_srvc_resource_lst *state) {
+  struct name_srvc_resource_lst *res, *answer, **last_answr, *cur_answr;
+  struct name_srvc_resource *response;
+  struct name_srvc_packet *pckt;
+  unsigned long numof_responses;
 
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
@@ -1303,10 +1301,50 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
   if (! ((outpckt && addr && trans) || state))
     return;
 
+  last_answr = &answer;
+  numof_responses = 0;
+
   for ((state ? (res = state) : (res = outpckt->aditionals));
        res != 0;      /* Maybe test in questions too. */
        res = res->next) {
-    name_srvc_func_namregreq(res->res, addr, trans, tid, cur_time);
+    response = name_srvc_func_namregreq(res->res, cur_time);
+
+    if (response) {
+      *last_answr = malloc(sizeof(struct name_srvc_resource_lst));
+      cur_answr = *last_answr;
+      if (! cur_answr)
+	break;
+
+      cur_answr->res = response;
+      last_answr = &(cur_answr->next);
+
+      numof_responses++;
+    }
+  }
+  *last_answr = 0;
+
+  if (numof_answers)
+    *numof_answers = numof_responses;
+
+  if (state)
+    return answer;
+
+  pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+
+  if (pckt) {
+    pckt->for_del = TRUE;
+
+    pckt->header->transaction_id = tid;
+    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+    pckt->header->nm_flags = FLG_AA;
+    pckt->header->rcode = RCODE_CFT_ERR;
+
+    pckt->header->numof_answers = numof_responses;
+    pckt->header->answers = answer;
+
+    ss_name_send_pckt(pckt, addr, trans);
+  } else {
+    destroy_name_srvc_res_lst(answer, 1, 1);
   }
 
   return;
@@ -1613,6 +1651,8 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
       pckt->for_del = TRUE;
 
       ss_name_send_pckt(pckt, addr, trans);
+    } else {
+      destroy_name_srvc_res_lst(fail, 1, 1);
     }
   }
 
@@ -2516,16 +2556,16 @@ struct name_srvc_resource_lst *
   *last_unknown = 0;
 #endif
 
+  if (numof_notfounds)
+    *numof_notfounds = numof_failed;
+  if (numof_founds)
+    *numof_founds = numof_answers;
+
   if (state && *state) {
-    if (numof_notfounds) {
-      *numof_notfounds = numof_failed;
 #ifdef COMPILING_NBNS
-      destroy_name_srvc_qstn_lst(*state, 1);
-      *state = unknown;
+    destroy_name_srvc_qstn_lst(*state, 1);
+    *state = unknown;
 #endif
-    }
-    if (numof_founds)
-      *numof_founds = numof_answers;
 
     return frst_res;
   }
@@ -3156,15 +3196,16 @@ unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
   return success;
 }
 
-void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
-			    struct sockaddr_in *addr
+struct name_srvc_resource_lst *
+  name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
+			 struct sockaddr_in *addr
 #ifdef COMPILING_NBNS
-			    ,struct ss_queue *trans,
-			    uint32_t tid,
-			    unsigned long *numof_OK,
-			    unsigned long *numof_notOK,
+			 ,struct ss_queue *trans,
+			 uint32_t tid,
+			 unsigned long *numof_OK,
+			 unsigned long *numof_notOK,
 #endif
-			    struct name_srvc_resource_lst **state) {
+			 struct name_srvc_resource_lst **state) {
   struct name_srvc_resource_lst *res;
   ipv4_addr_t in_addr;
   uint32_t name_flags;
@@ -3178,7 +3219,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
    * between B mode and P mode operation. */
 
   if (! ((outpckt || (state && *state)) && addr))
-    return;
+    return 0;
 
   /* Make sure noone spoofs the release request. */
   /* VAXism below. */
@@ -3226,12 +3267,12 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   *last_answr = 0;
   *last_res = 0;
 
-  if (state && *state) {
-    if (numof_OK)
-      *numof_OK = numof_succedded;
-    if (numof_notOK)
-      *numof_notOK = numof_failed;
+  if (numof_OK)
+    *numof_OK = numof_succedded;
+  if (numof_notOK)
+    *numof_notOK = numof_failed;
 
+  if (state && *state) {
     /* Failed ones are already resigning on *state and
      * therefore there is nothing that needs to be done. */
 
@@ -3502,13 +3543,17 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
   return succedded;
 }
 
-void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
-			  struct sockaddr_in *addr,
+struct name_srvc_resource_lst *
+  name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
+		       struct sockaddr_in *addr,
 #ifdef COMPILING_NBNS
-			  struct ss_queue *trans,
-			  uint32_t tid,
+		       struct ss_queue *trans,
+		       uint32_t tid,
+		       unsigned long *numof_OK,
+		       unsigned long *numof_notOK,
 #endif
-			  time_t cur_time) {
+		       time_t cur_time,
+		       struct name_srvc_resource_lst **state) {
   struct name_srvc_resource_lst *res;
   uint32_t name_flags;
   ipv4_addr_t in_addr;
@@ -3521,15 +3566,18 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
-  if (! (outpckt && outpckt->header && addr))
-    return;
+  if (! ((outpckt || (state && *state)) && addr))
+    return 0;
 
 #ifdef COMPILING_NBNS
   if ((outpckt->header->nm_flags & FLG_B) ||
       (! trans))
-    return;
+    return 0;
 
-  last_res = &(outpckt->aditionals);
+  if (state && *state)
+    last_res = state;
+  else
+    last_res = &(outpckt->aditionals);
   last_answr = &answer;
   numof_succedded = 0;
   numof_failed = 0;
@@ -3539,7 +3587,10 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   /* Make sure only NBNS is listened to in P mode. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
 
-  res = outpckt->aditionals;
+  if (state && *state)
+    res = *state;
+  else
+    res = outpckt->aditionals;
   while (res) {
 #ifdef COMPILING_NBNS
     if (name_srvc_func_updtreq(res->res, in_addr, name_flags,
@@ -3565,6 +3616,18 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 #ifdef COMPILING_NBNS
   *last_answr = 0;
   *last_res = 0; /* superflous */
+
+  if (numof_OK)
+    *numof_OK = numof_succedded;
+  if (numof_notOK)
+    *numof_notOK = numof_failed;
+
+  if (state && *state) {
+    /* Failed ones are already resigning on *state and
+     * therefore there is nothing that needs to be done. */
+
+    return answer;
+  }
 
   if (numof_succedded) {
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
@@ -3606,5 +3669,5 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
   }
 #endif
 
-  return;
+  return 0;
 }

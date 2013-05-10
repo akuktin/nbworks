@@ -107,18 +107,16 @@ void
                     uint16_t reftype,
                     uint16_t refclass,
                     void *tid);
-void
+struct name_srvc_resource *
   name_srvc_func_namregreq(struct name_srvc_resource *res,
-                           struct sockaddr_in *addr,
-                           struct ss_queue *trans,
-                           uint32_t tid,
                            time_t cur_time);
-void
+struct name_srvc_resource_lst *
   name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
                          struct sockaddr_in *addr,
                          struct ss_queue *trans,
                          uint32_t tid,
                          time_t cur_time,
+                         unsigned long *numof_answers,
                          struct name_srvc_resource_lst *state);
 # ifdef COMPILING_NBNS
 /* returns: numof_laters */
@@ -179,7 +177,7 @@ unsigned int
   name_srvc_func_namrelreq(struct name_srvc_resource *res,
                            ipv4_addr_t in_addr,
                            uint32_t name_flags);
-void
+struct name_srvc_resource_lst *
   name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
                          struct sockaddr_in *addr
 #ifdef COMPILING_NBNS
@@ -195,13 +193,16 @@ unsigned int
                          ipv4_addr_t in_addr,
                          uint32_t name_flags,
                          time_t cur_time);
-void
+struct name_srvc_resource_lst *
   name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
                        struct sockaddr_in *addr,
 #ifdef COMPILING_NBNS
                        struct ss_queue *trans,
                        uint32_t tid,
+                       unsigned long *numof_OK,
+                       unsigned long *numof_notOK,
 #endif
-                       time_t cur_time);
+                       time_t cur_time,
+                       struct name_srvc_resource_lst **state);
 
 #endif /* NBWORKS_NAMESRVCFUNCFUNC_H */
