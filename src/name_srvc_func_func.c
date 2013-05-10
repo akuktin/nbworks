@@ -2918,6 +2918,160 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
   return;
 }
 
+/* returns: !0 = success, 0 = failure */
+unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
+				      ipv4_addr_t in_addr,
+				      uint32_t name_flags) {
+  struct nbaddress_list *nbaddr_list;
+  unsigned int sender_is_nbns, success, status;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+#ifndef COMPILING_NBNS
+  struct ipv4_addr_list *ipv4fordel;
+#endif
+
+  /* This function fully shadows the difference
+   * between B mode and P mode operation. */
+
+  if (!(res &&
+	res->name &&
+	res->name->name &&
+	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
+	(res->rdata_t == nb_address_list)))
+    return FALSE;
+
+#ifndef COMPILING_NBNS
+  /* For P mode, only read this if the packet was not broadcast. That is,
+   * if the packet does not have the broadcast flag set - we will still
+   * process a broadcast packet with the broadcast flag off.
+   * Unless we are NBNS. */
+  if ((in_addr == get_nbnsaddr(res->name->next_name)) &&
+      ((name_flags ^ FLG_B) & FLG_B))
+    sender_is_nbns = TRUE;
+  else
+    sender_is_nbns = FALSE;
+#else
+  sender_is_nbns = FALSE;
+  success = FALSE;
+#endif
+
+  nbaddr_list = res->rdata;
+  status = STATUS_DID_NONE;
+
+  /* Re: those fucking conditional compilation macros!
+   *   I understand reading them may be a problem, but this
+   *   was, literally, the easiest way to do this. If too many
+   *   people have a problem with reading it, I guess I will
+   *   break it up. */
+  while (nbaddr_list) {
+    if ((nbaddr_list->there_is_an_address) &&
+#ifndef COMPILING_NBNS
+	(((nbaddr_list->flags & NBADDRLST_NODET_MASK) == NBADDRLST_NODET_P) ?
+	 /* If P mode, only take into account if the sender is NBNS. */
+	 (sender_is_nbns) :
+#endif
+	 /* Otherwise, if the sender lists itself in the list. */
+	 (nbaddr_list->address == in_addr)
+#ifndef COMPILING_NBNS
+	)
+#endif
+       ) {
+      if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
+	status = status | STATUS_DID_GROUP;
+      else
+	status = status | STATUS_DID_UNIQ;
+    }
+
+    if (status == (STATUS_DID_GROUP | STATUS_DID_UNIQ))
+      break;
+    else
+      nbaddr_list = nbaddr_list->next_address;
+  }
+
+  if (! (status & (STATUS_DID_GROUP | STATUS_DID_UNIQ))) {
+    return FALSE;
+  }
+
+  nbaddr_list = res->rdata;
+
+  decode_nbnodename(res->name->name, decoded_name);
+
+  if (status & STATUS_DID_GROUP) {
+    cache_namecard = find_nblabel(decoded_name,
+				  NETBIOS_NAME_LEN,
+				  CACHE_ADDRBLCK_GRP_MASK,
+				  res->rrtype,
+				  res->rrclass,
+				  res->name->next_name);
+    if (cache_namecard) {
+      /* In NBNS mode, sender_is_nbns == FALSE. */
+      if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard,
+				   nbworks__myip4addr, sender_is_nbns)) {
+	destroy_tokens(cache_namecard->grp_tokens);
+	cache_namecard->grp_tokens = 0;
+      }
+
+      for (i=0; i<NUMOF_ADDRSES; i++) {
+	if (cache_namecard->addrs.recrd[i].addr)
+	  break;
+      }
+
+      if (i>=NUMOF_ADDRSES)
+	cache_namecard->timeof_death = 0;
+
+#ifdef COMPILING_NBNS
+      success = TRUE;
+#endif
+    }
+  }
+
+  if (status & STATUS_DID_UNIQ) {
+    cache_namecard = find_nblabel(decoded_name,
+				  NETBIOS_NAME_LEN,
+				  CACHE_ADDRBLCK_UNIQ_MASK,
+				  res->rrtype,
+				  res->rrclass,
+				  res->name->next_name);
+    if (cache_namecard) {
+      if (! cache_namecard->unq_token) {
+	cache_namecard->timeof_death = 0;
+#ifdef COMPILING_NBNS
+	success = TRUE;
+#else
+      } else {
+	/* Did I just get a name release for my own name? */
+	if (sender_is_nbns &&
+	    (cache_namecard->node_types & (CACHE_NODEFLG_P | CACHE_NODEFLG_M |
+					   CACHE_NODEFLG_H | CACHE_NODEGRPFLG_P |
+					   CACHE_NODEGRPFLG_M | CACHE_NODEGRPFLG_H))) {
+	  for (i=0; i<NUMOF_ADDRSES; i++) {
+	    if (! (cache_namecard->addrs.recrd[i].node_type &
+		   (CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B))) {
+	      ipv4fordel = cache_namecard->addrs.recrd[i].addr;
+	      cache_namecard->addrs.recrd[i].addr = 0;
+	      destroy_addrlist(ipv4fordel);
+
+	      cache_namecard->node_types = cache_namecard->node_types &
+		(~(cache_namecard->addrs.recrd[i].node_type));
+	      cache_namecard->addrs.recrd[i].node_type = 0;
+	    }
+	    if (! cache_namecard->node_types) {
+	      cache_namecard->timeof_death = 0;
+	      break;
+	    }
+	  }
+	}
+      }
+#endif /* COMPILING_NBNS */
+    }
+  }
+
+#ifdef COMPILING_NBNS
+  return success;
+#else
+  return 1;
+#endif
+}
+
 void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 			    struct sockaddr_in *addr
 #ifdef COMPILING_NBNS
@@ -2925,21 +3079,13 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 			    uint32_t tid
 #endif
 			    ) {
-  struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
-  struct nbaddress_list *nbaddr_list;
   ipv4_addr_t in_addr;
-  uint32_t status, i;
-  unsigned int sender_is_nbns;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+  uint32_t name_flags;
 #ifdef COMPILING_NBNS
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst **last_res, *answer, **last_answr;
-  uint32_t numof_succedded, numof_failed;
-  unsigned char succedded;
-#else
-  struct ipv4_addr_list *ipv4fordel;
-  uint32_t name_flags;
+  unsigned long numof_succedded, numof_failed;
 #endif
 
   /* This function fully shadows the difference
@@ -2947,12 +3093,6 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 
   if (! (outpckt && addr))
     return;
-
-#ifdef COMPILING_NBNS
-  sender_is_nbns = FALSE;
-
-  succedded = FALSE;
-#endif
 
   /* Make sure noone spoofs the release request. */
   /* VAXism below. */
@@ -2965,170 +3105,36 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 
   numof_succedded = 0;
   numof_failed = 0;
-#else
-
-  name_flags = outpckt->header->nm_flags;
 #endif
+  name_flags = outpckt->header->nm_flags;
+
   res = outpckt->aditionals;
   while (res) {
-    status = STATUS_DID_NONE;
-
-    if (res->res &&
-	res->res->name &&
-	res->res->name->name &&
-	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
-	(res->res->rdata_t == nb_address_list)) {
-#ifndef COMPILING_NBNS
-      /* For P mode, only read this if the packet was not broadcast. That is,
-       * if the packet does not have the broadcast flag set - we will still
-       * process a broadcast packet with the broadcast flag off.
-       * Unless we are NBNS. */
-      if ((in_addr == get_nbnsaddr(res->res->name->next_name)) &&
-	  ((name_flags ^ FLG_B) & FLG_B))
-        sender_is_nbns = TRUE;
-      else
-        sender_is_nbns = FALSE;
-#endif
-
-      nbaddr_list = res->res->rdata;
-
-      /* Re: those fucking conditional compilation macros!
-       *   I understand reading them may be a problem, but this
-       *   was, literally, the easiest way to do this. If too many
-       *   people have a problem with reading it, I guess I will
-       *   break it up. */
-      while (nbaddr_list) {
-	if ((nbaddr_list->there_is_an_address) &&
-#ifndef COMPILING_NBNS
-	    (((nbaddr_list->flags & NBADDRLST_NODET_MASK) == NBADDRLST_NODET_P) ?
-	     (sender_is_nbns) :
-#endif
-	     (nbaddr_list->address == in_addr)
-#ifndef COMPILING_NBNS
-	     )
-#endif
-	    ) {
-	  if (nbaddr_list->flags & NBADDRLST_GROUP_MASK)
-	    status = status | STATUS_DID_GROUP;
-	  else
-	    status = status | STATUS_DID_UNIQ;
-	}
-
-	if (status == (STATUS_DID_GROUP | STATUS_DID_UNIQ))
-	  break;
-	else
-	  nbaddr_list = nbaddr_list->next_address;
-      }
-
-      if (! (status & (STATUS_DID_GROUP | STATUS_DID_UNIQ))) {
 #ifdef COMPILING_NBNS
-	numof_failed++;
-	last_res = &(res->next);
-#endif
-	res = res->next;
-	continue;
-      }
-
-      nbaddr_list = res->res->rdata;
-
-      decode_nbnodename(res->res->name->name, decoded_name);
-
-      if (status & STATUS_DID_GROUP) {
-	cache_namecard = find_nblabel(decoded_name,
-				      NETBIOS_NAME_LEN,
-				      CACHE_ADDRBLCK_GRP_MASK,
-				      res->res->rrtype,
-				      res->res->rrclass,
-				      res->res->name->next_name);
-	if (cache_namecard) {
-	  /* In NBNS mode, sender_is_nbns == FALSE. */
-	  if (0 < remove_membrs_frmlst(nbaddr_list, cache_namecard,
-				       nbworks__myip4addr, sender_is_nbns)) {
-	    destroy_tokens(cache_namecard->grp_tokens);
-	    cache_namecard->grp_tokens = 0;
-	  }
-
-	  for (i=0; i<NUMOF_ADDRSES; i++) {
-	    if (cache_namecard->addrs.recrd[i].addr)
-	      break;
-	  }
-
-	  if (i>=NUMOF_ADDRSES)
-	    cache_namecard->timeof_death = 0;
-
-#ifdef COMPILING_NBNS
-	  succedded = TRUE;
-#endif
-        }
-      }
-      if (status & STATUS_DID_UNIQ) {
-	cache_namecard = find_nblabel(decoded_name,
-				      NETBIOS_NAME_LEN,
-				      CACHE_ADDRBLCK_UNIQ_MASK,
-				      res->res->rrtype,
-				      res->res->rrclass,
-				      res->res->name->next_name);
-	if (cache_namecard) {
-	  if (! cache_namecard->unq_token) {
-	    cache_namecard->timeof_death = 0;
-#ifdef COMPILING_NBNS
-	    succedded = TRUE;
-#else
-	  } else {
-	    /* Did I just get a name release for my own name? */
-	    if (sender_is_nbns &&
-		(cache_namecard->node_types & (CACHE_NODEFLG_P |
-					       CACHE_NODEFLG_M |
-					       CACHE_NODEFLG_H |
-					       CACHE_NODEGRPFLG_P |
-					       CACHE_NODEGRPFLG_M |
-					       CACHE_NODEGRPFLG_H))) {
-	      for (i=0; i<NUMOF_ADDRSES; i++) {
-		if (! (cache_namecard->addrs.recrd[i].node_type &
-		       (CACHE_NODEFLG_B | CACHE_NODEGRPFLG_B))) {
-		  ipv4fordel = cache_namecard->addrs.recrd[i].addr;
-		  cache_namecard->addrs.recrd[i].addr = 0;
-		  destroy_addrlist(ipv4fordel);
-
-		  cache_namecard->node_types = cache_namecard->node_types &
-		    (~(cache_namecard->addrs.recrd[i].node_type));
-		  cache_namecard->addrs.recrd[i].node_type = 0;
-		}
-		if (! cache_namecard->node_types) {
-		  cache_namecard->timeof_death = 0;
-		  break;
-		}
-	      }
-	    }
-#endif
-	  }
-	}
-      }
-    }
-
-#ifdef COMPILING_NBNS
-    if (succedded) {
+    if (name_srvc_func_namrelreq(res->res, in_addr,
+				 name_flags)) {
       *last_answr = res;
       last_answr = &(res->next);
 
       *last_res = res->next;
 
       numof_succedded++;
-
-      succedded = FALSE;
     } else {
       last_res = &(res->next);
       numof_failed++;
     }
+#else
+    name_srvc_func_namrelreq(res->res, in_addr, name_flags);
 #endif
 
     res = res->next;
   }
 
 #ifdef COMPILING_NBNS
-  if (numof_succedded) {
-    *last_answr = 0;
+  *last_answr = 0;
+  *last_res = 0;
 
+  if (numof_succedded) {
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
@@ -3143,6 +3149,8 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
       pckt->for_del = TRUE;
 
       ss_name_send_pckt(pckt, addr, trans);
+    } else {
+      destroy_name_srvc_res_lst(answer, 1, 1);
     }
   }
 
