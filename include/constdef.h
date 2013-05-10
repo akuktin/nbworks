@@ -115,6 +115,8 @@
 
 # define FRAGMENT_TO 2
 
+# define DEFAULT_REFRESH_TTL 3600 /* seconds */
+
 
 # ifdef align_incr
 #  undef align_incr

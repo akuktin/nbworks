@@ -2951,8 +2951,8 @@ unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
     sender_is_nbns = FALSE;
 #else
   sender_is_nbns = FALSE;
-  success = FALSE;
 #endif
+  success = FALSE;
 
   nbaddr_list = res->rdata;
   status = STATUS_DID_NONE;
@@ -3018,9 +3018,7 @@ unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
       if (i>=NUMOF_ADDRSES)
 	cache_namecard->timeof_death = 0;
 
-#ifdef COMPILING_NBNS
       success = TRUE;
-#endif
     }
   }
 
@@ -3034,10 +3032,10 @@ unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
     if (cache_namecard) {
       if (! cache_namecard->unq_token) {
 	cache_namecard->timeof_death = 0;
-#ifdef COMPILING_NBNS
 	success = TRUE;
-#else
-      } else {
+      }
+#ifndef COMPILING_NBNS
+      else {
 	/* Did I just get a name release for my own name? */
 	if (sender_is_nbns &&
 	    (cache_namecard->node_types & (CACHE_NODEFLG_P | CACHE_NODEFLG_M |
@@ -3065,11 +3063,7 @@ unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
     }
   }
 
-#ifdef COMPILING_NBNS
   return success;
-#else
-  return 1;
-#endif
 }
 
 void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
@@ -3180,6 +3174,221 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
 #undef STATUS_DID_GROUP
 #undef STATUS_DID_UNIQ
 
+/* returns: !0 = success, 0 = failure */
+unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
+				    ipv4_addr_t in_addr,
+				    uint32_t name_flags,
+				    time_t cur_time) {
+  struct cache_namenode *cache_namecard;
+  struct addrlst_bigblock *addr_bigblock;
+  ipv4_addr_t nbns_addr;
+  unsigned int succedded;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+#define update_ttls						\
+  if (res->ttl) {						\
+    cache_namecard->timeof_death = cur_time + res->ttl;		\
+    if (cache_namecard->timeof_death < cur_time)		\
+      cache_namecard->timeof_death = INFINITY;			\
+    cache_namecard->refresh_ttl = res->ttl;			\
+  } else {							\
+    cache_namecard->timeof_death = INFINITY;			\
+    if (! cache_namecard->refresh_ttl)				\
+      cache_namecard->refresh_ttl = DEFAULT_REFRESH_TTL;	\
+  }								\
+								\
+  cache_namecard->endof_conflict_chance = cur_time +		\
+    nbworks_namsrvc_cntrl.conflict_timer;			\
+  if (cache_namecard->endof_conflict_chance < cur_time)		\
+    cache_namecard->endof_conflict_chance = INFINITY;
+
+#define remove_doubles							\
+  for (i=0; i<NUMOF_ADDRSES; i++) {					\
+    if (addr_bigblock->addrs.recrd[i].node_type) {			\
+      cache_namecard->addrs.recrd[i].node_type =			\
+	addr_bigblock->addrs.recrd[i].node_type;			\
+									\
+      cache_namecard->addrs.recrd[i].addr =				\
+	merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);		\
+									\
+      cache_namecard->node_types |=					\
+	cache_namecard->addrs.recrd[i].node_type;			\
+    }									\
+  }
+
+#define remove_Pies							\
+  /* This cachenode is not yet in the cache. It is maybe having its	\
+   * P mode records removed if a bunch of conditions is not right.	\
+   * After that, it will be inserted into the cache. */			\
+  if ((in_addr != nbns_addr) || (name_flags & FLG_B)) {                 \
+    for (i=0; i<NUMOF_ADDRSES; i++) {					\
+      if (cache_namecard->addrs.recrd[i].node_type &			\
+	  (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) {			\
+									\
+	destroy_addrlist(cache_namecard->addrs.recrd[i].addr);		\
+	cache_namecard->addrs.recrd[i].addr = 0;			\
+	cache_namecard->addrs.recrd[i].node_type = 0;			\
+	cache_namecard->node_types = cache_namecard->node_types &	\
+	  (~(cache_namecard->addrs.recrd[i].node_type));		\
+									\
+	if (! cache_namecard->node_types) {				\
+	  destroy_namecard(cache_namecard);				\
+	  cache_namecard = 0;						\
+	  break;							\
+	}								\
+      }									\
+    }									\
+  }
+
+#define addrses_go_in							\
+  for (j=0; j<NUMOF_ADDRSES; j++) {					\
+    if (cache_namecard->addrs.recrd[j].node_type ==			\
+	addr_bigblock->addrs.recrd[i].node_type) {			\
+      cache_namecard->addrs.recrd[j].addr =				\
+	merge_addrlists(cache_namecard->addrs.recrd[j].addr,		\
+			addr_bigblock->addrs.recrd[i].addr);		\
+									\
+      succedded = TRUE;							\
+									\
+      break;								\
+    } else if (cache_namecard->addrs.recrd[j].node_type == 0) {		\
+      cache_namecard->addrs.recrd[j].node_type =			\
+	addr_bigblock->addrs.recrd[i].node_type;			\
+      /* Remove duplicates. */						\
+      cache_namecard->addrs.recrd[j].addr =				\
+	merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);		\
+									\
+      cache_namecard->node_types |=					\
+	addr_bigblock->addrs.recrd[i].node_type;			\
+									\
+      succedded = TRUE;							\
+      									\
+      break;								\
+    } /* else							        \
+	 continue the loop */						\
+  } /* End of the for loop. */
+
+
+#ifdef COMPILING_NBNS
+# define insert_addrses_in_old_namecard					\
+  for (i=0; i<NUMOF_ADDRSES; i++) {					\
+    addrses_go_in;							\
+  } /* Master NUMOF_ADDRSES iterator. */
+#else
+# define insert_addrses_in_old_namecard					\
+  for (i=0; i<NUMOF_ADDRSES; i++) {					\
+    /* In P mode, only insert if the data is coming from the NBNS. */	\
+    if (addr_bigblock->addrs.recrd[i].addr &&				\
+	((addr_bigblock->addrs.recrd[i].node_type &	                \
+	  (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?	                \
+	 ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :	        \
+	 TRUE)) {					                \
+									\
+      addrses_go_in;							\
+									\
+    } /* End of the P-mode if test */					\
+  } /* Master NUMOF_ADDRSES iterator. */
+#endif /* COMPILING_NBNS */
+
+
+  if (!(res &&
+	res->name &&
+	res->name->name &&
+	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
+	(res->rdata_t == nb_address_list)))
+    return FALSE;
+
+  addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
+  if (!addr_bigblock)
+    return FALSE;
+
+#ifndef COMPILING_NBNS
+  nbns_addr = get_nbnsaddr(res->res->name->next_name);
+#endif
+  succedded = FALSE;
+  decode_nbnodename(res->res->name->name, decoded_name);
+
+  if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
+    cache_namecard = find_nblabel(decoded_name,
+				  NETBIOS_NAME_LEN,
+				  ANY_NODETYPE,
+				  res->rrtype,
+				  res->rrclass,
+				  res->name->next_name);
+
+    if (! cache_namecard) {
+      cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
+				      (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK),
+				      FALSE, res->rrtype, res->rrclass);
+      update_ttls;
+
+      remove_doubles;
+
+#ifndef COMPILING_NBNS
+      remove_Pies;
+#endif
+
+      if (cache_namecard) {
+	if (! (add_scope(res->res->name->next_name, cache_namecard, nbworks__default_nbns) ||
+	       add_name(cache_namecard, res->res->name->next_name))) {
+	  destroy_namecard(cache_namecard);
+	  /* failed */
+	} else
+	  succedded = TRUE;
+      }
+
+    } else { /* It found a cache_namecard. */
+      /* BUG: The number of problems a rogue node can create is mind boggling. */
+      update_ttls;
+
+      insert_addrses_in_old_namecard;
+    }
+  } /* (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) */
+  if (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
+    cache_namecard = find_nblabel(decoded_name,
+				  NETBIOS_NAME_LEN,
+				  ANY_NODETYPE,
+				  res->rrtype,
+				  res->rrclass,
+				  res->name->next_name);
+
+    if (! cache_namecard) {
+      cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
+				      (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK),
+				      FALSE, res->rrtype, res->rrclass);
+      update_ttls;
+
+      remove_doubles;
+
+#ifndef COMPILING_NBNS
+      remove_Pies;
+#endif
+
+      if (cache_namecard) {
+        if (! (add_scope(res->res->name->next_name, cache_namecard, nbworks__default_nbns) ||
+	       add_name(cache_namecard, res->res->name->next_name))) {
+          destroy_namecard(cache_namecard);
+	  /* failed */
+        } else
+	  succedded = TRUE;
+      }
+
+    } else {
+      if (! cache_namecard->unq_token) {
+	update_ttls;
+
+	insert_addrses_in_old_namecard;
+      }
+      /* else: Sorry honey baby, you're cute, but that just ain't gonna work.
+	 MAYBE: send a NAME CONFLICT DEMAND packet (if I am not NBNS). */
+    }
+  } /* (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) */
+
+  destroy_bigblock(addr_bigblock);
+
+  return succedded;
+}
+
 void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			  struct sockaddr_in *addr,
 #ifdef COMPILING_NBNS
@@ -3187,362 +3396,64 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
 			  uint32_t tid,
 #endif
 			  time_t cur_time) {
-  struct cache_namenode *cache_namecard;
   struct name_srvc_resource_lst *res;
-  struct addrlst_bigblock *addr_bigblock;
-  int i, j;
+  uint32_t name_flags;
   ipv4_addr_t in_addr;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 #ifdef COMPILING_NBNS
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst **last_res, *answer, **last_answr;
-  uint32_t numof_succedded, numof_failed;
-  unsigned char succedded;
-#else
-  uint32_t name_flags;
-  ipv4_addr_t nbns_addr;
+  unsigned long numof_succedded, numof_failed;
 #endif
 
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
-  if (! (outpckt && addr))
+  if (! (outpckt && outpckt->header && addr))
     return;
-
-  /* Make sure only NBNS is listened to in P mode. */
-  read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
 
 #ifdef COMPILING_NBNS
-  if (outpckt->header->nm_flags & FLG_B)
+  if ((outpckt->header->nm_flags & FLG_B) ||
+      (! trans))
     return;
-
-  succedded = FALSE;
 
   last_res = &(outpckt->aditionals);
   last_answr = &answer;
   numof_succedded = 0;
   numof_failed = 0;
-#else
-
-  name_flags = outpckt->header->nm_flags;
 #endif
+  name_flags = outpckt->header->nm_flags;
+
+  /* Make sure only NBNS is listened to in P mode. */
+  read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
+
   res = outpckt->aditionals;
   while (res) {
-    if (res->res &&
-	res->res->name &&
-	res->res->name->name &&
-	(res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
-	(res->res->rdata_t == nb_address_list)) {
-
-      addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
-      if (addr_bigblock) {
-#ifndef COMPILING_NBNS
-	nbns_addr = get_nbnsaddr(res->res->name->next_name);
-#endif
-	decode_nbnodename(res->res->name->name, decoded_name);
-
-	if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
-	  cache_namecard = find_nblabel(decoded_name,
-					NETBIOS_NAME_LEN,
-					ANY_NODETYPE,
-					res->res->rrtype,
-					res->res->rrclass,
-					res->res->name->next_name);
-
-	  if (! cache_namecard) {
-	    cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
-					    (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK),
-					    FALSE, res->res->rrtype, res->res->rrclass);
-
-	    if (res->res->ttl) {
-	      cache_namecard->timeof_death = cur_time + res->res->ttl;
-              if (cache_namecard->timeof_death < cur_time)
-                cache_namecard->timeof_death = INFINITY;
-	      cache_namecard->refresh_ttl = res->res->ttl;
-	    } else {
-	      cache_namecard->timeof_death = INFINITY;
-	      cache_namecard->refresh_ttl = 0;
-	    }
-	    cache_namecard->endof_conflict_chance = cur_time +
-                                        nbworks_namsrvc_cntrl.conflict_timer;
-            if (cache_namecard->endof_conflict_chance < cur_time)
-              cache_namecard->endof_conflict_chance = INFINITY;
-
-	    /* Remove doubles. */
-	    for (i=0; i<NUMOF_ADDRSES; i++) {
-	      if (addr_bigblock->addrs.recrd[i].node_type) {
-		cache_namecard->addrs.recrd[i].node_type =
-		  addr_bigblock->addrs.recrd[i].node_type;
-		cache_namecard->addrs.recrd[i].addr =
-		  merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);
-
-		cache_namecard->node_types |=
-		  cache_namecard->addrs.recrd[i].node_type;
-	      }
-	    }
-
-#ifndef COMPILING_NBNS
-	    /* This cachenode is not yet in the cache. It is maybe having its
-	     * P mode records removed if a bunch of conditions is not right.
-	     * After that, it will be inserted into the cache. */
-	    if ((in_addr != nbns_addr) ||
-		(name_flags & FLG_B)) {
-	      for (i=0; i<NUMOF_ADDRSES; i++) {
-		if (cache_namecard->addrs.recrd[i].node_type &
-		    (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) {
-		  destroy_addrlist(cache_namecard->addrs.recrd[i].addr);
-		  cache_namecard->addrs.recrd[i].addr = 0;
-		  cache_namecard->addrs.recrd[i].node_type = 0;
-		  cache_namecard->node_types = cache_namecard->node_types &
-		    (~(cache_namecard->addrs.recrd[i].node_type));
-
-		  if (! cache_namecard->node_types) {
-		    destroy_namecard(cache_namecard);
-		    cache_namecard = 0;
-		    break;
-		  }
-		}
-	      }
-	    }
-#endif
-
-	    if (cache_namecard) {
-	      if (! (add_scope(res->res->name->next_name, cache_namecard, nbworks__default_nbns) ||
-		     add_name(cache_namecard, res->res->name->next_name))) {
-		destroy_namecard(cache_namecard);
-	        /* failed */
-	      }
 #ifdef COMPILING_NBNS
-	      else
-		succedded = TRUE;
-#endif
-	    }
-
-	  } else {
-	    /* BUG: The number of problems a rogue node can create is mind boggling. */
-	    if (res->res->ttl) {
-	      cache_namecard->timeof_death = cur_time + res->res->ttl;
-              if (cache_namecard->timeof_death < cur_time)
-                cache_namecard->timeof_death = INFINITY;
-	      cache_namecard->refresh_ttl = res->res->ttl;
-	    } else {
-	      cache_namecard->timeof_death = INFINITY;
-	      cache_namecard->refresh_ttl = 0;
-	    }
-	    cache_namecard->endof_conflict_chance = cur_time +
-                                        nbworks_namsrvc_cntrl.conflict_timer;
-            if (cache_namecard->endof_conflict_chance < cur_time)
-              cache_namecard->endof_conflict_chance = INFINITY;
-
-	    for (i=0; i<NUMOF_ADDRSES; i++) {
-#ifndef COMPILING_NBNS
-	      if (addr_bigblock->addrs.recrd[i].addr &&
-		  ((addr_bigblock->addrs.recrd[i].node_type & (CACHE_NODEGRPFLG_P |
-							       CACHE_NODEFLG_P)) ?
-		   ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
-		   TRUE)) {
-		/* Insert the new data only if a bunch of conditions are met. */
-#endif
-		for (j=0; j<NUMOF_ADDRSES; j++) {
-		  if (cache_namecard->addrs.recrd[j].node_type ==
-		      addr_bigblock->addrs.recrd[i].node_type) {
-		    cache_namecard->addrs.recrd[j].addr =
-		      merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-				      addr_bigblock->addrs.recrd[i].addr);
-
-#ifdef COMPILING_NBNS
-		    succedded = TRUE;
-#endif
-		    break;
-		  } else {
-		    if (cache_namecard->addrs.recrd[j].node_type == 0) {
-		      cache_namecard->addrs.recrd[j].node_type =
-			addr_bigblock->addrs.recrd[i].node_type;
-		      cache_namecard->addrs.recrd[j].addr =
-			merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);
-
-		      cache_namecard->node_types |= addr_bigblock->addrs.recrd[i].node_type;
-
-#ifdef COMPILING_NBNS
-		      succedded = TRUE;
-#endif
-		      break;
-		    } /* else
-			 continue the loop */
-		  }
-		}
-#ifndef COMPILING_NBNS
-	      }
-#endif
-	    }
-	  }
-	}
-	if (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK) {
-	  cache_namecard = find_nblabel(decoded_name,
-					NETBIOS_NAME_LEN,
-					ANY_NODETYPE,
-					res->res->rrtype,
-					res->res->rrclass,
-					res->res->name->next_name);
-
-	  if (! cache_namecard) {
-	    cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
-					    (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK),
-					    FALSE, res->res->rrtype, res->res->rrclass);
-
-	    if (res->res->ttl) {
-	      cache_namecard->timeof_death = cur_time + res->res->ttl;
-              if (cache_namecard->timeof_death < cur_time)
-                cache_namecard->timeof_death = INFINITY;
-	      cache_namecard->refresh_ttl = res->res->ttl;
-	    } else {
-	      cache_namecard->timeof_death = INFINITY;
-	      cache_namecard->refresh_ttl = 0;
-	    }
-	    cache_namecard->endof_conflict_chance = cur_time +
-                                        nbworks_namsrvc_cntrl.conflict_timer;
-            if (cache_namecard->endof_conflict_chance < cur_time)
-              cache_namecard->endof_conflict_chance = INFINITY;
-
-	    /* Remove doubles. */
-	    for (i=0; i<NUMOF_ADDRSES; i++) {
-	      if (addr_bigblock->addrs.recrd[i].node_type) {
-		cache_namecard->addrs.recrd[i].node_type =
-		  addr_bigblock->addrs.recrd[i].node_type;
-		cache_namecard->addrs.recrd[i].addr =
-		  merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);
-
-		cache_namecard->node_types |=
-		  cache_namecard->addrs.recrd[i].node_type;
-	      }
-	    }
-
-#ifndef COMPILING_NBNS
-	    /* This cachenode is not yet in the cache. It is maybe having its
-	     * P mode records removed if a bunch of conditions is not right.
-	     * After that, it will be inserted into the cache. */
-	    if ((in_addr != nbns_addr) ||
-		(name_flags & FLG_B)) {
-	      for (i=0; i<NUMOF_ADDRSES; i++) {
-		if (cache_namecard->addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
-								CACHE_NODEGRPFLG_P)) {
-		  destroy_addrlist(cache_namecard->addrs.recrd[i].addr);
-		  cache_namecard->addrs.recrd[i].addr = 0;
-		  cache_namecard->addrs.recrd[i].node_type = 0;
-		  cache_namecard->node_types = cache_namecard->node_types &
-		    (~(cache_namecard->addrs.recrd[i].node_type));
-
-		  if (! cache_namecard->node_types) {
-		    destroy_namecard(cache_namecard);
-		    cache_namecard = 0;
-		    break;
-		  }
-		}
-	      }
-	    }
-#endif
-
-	    if (cache_namecard) {
-              if (! (add_scope(res->res->name->next_name, cache_namecard, nbworks__default_nbns) ||
-		     add_name(cache_namecard, res->res->name->next_name))) {
-		destroy_namecard(cache_namecard);
-	        /* failed */
-	      }
-#ifdef COMPILING_NBNS
-	      else
-		succedded = TRUE;
-#endif
-	    }
-
-	  } else {
-	    if (! cache_namecard->unq_token) {
-	      if (res->res->ttl) {
-		cache_namecard->timeof_death = cur_time + res->res->ttl;
-                if (cache_namecard->timeof_death < cur_time)
-                  cache_namecard->timeof_death = INFINITY;
-		cache_namecard->refresh_ttl = res->res->ttl;
-	      } else {
-		cache_namecard->timeof_death = INFINITY;
-		cache_namecard->refresh_ttl = 0;
-	      }
-	      cache_namecard->endof_conflict_chance = cur_time +
-                                          nbworks_namsrvc_cntrl.conflict_timer;
-              if (cache_namecard->endof_conflict_chance < cur_time)
-                cache_namecard->endof_conflict_chance = INFINITY;
-
-	      for (i=0; i<NUMOF_ADDRSES; i++) {
-#ifndef COMPILING_NBNS
-		if (addr_bigblock->addrs.recrd[i].addr &&
-		    ((addr_bigblock->addrs.recrd[i].node_type & (CACHE_NODEFLG_P |
-								 CACHE_NODEGRPFLG_P)) ?
-		     ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :
-		     TRUE)) {
-		  /* Insert the new data only if a bunch of conditions are met. */
-#endif
-		  for (j=0; j<NUMOF_ADDRSES; j++) {
-		    if (cache_namecard->addrs.recrd[j].node_type ==
-			addr_bigblock->addrs.recrd[i].node_type) {
-		      cache_namecard->addrs.recrd[j].addr =
-			merge_addrlists(cache_namecard->addrs.recrd[j].addr,
-					addr_bigblock->addrs.recrd[i].addr);
-
-#ifdef COMPILING_NBNS
-		      succedded = TRUE;
-#endif
-		      break;
-		    } else {
-		      if (cache_namecard->addrs.recrd[j].node_type == 0) {
-			cache_namecard->addrs.recrd[j].node_type =
-			  addr_bigblock->addrs.recrd[i].node_type;
-			cache_namecard->addrs.recrd[j].addr =
-			  merge_addrlists(0, addr_bigblock->addrs.recrd[i].addr);
-
-			cache_namecard->node_types |= addr_bigblock->addrs.recrd[i].node_type;
-
-#ifdef COMPILING_NBNS
-			succedded = TRUE;
-#endif
-			break;
-		      } /* else
-			   continue the loop */
-		    }
-		  }
-#ifndef COMPILING_NBNS
-		}
-#endif
-	      }
-	    }
-	    /* else: Sorry honey baby, you're cute, but that just ain't gonna work.
-	       MAYBE: send a NAME CONFLICT DEMAND packet (if I am not NBNS). */
-	  }
-	}
-
-	destroy_bigblock(addr_bigblock);
-      }
-    }
-
-#ifdef COMPILING_NBNS
-    if (succedded) {
+    if (name_srvc_func_updtreq(res->res, in_addr, name_flags,
+			       cur_time)) {
       *last_answr = res;
       last_answr = &(res->next);
 
       *last_res = res->next;
 
       numof_succedded++;
-
-      succedded = FALSE;
     } else {
       numof_failed++;
       last_res = &(res->next);
     }
+#else
+    name_srvc_func_updtreq(res->res, in_addr, name_flags,
+			   cur_time);
 #endif
+
     res = res->next;
   }
 
 #ifdef COMPILING_NBNS
-  if (numof_succedded) {
-    *last_answr = 0;
+  *last_answr = 0;
+  *last_res = 0; /* superflous */
 
+  if (numof_succedded) {
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
@@ -3557,12 +3468,12 @@ void name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
       pckt->for_del = TRUE;
 
       ss_name_send_pckt(pckt, addr, trans);
+    } else {
+      destroy_name_srvc_res_lst(answer, 1, 1);
     }
   }
 
   if (numof_failed) {
-    *last_res = 0; /* superflous */
-
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
