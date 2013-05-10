@@ -3226,7 +3226,7 @@ void name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
   *last_answr = 0;
   *last_res = 0;
 
-  if (state) {
+  if (state && *state) {
     if (numof_OK)
       *numof_OK = numof_succedded;
     if (numof_notOK)
