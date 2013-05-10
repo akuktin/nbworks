@@ -148,14 +148,30 @@ void
                               uint32_t tid,
                               time_t cur_time);
 void
+  name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
+                               struct sockaddr_in *addr,
+                               struct ss_queue *trans,
+                               uint32_t tid,
+                               time_t cur_time,
+                               ipv4_addr_t in_addr);
+void
   name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
                              struct sockaddr_in *addr,
                              struct ss_queue *trans,
                              uint32_t tid,
                              time_t cur_time);
 void
+  name_srvc_func_namcftdem(struct name_srvc_resource *res,
+                           ipv4_addr_t in_addr,
+                           uint32_t name_flags);
+void
   name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
                          struct sockaddr_in *addr);
+/* returns: !0 = success, 0 = failure */
+unsigned int
+  name_srvc_func_namrelreq(struct name_srvc_resource *res,
+                           ipv4_addr_t in_addr,
+                           uint32_t name_flags);
 void
   name_srvc_do_namrelreq(struct name_srvc_packet *outpckt,
                          struct sockaddr_in *addr
@@ -164,6 +180,12 @@ void
                          uint32_t tid
 #endif
                          );
+/* returns: !0 = success, 0 = failure */
+unsigned int
+  name_srvc_func_updtreq(struct name_srvc_resource *res,
+                         ipv4_addr_t in_addr,
+                         uint32_t name_flags,
+                         time_t cur_time);
 void
   name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
                        struct sockaddr_in *addr,

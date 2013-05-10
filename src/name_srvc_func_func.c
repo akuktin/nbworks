@@ -1305,7 +1305,7 @@ void name_srvc_do_namregreq(struct name_srvc_packet *outpckt,
   for (res = outpckt->aditionals;
        res != 0;      /* Maybe test in questions too. */
        res = res->next) {
-    name_srvc_func_namregreq(res->res, add, trans, tid, cur_time);
+    name_srvc_func_namregreq(res->res, addr, trans, tid, cur_time);
   }
 
   return;
@@ -2276,9 +2276,9 @@ struct name_srvc_resource *name_srvc_func_nodestat(struct name_srvc_question *qs
 #endif /* COMPILING_NBNS */
 }
 
-struct name_srvc_resource *name_srvc_func_nameqry(struct name_srvc_question *qstn,
-						  time_t cur_time,
-						  unsigned int *istruncated) {
+struct name_srvc_resource *name_srvc_func_namqry(struct name_srvc_question *qstn,
+						 time_t cur_time,
+						 unsigned int *istruncated) {
   struct name_srvc_resource *res;
   struct cache_namenode *cache_namecard;
   struct nbaddress_list *nbaddr_list, *nbaddr_list_frst, **nbaddr_list_last;
@@ -2295,8 +2295,9 @@ struct name_srvc_resource *name_srvc_func_nameqry(struct name_srvc_question *qst
 	(qstn->name->len == NETBIOS_CODED_NAME_LEN)))
     return 0;
 
-  decode_nbnodename(qstn->name, decoded_name);
+  decode_nbnodename(qstn->name->name, decoded_name);
 
+  flags = 0;
   lowest_deathtime = INFINITY;
   lenof_addresses = 0;
   nbaddr_list_last = &nbaddr_list_frst;
@@ -2413,12 +2414,12 @@ struct name_srvc_resource *name_srvc_func_nameqry(struct name_srvc_question *qst
       overflow_test = lowest_deathtime - cur_time;
       /* Test if RDATA_TTL will overflow. */
       if (overflow_test < (uint32_t)ONES)
-	res->res->ttl = overflow_test;
+	res->ttl = overflow_test;
       else
-	res->res->ttl = (uint32_t)ONES;
+	res->ttl = (uint32_t)ONES;
     } else {
       /* *NEVER* send infinite answers. */
-      res->res->ttl = 1;
+      res->ttl = 1;
     }
 
     return res;
@@ -2432,7 +2433,7 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 				 uint32_t tid,
 				 time_t cur_time) {
   struct name_srvc_packet *pckt;
-  struct name_srvc_resource_lst *frst_res, *res, **answer_lst, *answer;
+  struct name_srvc_resource_lst *frst_res, *res, **answer_lst;
   struct name_srvc_question_lst *qstn;
   struct name_srvc_resource *answer;
   unsigned int istruncated;
@@ -2455,11 +2456,16 @@ void name_srvc_do_namqrynodestat(struct name_srvc_packet *outpckt,
 #endif
   qstn = outpckt->questions;
   while (qstn) {
-    if (qstn->qtype == QTYPE_NBSTAT)
-      answer = name_srvc_func_nodestat(qstn, cur_time,
+    if (! qstn->qstn) {
+      qstn = qstn->next;
+      continue;
+    }
+
+    if (qstn->qstn->qtype == QTYPE_NBSTAT)
+      answer = name_srvc_func_nodestat(qstn->qstn, cur_time,
 				       &istruncated);
     else
-      answer = name_srvc_func_namqry(qstn, cur_time,
+      answer = name_srvc_func_namqry(qstn->qstn, cur_time,
 				     &istruncated);
 
     if (answer) {
@@ -2582,6 +2588,7 @@ void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
 				  time_t cur_time,
 				  ipv4_addr_t in_addr) {
   struct addrlst_bigblock addrblock, *addrblock_ptr;
+  struct name_srvc_packet *pckt;
   struct cache_namenode *cache_namecard;
   struct ipv4_addr_list *ipv4_addr_list;
   unsigned int i;
@@ -2702,7 +2709,7 @@ void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
 	    /* WRONG! But how do I fix it? */
 	    name_srvc_enter_conflict(ISGROUP_YES, cache_namecard,
 				     decoded_name,
-				     res->res->name->next_name);
+				     res->name->next_name);
 	  }
 	  break;
 	}
@@ -2784,7 +2791,6 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 				struct ss_queue *trans,
 				uint32_t tid,
 				time_t cur_time) {
-  struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst *res;
   ipv4_addr_t in_addr;
 
@@ -2812,7 +2818,10 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 void name_srvc_func_namcftdem(struct name_srvc_resource *res,
 			      ipv4_addr_t in_addr,
 			      uint32_t name_flags) {
+  struct cache_namenode *cache_namecard;
+  struct nbaddress_list *nbaddr_list;
   unsigned int status, sender_is_nbns;
+  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
@@ -2922,8 +2931,9 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
 unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
 				      ipv4_addr_t in_addr,
 				      uint32_t name_flags) {
+  struct cache_namenode *cache_namecard;
   struct nbaddress_list *nbaddr_list;
-  unsigned int sender_is_nbns, success, status;
+  unsigned int sender_is_nbns, success, status, i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 #ifndef COMPILING_NBNS
   struct ipv4_addr_list *ipv4fordel;
@@ -3182,8 +3192,11 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
   struct cache_namenode *cache_namecard;
   struct addrlst_bigblock *addr_bigblock;
   ipv4_addr_t nbns_addr;
-  unsigned int succedded;
+  unsigned int succedded, i, j;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
+
+  /* This function fully shadows the difference
+   * between B mode and P mode operation. */
 
 #define update_ttls						\
   if (res->ttl) {						\
@@ -3262,7 +3275,7 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 	addr_bigblock->addrs.recrd[i].node_type;			\
 									\
       succedded = TRUE;							\
-      									\
+									\
       break;								\
     } /* else							        \
 	 continue the loop */						\
@@ -3298,15 +3311,15 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 	(res->rdata_t == nb_address_list)))
     return FALSE;
 
-  addr_bigblock = sort_nbaddrs(res->res->rdata, 0);
+  addr_bigblock = sort_nbaddrs(res->rdata, 0);
   if (!addr_bigblock)
     return FALSE;
 
 #ifndef COMPILING_NBNS
-  nbns_addr = get_nbnsaddr(res->res->name->next_name);
+  nbns_addr = get_nbnsaddr(res->name->next_name);
 #endif
   succedded = FALSE;
-  decode_nbnodename(res->res->name->name, decoded_name);
+  decode_nbnodename(res->name->name, decoded_name);
 
   if (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK) {
     cache_namecard = find_nblabel(decoded_name,
@@ -3329,8 +3342,8 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 #endif
 
       if (cache_namecard) {
-	if (! (add_scope(res->res->name->next_name, cache_namecard, nbworks__default_nbns) ||
-	       add_name(cache_namecard, res->res->name->next_name))) {
+	if (! (add_scope(res->name->next_name, cache_namecard, nbworks__default_nbns) ||
+	       add_name(cache_namecard, res->name->next_name))) {
 	  destroy_namecard(cache_namecard);
 	  /* failed */
 	} else
@@ -3365,8 +3378,8 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 #endif
 
       if (cache_namecard) {
-        if (! (add_scope(res->res->name->next_name, cache_namecard, nbworks__default_nbns) ||
-	       add_name(cache_namecard, res->res->name->next_name))) {
+        if (! (add_scope(res->name->next_name, cache_namecard, nbworks__default_nbns) ||
+	       add_name(cache_namecard, res->name->next_name))) {
           destroy_namecard(cache_namecard);
 	  /* failed */
         } else
