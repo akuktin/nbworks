@@ -151,7 +151,7 @@ struct name_srvc_resource_lst *
                               struct name_srvc_question_lst *state,
                               unsigned long *numof_founds,
                               unsigned long *numof_notfounds);
-void
+struct name_srvc_resource *
   name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
                                struct sockaddr_in *addr,
                                struct ss_queue *trans,

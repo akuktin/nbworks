@@ -147,7 +147,7 @@ void *name_srvc_handle_newtid(void *input) {
 
       name_srvc_do_posnamqryresp(outpckt, &(outside_pckt->addr),
 				 params.trans, params.id.tid,
-				 cur_time);
+				 cur_time, 0, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -2616,14 +2616,15 @@ struct name_srvc_resource_lst *
 #define STATUS_DID_NONE   0x00
 #define STATUS_DID_GROUP  0x01
 #define STATUS_DID_UNIQ   0x02
-void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
-				  struct sockaddr_in *addr,
-				  struct ss_queue *trans,
-				  uint32_t tid,
-				  time_t cur_time,
-				  ipv4_addr_t in_addr) {
+struct name_srvc_resource *
+  name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
+			       struct sockaddr_in *addr,
+			       struct ss_queue *trans,
+			       uint32_t tid,
+			       time_t cur_time,
+			       ipv4_addr_t in_addr) {
   struct addrlst_bigblock addrblock, *addrblock_ptr;
-  struct name_srvc_packet *pckt;
+  struct name_srvc_resource *answer;
   struct cache_namenode *cache_namecard;
   struct ipv4_addr_list *ipv4_addr_list;
   unsigned int i;
@@ -2633,6 +2634,7 @@ void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
    * between B mode and P mode operation. */
 
   addrblock_ptr = &addrblock;
+  answer = 0;
 
   if (!(res &&
 	(res->name) &&
@@ -2641,10 +2643,10 @@ void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
 	(res->rdata_t == nb_address_list) &&
 	(res->rdata) &&
 	(sort_nbaddrs(res->rdata, &addrblock_ptr))))
-    return;
+    return 0;
 
   if (! (addrblock.node_types & (~(CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)))) {
-    return;
+    return 0;
   }
 
   decode_nbnodename(res->name->name, decoded_name);
@@ -2681,7 +2683,7 @@ void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
   if (!((cache_namecard) &&
 	(cache_namecard->timeof_death > cur_time) &&
 	(cache_namecard->endof_conflict_chance < cur_time)))
-    return;
+    return 0;
 
   /* NO conflict check. */
   if (addrblock.node_types & (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_P))) {
@@ -2703,25 +2705,24 @@ void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
     }
 
     if ((i<NUMOF_ADDRSES) && ipv4_addr_list) {
-      /* Note to self: this is here because RFC 1002 requires that
-       * this be sent regardless of whether the name is group name
-       * or unique name. */
+      /* Note to self: this was here (read below) because RFC 1002
+       * requires that this be sent regardless of whether the name
+       * is group name or unique name. */
       /* Problem: generally, if I ask for a group name, all members of
        * the group will respond. It may also take them some time to do
        * so. Thus, this code may get triggered in such an innocent case.
        * If the sending node has its conflict timer running, said node
        * could experience various problems. */
-      pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
-					   res->name->next_name,
-					   0, 0,
-					   addrblock.addrs.recrd[i].node_type);
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-      pckt->header->nm_flags = FLG_AA;
-      pckt->header->rcode = RCODE_CFT_ERR;
-      pckt->for_del = TRUE;
 
-      ss_name_send_pckt(pckt, addr, trans);
+      /* ---8<---------8<---------8<--- */
+      /* Before, there was a piece of code here that would send a conflict demand
+       * to the packet-originating node. This would have been sent even if the
+       * node in question was answering about a group name. */
+      /* It has been removed, even if it is in RFC 1002 because of:
+       * (1) The problem that is outlined in the previous comment.
+       * (2) It simplifies the implementation of this function for the TCP
+       *     name service. */
+      /* --->8--------->8--------->8--- */
 
       /* Verify that the name in question previously had
        * the IP address in question listed as it's member. */
@@ -2771,17 +2772,9 @@ void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
     }
 
     if ((i<NUMOF_ADDRSES) && ipv4_addr_list) {
-      pckt = name_srvc_make_name_reg_small(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
-					   res->name->next_name,
-					   0, 0,
-					   addrblock.addrs.recrd[i].node_type);
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-      pckt->header->nm_flags = FLG_AA;
-      pckt->header->rcode = RCODE_CFT_ERR;
-      pckt->for_del = TRUE;
-
-      ss_name_send_pckt(pckt, addr, trans);
+      answer = name_srvc_make_res_nbaddrlst(decoded_name, decoded_name[NETBIOS_NAME_LEN-1],
+					    res->name->next_name, 0, 0,
+					    addrblock.addrs.recrd[i].node_type);
 
       /* Verify that the name in question previously had
        * the IP address in question listed as it's owner. */
@@ -2818,22 +2811,40 @@ void name_srvc_func_posnamqryresp(struct name_srvc_resource *res,
      looking for inconsistencies, like the
      NAME RELEASE REQUEST section does. */
 
-  return;
+  return answer;
 }
 
-void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
-				struct sockaddr_in *addr,
-				struct ss_queue *trans,
-				uint32_t tid,
-				time_t cur_time) {
-  struct name_srvc_resource_lst *res;
+struct name_srvc_resource_lst *
+  name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
+			     struct sockaddr_in *addr,
+			     struct ss_queue *trans,
+			     uint32_t tid,
+			     time_t cur_time,
+			     struct name_srvc_resource_lst *state,
+			     unsigned long *numof_responses) {
+  struct name_srvc_resource_lst *res, *response, *frst_respns, **last_respns;
+  unsigned long numof_clicks;
   ipv4_addr_t in_addr;
+
+
+      pckt->header->transaction_id = tid;
+      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+      pckt->header->nm_flags = FLG_AA;
+      pckt->header->rcode = RCODE_CFT_ERR;
+      pckt->for_del = TRUE;
+
+      ss_name_send_pckt(pckt, addr, trans);
+
+
 
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
-  if (! (outpckt && addr && trans))
-    return;
+  if (! ((outpckt && addr && trans) || state))
+    return 0;
+
+  last_respns = &frst_respns;
+  numof_clicks = 0;
 
   /* Make sure noone spoofs the response. */
   /* VAXism below. */
@@ -2841,13 +2852,51 @@ void name_srvc_do_posnamqryresp(struct name_srvc_packet *outpckt,
 
   res = outpckt->answers;
   while (res) {
-    name_srvc_func_posnamqryresp(res->res, addr, trans, tid,
-				 cur_time, in_addr);
+    answer = name_srvc_func_posnamqryresp(res->res, addr, trans, tid,
+					  cur_time, in_addr);
+
+    if (answer) {
+      *last_respns = malloc(sizeof(struct name_srvc_resource_lst));
+      if (! *last_respns)
+	break;
+      response = *last_respns;
+      response->res = answer;
+
+      last_respns = &(response->next);
+
+      numof_clicks++;
+    }
 
     res = res->next;
   }
+  *last_respns = 0;
 
-  return;
+  if (numof_responses)
+    *numof_responses = numof_clicks;
+
+  if (state)
+    return frst_respns;
+
+  pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+
+  if (pckt) {
+    pckt->for_del = TRUE;
+
+    pckt->header->transaction_id = tid;
+    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+    pckt->header->nm_flags = FLG_AA;
+    pckt->header->rcode = RCODE_CFT_ERR;
+
+    pckt->header->numof_answers = numof_clicks;
+    pckt->header->answers = frst_respns;
+
+    ss_name_send_pckt(pckt, addr, trans);
+
+  } else {
+    destroy_name_srvc_res_lst(frst_respns, 1, 1);
+  }
+
+  return 0;
 }
 
 void name_srvc_func_namcftdem(struct name_srvc_resource *res,
