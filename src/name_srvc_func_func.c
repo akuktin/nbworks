@@ -2826,17 +2826,6 @@ struct name_srvc_resource_lst *
   unsigned long numof_clicks;
   ipv4_addr_t in_addr;
 
-
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-      pckt->header->nm_flags = FLG_AA;
-      pckt->header->rcode = RCODE_CFT_ERR;
-      pckt->for_del = TRUE;
-
-      ss_name_send_pckt(pckt, addr, trans);
-
-
-
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
