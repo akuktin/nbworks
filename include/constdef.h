@@ -27,6 +27,7 @@
 # include <sys/time.h>
 # include <sys/un.h>
 # include <time.h>
+# include <poll.h>
 
 
 # ifdef COMPILING_NBNS

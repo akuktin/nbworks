@@ -229,6 +229,17 @@ void *
 void *
   ss__port139(void *non_args);
 
+struct ss_unif_pckt_list *
+  ss__recv_tcppckt(struct ss_sckts *sckts,
+                   struct pollfd *tcp_pfd,
+                   uint16_t *tid);
+struct ss_unif_pckt_list *
+  ss__recv_udppckt(struct ss_sckts *sckts,
+                   struct pollfd *udp_pfd,
+                   uint16_t *tid,
+                   unsigned char *udp_pckt,
+                   ipv4_addr_t discard_add_NETWRK,
+                   struct nbworks_nbnamelst **name_as_id);
 void *
   ss__cmb_recver(void *sckts_ptr);
 void *

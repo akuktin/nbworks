@@ -386,13 +386,13 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
       if (! master) {
 	if (last_outpckt) {
-          if (last_outpckt->stream.sckt >= 0) 
+          if (last_outpckt->stream.sckt >= 0)
             close(last_outpckt->stream.sckt >= 0);
 	  free(last_outpckt);
         }
 	/* Make sure there are no memory leaks. */
 	if (outside_pckt->next) {
-          if (outside_pckt->stream.sckt >= 0) 
+          if (outside_pckt->stream.sckt >= 0)
             close(outside_pckt->stream.sckt >= 0);
 	  free(outside_pckt);
         }
@@ -1102,7 +1102,7 @@ void *refresh_scopes(void *i_ignore_this) {
 	    }
 	  } else {
 	    if (last_outpckt) {
-	      if (last_outpckt->stream.sckt >= 0) 
+	      if (last_outpckt->stream.sckt >= 0)
                 close(last_outpckt->stream.sckt >= 0);
 	      free(last_outpckt);
             }

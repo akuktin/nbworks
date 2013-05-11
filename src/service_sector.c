@@ -956,6 +956,7 @@ void *ss__port137(void *placeholder) {
   sckts.master_reader = &master_name_srvc_pckt_reader;
   sckts.branch = NAME_SRVC;
   //XXX  sckts.tcp_sckt = socket(PF_INET, SOCK_STREAM, 0);
+  sckts.tcp_sckt = -1;
   sckts.udp_sckt = socket(PF_INET, SOCK_DGRAM, 0);
 
   if (sckts.udp_sckt < 0) /* XXX ||
@@ -1144,9 +1145,129 @@ void *ss__port138(void *i_dont_actually_use_this) {
 }
 
 
+struct ss_unif_pckt_list *ss__recv_tcppckt(struct ss_sckts *sckts,
+					   struct pollfd *tcp_pfd,
+					   uint16_t *tid) {
+  struct sockaddr_in his_addr;
+  struct ss_unif_pckt_list *new_pckt;
+  socklen_t addr_len;
+
+  addr_len = sizeof(struct sockaddr_in);
+  if (0 >= poll(tcp_pfd, 1, 0))
+    return 0;
+
+  new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
+  if (! new_pckt)
+    return 0;
+
+  new_pckt->stream.sckt = accept(sckts->tcp_sckt, &his_addr, &addr_len);
+  if (new_pckt->stream.sckt < 0) {
+    free(new_pckt);
+    return 0;
+  }
+
+  if (2 > recv(new_pckt->stream.sckt, new_pckt->stream.buff, 2, MSG_DONTWAIT)) {
+    close(new_pckt->stream.sckt);
+    free(new_pckt);
+    return 0;
+  }
+
+  read_16field(new_pckt->stream.buff, tid);
+
+  new_pckt->packet = 0;
+  memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
+  new_pckt->dstry = sckts->pckt_dstr; /* Don't play with fire. */
+  new_pckt->next = 0;
+
+  return new_pckt;
+}
+
+struct ss_unif_pckt_list *ss__recv_udppckt(struct ss_sckts *sckts,
+					   struct pollfd *udp_pfd,
+					   uint16_t *tid,
+					   unsigned char *udp_pckt,
+					   ipv4_addr_t discard_add_NETWRK,
+					   struct nbworks_nbnamelst **name_as_id) {
+  struct ss_unif_pckt_list *new_pckt;
+  struct sockaddr_in his_addr;
+  struct nbworks_nbnamelst *name_id;
+  ssize_t len;
+  socklen_t addr_len;
+
+  addr_len = sizeof(struct sockaddr_in);
+  if (0 >= poll(udp_pfd, 1, 0))
+    return 0;
+
+  len = recvfrom(sckts->udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
+		 /*MSG_DONTWAIT*/0, (struct sockaddr *)&his_addr, &addr_len);
+  /* BUG: While testing, I have noticed that there appears to be
+   *      a very strange behaviour regarding len.
+   *      Sometimes, the below test passes (indicating len is either
+   *      0 or positive), but if you read it after the if block,
+   *      it is -1! This behaviour dissapears if the socket is blocking
+   *      (the call to recvfrom() blocks). The only explanation so far
+   *      is that recvfrom returns, but then retroactivelly fails and
+   *      overwrites len to -1.
+   *      The other explanation is that GCC fucks things up (again).
+   *
+   * perror() displays "Resource temporarily unavailable" */
+  /* the below line used to read (len < 0) */
+  if (len <= 0) {
+    if (errno == EAGAIN ||
+	errno == EWOULDBLOCK) {
+      return 0;
+    } else {
+      /* TODO: error handling */
+      return 0;
+    }
+  }
+
+#ifndef VISIBLE_BREAKERS
+  /* A *HORRIBLE* hack to enable us to receive datagrams
+   * sent to other nodes on this same machine. */
+  if ((his_addr.sin_addr.s_addr == discard_add_NETWRK) &&
+      (sckts->branch != DTG_SRVC)) {
+    return 0;
+  }
+#endif
+
+  new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
+  if (! new_pckt)
+    return 0;
+  new_pckt->packet = sckts->master_reader(udp_pckt, len, tid);
+
+  if (new_pckt->packet) {
+#ifndef COMPILING_NBNS
+    if ((sckts->branch == DTG_SRVC) &&
+	(name_as_id)) {
+      name_id = dtg_srvc_get_srcnam_recvpckt(new_pckt->packet);
+      if ((! name_id) ||
+	  (! name_id->name) ||
+	  (name_id->len != NETBIOS_CODED_NAME_LEN)) {
+	sckts->pckt_dstr(new_pckt->packet, 1, 1);
+	free(new_pckt);
+	return 0;
+      }
+      *name_as_id = name_id;
+    }
+#endif
+
+    new_pckt->stream.sckt = -1;
+    memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
+    new_pckt->dstry = sckts->pckt_dstr;
+    new_pckt->next = 0;
+  } else {
+    // FIXME: Handle datagram service error packets.
+
+    free(new_pckt);
+    new_pckt = 0;
+  }
+
+  return new_pckt;
+}
+
 void *ss__cmb_recver(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
-  struct sockaddr_in his_addr, discard_addr;
   struct ss_unif_pckt_list *new_pckt;
   struct ss_priv_trans *cur_trans;
 #ifdef COMPILING_NBNS
@@ -1156,11 +1277,10 @@ void *ss__cmb_recver(void *sckts_ptr) {
   struct ss_queue *newtid_queue;
 #endif
   struct newtid_params params;
-  struct pollfd udp_pfd;
+  struct pollfd pollfds[2], *udp_pfd, *tcp_pfd;
   struct nbworks_nbnamelst *name_as_id;
-  socklen_t addr_len;
   int ret_val;
-  uint32_t len;
+  ipv4_addr_t discard_add, discard_add_NETWRK;
   uint16_t tid;
   unsigned char udp_pckt[MAX_UDP_PACKET_LEN];
 
@@ -1186,15 +1306,14 @@ void *ss__cmb_recver(void *sckts_ptr) {
 #endif
 
   name_as_id = 0;
+  discard_add = nbworks__myip4addr;
 
-  discard_addr.sin_family = AF_INET;
-  /* VAXism below. */
-  fill_16field(137, (unsigned char *)&(discard_addr.sin_port));
-  fill_32field(nbworks__myip4addr,
-	       (unsigned char *)&(discard_addr.sin_addr.s_addr));
-
-  udp_pfd.fd = sckts.udp_sckt;
-  udp_pfd.events = (POLLIN | POLLPRI);
+  udp_pfd = &(pollfds[0]);
+  tcp_pfd = &(pollfds[1]);
+  udp_pfd->fd = sckts.udp_sckt;
+  udp_pfd->events = (POLLIN | POLLPRI);
+  tcp_pfd->fd = sckts.tcp_sckt;
+  tcp_pfd->events = (POLLIN | POLLPRI);
   params.isbusy = 0;
 
 #define make_new_queue						\
@@ -1247,7 +1366,7 @@ void *ss__cmb_recver(void *sckts_ptr) {
 #endif
 
   while (! nbworks_all_port_cntl.all_stop) {
-    ret_val = poll(&udp_pfd, 1, nbworks_all_port_cntl.poll_timeout);
+    ret_val = poll(pollfds, 2, nbworks_all_port_cntl.poll_timeout);
     if (ret_val == 0)
       continue;
     if (ret_val < 0) {
@@ -1255,81 +1374,24 @@ void *ss__cmb_recver(void *sckts_ptr) {
       continue;
     }
 
+
     while (0xcafe) {
-      addr_len = sizeof(struct sockaddr_in);
-      memset(&his_addr, 0, sizeof(his_addr));
-      if (0 >= poll(&udp_pfd, 1, 0))
-	break;
+      /* The below is added to enable support for changing of addresses. */
+      if (discard_add != nbworks__myip4addr) {
+	discard_add = nbworks__myip4addr;
+	/* VAXism below */
+	fill_32field(discard_add,
+		     (unsigned char *)&discard_add_NETWRK);
+      }
 
-      len = recvfrom(sckts.udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
-		     /*MSG_DONTWAIT*/0, (struct sockaddr *)&his_addr, &addr_len);
-      /* BUG: While testing, I have noticed that there appears to be
-	      a very strange behaviour regarding len.
-	      Sometimes, the below test passes (indicating len is either
-	      0 or positive), but if you read it after the if block,
-	      it is -1! This behaviour dissapears if the socket is blocking
-	      (the call to recvfrom() blocks). The only explanation so far
-	      is that recvfrom returns, but then retroactivelly fails and
-	      overwrites len to -1.
-	      The other explanation is that GCC fucks things up (again).
-
-              perror() displays "Resource temporarily unavailable" */
-      /* the below line used to read (len < 0) */
-      if (len <= 0) {
-	if (errno == EAGAIN ||
-	    errno == EWOULDBLOCK) {
+      new_pckt = ss__recv_udppckt(&sckts, udp_pfd, &tid,
+				  udp_pckt, discard_add_NETWRK, &name_as_id);
+      if (! new_pckt) {
+	new_pckt = ss__recv_tcppckt(&sckts, tcp_pfd, &tid);
+	if (! new_pckt)
 	  break;
-	} else {
-	  /* TODO: error handling */
-	  break;
-	}
       }
 
-#ifndef VISIBLE_BREAKERS
-      /* A *HORRIBLE* hack to enable us to receive datagrams
-       * sent to other nodes on this same machine. */
-      if ((his_addr.sin_addr.s_addr == discard_addr.sin_addr.s_addr) &&
-	  (sckts.branch != DTG_SRVC)) {
-	continue;
-      }
-#endif
-
-
-      new_pckt = malloc(sizeof(struct ss_unif_pckt_list));
-      /* NOTE: No check for failure. */
-      new_pckt->packet = sckts.master_reader(udp_pckt, len, &tid);
-
-      if (new_pckt->packet) {
-
-#ifndef COMPILING_NBNS
-	if (sckts.branch == DTG_SRVC) {
-	  name_as_id = dtg_srvc_get_srcnam_recvpckt(new_pckt->packet);
-	  if ((! name_as_id) ||
-	      (! name_as_id->name) ||
-	      (name_as_id->len != NETBIOS_CODED_NAME_LEN)) {
-	    sckts.pckt_dstr(new_pckt->packet, 1, 1);
-	    free(new_pckt);
-	    new_pckt = 0;
-	    continue;
-	  }
-	}
-#endif
-
-	new_pckt->stream.sckt = -1;
-	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
-	new_pckt->dstry = sckts.pckt_dstr;
-	new_pckt->next = 0;
-
-      } else {
-	/* TODO: errno signaling stuff */
-	/* BUT see third comment up! */
-
-	// FIXME: Handle datagram service error packets.
-
-	free(new_pckt);
-	new_pckt = 0;
-	continue;
-      }
 
 #ifdef COMPILING_NBNS
       cur_trans = ss_alltrans[tid].privtrans;
@@ -1345,7 +1407,7 @@ void *ss__cmb_recver(void *sckts_ptr) {
 	free(new_pckt);
       }
 #else
-      while (new_pckt) {
+      do {
 	last_trans = sckts.all_trans;
 	cur_trans = *last_trans;
 	while (cur_trans) {
@@ -1406,7 +1468,7 @@ void *ss__cmb_recver(void *sckts_ptr) {
 	     * the flow now goes back into the main loop. */
 	  }
 	}
-      }
+      } while (new_pckt);
       /* Superfluous in datagram mode. */
       if (! new_trans) {
 	/* Signaling the new queue. */
@@ -1428,8 +1490,6 @@ void *ss__cmb_recver(void *sckts_ptr) {
       }
 #endif
     }
-
-    /* TCP name service goes here. */
   }
 
 #ifndef COMPILING_NBNS
