@@ -17,6 +17,7 @@
 
 #include "c_lang_extensions.h"
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -88,8 +89,11 @@ void *name_srvc_handle_newtid(void *input) {
 	  ss_set_inputdrop_name_tid(&(params.id));
 	}
       } else {
-	if (last_outpckt)
+	if (last_outpckt) {
+          if (last_outpckt->stream.sckt >= 0)
+            close(last_outpckt->stream.sckt);
 	  free(last_outpckt);
+        }
 	last_outpckt = outside_pckt;
       }
 
@@ -97,6 +101,7 @@ void *name_srvc_handle_newtid(void *input) {
 
     ss_set_normalstate_name_tid(&(params.id));
 
+    /* TCP-INSERTION */
     outpckt = outside_pckt->packet;
 
     /* Hack to make the complex loops of
@@ -321,13 +326,17 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 	  return 0;
 	}
       } else {
-	if (last_outpckt)
+	if (last_outpckt) {
+          if (last_outpckt->stream.sckt >= 0)
+            close(last_outpckt->stream.sckt >= 0);
 	  free(last_outpckt);
+        }
 	last_outpckt = outside_pckt;
       }
 
     } while (! outside_pckt->packet);
 
+    /* TCP-INSERTION */
     outpckt = outside_pckt->packet;
     outside_pckt->packet = 0;
 
@@ -376,11 +385,17 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 	(outpckt->header->nm_flags & FLG_AA)) {
 
       if (! master) {
-	if (last_outpckt)
+	if (last_outpckt) {
+          if (last_outpckt->stream.sckt >= 0) 
+            close(last_outpckt->stream.sckt >= 0);
 	  free(last_outpckt);
+        }
 	/* Make sure there are no memory leaks. */
-	if (outside_pckt->next)
+	if (outside_pckt->next) {
+          if (outside_pckt->stream.sckt >= 0) 
+            close(outside_pckt->stream.sckt >= 0);
 	  free(outside_pckt);
+        }
 
 	return outpckt;
       } else
@@ -1086,8 +1101,11 @@ void *refresh_scopes(void *i_ignore_this) {
 	      break;
 	    }
 	  } else {
-	    if (last_outpckt)
+	    if (last_outpckt) {
+	      if (last_outpckt->stream.sckt >= 0) 
+                close(last_outpckt->stream.sckt >= 0);
 	      free(last_outpckt);
+            }
 	    last_outpckt = outside_pckt;
 	  }
 
@@ -1096,6 +1114,7 @@ void *refresh_scopes(void *i_ignore_this) {
 	if (! trans)
 	  break;
 
+        /* TCP-INSERTION */
 	pckt = outside_pckt->packet;
 	outside_pckt->packet = 0;
 

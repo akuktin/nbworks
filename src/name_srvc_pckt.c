@@ -43,7 +43,7 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_
     return 0;
 
   if ((! *master_packet_walker) ||
-      ((*master_packet_walker + 6 * 2) > end_of_packet)) {
+      ((*master_packet_walker + SIZEOF_NAMEHDR_ONWIRE) > end_of_packet)) {
     OUT_OF_BOUNDS(1);
     //    *do_kill_yourself = TRUE;
     return 0;
@@ -86,7 +86,7 @@ unsigned char *fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *he
 
   walker = field;
 
-  if ((walker + 6*2) > end_of_packet) {
+  if ((walker + SIZEOF_NAMEHDR_ONWIRE) > end_of_packet) {
     OUT_OF_BOUNDS(2);
     //    *do_kill_yourself = TRUE;
     return walker;

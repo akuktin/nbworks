@@ -48,6 +48,10 @@ struct rail_list {
 struct ss_unif_pckt_list {
   uint16_t for_del;
   void *packet;
+  struct {
+    unsigned char buff[2];
+    int sckt;
+  } stream;
   void (*dstry)(void *, unsigned int, unsigned int);
   struct sockaddr_in addr;
   struct ss_unif_pckt_list *next;
@@ -226,7 +230,7 @@ void *
   ss__port139(void *non_args);
 
 void *
-  ss__udp_recver(void *sckts_ptr);
+  ss__cmb_recver(void *sckts_ptr);
 void *
   ss__udp_sender(void *sckts_ptr);
 

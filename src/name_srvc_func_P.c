@@ -17,6 +17,7 @@
 
 #include "c_lang_extensions.h"
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -122,6 +123,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	break;
       }
 
+      /* TCP-INSERTION */
       if ((! outside_pckt->packet) ||
 	  (outside_pckt->addr.sin_port != addr.sin_port) ||
 	  (outside_pckt->addr.sin_addr.s_addr !=
@@ -133,6 +135,9 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	    if (last_outpckt->packet) {
 	      last_outpckt->dstry(last_outpckt->packet, 1, 1);
 	    }
+            if (last_outpckt->stream.sckt >= 0) {
+              close(last_outpckt->stream.sckt);
+            }
 	    free(last_outpckt);
 	  }
 	  last_outpckt = outside_pckt;
@@ -144,10 +149,14 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	if (last_outpckt->packet) {
 	  last_outpckt->dstry(last_outpckt->packet, 1, 1);
 	}
+        if (last_outpckt->stream.sckt >= 0) {
+          close(last_outpckt->stream.sckt);
+        }
 	free(last_outpckt);
       }
       last_outpckt = outside_pckt;
 
+      /* TCP-INSERTION */
       outpckt = outside_pckt->packet;
       outside_pckt->packet = 0;
 

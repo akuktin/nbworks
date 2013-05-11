@@ -110,6 +110,7 @@ struct ss_queue *ss_register_tid(union trans_id *arg,
     free(my_trans);
     return 0;
   }
+  my_trans->in->stream.sckt = -1;
   my_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));
   if (! my_trans->out) {
     /* TODO: errno signaling stuff */
@@ -118,6 +119,7 @@ struct ss_queue *ss_register_tid(union trans_id *arg,
     free(my_trans);
     return 0;
   }
+  my_trans->out->stream.sckt = -1;
   if (branch == DTG_SRVC)
     my_trans->id.name_scope = nbworks_clone_nbnodename(arg->name_scope);
   else
@@ -504,6 +506,7 @@ inline int ss_name_send_pckt(struct name_srvc_packet *pckt,
 
       trans_pckt->for_del = pckt->for_del;
       trans_pckt->packet = pckt;
+      trans_pckt->stream.sckt = -1;
       memcpy(&(trans_pckt->addr), addr, sizeof(struct sockaddr_in));
       trans_pckt->dstry = &destroy_name_srvc_pckt;
       trans_pckt->next = 0;
@@ -540,6 +543,7 @@ inline int ss_dtg_send_pckt(struct dtg_srvc_recvpckt *pckt,
 
       trans_pckt->for_del = pckt->for_del;
       trans_pckt->packet = pckt;
+      trans_pckt->stream.sckt = -1;
       memcpy(&(trans_pckt->addr), addr, sizeof(struct sockaddr_in));
       trans_pckt->dstry = &destroy_dtg_srvc_recvpckt;
       trans_pckt->next = 0;
@@ -569,6 +573,9 @@ inline void *ss__recv_pckt(struct ss_queue *trans,
   do {
     result = trans->incoming->packet;
     trans->incoming->packet = 0;
+    /* TCP-INSERTION */
+    if (trans->incoming->stream.sckt >= 0)
+      close(trans->incoming->stream.sckt);
 
     if (result) {
       if (real_listen &&
@@ -624,6 +631,8 @@ inline void ss__dstry_recv_queue(struct ss_queue *trans) {
     if (trans->incoming->packet &&
 	trans->incoming->dstry)
       trans->incoming->dstry(trans->incoming->packet, 1, 1);
+    if (trans->incoming->stream.sckt >= 0)
+      close(trans->incoming->stream.sckt);
     for_del = trans->incoming;
     trans->incoming = trans->incoming->next;
     /* NOTETOSELF: This is safe. */
@@ -886,6 +895,7 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
       free(new_trans);
       return 0;
     }
+    new_trans->in->stream.sckt = -1;
     new_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));
     if (! new_trans->out) {
       /* TODO: errno signaling stuff */
@@ -894,6 +904,7 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
       free(new_trans);
       return 0;
     }
+    new_trans->out->stream.sckt = -1;
     new_trans->id.tid = index;
     new_trans->status = nmtrst_normal;
 
@@ -1028,7 +1039,7 @@ void *ss__port137(void *placeholder) {
   sckts.isbusy = 0xda;
 
   ret_val = pthread_create(&(thread[1]), 0,
-			   &ss__udp_recver, &sckts);
+			   &ss__cmb_recver, &sckts);
   if (ret_val) {
     /* TODO: errno signaling stuff */
     pthread_cancel(thread[0]);
@@ -1102,7 +1113,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
   }
 
   if (pthread_create(&(thread[0]), 0,
-		     &ss__udp_recver, &sckts)) {
+		     &ss__cmb_recver, &sckts)) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     nbworks_all_port_cntl.all_stop = 4;
@@ -1133,7 +1144,7 @@ void *ss__port138(void *i_dont_actually_use_this) {
 }
 
 
-void *ss__udp_recver(void *sckts_ptr) {
+void *ss__cmb_recver(void *sckts_ptr) {
   struct ss_sckts sckts, *release_lock;
   struct sockaddr_in his_addr, discard_addr;
   struct ss_unif_pckt_list *new_pckt;
@@ -1145,7 +1156,7 @@ void *ss__udp_recver(void *sckts_ptr) {
   struct ss_queue *newtid_queue;
 #endif
   struct newtid_params params;
-  struct pollfd polldata;
+  struct pollfd udp_pfd;
   struct nbworks_nbnamelst *name_as_id;
   socklen_t addr_len;
   int ret_val;
@@ -1182,8 +1193,8 @@ void *ss__udp_recver(void *sckts_ptr) {
   fill_32field(nbworks__myip4addr,
 	       (unsigned char *)&(discard_addr.sin_addr.s_addr));
 
-  polldata.fd = sckts.udp_sckt;
-  polldata.events = (POLLIN | POLLPRI);
+  udp_pfd.fd = sckts.udp_sckt;
+  udp_pfd.events = (POLLIN | POLLPRI);
   params.isbusy = 0;
 
 #define make_new_queue						\
@@ -1206,6 +1217,7 @@ void *ss__udp_recver(void *sckts_ptr) {
     free(new_trans);						\
     return 0;							\
   }								\
+  new_trans->in->stream.sckt = -1;				\
   new_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));	\
   if (! new_trans->out) {					\
     /* TODO: errno signaling stuff */				\
@@ -1214,6 +1226,7 @@ void *ss__udp_recver(void *sckts_ptr) {
     free(new_trans);						\
     return 0;							\
   }								\
+  new_trans->out->stream.sckt = -1;				\
 								\
   newtid_queue->incoming = new_trans->in;			\
   newtid_queue->outgoing = new_trans->out;                      \
@@ -1234,7 +1247,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 #endif
 
   while (! nbworks_all_port_cntl.all_stop) {
-    ret_val = poll(&polldata, 1, nbworks_all_port_cntl.poll_timeout);
+    ret_val = poll(&udp_pfd, 1, nbworks_all_port_cntl.poll_timeout);
     if (ret_val == 0)
       continue;
     if (ret_val < 0) {
@@ -1245,7 +1258,7 @@ void *ss__udp_recver(void *sckts_ptr) {
     while (0xcafe) {
       addr_len = sizeof(struct sockaddr_in);
       memset(&his_addr, 0, sizeof(his_addr));
-      if (0 >= poll(&polldata, 1, 0))
+      if (0 >= poll(&udp_pfd, 1, 0))
 	break;
 
       len = recvfrom(sckts.udp_sckt, udp_pckt, MAX_UDP_PACKET_LEN,
@@ -1302,6 +1315,7 @@ void *ss__udp_recver(void *sckts_ptr) {
 	}
 #endif
 
+	new_pckt->stream.sckt = -1;
 	memcpy(&(new_pckt->addr), &his_addr, sizeof(struct sockaddr_in));
 	new_pckt->dstry = sckts.pckt_dstr;
 	new_pckt->next = 0;
@@ -1326,6 +1340,8 @@ void *ss__udp_recver(void *sckts_ptr) {
 	ss_alltrans[tid].ss_iosig |= SS_IOSIG_IN;
       } else {
 	sckts.pckt_dstr(new_pckt->packet, 1, 1);
+	if (new_pckt->stream.sckt >= 0)
+	  close(new_pckt->stream.sckt);
 	free(new_pckt);
       }
 #else
@@ -1347,6 +1363,8 @@ void *ss__udp_recver(void *sckts_ptr) {
 	      /* ((cur_trans->status == nmtrst_indrop) ||
 		  (cur_trans->status == nmtrst_deregister)) */
 	      sckts.pckt_dstr(new_pckt->packet, 1, 1);
+	      if (new_pckt->stream.sckt >= 0)
+		close(new_pckt->stream.sckt);
 	      free(new_pckt);
 	      new_pckt = 0;
 
@@ -1367,6 +1385,8 @@ void *ss__udp_recver(void *sckts_ptr) {
 	  if ((sckts.branch) == DTG_SRVC) { /* There goes my terminally abstract code... */
 	    //	FIXME    dtg_srvc_send_NOTHERE_error(new_pckt);
 	    sckts.pckt_dstr(new_pckt->packet, 1, 1);
+	    if (new_pckt->stream.sckt >= 0)
+	      close(new_pckt->stream.sckt);
 	    free(new_pckt);
 	    new_pckt = 0;
 
@@ -1408,6 +1428,8 @@ void *ss__udp_recver(void *sckts_ptr) {
       }
 #endif
     }
+
+    /* TCP name service goes here. */
   }
 
 #ifndef COMPILING_NBNS
@@ -1495,6 +1517,8 @@ void *ss__udp_sender(void *sckts_ptr) {
 
 	  for_del = cur_trans->out;
 	  cur_trans->out = cur_trans->out->next;
+	  if (for_del->stream.sckt >= 0)
+	    close(for_del->stream.sckt);
 	  free(for_del);
 	}
 
@@ -1524,6 +1548,8 @@ void *ss__udp_sender(void *sckts_ptr) {
 
 	  for_del = cur_trans->out;
 	  cur_trans->out = cur_trans->out->next;
+	  if (for_del->stream.sckt >= 0)
+	    close(for_del->stream.sckt);
 	  free(for_del);
 	}
 
@@ -1544,6 +1570,8 @@ void *ss__udp_sender(void *sckts_ptr) {
 	    sckts.pckt_dstr(cur_trans->out->packet, 1, 1);
 	  cur_trans->out->packet = 0;
 	};
+	if (cur_trans->out->stream.sckt >= 0)
+	  close(cur_trans->out->stream.sckt);
 #ifndef COMPILING_NBNS
 
 	last_trans = &(cur_trans->next);
