@@ -927,7 +927,7 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
 void *ss__port137(void *placeholder) {
   struct ss_sckts sckts;
   struct sockaddr_in my_addr;
-  pthread_t thread[2];/*3];*/
+  pthread_t thread[2];
   int ret_val, i;
 
   my_addr.sin_family = AF_INET;
@@ -938,7 +938,7 @@ void *ss__port137(void *placeholder) {
    * it also has a bad effect on hosts with multiple interfaces (that is,
    * multiple IP addresses assigned to it). These hosts may sometimes send
    * packets which list an address different that the address listed in
-   * the packet itself. My own algorithms, and presumably other too, will
+   * the packet itself. My own algorithms, and presumably others too, will
    * discard and ignore the content of such packets. */
   my_addr.sin_addr.s_addr = INADDR_ANY;
 
@@ -955,17 +955,16 @@ void *ss__port137(void *placeholder) {
   sckts.master_writer = &master_name_srvc_pckt_writer;
   sckts.master_reader = &master_name_srvc_pckt_reader;
   sckts.branch = NAME_SRVC;
-  //XXX  sckts.tcp_sckt = socket(PF_INET, SOCK_STREAM, 0);
-  sckts.tcp_sckt = -1;
+  sckts.tcp_sckt = socket(PF_INET, SOCK_STREAM, 0);
   sckts.udp_sckt = socket(PF_INET, SOCK_DGRAM, 0);
 
-  if (sckts.udp_sckt < 0) /* XXX ||
-			     sckts.tcp_sckt < 0)*/ {
+  if ((sckts.udp_sckt < 0) ||
+      (sckts.tcp_sckt < 0)) {
     /* TODO: errno signaling stuff */
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
-  /*
+/*
   if (0 != set_sockoption(sckts.udp_sckt, NONBLOCKING)) {
     /_* TODO: errno signaling stuff *_/
     close(sckts.udp_sckt);
@@ -1000,11 +999,11 @@ void *ss__port137(void *placeholder) {
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
-/* XXX
+
   ret_val = bind(sckts.tcp_sckt, (struct sockaddr *)&my_addr,
 		 sizeof(struct sockaddr_in));
   if (ret_val < 0) {
-    /...* TODO: errno signaling stuff *.../
+    /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
     return 0;
@@ -1012,15 +1011,14 @@ void *ss__port137(void *placeholder) {
 
   ret_val = listen(sckts.tcp_sckt, MAX_NAME_TCP_QUEUE);
   if (ret_val < 0) {
-    /...* TODO: errno signaling stuff *.../
+    /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
     close(sckts.tcp_sckt);
     return 0;
   }
-*/
+
   thread[0] = 0;
   thread[1] = 0;
-  //XXX  thread[2] = 0;
 
   /* There HAS to be a very, very special place in
      hell for people as evil as I am. */
@@ -1029,7 +1027,7 @@ void *ss__port137(void *placeholder) {
   if (ret_val) {
     /* TODO: errno signaling stuff */
     close(sckts.udp_sckt);
-    //XXX    close(sckts.tcp_sckt);
+    close(sckts.tcp_sckt);
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
@@ -1045,7 +1043,7 @@ void *ss__port137(void *placeholder) {
     /* TODO: errno signaling stuff */
     pthread_cancel(thread[0]);
     close(sckts.udp_sckt);
-    //XXX    close(sckts.tcp_sckt);
+    close(sckts.tcp_sckt);
     nbworks_all_port_cntl.all_stop = 2;
     return 0;
   }
@@ -1055,12 +1053,12 @@ void *ss__port137(void *placeholder) {
   }
   sckts.isbusy = 0xda;
 
-  for (i=0; i < 2/*XXX3*/; i++) {
+  for (i=0; i < 2; i++) {
     pthread_join(thread[i], 0);
   }
 
   close(sckts.udp_sckt);
-  //XXX  close(sckts.tcp_sckt);
+  close(sckts.tcp_sckt);
 
   return (void *)ONES;
 }
