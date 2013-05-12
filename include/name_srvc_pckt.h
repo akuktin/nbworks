@@ -181,7 +181,7 @@ struct name_srvc_resource_lst {
 struct name_srvc_packet {
   unsigned char for_del;
   unsigned char stuck_in_transit;
-  struct name_srvc_pckt_header *header;
+  struct name_srvc_pckt_header header;
   struct name_srvc_question_lst *questions;
   struct name_srvc_resource_lst *answers;
   struct name_srvc_resource_lst *authorities;
@@ -190,7 +190,8 @@ struct name_srvc_packet {
 
 struct name_srvc_pckt_header *
   read_name_srvc_pckt_header(unsigned char **master_packet_walker,
-                             unsigned char *end_of_packet);
+                             unsigned char *end_of_packet,
+                             struct name_srvc_pckt_header *field);
 unsigned char *
   fill_name_srvc_pckt_header(const struct name_srvc_pckt_header *header,
                              unsigned char *field,

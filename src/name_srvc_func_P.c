@@ -91,8 +91,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
                                       CACHE_NODEGRPFLG_P :
                                       CACHE_NODEFLG_P));
   if ((! pckt) ||
-      (! pckt->aditionals) ||
-      (! pckt->header)) {
+      (! pckt->aditionals)) {
     /* TODO: errno signaling stuff */
     return 0;
   }
@@ -106,9 +105,9 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
     return 0;
   }
 
-  pckt->header->transaction_id = tid.tid;
-  pckt->header->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
-  pckt->header->nm_flags = FLG_RD;
+  pckt->header.transaction_id = tid.tid;
+  pckt->header.opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
+  pckt->header.nm_flags = FLG_RD;
 
   retry_count = nbworks_namsrvc_cntrl.ucast_req_retry_count;
   for (i=0; i < retry_count; i++) {
@@ -160,15 +159,14 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
       outpckt = outside_pckt->packet;
       outside_pckt->packet = 0;
 
-      if (!(outpckt->header &&
-	    (outpckt->header->nm_flags & FLG_AA))) {
+      if (! (outpckt->header.nm_flags & FLG_AA)) {
 	outside_pckt->dstry(outpckt, 1, 1);
 	continue;
       }
 
-      if (outpckt->header->opcode == (OPCODE_RESPONSE |
+      if (outpckt->header.opcode == (OPCODE_RESPONSE |
 				      OPCODE_REGISTRATION)) {
-	if (outpckt->header->rcode) {
+	if (outpckt->header.rcode) {
 	  // NEGATIVE NAME REGISTRATION RESPONSE
 
 	  /* Also make sure NBNS does actually mean *ME* when it
@@ -185,13 +183,13 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	      break;
 	  }
 	  if (res) {
-	    rcode = outpckt->header->rcode;
+	    rcode = outpckt->header.rcode;
 	    success = FALSE;
 	    last_outpckt->dstry(outpckt, 1, 1);
 	    break;
 	  }
 	} else {
-	  if (outpckt->header->nm_flags & FLG_RA) {
+	  if (outpckt->header.nm_flags & FLG_RA) {
 	    // POSITIVE NAME REGISTRATION RESPONSE
 	    for (res = outpckt->answers;
 		 res != 0;
@@ -234,7 +232,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 	}
       }
 
-      if (outpckt->header->opcode == (OPCODE_RESPONSE |
+      if (outpckt->header.opcode == (OPCODE_RESPONSE |
 				      OPCODE_WACK)) {
 	name_srvc_do_wack(outpckt, pckt->aditionals->res->name,
 			  pckt->aditionals->res->rrtype,

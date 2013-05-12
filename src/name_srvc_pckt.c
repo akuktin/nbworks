@@ -35,7 +35,8 @@
 
 
 struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_packet_walker,
-							 unsigned char *end_of_packet) {
+							 unsigned char *end_of_packet,
+							 struct name_srvc_pckt_header *field) {
   struct name_srvc_pckt_header *header;
   unsigned char *walker;
 
@@ -49,10 +50,14 @@ struct name_srvc_pckt_header *read_name_srvc_pckt_header(unsigned char **master_
     return 0;
   }
 
-  header = malloc(sizeof(struct name_srvc_pckt_header));
-  if (! header) {
-    //    *do_kill_yourself = TRUE;
-    return 0;
+  if (field)
+    header = field;
+  else {
+    header = malloc(sizeof(struct name_srvc_pckt_header));
+    if (! header) {
+      //    *do_kill_yourself = TRUE;
+      return 0;
+    }
   }
 
   walker = *master_packet_walker;
@@ -793,17 +798,17 @@ void *master_name_srvc_pckt_reader(void *packet,
     return 0;
   }
 
-  result->header = read_name_srvc_pckt_header(&walker, endof_pckt);
-  if (! result->header) {
+  if (! read_name_srvc_pckt_header(&walker, endof_pckt,
+				   &(result->header))) {
     /* TODO: errno signaling stuff */
     free(result);
     return 0;
   }
 
   if (tid)
-    *tid = result->header->transaction_id;
+    *tid = result->header.transaction_id;
 
-  i = result->header->numof_questions;
+  i = result->header.numof_questions;
   if (i) {
     cur_qstn = malloc(sizeof(struct name_srvc_question_lst));
     if (! cur_qstn) {
@@ -835,7 +840,7 @@ void *master_name_srvc_pckt_reader(void *packet,
     result->questions = 0;
   }
 
-  i = result->header->numof_answers;
+  i = result->header.numof_answers;
   if (i) {
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
@@ -867,7 +872,7 @@ void *master_name_srvc_pckt_reader(void *packet,
     result->answers = 0;
   }
 
-  i = result->header->numof_authorities;
+  i = result->header.numof_authorities;
   if (i) {
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
@@ -899,7 +904,7 @@ void *master_name_srvc_pckt_reader(void *packet,
     result->authorities = 0;
   }
 
-  i = result->header->numof_additional_recs;
+  i = result->header.numof_additional_recs;
   if (i) {
     cur_res = malloc(sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
@@ -976,7 +981,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   endof_pckt = result + *pckt_len;
 
   if (transport != TRANSIS_UDP) {
-    walker = fill_name_srvc_pckt_header(packet->header, walker,
+    walker = fill_name_srvc_pckt_header(&(packet->header), walker,
 					endof_pckt);
   } else {
     walker = walker + SIZEOF_NAMEHDR_ONWIRE;
@@ -1025,13 +1030,13 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
  endof_function:
   if (transport == TRANSIS_UDP) {
     if (overflow) {
-      save_flags = packet->header->nm_flags;
-      packet->header->nm_flags |= FLG_TC;
-      fill_name_srvc_pckt_header(packet->header, result,
+      save_flags = packet->header.nm_flags;
+      packet->header.nm_flags |= FLG_TC;
+      fill_name_srvc_pckt_header(&(packet->header), result,
 				 endof_pckt);
-      packet->header->nm_flags = save_flags;
+      packet->header.nm_flags = save_flags;
     } else
-      fill_name_srvc_pckt_header(packet->header, result,
+      fill_name_srvc_pckt_header(&(packet->header), result,
 				 endof_pckt);
   }
 
@@ -1054,22 +1059,15 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
     return 0;
   }
 
-  result->header = calloc(1, sizeof(struct name_srvc_pckt_header));
-  if (! result->header) {
-    /* TODO: errno signaling stuff */
-    free(result);
-    return 0;
-  }
-  result->header->numof_questions = qstn;
-  result->header->numof_answers = answ;
-  result->header->numof_authorities = auth;
-  result->header->numof_additional_recs = adit;
+  result->header.numof_questions = qstn;
+  result->header.numof_answers = answ;
+  result->header.numof_authorities = auth;
+  result->header.numof_additional_recs = adit;
 
   if (qstn) {
     cur_qstn = calloc(1, sizeof(struct name_srvc_question_lst));
     if (! cur_qstn) {
       /* TODO: errno signaling stuff */
-      free(result->header);
       free(result);
       return 0;
     }
@@ -1381,8 +1379,6 @@ void destroy_name_srvc_pckt(void *packet_ptr,
 
   packet = packet_ptr;
 
-  free(packet->header);
-
   destroy_name_srvc_qstn_lst(packet->questions, complete);
   destroy_name_srvc_res_lst(packet->answers, complete, really_complete);
   destroy_name_srvc_res_lst(packet->authorities, complete, really_complete);
@@ -1665,11 +1661,11 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
     *qstn_ptr = 0;
     *adit_ptr = 0;
 
-    pckt->header->opcode = (OPCODE_REQUEST | OPCODE_REFRESH);
-    pckt->header->nm_flags = FLG_RD;
-    pckt->header->rcode = 0;
-    pckt->header->numof_questions = numof_refresh;
-    pckt->header->numof_additional_recs = numof_refresh;
+    pckt->header.opcode = (OPCODE_REQUEST | OPCODE_REFRESH);
+    pckt->header.nm_flags = FLG_RD;
+    pckt->header.rcode = 0;
+    pckt->header.numof_questions = numof_refresh;
+    pckt->header.numof_additional_recs = numof_refresh;
 
     if (total_lenof_nbaddrs)
       *total_lenof_nbaddrs = nbaddrs_len;

@@ -93,9 +93,9 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
     return 0;
   }
 
-  pckt->header->transaction_id = tid.tid;
-  pckt->header->opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
-  pckt->header->nm_flags = FLG_B;
+  pckt->header.transaction_id = tid.tid;
+  pckt->header.opcode = OPCODE_REQUEST | OPCODE_REGISTRATION;
+  pckt->header.nm_flags = FLG_B;
   /* Do not ask for recursion, because
      there are no NBNS in our scope. */
 
@@ -114,10 +114,10 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
       break;
     }
 
-    if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
+    if ((outside_pckt->header.opcode == (OPCODE_RESPONSE |
 					  OPCODE_REGISTRATION)) &&
-	(outside_pckt->header->nm_flags & FLG_AA) &&
-	(outside_pckt->header->rcode != 0)) {
+	(outside_pckt->header.nm_flags & FLG_AA) &&
+	(outside_pckt->header.rcode != 0)) {
       res = outside_pckt->answers;
       while (res && res->res) {
 	if ((0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
@@ -128,7 +128,7 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
 	     res->res->rrclass)) {
 	  /* This is a relevant NEGATIVE NAME REGISTRATION RESPONSE. */
 	  /* Failed. */
-	  result = outside_pckt->header->rcode;
+	  result = outside_pckt->header.rcode;
 	  break;
 	} else
 	  res = res->next;
@@ -144,7 +144,7 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
 
   if (! result) {
     /* Succeded. */
-    pckt->header->opcode = OPCODE_REQUEST | OPCODE_REFRESH;
+    pckt->header.opcode = OPCODE_REQUEST | OPCODE_REFRESH;
     pckt->for_del = TRUE;
     ss_name_send_pckt(pckt, &addr, trans);
 

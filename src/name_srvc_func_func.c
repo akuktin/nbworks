@@ -53,9 +53,9 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
   // NAME REGISTRATION REQUEST (UNIQUE)
   // NAME REGISTRATION REQUEST (GROUP)
 
-  if ((outpckt->header->opcode == (OPCODE_REQUEST |
+  if ((outpckt->header.opcode == (OPCODE_REQUEST |
 				   OPCODE_REGISTRATION)) &&
-      (! outpckt->header->rcode)) {
+      (! outpckt->header.rcode)) {
     /* NAME REGISTRATION REQUEST */
 
     name_srvc_do_namregreq(outpckt, addr, params->trans, params->id.tid,
@@ -67,9 +67,9 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
   // NAME QUERY REQUEST
   // NODE STATUS REQUEST
 
-  if ((outpckt->header->opcode == (OPCODE_REQUEST |
+  if ((outpckt->header.opcode == (OPCODE_REQUEST |
 				   OPCODE_QUERY)) &&
-      (! outpckt->header->rcode)) {
+      (! outpckt->header.rcode)) {
 
     name_srvc_do_namqrynodestat(outpckt, addr, params->trans, params->id.tid,
 				cur_time, 0, 0, 0);
@@ -79,10 +79,10 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
 
   // POSITIVE NAME QUERY RESPONSE
 
-  if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+  if ((outpckt->header.opcode == (OPCODE_RESPONSE |
 				   OPCODE_QUERY)) &&
-      (outpckt->header->rcode == 0) &&
-      (outpckt->header->nm_flags & FLG_AA)) {
+      (outpckt->header.rcode == 0) &&
+      (outpckt->header.nm_flags & FLG_AA)) {
 
     name_srvc_do_posnamqryresp(outpckt, addr, params->trans, params->id.tid,
 			       cur_time, 0, 0);
@@ -92,10 +92,10 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
 
   // NAME CONFLICT DEMAND
 
-  if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+  if ((outpckt->header.opcode == (OPCODE_RESPONSE |
 				   OPCODE_REGISTRATION)) &&
-      (outpckt->header->rcode == RCODE_CFT_ERR) &&
-      (outpckt->header->nm_flags & FLG_AA)) {
+      (outpckt->header.rcode == RCODE_CFT_ERR) &&
+      (outpckt->header.nm_flags & FLG_AA)) {
 
     name_srvc_do_namcftdem(outpckt, addr, 0);
 
@@ -104,9 +104,9 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
 
   // NAME RELEASE REQUEST
 
-  if ((outpckt->header->opcode == (OPCODE_REQUEST |
+  if ((outpckt->header.opcode == (OPCODE_REQUEST |
 				   OPCODE_RELEASE)) &&
-      (outpckt->header->rcode == 0)) {
+      (outpckt->header.rcode == 0)) {
 
     name_srvc_do_namrelreq(outpckt, addr,
 #ifdef COMPILING_NBNS
@@ -119,11 +119,11 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
 
   // NAME UPDATE REQUEST
 
-  if (((outpckt->header->opcode == (OPCODE_REQUEST |
+  if (((outpckt->header.opcode == (OPCODE_REQUEST |
 				    OPCODE_REFRESH)) ||
-       (outpckt->header->opcode == (OPCODE_REQUEST |
+       (outpckt->header.opcode == (OPCODE_REQUEST |
 				    OPCODE_REFRESH2))) &&
-      (outpckt->header->rcode == 0)) {
+      (outpckt->header.rcode == 0)) {
 
     name_srvc_do_updtreq(outpckt, addr,
 #ifdef COMPILING_NBNS
@@ -210,6 +210,8 @@ void *name_srvc_handle_newtid(void *input) {
 
     if (outside_pckt->stream.sckt >= 0) {
       /* DO_ME_NEXT */
+
+      close(outside_pckt->stream.sckt);
       outside_pckt->stream.sckt = -1;
       continue;
     }
@@ -352,9 +354,9 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
     // NAME REGISTRATION REQUEST (UNIQUE)
     // NAME REGISTRATION REQUEST (GROUP)
 
-    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+    if ((outpckt->header.opcode == (OPCODE_REQUEST |
 				     OPCODE_REGISTRATION)) &&
-	(! outpckt->header->rcode)) {
+	(! outpckt->header.rcode)) {
 
       if (! (master && name_srvc_do_NBNSnamreg(outpckt, &(outside_pckt->addr),
 					       &(ss_alltrans[index].trans),
@@ -372,9 +374,9 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
     // NAME QUERY REQUEST
     // NODE STATUS REQUEST
 
-    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+    if ((outpckt->header.opcode == (OPCODE_REQUEST |
 				     OPCODE_QUERY)) &&
-	(! outpckt->header->rcode)) {
+	(! outpckt->header.rcode)) {
 
       name_srvc_do_namqrynodestat(outpckt, &(outside_pckt->addr),
 				  &(ss_alltrans[index].trans),
@@ -386,10 +388,10 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
     // POSITIVE NAME QUERY RESPONSE
 
-    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+    if ((outpckt->header.opcode == (OPCODE_RESPONSE |
 				     OPCODE_QUERY)) &&
-	(outpckt->header->rcode == 0) &&
-	(outpckt->header->nm_flags & FLG_AA)) {
+	(outpckt->header.rcode == 0) &&
+	(outpckt->header.nm_flags & FLG_AA)) {
 
       if (! master) {
 	if (last_outpckt) {
@@ -412,9 +414,9 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
     // NAME RELEASE REQUEST
 
-    if ((outpckt->header->opcode == (OPCODE_REQUEST |
+    if ((outpckt->header.opcode == (OPCODE_REQUEST |
 				     OPCODE_RELEASE)) &&
-	(outpckt->header->rcode == 0)) {
+	(outpckt->header.rcode == 0)) {
 
       name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr),
 			     &(ss_alltrans[index].trans),
@@ -426,11 +428,11 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
     // NAME UPDATE REQUEST
 
-    if (((outpckt->header->opcode == (OPCODE_REQUEST |
+    if (((outpckt->header.opcode == (OPCODE_REQUEST |
 				      OPCODE_REFRESH)) ||
-	 (outpckt->header->opcode == (OPCODE_REQUEST |
+	 (outpckt->header.opcode == (OPCODE_REQUEST |
 				      OPCODE_REFRESH2))) &&
-	(outpckt->header->rcode == 0)) {
+	(outpckt->header.rcode == 0)) {
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
 			   &(ss_alltrans[index].trans),
@@ -541,9 +543,9 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
     return 0;
   }
 
-  pckt->header->transaction_id = tid.tid;
-  pckt->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
-  pckt->header->nm_flags = name_flags;
+  pckt->header.transaction_id = tid.tid;
+  pckt->header.opcode = OPCODE_REQUEST | OPCODE_QUERY;
+  pckt->header.nm_flags = name_flags;
 
   retry_count = nbworks_namsrvc_cntrl.bcast_req_retry_count;
   for (i=0; i < retry_count; i++) {
@@ -559,10 +561,10 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 	break;
       }
 
-      if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
+      if ((outside_pckt->header.opcode == (OPCODE_RESPONSE |
 					    OPCODE_QUERY)) &&
-	  (outside_pckt->header->nm_flags & FLG_AA) &&
-	  (outside_pckt->header->rcode == 0)) {
+	  (outside_pckt->header.nm_flags & FLG_AA) &&
+	  (outside_pckt->header.rcode == 0)) {
 	/* POSITIVE NAME QUERY RESPONSE */
 	res = outside_pckt->answers;
 	last_res = &(outside_pckt->answers);
@@ -607,7 +609,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
       }
 
       if (recursive) {
-	if (outside_pckt->header->opcode == (OPCODE_RESPONSE |
+	if (outside_pckt->header.opcode == (OPCODE_RESPONSE |
 					     OPCODE_WACK)) {
 	  name_srvc_do_wack(outside_pckt,
 			    pckt->questions->qstn->name,
@@ -616,10 +618,10 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 			    &tid);
 	}
 
-	if ((outside_pckt->header->opcode == (OPCODE_RESPONSE |
+	if ((outside_pckt->header.opcode == (OPCODE_RESPONSE |
 					      OPCODE_QUERY)) &&
-	    (outside_pckt->header->nm_flags & FLG_RD) &&
-	    (outside_pckt->header->rcode == 0)) {
+	    (outside_pckt->header.nm_flags & FLG_RD) &&
+	    (outside_pckt->header.rcode == 0)) {
 	  // REDIRECT NAME QUERY RESPONSE, probably
 	  res = outside_pckt->authorities;
 
@@ -922,9 +924,9 @@ int name_srvc_release_name(unsigned char *name,
     sleeptime = &(nbworks_namsrvc_cntrl.ucast_sleeptime);
   }
 
-  pckt->header->transaction_id = tid.tid;
-  pckt->header->opcode = OPCODE_REQUEST | OPCODE_RELEASE;
-  pckt->header->nm_flags = (recursion ? FLG_RD : FLG_B);
+  pckt->header.transaction_id = tid.tid;
+  pckt->header.opcode = OPCODE_REQUEST | OPCODE_RELEASE;
+  pckt->header.nm_flags = (recursion ? FLG_RD : FLG_B);
 
   if (retry_count < 1)
     retry_count = 1;
@@ -951,23 +953,17 @@ int name_srvc_release_name(unsigned char *name,
 	  break;
 	}
 
-	if (! outpckt->header) {
-	  /* Paranoid. */
-	  destroy_name_srvc_pckt(outpckt, 1, 1);
-	  continue;
-	}
-
-	if (outpckt->header->opcode == (OPCODE_RESPONSE |
+	if (outpckt->header.opcode == (OPCODE_RESPONSE |
 					OPCODE_WACK)) {
 	  name_srvc_do_wack(outpckt, probe,
 			    type, class, &tid);
 	}
 
-	if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+	if ((outpckt->header.opcode == (OPCODE_RESPONSE |
 					 OPCODE_RELEASE)) &&
-	    (outpckt->header->nm_flags & FLG_AA)) {
+	    (outpckt->header.nm_flags & FLG_AA)) {
 	  stop_yourself = TRUE;
-	  if (outpckt->header->rcode == 0) {
+	  if (outpckt->header.rcode == 0) {
 	    // POSITIVE NAME RELEASE RESPONSE
 	  } else {
 	    // NEGATIVE NAME RELEASE RESPONSE
@@ -1050,12 +1046,12 @@ void *refresh_scopes(void *i_ignore_this) {
 	      }
 	    }
 
-	    pckt->header->transaction_id = tid.tid;
+	    pckt->header.transaction_id = tid.tid;
 	    if (i == B_CLASS) {
-	      pckt->header->nm_flags = FLG_B;
+	      pckt->header.nm_flags = FLG_B;
 	    } else {
 	      /* Flags already set by name_srvc_timer_mkpckt(). */
-	      /* pckt->header->nm_flags = FLG_RD; */
+	      /* pckt->header.nm_flags = FLG_RD; */
 	    }
 	    pckt->for_del = TRUE;
 	    /* VAXism below! */
@@ -1125,7 +1121,7 @@ void *refresh_scopes(void *i_ignore_this) {
 	pckt = outside_pckt->packet;
 	outside_pckt->packet = 0;
 
-	if (pckt->header->opcode == (OPCODE_RESPONSE |
+	if (pckt->header.opcode == (OPCODE_RESPONSE |
 				     OPCODE_WACK)) {
 
           wack = name_srvc_find_biggestwack(pckt, 0, 0, 0, wack);
@@ -1134,11 +1130,11 @@ void *refresh_scopes(void *i_ignore_this) {
 	  continue;
         }
 
-	if ((pckt->header->opcode == (OPCODE_RESPONSE |
+	if ((pckt->header.opcode == (OPCODE_RESPONSE |
 				      OPCODE_REFRESH)) ||
-	    (pckt->header->opcode == (OPCODE_RESPONSE |
+	    (pckt->header.opcode == (OPCODE_RESPONSE |
 				      OPCODE_REFRESH2))) {
-	  if (pckt->header->rcode == 0) {
+	  if (pckt->header.rcode == 0) {
 
 	    name_srvc_do_updtreq(pckt, &(outside_pckt->addr),
 #ifdef COMPILING_NBNS
@@ -1360,12 +1356,12 @@ struct name_srvc_resource_lst *
   if (pckt) {
     pckt->for_del = TRUE;
 
-    pckt->header->transaction_id = tid;
-    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-    pckt->header->nm_flags = FLG_AA;
-    pckt->header->rcode = RCODE_CFT_ERR;
+    pckt->header.transaction_id = tid;
+    pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+    pckt->header.nm_flags = FLG_AA;
+    pckt->header.rcode = RCODE_CFT_ERR;
 
-    pckt->header->numof_answers = numof_responses;
+    pckt->header.numof_answers = numof_responses;
     pckt->answers = answer;
 
     ss_name_send_pckt(pckt, addr, trans);
@@ -1603,11 +1599,11 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-      pckt->header->nm_flags = FLG_AA | FLG_RA;
-      pckt->header->rcode = 0;
-      pckt->header->numof_answers = succeded;
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+      pckt->header.nm_flags = FLG_AA | FLG_RA;
+      pckt->header.rcode = 0;
+      pckt->header.numof_answers = succeded;
 
       pckt->answers = outpckt->aditionals;
       outpckt->aditionals = 0;
@@ -1621,11 +1617,11 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   if (laters) {
     *last_later = 0;
 
-    laterargs.pckt_flags = outpckt->header->opcode;
+    laterargs.pckt_flags = outpckt->header.opcode;
     laterargs.pckt_flags = laterargs.pckt_flags << 7;
-    laterargs.pckt_flags |= outpckt->header->nm_flags;
+    laterargs.pckt_flags |= outpckt->header.nm_flags;
     laterargs.pckt_flags = laterargs.pckt_flags << 4;
-    laterargs.pckt_flags |= outpckt->header->rcode;
+    laterargs.pckt_flags |= outpckt->header.rcode;
 
     laterargs.res = later;
     laterargs.addr = addr;
@@ -1666,11 +1662,11 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-      pckt->header->nm_flags = FLG_AA | FLG_RA;
-      pckt->header->rcode = RCODE_SRV_ERR;
-      pckt->header->numof_answers = failed;
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+      pckt->header.nm_flags = FLG_AA | FLG_RA;
+      pckt->header.rcode = RCODE_SRV_ERR;
+      pckt->header.numof_answers = failed;
 
       pckt->answers = fail;
 
@@ -1828,12 +1824,12 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     destroy_laters_list(laters);
     goto endof_function;
   }
-  pckt->header->transaction_id = laterargs.tid;
-  pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_WACK);
-  pckt->header->nm_flags = FLG_RA | FLG_AA;
-  pckt->header->rcode = 0;
+  pckt->header.transaction_id = laterargs.tid;
+  pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_WACK);
+  pckt->header.nm_flags = FLG_RA | FLG_AA;
+  pckt->header.rcode = 0;
 
-  pckt->header->numof_answers = numof_laters;
+  pckt->header.numof_answers = numof_laters;
   pckt->answers = laterargs.res;
 
   ss_name_send_pckt(pckt, &addr, laterargs.trans);
@@ -1892,10 +1888,10 @@ void *name_srvc_NBNShndl_latereg(void *args) {
 					cur_laters->res_lst->res->name->next_name);
 
 	  if (cur_laters->probe) {
-	    cur_laters->probe->header->transaction_id = laterargs.tid;
-	    cur_laters->probe->header->opcode = OPCODE_REQUEST | OPCODE_QUERY;
-	    cur_laters->probe->header->nm_flags = 0;
-	    cur_laters->probe->header->rcode = 0;
+	    cur_laters->probe->header.transaction_id = laterargs.tid;
+	    cur_laters->probe->header.opcode = OPCODE_REQUEST | OPCODE_QUERY;
+	    cur_laters->probe->header.nm_flags = 0;
+	    cur_laters->probe->header.rcode = 0;
 	  } /* else
 	     ss_name_send_pckt() will handle the cur_laters->probe == 0 situation. */
 	}
@@ -1986,11 +1982,11 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     if (numof_succeded) {
       sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
       if (sendpckt) {
-	sendpckt->header->transaction_id = laterargs.tid;
-	sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
-	sendpckt->header->nm_flags = FLG_AA | FLG_RA;
-	sendpckt->header->rcode = 0;
-	sendpckt->header->numof_answers = numof_succeded;
+	sendpckt->header.transaction_id = laterargs.tid;
+	sendpckt->header.opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+	sendpckt->header.nm_flags = FLG_AA | FLG_RA;
+	sendpckt->header.rcode = 0;
+	sendpckt->header.numof_answers = numof_succeded;
 
 	sendpckt->answers = succeded;
 
@@ -2003,11 +1999,11 @@ void *name_srvc_NBNShndl_latereg(void *args) {
     if (numof_failed) {
       sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
       if (sendpckt) {
-	sendpckt->header->transaction_id = laterargs.tid;
-	sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
-	sendpckt->header->nm_flags = FLG_AA | FLG_RA;
-	sendpckt->header->rcode = RCODE_ACT_ERR;
-	sendpckt->header->numof_answers = numof_failed;
+	sendpckt->header.transaction_id = laterargs.tid;
+	sendpckt->header.opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+	sendpckt->header.nm_flags = FLG_AA | FLG_RA;
+	sendpckt->header.rcode = RCODE_ACT_ERR;
+	sendpckt->header.numof_answers = numof_failed;
 
 	sendpckt->answers = failed;
 
@@ -2143,11 +2139,11 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   if (numof_succeded) {
     sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (sendpckt) {
-      sendpckt->header->transaction_id = laterargs.tid;
-      sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
-      sendpckt->header->nm_flags = FLG_AA | FLG_RA;
-      sendpckt->header->rcode = 0;
-      sendpckt->header->numof_answers = numof_succeded;
+      sendpckt->header.transaction_id = laterargs.tid;
+      sendpckt->header.opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+      sendpckt->header.nm_flags = FLG_AA | FLG_RA;
+      sendpckt->header.rcode = 0;
+      sendpckt->header.numof_answers = numof_succeded;
 
       sendpckt->answers = succeded;
 
@@ -2160,11 +2156,11 @@ void *name_srvc_NBNShndl_latereg(void *args) {
   if (numof_failed) {
     sendpckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (sendpckt) {
-      sendpckt->header->transaction_id = laterargs.tid;
-      sendpckt->header->opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
-      sendpckt->header->nm_flags = FLG_AA | FLG_RA;
-      sendpckt->header->rcode = RCODE_ACT_ERR;
-      sendpckt->header->numof_answers = numof_failed;
+      sendpckt->header.transaction_id = laterargs.tid;
+      sendpckt->header.opcode = OPCODE_RESPONSE | OPCODE_REGISTRATION;
+      sendpckt->header.nm_flags = FLG_AA | FLG_RA;
+      sendpckt->header.rcode = RCODE_ACT_ERR;
+      sendpckt->header.numof_answers = numof_failed;
 
       sendpckt->answers = failed;
 
@@ -2601,18 +2597,18 @@ struct name_srvc_resource_lst *
     if (pckt) {
       pckt->answers = frst_res;
 
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
 #ifdef COMPILING_NBNS
-      pckt->header->nm_flags = FLG_AA | FLG_RA;
+      pckt->header.nm_flags = FLG_AA | FLG_RA;
 #else
-      pckt->header->nm_flags = FLG_AA;
+      pckt->header.nm_flags = FLG_AA;
 #endif
       if (istruncated) {
-	pckt->header->nm_flags |= FLG_TC;
+	pckt->header.nm_flags |= FLG_TC;
       }
-      pckt->header->rcode = 0;
-      pckt->header->numof_answers = numof_answers;
+      pckt->header.rcode = 0;
+      pckt->header.numof_answers = numof_answers;
       pckt->for_del = TRUE;
 
       ss_name_send_pckt(pckt, addr, trans);
@@ -2629,10 +2625,10 @@ struct name_srvc_resource_lst *
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
-      pckt->header->nm_flags = FLG_AA | FLG_RA;
-      pckt->header->rcode = RCODE_NAM_ERR;
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+      pckt->header.nm_flags = FLG_AA | FLG_RA;
+      pckt->header.rcode = RCODE_NAM_ERR;
       pckt->for_del = TRUE;
 
       last_res = &(pckt->answers);
@@ -2667,7 +2663,7 @@ struct name_srvc_resource_lst *
 	qstn = qstn->next;
       }
       *last_res = 0;
-      pckt->header->numof_answers = numof_failed;
+      pckt->header.numof_answers = numof_failed;
 
       ss_name_send_pckt(pckt, addr, trans);
     }
@@ -2942,12 +2938,12 @@ struct name_srvc_resource_lst *
   if (pckt) {
     pckt->for_del = TRUE;
 
-    pckt->header->transaction_id = tid;
-    pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-    pckt->header->nm_flags = FLG_AA;
-    pckt->header->rcode = RCODE_CFT_ERR;
+    pckt->header.transaction_id = tid;
+    pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+    pckt->header.nm_flags = FLG_AA;
+    pckt->header.rcode = RCODE_CFT_ERR;
 
-    pckt->header->numof_answers = numof_clicks;
+    pckt->header.numof_answers = numof_clicks;
     pckt->answers = frst_respns;
 
     ss_name_send_pckt(pckt, addr, trans);
@@ -3060,7 +3056,7 @@ void name_srvc_do_namcftdem(struct name_srvc_packet *outpckt,
   /* Make sure we only listen to NBNS in P mode. */
   /* VAXism below. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
-  name_flags = outpckt->header->nm_flags;
+  name_flags = outpckt->header.nm_flags;
 
   if (state)
     res = state;
@@ -3264,7 +3260,7 @@ struct name_srvc_resource_lst *
   numof_succedded = 0;
   numof_failed = 0;
 #endif
-  name_flags = outpckt->header->nm_flags;
+  name_flags = outpckt->header.nm_flags;
 
   if (state && *state)
     res = *state;
@@ -3311,11 +3307,11 @@ struct name_srvc_resource_lst *
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_RELEASE);
-      pckt->header->nm_flags = FLG_AA | FLG_RA;
-      pckt->header->rcode = 0;
-      pckt->header->numof_answers = numof_succedded;
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_RELEASE);
+      pckt->header.nm_flags = FLG_AA | FLG_RA;
+      pckt->header.rcode = 0;
+      pckt->header.numof_answers = numof_succedded;
 
       pckt->answers = answer;
 
@@ -3331,11 +3327,11 @@ struct name_srvc_resource_lst *
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
-      pckt->header->nm_flags = FLG_AA | FLG_RA;
-      pckt->header->rcode = RCODE_NAM_ERR;
-      pckt->header->numof_answers = numof_failed;
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
+      pckt->header.nm_flags = FLG_AA | FLG_RA;
+      pckt->header.rcode = RCODE_NAM_ERR;
+      pckt->header.numof_answers = numof_failed;
 
       pckt->answers = outpckt->aditionals;
       outpckt->aditionals = 0;
@@ -3598,7 +3594,7 @@ struct name_srvc_resource_lst *
     return 0;
 
 #ifdef COMPILING_NBNS
-  if ((outpckt->header->nm_flags & FLG_B) ||
+  if ((outpckt->header.nm_flags & FLG_B) ||
       (! trans))
     return 0;
 
@@ -3610,7 +3606,7 @@ struct name_srvc_resource_lst *
   numof_succedded = 0;
   numof_failed = 0;
 #endif
-  name_flags = outpckt->header->nm_flags;
+  name_flags = outpckt->header.nm_flags;
 
   /* Make sure only NBNS is listened to in P mode. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
@@ -3661,11 +3657,11 @@ struct name_srvc_resource_lst *
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
-      pckt->header->nm_flags = FLG_AA | FLG_RA;
-      pckt->header->rcode = 0;
-      pckt->header->numof_answers = numof_succedded;
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
+      pckt->header.nm_flags = FLG_AA | FLG_RA;
+      pckt->header.rcode = 0;
+      pckt->header.numof_answers = numof_succedded;
 
       pckt->answers = answer;
 
@@ -3681,11 +3677,11 @@ struct name_srvc_resource_lst *
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
     if (pckt) {
 
-      pckt->header->transaction_id = tid;
-      pckt->header->opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
-      pckt->header->nm_flags = FLG_AA | FLG_RA;
-      pckt->header->rcode = RCODE_SRV_ERR; /* MAYBE: make this more verbose. */
-      pckt->header->numof_answers = numof_failed;
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REFRESH);
+      pckt->header.nm_flags = FLG_AA | FLG_RA;
+      pckt->header.rcode = RCODE_SRV_ERR; /* MAYBE: make this more verbose. */
+      pckt->header.numof_answers = numof_failed;
 
       pckt->answers = outpckt->aditionals;
       outpckt->aditionals = 0;
