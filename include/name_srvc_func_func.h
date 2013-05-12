@@ -56,6 +56,11 @@ void
                              struct sockaddr_in *addr,
                              struct newtid_params *params,
                              time_t cur_time);
+void
+  name_srvc_daemon_newtidtcp(int sckt,
+                             struct sockaddr_in *addr,
+                             struct newtid_params *params,
+                             time_t cur_time);
 void *
   name_srvc_handle_newtid(void *input);
 # ifdef COMPILING_NBNS

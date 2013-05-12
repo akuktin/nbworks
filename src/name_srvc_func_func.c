@@ -139,6 +139,19 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
   return;
 }
 
+void name_srvc_daemon_newtidtcp(int sckt,
+				struct sockaddr_in *addr,
+				struct newtid_params *params,
+				time_t cur_time) {
+  struct name_srvc_pckt_header header;
+  unsigned int dn_qstn, dn_answ, dn_auth, dn_adit;
+  unsigned char buff[0xffff];
+
+  dn_qstn = dn_answ = dn_auth = dn_adit = 0;
+
+  
+}
+
 void *name_srvc_handle_newtid(void *input) {
   struct newtid_params params, *release_lock;
   struct thread_node *last_will;
@@ -209,7 +222,8 @@ void *name_srvc_handle_newtid(void *input) {
     }
 
     if (outside_pckt->stream.sckt >= 0) {
-      /* DO_ME_NEXT */
+      name_srvc_daemon_newtidtcp(outside_pckt->stream.sckt, &(outside_pckt->addr),
+				 &params, cur_time);
 
       close(outside_pckt->stream.sckt);
       outside_pckt->stream.sckt = -1;

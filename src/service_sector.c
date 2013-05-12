@@ -1158,7 +1158,8 @@ struct ss_unif_pckt_list *ss__recv_tcppckt(struct ss_sckts *sckts,
   if (! new_pckt)
     return 0;
 
-  new_pckt->stream.sckt = accept(sckts->tcp_sckt, &his_addr, &addr_len);
+  new_pckt->stream.sckt = accept(sckts->tcp_sckt, (struct sockaddr *)&his_addr,
+				 &addr_len);
   if (new_pckt->stream.sckt < 0) {
     free(new_pckt);
     return 0;
