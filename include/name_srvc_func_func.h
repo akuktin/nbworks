@@ -51,6 +51,11 @@ struct laters_link {
 };
 # endif /* COMPILING_NBNS */
 
+void
+  name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
+                             struct sockaddr_in *addr,
+                             struct newtid_params *params,
+                             time_t cur_time);
 void *
   name_srvc_handle_newtid(void *input);
 # ifdef COMPILING_NBNS

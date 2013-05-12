@@ -43,10 +43,105 @@
 #include "daemon_control.h"
 
 
+void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
+				struct sockaddr_in *addr,
+				struct newtid_params *params,
+				time_t cur_time) {
+  if (! (outpckt && addr && params))
+    return;
+
+  // NAME REGISTRATION REQUEST (UNIQUE)
+  // NAME REGISTRATION REQUEST (GROUP)
+
+  if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				   OPCODE_REGISTRATION)) &&
+      (! outpckt->header->rcode)) {
+    /* NAME REGISTRATION REQUEST */
+
+    name_srvc_do_namregreq(outpckt, addr, params->trans, params->id.tid,
+			   cur_time, 0, 0);
+
+    return;
+  }
+
+  // NAME QUERY REQUEST
+  // NODE STATUS REQUEST
+
+  if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				   OPCODE_QUERY)) &&
+      (! outpckt->header->rcode)) {
+
+    name_srvc_do_namqrynodestat(outpckt, addr, params->trans, params->id.tid,
+				cur_time, 0, 0, 0);
+
+    return;
+  }
+
+  // POSITIVE NAME QUERY RESPONSE
+
+  if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+				   OPCODE_QUERY)) &&
+      (outpckt->header->rcode == 0) &&
+      (outpckt->header->nm_flags & FLG_AA)) {
+
+    name_srvc_do_posnamqryresp(outpckt, addr, params->trans, params->id.tid,
+			       cur_time, 0, 0);
+
+    return;
+  }
+
+  // NAME CONFLICT DEMAND
+
+  if ((outpckt->header->opcode == (OPCODE_RESPONSE |
+				   OPCODE_REGISTRATION)) &&
+      (outpckt->header->rcode == RCODE_CFT_ERR) &&
+      (outpckt->header->nm_flags & FLG_AA)) {
+
+    name_srvc_do_namcftdem(outpckt, addr, 0);
+
+    return;
+  }
+
+  // NAME RELEASE REQUEST
+
+  if ((outpckt->header->opcode == (OPCODE_REQUEST |
+				   OPCODE_RELEASE)) &&
+      (outpckt->header->rcode == 0)) {
+
+    name_srvc_do_namrelreq(outpckt, addr,
+#ifdef COMPILING_NBNS
+			   params->trans, params->id.tid, 0, 0,
+#endif
+			   0);
+
+    return;
+  }
+
+  // NAME UPDATE REQUEST
+
+  if (((outpckt->header->opcode == (OPCODE_REQUEST |
+				    OPCODE_REFRESH)) ||
+       (outpckt->header->opcode == (OPCODE_REQUEST |
+				    OPCODE_REFRESH2))) &&
+      (outpckt->header->rcode == 0)) {
+
+    name_srvc_do_updtreq(outpckt, addr,
+#ifdef COMPILING_NBNS
+			 params->trans, params->id.tid, 0, 0,
+#endif
+			 cur_time, 0);
+
+    return;
+  }
+
+  // NOOP
+
+  return;
+}
+
 void *name_srvc_handle_newtid(void *input) {
   struct newtid_params params, *release_lock;
   struct thread_node *last_will;
-  struct name_srvc_packet *outpckt;
   struct ss_unif_pckt_list *outside_pckt, *last_outpckt;
   unsigned char waited;
   time_t cur_time;
@@ -97,117 +192,29 @@ void *name_srvc_handle_newtid(void *input) {
 	last_outpckt = outside_pckt;
       }
 
-    } while (! outside_pckt->packet);
+    } while ((! outside_pckt->packet) &&
+	     (outside_pckt->stream.sckt < 0));
 
     ss_set_normalstate_name_tid(&(params.id));
-
-    /* TCP-INSERTION */
-    outpckt = outside_pckt->packet;
-
-    /* Hack to make the complex loops of
-       this function work as they should. */
-    outside_pckt->packet = 0;
-
     cur_time = time(0);
 
 
+    if (outside_pckt->packet) {
+      name_srvc_daemon_newtidwrk(outside_pckt->packet, &(outside_pckt->addr),
+				 &params, cur_time);
 
-    // NAME REGISTRATION REQUEST (UNIQUE)
-    // NAME REGISTRATION REQUEST (GROUP)
-
-    if ((outpckt->header->opcode == (OPCODE_REQUEST |
-				     OPCODE_REGISTRATION)) &&
-	(! outpckt->header->rcode)) {
-      /* NAME REGISTRATION REQUEST */
-
-      name_srvc_do_namregreq(outpckt, &(outside_pckt->addr),
-			     params.trans, params.id.tid,
-			     cur_time, 0, 0);
-
-      destroy_name_srvc_pckt(outpckt, 1, 1);
+      destroy_name_srvc_pckt(outside_pckt->packet, 1, 1);
+      outside_pckt->packet = 0;
       continue;
     }
 
-    // NAME QUERY REQUEST
-    // NODE STATUS REQUEST
-
-    if ((outpckt->header->opcode == (OPCODE_REQUEST |
-				     OPCODE_QUERY)) &&
-	(! outpckt->header->rcode)) {
-
-      name_srvc_do_namqrynodestat(outpckt, &(outside_pckt->addr),
-				  params.trans, params.id.tid,
-				  cur_time, 0, 0, 0);
-
-      destroy_name_srvc_pckt(outpckt, 1, 1);
+    if (outside_pckt->stream.sckt >= 0) {
+      /* DO_ME_NEXT */
+      outside_pckt->stream.sckt = -1;
       continue;
     }
 
-    // POSITIVE NAME QUERY RESPONSE
-
-    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
-				     OPCODE_QUERY)) &&
-	(outpckt->header->rcode == 0) &&
-	(outpckt->header->nm_flags & FLG_AA)) {
-
-      name_srvc_do_posnamqryresp(outpckt, &(outside_pckt->addr),
-				 params.trans, params.id.tid,
-				 cur_time, 0, 0);
-
-      destroy_name_srvc_pckt(outpckt, 1, 1);
-      continue;
-    }
-
-    // NAME CONFLICT DEMAND
-
-    if ((outpckt->header->opcode == (OPCODE_RESPONSE |
-				     OPCODE_REGISTRATION)) &&
-	(outpckt->header->rcode == RCODE_CFT_ERR) &&
-	(outpckt->header->nm_flags & FLG_AA)) {
-
-      name_srvc_do_namcftdem(outpckt, &(outside_pckt->addr), 0);
-
-      destroy_name_srvc_pckt(outpckt, 1, 1);
-      continue;
-    }
-
-    // NAME RELEASE REQUEST
-
-    if ((outpckt->header->opcode == (OPCODE_REQUEST |
-				     OPCODE_RELEASE)) &&
-	(outpckt->header->rcode == 0)) {
-
-      name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr),
-#ifdef COMPILING_NBNS
-			     params.trans, params.id.tid, 0, 0,
-#endif
-			     0);
-
-      destroy_name_srvc_pckt(outpckt, 1, 1);
-      continue;
-    }
-
-    // NAME UPDATE REQUEST
-
-    if (((outpckt->header->opcode == (OPCODE_REQUEST |
-				      OPCODE_REFRESH)) ||
-	 (outpckt->header->opcode == (OPCODE_REQUEST |
-				      OPCODE_REFRESH2))) &&
-	(outpckt->header->rcode == 0)) {
-
-      name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
-#ifdef COMPILING_NBNS
-			   params.trans, params.id.tid, 0, 0,
-#endif
-			   cur_time, 0);
-
-      destroy_name_srvc_pckt(outpckt, 1, 1);
-      continue;
-    }
-
-    // NOOP
-
-    destroy_name_srvc_pckt(outpckt, 1, 1);
+    /* Impossible. */
   }
 
   return 0;

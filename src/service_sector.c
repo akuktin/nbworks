@@ -1385,7 +1385,7 @@ void *ss__cmb_recver(void *sckts_ptr) {
       new_pckt = ss__recv_udppckt(&sckts, udp_pfd, &tid,
 				  udp_pckt, discard_add_NETWRK, &name_as_id);
       if ((! new_pckt) &&
-	  (sckts.bransh != DTG_SRVC)) {
+	  (sckts.branch != DTG_SRVC)) {
 	new_pckt = ss__recv_tcppckt(&sckts, tcp_pfd, &tid);
 	if (! new_pckt)
 	  break;
