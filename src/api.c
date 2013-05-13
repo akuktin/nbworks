@@ -138,6 +138,14 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     nbworks_errno = ENOMEM;
     return 0;
   }
+
+  if (pthread_mutex_init(&(result->dtg_srv_work_inprog)) ||
+      pthread_mutex_init(&(result->ses_srv_work_inprog))) {
+    free(result);
+    nbworks_errno = ENOMEM;
+    return 0;
+  }
+
   result->name = malloc(sizeof(struct nbworks_nbnamelst));
   if (! result->name) {
     free(result);
@@ -784,6 +792,11 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
     }
   }
 
+  if (pthread_mutex_lock(&(handle->dtg_srv_work_inprog))) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
   if (handle->dtg_srv_tid) {
     handle->dtg_srv_stop = TRUE;
 
@@ -792,6 +805,8 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
 
   daemon = lib_daemon_socket();
   if (daemon < 0) {
+    pthread_mutex_unlock(&(handle->dtg_srv_work_inprog));
+    nbworks_errno = ENOPIPE;
     return -1;
   }
 
@@ -803,16 +818,22 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
 
   if (LEN_COMM_ONWIRE > send(daemon, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
     close(daemon);
+    pthread_mutex_unlock(&(handle->dtg_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return -1;
   }
 
   if (LEN_COMM_ONWIRE > recv(daemon, buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
     close(daemon);
+    pthread_mutex_unlock(&(handle->dtg_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return 0;
   }
 
   if (0 == read_railcommand(buff, (buff + LEN_COMM_ONWIRE), &command)) {
     close(daemon);
+    pthread_mutex_unlock(&(handle->dtg_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return -1;
   }
 
@@ -827,6 +848,9 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
       nbworks_errno = EADDRINUSE;
       handle->isinconflict = TRUE;
     }
+
+    pthread_mutex_unlock(&(handle->dtg_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return -1;
   }
 
@@ -863,9 +887,12 @@ int nbworks_listen_dtg(nbworks_namestate_p namehandle,
     handle->in_library = 0;
     handle->dtg_srv_tid = 0;
 
+    pthread_mutex_unlock(&(handle->dtg_srv_work_inprog));
+    nbworks_errno = ENOBUFS;
     return -1;
   }
 
+  pthread_mutex_unlock(&(handle->dtg_srv_work_inprog));
   return 1;
 }
 
@@ -897,6 +924,11 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
     return -1;
   }
 
+  if (pthread_mutex_lock(&(handle->ses_srv_work_inprog))) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
   if (handle->ses_srv_tid) {
     handle->ses_srv_stop = TRUE;
 
@@ -905,6 +937,8 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
 
   daemon = lib_daemon_socket();
   if (daemon < 0) {
+    pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return -1;
   }
 
@@ -916,16 +950,22 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
 
   if (LEN_COMM_ONWIRE > send(daemon, buff, LEN_COMM_ONWIRE, MSG_NOSIGNAL)) {
     close(daemon);
+    pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return -1;
   }
 
   if (LEN_COMM_ONWIRE > recv(daemon, buff, LEN_COMM_ONWIRE, MSG_WAITALL)) {
     close(daemon);
+    pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return 0;
   }
 
   if (0 == read_railcommand(buff, (buff + LEN_COMM_ONWIRE), &command)) {
     close(daemon);
+    pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return -1;
   }
 
@@ -940,6 +980,8 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
       nbworks_errno = EADDRINUSE;
       handle->isinconflict = TRUE;
     }
+    pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
+    nbworks_errno = EPIPE;
     return -1;
   }
 
@@ -975,9 +1017,12 @@ int nbworks_listen_ses(nbworks_namestate_p namehandle,
 
     handle->ses_srv_tid = 0;
 
+    pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
+    nbworks_errno = ENOBUFS;
     return -1;
   }
 
+  pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
   return TRUE;
 }
 
@@ -1078,6 +1123,11 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
     }
   }
 
+  if (pthread_mutex_lock(&(handle->ses_srv_work_inprog))) {
+    nbworks_errno = ENOBUFS;
+    return -1;
+  }
+
   do {
     if (handle->sesin_library) {
       result = handle->sesin_library;
@@ -1094,6 +1144,7 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
               timeout = 0;
 	    }
 	  }
+          pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
 	  return nbworks_accept_ses(handle, timeout);
 	} else {
           goto do_wait;
@@ -1106,6 +1157,7 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
       } else {
 	clone = malloc(sizeof(struct nbworks_session));
 	if (! clone) {
+          pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
 	  nbworks_errno = ENOBUFS;
 	  return 0;
 	}
@@ -1131,6 +1183,7 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
 	result->caretaker_tid = 0;
       }
 
+      pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
       return result;
     }
 
@@ -1143,6 +1196,7 @@ nbworks_session_p nbworks_accept_ses(nbworks_namestate_p namehandle,
       break;
   } while (404);
 
+  pthread_mutex_unlock(&(handle->ses_srv_work_inprog));
   nbworks_errno = EAGAIN;
   return 0;
 }

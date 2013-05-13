@@ -43,6 +43,8 @@ This function returns a session handle. In case of error, it returns
 .PP
 In case of error, you should check \fInbworks_errno\fP for more
 information.
+.SH NOTES
+\fBnbworks_sescall\fP() is thread-safe.
 .SH INCOMPATIBILITIES
 Most (or all?) other implementations of NetBIOS-over-TCP out there
 apparently assume that a single host can only have a name registered

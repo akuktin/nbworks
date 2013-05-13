@@ -65,6 +65,7 @@ struct name_state {
   struct packet_cooked *in_server;
   struct packet_cooked *in_library;
   pthread_mutex_t dtg_recv_mutex;
+  pthread_mutex_t dtg_srv_work_inprog;
 
 /* session taker server */
   pthread_t ses_srv_tid;
@@ -74,6 +75,7 @@ struct name_state {
   unsigned char ses_srv_stop;
   struct nbworks_session *sesin_server;
   struct nbworks_session *sesin_library;
+  pthread_mutex_t ses_srv_work_inprog;
 
 /* metadata for the name and scope */
   short lenof_scope;         /* the amount of octets the encoded scope takes,

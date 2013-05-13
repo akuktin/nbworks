@@ -29,6 +29,10 @@ timeout expires, it returns 0.
 In case of error, you should check \fInbworks_errno\fP for more
 information.
 .SH NOTES
+\fBnbworks_accept_ses\fP() is belived to be thread-safe. This belif
+relies on your systems implementation of \fBpthread_mutex_lock\fP()
+and \fBpthread_mutex_trylock\fP().
+.PP
 Waiting, in case \fItimeout\fP is positive, happens in 12-milisecond
 steps.
 .SH "SEE ALSO"

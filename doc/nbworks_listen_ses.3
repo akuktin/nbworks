@@ -46,6 +46,10 @@ fails or a negative number if an error occurs.
 In case of error, you should check \fInbworks_errno\fP for more
 information.
 .SH NOTES
+\fBnbworks_listen_ses\fP() is belived to be thread-safe. This belif
+relies on your systems implementation of \fBpthread_mutex_lock\fP()
+and \fBpthread_mutex_trylock\fP().
+.PP
 Please be aware that nbworks does not enforce the matching of caller
 names contained in a call request and the IP address from which the
 request originated. Spoofing both is possible.
