@@ -144,8 +144,15 @@ void name_srvc_daemon_newtidtcp(int sckt,
 				struct newtid_params *params,
 				time_t cur_time) {
   struct name_srvc_pckt_header header;
+  ssize_t len_inbuff;
   unsigned int dn_qstn, dn_answ, dn_auth, dn_adit;
-  unsigned char buff[0xffff];
+  /* There was a lot of thinking going on with regards the buff below.
+   * For the longest time, I was gung-ho about making it a ring buffer
+   * (in a ring buffer, when a read or write head reaches the end of the
+   * buffer, it automatically wraps around to the beggining). But, I was
+   * ultimately persuaded against it when I began thinking about the ways
+   * I would have to change read_name_srvc_resource_data(). */
+  unsigned char buff[MAX_RDATALEN], startbuff[SIZEOF_STARTBUFF];
 
   dn_qstn = dn_answ = dn_auth = dn_adit = 0;
 

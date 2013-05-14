@@ -250,7 +250,7 @@ struct name_srvc_question *read_name_srvc_qstnTCP(int sckt,
   free(question);				\
   return 0;
 
-  if (! ((sckt >= 0) && buff && (lenof_buff >= 0xffff) && startof_question &&
+  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) && startof_question &&
 	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
     return 0;
   if ((*startof_question < buff) ||
@@ -741,7 +741,7 @@ struct name_srvc_resource *read_name_srvc_resrcTCP(int sckt,
   destroy_name_srvc_res(resource, 1, 1);	\
   return 0;
 
-  if (! ((sckt >= 0) && buff && (lenof_buff >= 0xffff) && startof_resource &&
+  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) && startof_resource &&
 	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
     return 0;
   if ((*startof_resource < buff) ||
