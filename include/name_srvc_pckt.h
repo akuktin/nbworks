@@ -208,8 +208,7 @@ unsigned char *
 struct name_srvc_resource *
   read_name_srvc_resource(unsigned char **master_packet_walker,
                           unsigned char *start_of_packet,
-                          unsigned char *end_of_packet,
-                          unsigned int stop_at_rdata);
+                          unsigned char *end_of_packet);
 unsigned char *
   fill_name_srvc_resource(struct name_srvc_resource *resource,
                           unsigned char *field,

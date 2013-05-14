@@ -234,8 +234,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 
 struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet_walker,
 						   unsigned char *start_of_packet,
-						   unsigned char *end_of_packet,
-						   unsigned int stop_at_rdata) {
+						   unsigned char *end_of_packet) {
   struct name_srvc_resource *resource;
   unsigned char *walker, *remember_walker;
 
@@ -286,12 +285,8 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   walker = read_16field(walker, &(resource->rrclass));
   walker = read_32field(walker, &(resource->ttl));
   walker = read_16field(walker, &(resource->rdata_len));
-  if (stop_at_rdata) {
-    resource->rdata = 0;
-  } else {
-    resource->rdata = read_name_srvc_resource_data(&walker, resource,
-						   start_of_packet, end_of_packet);
-  }
+  resource->rdata = read_name_srvc_resource_data(&walker, resource,
+						 start_of_packet, end_of_packet);
 
   /* No 32-bit boundary alignment. */
   *master_packet_walker = walker;
@@ -863,7 +858,7 @@ void *master_name_srvc_pckt_reader(void *packet,
     while (1) {
       i--;
       cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
-					     endof_pckt, 0);
+					     endof_pckt);
       if (i) {
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
@@ -895,7 +890,7 @@ void *master_name_srvc_pckt_reader(void *packet,
     while (1) {
       i--;
       cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
-					     endof_pckt, 0);
+					     endof_pckt);
       if (i) {
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
@@ -927,7 +922,7 @@ void *master_name_srvc_pckt_reader(void *packet,
     while (1) {
       i--;
       cur_res->res = read_name_srvc_resource(&walker, startof_pckt,
-					     endof_pckt, 0);
+					     endof_pckt);
       if (i) {
 	cur_res->next = malloc(sizeof(struct name_srvc_resource_lst));
 	if (! cur_res->next) {
