@@ -194,6 +194,24 @@ inline unsigned char *fill_64field(uint64_t content,
   return field;
 }
 
+void fill_startbuff(unsigned char *startbuff_buff,
+		    unsigned char **startbuff_walker,
+		    unsigned char *buff,
+		    unsigned char *marker) {
+  unsigned int len_inbuff, tobe_read;
+
+  /* Fill startbuffer in a bad way. */
+  if ((*startbuff_walker - startbuff_buff) < SIZEOF_STARTBUFF) {
+    len_inbuff = (SIZEOF_STARTBUFF - (*startbuff_walker - startbuff_buff));
+    if ((marker - buff) > len_inbuff)
+      tobe_read = len_inbuff;
+    else
+      tobe_read = (marker - buff);
+
+    *startbuff_walker = mempcpy(*startbuff_walker, buff, tobe_read);
+  }
+}
+
 struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_walk,
 					    unsigned char *startof_packet,
 					    unsigned char *end_of_packet,

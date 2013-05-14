@@ -223,6 +223,15 @@ void *
                                uint32_t offsetof_start,
                                unsigned char *startblock,
                                unsigned int lenof_startblock);
+struct name_srvc_resource *
+  read_name_srvc_resrcTCP(int sckt,
+                          unsigned char *buff,
+                          unsigned int lenof_buff,
+                          unsigned char **startof_resource,
+                          unsigned int *len_leftover,
+                          uint32_t *offsetof_start,
+                          unsigned char *startbuff_buff,
+                          unsigned char **startbuff_walker);
 unsigned char *
   fill_name_srvc_resource_data(struct name_srvc_resource *content,
                                unsigned char *field,

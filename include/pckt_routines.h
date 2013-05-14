@@ -33,6 +33,8 @@
 /* The largest amount the intrapacket pointer can handle. */
 # define MAX_PACKET_POINTER 0x3fff
 
+# define SIZEOF_STARTBUFF 0x7fff
+
 struct state__readDNSlabels {
   struct nbworks_nbnamelst *first_label;
   struct nbworks_nbnamelst **cur_label;
@@ -57,6 +59,11 @@ inline unsigned char *fill_48field(uint64_t content,
                                    unsigned char *field);
 inline unsigned char *fill_64field(uint64_t content,
                                    unsigned char *field);
+void
+  fill_startbuff(unsigned char *startbuff_buff,
+                 unsigned char **startbuff_walker,
+                 unsigned char *buff,
+                 unsigned char *marker);
 struct nbworks_nbnamelst *
   read_all_DNS_labels(unsigned char **start_and_end_of_walk,
                       unsigned char *start_of_packet,

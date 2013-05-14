@@ -594,6 +594,169 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
   return 0;
 }
 
+struct name_srvc_resource *read_name_srvc_resrcTCP(int sckt,
+						   unsigned char *buff,
+						   unsigned int lenof_buff,
+						   unsigned char **startof_resource,
+						   unsigned int *len_leftover,
+						   uint32_t *offsetof_start,
+						   unsigned char *startbuff_buff,
+						   unsigned char **startbuff_walker) {
+  struct name_srvc_resource *resource;
+  ssize_t len_inbuff;
+  unsigned int tried_reading, tobe_read;
+  unsigned char *endof_buffbuff, *walker, *endof_buff;
+
+#define end_this				\
+  destroy_name_srvc_res(resource, 1, 1);	\
+  return 0;
+
+  if (! ((sckt >= 0) && buff && (lenof_buff >= 0xffff) && startof_resource &&
+	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
+    return 0;
+  if ((*startof_resource < buff) ||
+      ((*startof_resource + *len_leftover) >= (buff + lenof_buff)) ||
+      (*startbuff_walker < startbuff_buff) ||
+      (*startbuff_walker > (startbuff_buff + SIZEOF_STARTBUFF)))
+    return 0;
+
+  walker = *startof_resource;
+  endof_buff = walker + *len_leftover;
+  endof_buffbuff = buff + lenof_buff;
+
+  resource = calloc(1, sizeof(struct name_srvc_resource));
+  if (! resource) {
+    return 0;
+  }
+
+  if (*len_leftover < (1+10)) {
+  try_reading:
+    tried_reading = TRUE;
+
+    if (walker > *startof_resource)
+      fill_startbuff(startbuff_buff, startbuff_walker, *startof_resource,
+		     walker);
+
+    memmove(buff, walker, (endof_buff - walker));
+    *offsetof_start = *offsetof_start + (walker - buff);
+    if (*offsetof_start > SIZEOF_STARTBUFF)
+      *offsetof_start = SIZEOF_STARTBUFF + 1;
+
+    endof_buff = buff + *len_leftover;
+    walker = buff;
+
+    len_inbuff = recv(sckt, endof_buff, (256+10), 0);
+    if (len_inbuff < (1+10)) {
+      end_this;
+    }
+    endof_buff = endof_buff +len_inbuff;
+
+    *startof_resource = walker;
+  } else {
+    tried_reading = FALSE;
+  }
+
+  if (*walker) {
+    /* Only read if the name is not a null name. */
+    resource->name = read_all_DNS_labels(&walker, buff, endof_buff,
+					 *offsetof_start, 0,
+					 startbuff_buff,
+					 (*startbuff_walker - startbuff_buff));
+    if (! resource->name) {
+      if (! tried_reading)
+	goto try_reading;
+      end_this;
+    }
+  } else {
+    walker++;
+  }
+  walker = align((*startof_resource +1), walker, 4);
+
+  if ((walker+10) > endof_buff) {
+    if (walker > endof_buff) {
+      tobe_read = (walker - endof_buff) + 10;
+
+      /* Rearrange the buffer if the below read overloads it. */
+      if ((walker + tobe_read) > endof_buffbuff) {
+	fill_startbuff(startbuff_buff, startbuff_walker, *startof_resource,
+		       endof_buff);
+
+	*offsetof_start = *offsetof_start + (endof_buff - buff);
+	if (*offsetof_start > SIZEOF_STARTBUFF)
+	  *offsetof_start = SIZEOF_STARTBUFF + 1;
+
+	walker = buff + (walker - endof_buff);
+	endof_buff = buff;
+      }
+    } else {
+      tobe_read = 10 - (endof_buff - walker);
+
+      /* Rewind the buffer if the below read overloads it. */
+      if ((endof_buff + tobe_read) > endof_buffbuff) {
+	fill_startbuff(startbuff_buff, startbuff_walker, *startof_resource,
+		       walker);
+
+	memmove(buff, walker, (endof_buff - walker));
+	*offsetof_start = *offsetof_start + (walker - buff);
+	if (*offsetof_start > SIZEOF_STARTBUFF)
+	  *offsetof_start = SIZEOF_STARTBUFF + 1;
+
+	endof_buff = buff + (endof_buff - walker);
+	walker = buff;
+      }
+    }
+    *startof_resource = buff;
+
+    if (tobe_read > recv(sckt, endof_buff, tobe_read, MSG_WAITALL)) {
+      end_this;
+    }
+    endof_buff = endof_buff + tobe_read;
+  }
+
+  walker = read_16field(walker, &(resource->rrtype));
+  walker = read_16field(walker, &(resource->rrclass));
+  walker = read_32field(walker, &(resource->ttl));
+  walker = read_16field(walker, &(resource->rdata_len));
+
+  fill_startbuff(startbuff_buff, startbuff_walker, *startof_resource,
+		 walker);
+
+  /* First, see if the resource data can fit into the buffer in the first
+   * place. If not, move the contents of the buffer. */
+  if ((walker + resource->rdata_len) > endof_buffbuff) {
+    memmove(buff, walker, (endof_buff - walker));
+    *offsetof_start = *offsetof_start + (walker - buff);
+    if (*offsetof_start > SIZEOF_STARTBUFF)
+      *offsetof_start = SIZEOF_STARTBUFF + 1;
+
+    endof_buff = buff + (endof_buff - walker);
+    walker = buff;
+  }
+
+  /* Second, see if additional stuff should be read from the stream to
+   * complete the whole of resource data. */
+  if ((walker + resource->rdata_len) > endof_buff) {
+    tobe_read = (walker + resource->rdata_len) - endof_buff;
+    if (tobe_read > recv(sckt, endof_buff, tobe_read, MSG_WAITALL)) {
+      end_this;
+    }
+    endof_buff = endof_buff + tobe_read;
+  }
+  /* The whole of resource data is now in the buffer. */
+
+  fill_startbuff(startbuff_buff, startbuff_walker, walker,
+		 (walker + resource->rdata_len));
+
+  resource->rdata = read_name_srvc_resource_data(&walker, resource, buff, endof_buff,
+						 *offsetof_start, startbuff_buff,
+						 (*startbuff_walker - startbuff_buff));
+
+  *len_leftover = endof_buff - walker;
+  *startof_resource = walker;
+
+  return resource;
+}
+
 unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 					    unsigned char *field,
 					    unsigned char *end_of_packet) {
