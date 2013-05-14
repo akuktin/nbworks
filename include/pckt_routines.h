@@ -33,7 +33,7 @@
 /* The largest amount the intrapacket pointer can handle. */
 # define MAX_PACKET_POINTER 0x3fff
 
-# define SIZEOF_STARTBUFF 0x7fff
+# define SIZEOF_STARTBUFF 0x6000
 
 struct state__readDNSlabels {
   struct nbworks_nbnamelst *first_label;

@@ -205,6 +205,15 @@ unsigned char *
                                unsigned char *field,
                                unsigned char *end_of_packet,
                                unsigned char *overflow);
+struct name_srvc_question *
+  read_name_srvc_qstnTCP(int sckt,
+                         unsigned char *buff,
+                         unsigned int lenof_buff,
+                         unsigned char **startof_question,
+                         unsigned int *len_leftover,
+                         uint32_t *offsetof_start,
+                         unsigned char *startbuff_buff,
+                         unsigned char **startbuff_walker);
 struct name_srvc_resource *
   read_name_srvc_resource(unsigned char **master_packet_walker,
                           unsigned char *start_of_packet,

@@ -232,6 +232,136 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
   return walker;
 }
 
+struct name_srvc_question *read_name_srvc_qstnTCP(int sckt,
+						  unsigned char *buff,
+						  unsigned int lenof_buff,
+						  unsigned char **startof_question,
+						  unsigned int *len_leftover,
+						  uint32_t *offsetof_start,
+						  unsigned char *startbuff_buff,
+						  unsigned char **startbuff_walker) {
+  struct name_srvc_question *question;
+  ssize_t len_inbuff;
+  unsigned int tried_reading, tobe_read;
+  unsigned char *endof_buffbuff, *walker, *endof_buff;
+
+#define end_this				\
+  nbworks_dstr_nbnodename(question->name);	\
+  free(question);				\
+  return 0;
+
+  if (! ((sckt >= 0) && buff && (lenof_buff >= 0xffff) && startof_question &&
+	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
+    return 0;
+  if ((*startof_question < buff) ||
+      ((*startof_question + *len_leftover) > (buff + lenof_buff)) ||
+      (*startbuff_walker < startbuff_buff) ||
+      (*startbuff_walker > (startbuff_buff + SIZEOF_STARTBUFF)))
+    return 0;
+
+  walker = *startof_question;
+  endof_buff = walker + *len_leftover;
+  endof_buffbuff = buff + lenof_buff;
+
+  question = calloc(1, sizeof(struct name_srvc_question));
+  if (! question) {
+    return 0;
+  }
+
+  if (*len_leftover < (1+4)) {
+  try_reading:
+    tried_reading = TRUE;
+
+    if (walker > *startof_question)
+      fill_startbuff(startbuff_buff, startbuff_walker, *startof_question,
+		     walker);
+
+    memmove(buff, walker, (endof_buff - walker));
+    *offsetof_start = *offsetof_start + (walker - buff);
+    if (*offsetof_start > SIZEOF_STARTBUFF)
+      *offsetof_start = SIZEOF_STARTBUFF + 1;
+
+    endof_buff = buff + *len_leftover;
+    walker = buff;
+
+    len_inbuff = recv(sckt, endof_buff, (256+4), 0);
+    if (len_inbuff < (1+4)) {
+      end_this;
+    }
+    endof_buff = endof_buff +len_inbuff;
+
+    *startof_question = walker;
+  } else {
+    tried_reading = FALSE;
+  }
+
+  if (*walker) {
+    /* Only read if the name is not a null name. */
+    question->name = read_all_DNS_labels(&walker, buff, endof_buff,
+					 *offsetof_start, 0,
+					 startbuff_buff,
+					 (*startbuff_walker - startbuff_buff));
+    if (! question->name) {
+      if (! tried_reading)
+	goto try_reading;
+      end_this;
+    }
+  } else {
+    walker++;
+  }
+  walker = align((*startof_question +1), walker, 4);
+
+  if ((walker+4) > endof_buff) {
+    if (walker > endof_buff) {
+      tobe_read = (walker - endof_buff) + 4;
+
+      /* Rearrange the buffer if the below read overloads it. */
+      if ((walker + tobe_read) > endof_buffbuff) {
+	fill_startbuff(startbuff_buff, startbuff_walker, *startof_question,
+		       endof_buff);
+
+	*offsetof_start = *offsetof_start + (endof_buff - buff);
+	if (*offsetof_start > SIZEOF_STARTBUFF)
+	  *offsetof_start = SIZEOF_STARTBUFF + 1;
+
+	walker = buff + (walker - endof_buff);
+	endof_buff = buff;
+      }
+    } else {
+      tobe_read = 4 - (endof_buff - walker);
+
+      /* Rewind the buffer if the below read overloads it. */
+      if ((endof_buff + tobe_read) > endof_buffbuff) {
+	fill_startbuff(startbuff_buff, startbuff_walker, *startof_question,
+		       walker);
+
+	memmove(buff, walker, (endof_buff - walker));
+	*offsetof_start = *offsetof_start + (walker - buff);
+	if (*offsetof_start > SIZEOF_STARTBUFF)
+	  *offsetof_start = SIZEOF_STARTBUFF + 1;
+
+	endof_buff = buff + (endof_buff - walker);
+	walker = buff;
+      }
+    }
+    *startof_question = buff;
+
+    if (tobe_read > recv(sckt, endof_buff, tobe_read, MSG_WAITALL)) {
+      end_this;
+    }
+    endof_buff = endof_buff + tobe_read;
+  }
+
+  walker = read_16field(walker, &(question->qtype));
+  walker = read_16field(walker, &(question->qclass));
+
+  fill_startbuff(startbuff_buff, startbuff_walker, *startof_question,
+		 walker);
+
+  return question;
+#undef end_this
+}
+
 struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet_walker,
 						   unsigned char *start_of_packet,
 						   unsigned char *end_of_packet) {
@@ -615,7 +745,7 @@ struct name_srvc_resource *read_name_srvc_resrcTCP(int sckt,
 	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
     return 0;
   if ((*startof_resource < buff) ||
-      ((*startof_resource + *len_leftover) >= (buff + lenof_buff)) ||
+      ((*startof_resource + *len_leftover) > (buff + lenof_buff)) ||
       (*startbuff_walker < startbuff_buff) ||
       (*startbuff_walker > (startbuff_buff + SIZEOF_STARTBUFF)))
     return 0;
@@ -755,6 +885,7 @@ struct name_srvc_resource *read_name_srvc_resrcTCP(int sckt,
   *startof_resource = walker;
 
   return resource;
+#undef end_this
 }
 
 unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
