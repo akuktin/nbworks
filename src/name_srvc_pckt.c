@@ -286,7 +286,8 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
   walker = read_32field(walker, &(resource->ttl));
   walker = read_16field(walker, &(resource->rdata_len));
   resource->rdata = read_name_srvc_resource_data(&walker, resource,
-						 start_of_packet, end_of_packet);
+						 start_of_packet, end_of_packet,
+						 0, 0, 0);
 
   /* No 32-bit boundary alignment. */
   *master_packet_walker = walker;
@@ -368,7 +369,10 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
 void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 				   struct name_srvc_resource *resource,
 				   unsigned char *start_of_packet,
-				   unsigned char *end_of_packet) {
+				   unsigned char *end_of_packet,
+				   uint32_t offsetof_start,
+				   unsigned char *startblock,
+				   unsigned int lenof_startblock) {
   struct nbworks_nbnamelst *nbnodename;
   struct nbnodename_list_backbone *listof_names;
   struct name_srvc_statistics_rfc1002 *nbstat;
@@ -426,7 +430,8 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 
     nbnodename = read_all_DNS_labels(start_and_end_of_walk,
 				     start_of_packet, end_of_packet,
-				     0, 0, 0, 0);
+				     offsetof_start, 0,
+				     startblock, lenof_startblock);
     //    if (! nbnodename)
     //      *do_kill_yourself = TRUE;
 
@@ -506,7 +511,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	}
 	listof_names->nbnodename =
           read_all_DNS_labels(&walker, start_of_packet, end_of_packet,
-                              0, 0, 0, 0);
+                              offsetof_start, 0, startblock, lenof_startblock);
 	walker = align(weighted_companion_cube, walker, 4);
         /* walker + 2 octets for the flags field
          * SIZEOF_STATRFC1002_BLOCK - the numof_names field */

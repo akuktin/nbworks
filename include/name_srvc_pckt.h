@@ -219,7 +219,10 @@ void *
   read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
                                struct name_srvc_resource *resource,
                                unsigned char *start_of_packet,
-                               unsigned char *end_of_packet);
+                               unsigned char *end_of_packet,
+                               uint32_t offsetof_start,
+                               unsigned char *startblock,
+                               unsigned int lenof_startblock);
 unsigned char *
   fill_name_srvc_resource_data(struct name_srvc_resource *content,
                                unsigned char *field,
