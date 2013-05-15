@@ -139,25 +139,542 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
   return;
 }
 
+#define BLOCK_SIZE 16
 void name_srvc_daemon_newtidtcp(int sckt,
 				struct sockaddr_in *addr,
 				struct newtid_params *params,
 				time_t cur_time) {
-  struct name_srvc_pckt_header header;
-  ssize_t len_inbuff;
-  unsigned int dn_qstn, dn_answ, dn_auth, dn_adit;
+  struct name_srvc_pckt_header header, returnheader;
+  struct name_srvc_question_lst *qstn, *cur_qstn, **last_qstn;
+  struct name_srvc_resource_lst *res, *cur_res, **last_res, *res2;
+  unsigned long numof_OK, numof_notOK;
+  uint32_t offsetof_start;
+  unsigned int do_qstn, do_answ, do_auth, do_adit, block, len_leftover, answerhim;
   /* There was a lot of thinking going on with regards the buff below.
    * For the longest time, I was gung-ho about making it a ring buffer
    * (in a ring buffer, when a read or write head reaches the end of the
    * buffer, it automatically wraps around to the beggining). But, I was
    * ultimately persuaded against it when I began thinking about the ways
    * I would have to change read_name_srvc_resource_data(). */
-  unsigned char buff[MAX_RDATALEN], startbuff[SIZEOF_STARTBUFF];
+  unsigned char buff[MAX_RDATALEN], startbuff[SIZEOF_STARTBUFF],
+    writebuff[TCP_READWRITEBUFF_LEN], *walker, *startbuff_walker,
+    *writewalker;
 
-  dn_qstn = dn_answ = dn_auth = dn_adit = 0;
+  if ((sckt < 0) || (! (addr && params)))
+    return;
 
-  
+#define ffrwrdto_aditionals						\
+  do_qstn = header.numof_questions;					\
+  while (do_qstn) {							\
+    if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,		\
+				  &walker, &len_leftover, &offsetof_start, \
+				  startbuff, &startbuff_walker)) {	\
+      return;								\
+    }									\
+									\
+    do_qstn--;								\
+  }									\
+									\
+  do_answ = header.numof_answers;					\
+  while (do_answ) {							\
+    if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,		\
+				   &walker, &len_leftover, &offsetof_start, \
+				   startbuff, &startbuff_walker)) {	\
+      return;								\
+    }									\
+									\
+    do_answ--;								\
+  }									\
+									\
+  do_auth = header.numof_authorities;					\
+  while (do_auth) {							\
+    if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,		\
+				   &walker, &len_leftover, &offsetof_start, \
+				   startbuff, &startbuff_walker)) {	\
+      return;								\
+    }									\
+									\
+    do_auth--;								\
+  }
+
+
+  walker = startbuff;
+  numof_OK = numof_notOK = 0;
+  len_leftover = 0;
+  offsetof_start = 0;
+  startbuff_walker = startbuff;
+
+  answerhim = FALSE;
+
+  fill_16field(params->id.tid, startbuff);
+  if ((SIZEOF_NAMEHDR_ONWIRE -2) > recv(sckt, (startbuff +2),
+					(SIZEOF_NAMEHDR_ONWIRE -2),
+					MSG_WAITALL)) {
+    return;
+  }
+
+  read_name_srvc_pckt_header(&walker, (startbuff +SIZEOF_NAMEHDR_ONWIRE),
+			     &header);
+
+  /* ----------------------------------- */
+  // NAME REGISTRATION REQUEST (UNIQUE)
+  // NAME REGISTRATION REQUEST (GROUP)
+
+  if ((header.opcode == (OPCODE_REQUEST |
+			 OPCODE_REGISTRATION)) &&
+      (! header.rcode)) {
+    /* NAME REGISTRATION REQUEST */
+
+    ffrwrdto_aditionals;
+
+    do_adit = header.numof_additional_recs;
+    while (do_adit) {
+      if (do_adit >= BLOCK_SIZE)
+	block = BLOCK_SIZE;
+      else
+	block = do_adit;
+      do_adit = do_adit - block;
+
+      last_res = &res;
+      while (block) {
+	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	cur_res = *last_res;
+	if (! cur_res) {
+	  /* Abort. */
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+					       &walker, &len_leftover, &offsetof_start,
+					       startbuff, &startbuff_walker);
+	if (! cur_res->res) {
+	  /* Abort. */
+	  cur_res->next = 0;
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	last_res = &(cur_res->next);
+
+	block--;
+      }
+
+      res2 = name_srvc_do_namregreq(0, 0, 0, params->id.tid,
+				    cur_time, &numof_OK, res);
+      destroy_name_srvc_res_lst(res, 1, 1);
+
+      if (res2 && (! answerhim)) {
+	memset(&returnheader, 0, sizeof(struct name_srvc_pckt_header));
+	returnheader.transaction_id = params->id.tid;
+	returnheader.opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+	returnheader.nm_flags = FLG_AA;
+	returnheader.rcode = RCODE_CFT_ERR;
+
+	/* See the comment over at POSITIVE NAME QUERY RESPONSE. */
+	returnheader.numof_answers = do_adit + numof_OK;
+
+	fill_name_srvc_pckt_header(&returnheader, writebuff,
+				   (writebuff + TCP_READWRITEBUFF_LEN));
+
+	if (SIZEOF_NAMEHDR_ONWIRE > send(sckt, writebuff, SIZEOF_NAMEHDR_ONWIRE,
+					 MSG_NOSIGNAL)) {
+	  destroy_name_srvc_res_lst(res2, 1, 1);
+	  return;
+	}
+
+	answerhim = TRUE;
+      }
+
+      cur_res = res2;
+      while (cur_res) {
+	writewalker = fill_name_srvc_resource(cur_res->res, writebuff,
+					      (writebuff + TCP_READWRITEBUFF_LEN),
+					      0, 0);
+	if (writewalker > writebuff) {
+	  if ((writewalker - writebuff) > send(sckt, writebuff,
+					       (writewalker - writebuff),
+					       MSG_NOSIGNAL)) {
+	    destroy_name_srvc_res_lst(res2, 1, 1);
+	    return;
+	  }
+	}
+
+	cur_res = cur_res->next;
+      }
+
+      destroy_name_srvc_res_lst(res2, 1, 1);
+    }
+
+
+    return;
+  }
+
+  // NAME QUERY REQUEST
+  // NODE STATUS REQUEST
+
+  if ((header.opcode == (OPCODE_REQUEST |
+			 OPCODE_QUERY)) &&
+      (! header.rcode)) {
+
+    do_qstn = header.numof_questions;
+    while (do_qstn) {
+      if (do_qstn >= BLOCK_SIZE)
+	block = BLOCK_SIZE;
+      else
+	block = do_qstn;
+      do_qstn = do_qstn - block;
+
+      last_qstn = &qstn;
+      while (block) {
+	*last_qstn = malloc(sizeof(struct name_srvc_question_lst));
+	cur_qstn = *last_qstn;
+	if (! cur_qstn) {
+	  /* Abort. */
+	  destroy_name_srvc_qstn_lst(qstn, 1);
+	  return;
+	}
+	cur_qstn->qstn = read_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,
+						&walker, &len_leftover, &offsetof_start,
+						startbuff, &startbuff_walker);
+	if (! cur_qstn->qstn) {
+	  /* Abort. */
+	  cur_qstn->next = 0;
+	  destroy_name_srvc_qstn_lst(qstn, 1);
+	  return;
+	}
+	last_qstn = &(cur_qstn->next);
+
+	block--;
+      }
+
+      res = name_srvc_do_namqrynodestat(0, 0, 0, params->id.tid, cur_time,
+					&qstn, &numof_OK, &numof_notOK);
+      if (qstn) {
+	destroy_name_srvc_qstn_lst(qstn, 1);
+      }
+
+      if (res && (! answerhim)) {
+	memset(&returnheader, 0, sizeof(struct name_srvc_pckt_header));
+	returnheader.transaction_id = params->id.tid;
+	returnheader.opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+#ifdef COMPILING_NBNS
+	returnheader.nm_flags = FLG_AA | FLG_RA;
+#else
+	returnheader.nm_flags = FLG_AA;
+#endif
+	returnheader.rcode = 0;
+
+	/* See the comment over at POSITIVE NAME QUERY RESPONSE. */
+	returnheader.numof_answers = do_qstn + numof_OK;
+
+	fill_name_srvc_pckt_header(&returnheader, writebuff,
+				   (writebuff + TCP_READWRITEBUFF_LEN));
+
+	if (SIZEOF_NAMEHDR_ONWIRE > send(sckt, writebuff, SIZEOF_NAMEHDR_ONWIRE,
+					 MSG_NOSIGNAL)) {
+	  destroy_name_srvc_res_lst(res2, 1, 1);
+	  return;
+	}
+
+	answerhim = TRUE;
+      }
+
+      cur_res = res;
+      while (cur_res) {
+	writewalker = fill_name_srvc_resource(cur_res->res, writebuff,
+					      (writebuff + TCP_READWRITEBUFF_LEN),
+					      0, 0);
+	if (writewalker > writebuff) {
+	  if ((writewalker - writebuff) > send(sckt, writebuff,
+					       (writewalker - writebuff),
+					       MSG_NOSIGNAL)) {
+	    destroy_name_srvc_res_lst(res, 1, 1);
+	    return;
+	  }
+	}
+
+	cur_res = cur_res->next;
+      }
+
+      destroy_name_srvc_res_lst(res, 1, 1);
+    }
+
+    return;
+  }
+
+  // POSITIVE NAME QUERY RESPONSE
+
+  if ((header.opcode == (OPCODE_RESPONSE |
+			 OPCODE_QUERY)) &&
+      (header.rcode == 0) &&
+      (header.nm_flags & FLG_AA)) {
+
+    do_qstn = header.numof_questions;
+    while (do_qstn) {
+      if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,
+				    &walker, &len_leftover, &offsetof_start,
+				    startbuff, &startbuff_walker)) {
+	return;
+      }
+
+      do_qstn--;
+    }
+
+    do_answ = header.numof_answers;
+    while (do_answ) {
+      if (do_answ >= BLOCK_SIZE)
+	block = BLOCK_SIZE;
+      else
+	block = do_answ;
+      do_answ = do_answ - block;
+
+      last_res = &res;
+      while (block) {
+	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	cur_res = *last_res;
+	if (! cur_res) {
+	  /* Abort. */
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+					       &walker, &len_leftover, &offsetof_start,
+					       startbuff, &startbuff_walker);
+	if (! cur_res->res) {
+	  /* Abort. */
+	  cur_res->next = 0;
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	last_res = &(cur_res->next);
+
+	block--;
+      }
+
+      res2 = name_srvc_do_posnamqryresp(0, addr, 0, params->id.tid,
+					cur_time, res, &numof_OK);
+      destroy_name_srvc_res_lst(res, 1, 1);
+
+      if (res2 && (! answerhim)) {
+	memset(&returnheader, 0, sizeof(struct name_srvc_pckt_header));
+	returnheader.transaction_id = params->id.tid;
+	returnheader.opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+	returnheader.nm_flags = FLG_AA;
+	returnheader.rcode = RCODE_CFT_ERR;
+
+	/* Actually, this will greatly overstate the actuall number of resources
+	 * sent, but I have no way of knowing in advance just how many things will
+	 * I send down the pipe and the packet may be infinite so there is no point
+	 * in keeping the resources around untill they can be counted for an accurate
+	 * number. I hope the other side can handle an abrupt stop in the packet
+	 * before all the claimed resources have arrived (basically, that it properly
+	 * and benevolently handles a BULLSHIT_IN_PACKET error condition). */
+	returnheader.numof_answers = do_answ + numof_OK;
+
+	fill_name_srvc_pckt_header(&returnheader, writebuff,
+				   (writebuff + TCP_READWRITEBUFF_LEN));
+
+	if (SIZEOF_NAMEHDR_ONWIRE > send(sckt, writebuff, SIZEOF_NAMEHDR_ONWIRE,
+					 MSG_NOSIGNAL)) {
+	  destroy_name_srvc_res_lst(res2, 1, 1);
+	  return;
+	}
+
+	answerhim = TRUE;
+      }
+
+      cur_res = res2;
+      while (cur_res) {
+	writewalker = fill_name_srvc_resource(cur_res->res, writebuff,
+					      (writebuff + TCP_READWRITEBUFF_LEN),
+					      0, 0);
+	if (writewalker > writebuff) {
+	  if ((writewalker - writebuff) > send(sckt, writebuff,
+					       (writewalker - writebuff),
+					       MSG_NOSIGNAL)) {
+	    destroy_name_srvc_res_lst(res2, 1, 1);
+	    return;
+	  }
+	}
+
+	cur_res = cur_res->next;
+      }
+
+      destroy_name_srvc_res_lst(res2, 1, 1);
+    }
+
+    return;
+  }
+
+  // NAME CONFLICT DEMAND
+
+  if ((header.opcode == (OPCODE_RESPONSE |
+			 OPCODE_REGISTRATION)) &&
+      (header.rcode == RCODE_CFT_ERR) &&
+      (header.nm_flags & FLG_AA)) {
+
+    do_qstn = header.numof_questions;
+    while (do_qstn) {
+      if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,
+				    &walker, &len_leftover, &offsetof_start,
+				    startbuff, &startbuff_walker)) {
+	return;
+      }
+
+      do_qstn--;
+    }
+
+    do_answ = header.numof_answers;
+    while (do_answ) {
+      if (do_answ >= BLOCK_SIZE)
+	block = BLOCK_SIZE;
+      else
+	block = do_answ;
+      do_answ = do_answ - block;
+
+      last_res = &res;
+      while (block) {
+	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	cur_res = *last_res;
+	if (! cur_res) {
+	  /* Abort. */
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+					       &walker, &len_leftover, &offsetof_start,
+					       startbuff, &startbuff_walker);
+	if (! cur_res->res) {
+	  /* Abort. */
+	  cur_res->next = 0;
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	last_res = &(cur_res->next);
+
+	block--;
+      }
+
+      name_srvc_do_namcftdem(0, addr, res);
+
+      destroy_name_srvc_res_lst(res, 1, 1);
+    }
+
+    return;
+  }
+
+  // NAME RELEASE REQUEST
+
+  if ((header.opcode == (OPCODE_REQUEST |
+			 OPCODE_RELEASE)) &&
+      (header.rcode == 0)) {
+
+    ffrwrdto_aditionals;
+
+    do_adit = header.numof_additional_recs;
+    while (do_adit) {
+      if (do_adit >= BLOCK_SIZE)
+	block = BLOCK_SIZE;
+      else
+	block = do_adit;
+      do_adit = do_adit - block;
+
+      last_res = &res;
+      while (block) {
+	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	cur_res = *last_res;
+	if (! cur_res) {
+	  /* Abort. */
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+					       &walker, &len_leftover, &offsetof_start,
+					       startbuff, &startbuff_walker);
+	if (! cur_res->res) {
+	  /* Abort. */
+	  cur_res->next = 0;
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	last_res = &(cur_res->next);
+
+	block--;
+      }
+
+      res2 = res;
+      name_srvc_do_namrelreq(0, addr,
+#ifdef COMPILING_NBNS
+			     params->trans, params->id.tid,
+			     &numof_OK, &numof_notOK,
+#endif
+			     &res2);
+
+      destroy_name_srvc_res_lst(res, 1, 1);
+    }
+
+    return;
+  }
+
+  // NAME UPDATE REQUEST
+
+  if (((header.opcode == (OPCODE_REQUEST |
+			  OPCODE_REFRESH)) ||
+       (header.opcode == (OPCODE_REQUEST |
+			  OPCODE_REFRESH2))) &&
+      (header.rcode == 0)) {
+
+    ffrwrdto_aditionals;
+
+    do_adit = header.numof_additional_recs;
+    while (do_adit) {
+      if (do_adit >= BLOCK_SIZE)
+	block = BLOCK_SIZE;
+      else
+	block = do_adit;
+      do_adit = do_adit - block;
+
+      last_res = &res;
+      while (block) {
+	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	cur_res = *last_res;
+	if (! cur_res) {
+	  /* Abort. */
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+					       &walker, &len_leftover, &offsetof_start,
+					       startbuff, &startbuff_walker);
+	if (! cur_res->res) {
+	  /* Abort. */
+	  cur_res->next = 0;
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return;
+	}
+	last_res = &(cur_res->next);
+
+	block--;
+      }
+
+      res2 = res;
+      name_srvc_do_updtreq(0, addr,
+#ifdef COMPILING_NBNS
+			   params->trans, params->id.tid,
+			   &numof_OK, &numof_notOK,
+#endif
+			   cur_time, &res2);
+
+      destroy_name_srvc_res_lst(res, 1, 1);
+    }
+
+    return;
+  }
+
+  // NOOP
+
+  return;
 }
+#undef BLOCK_SIZE
 
 void *name_srvc_handle_newtid(void *input) {
   struct newtid_params params, *release_lock;

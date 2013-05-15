@@ -250,8 +250,9 @@ struct name_srvc_question *read_name_srvc_qstnTCP(int sckt,
   free(question);				\
   return 0;
 
-  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) && startof_question &&
-	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
+  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) &&
+	 startof_question && len_leftover && offsetof_start &&
+	 startbuff_buff && startbuff_walker))
     return 0;
   if ((*startof_question < buff) ||
       ((*startof_question + *len_leftover) > (buff + lenof_buff)) ||
@@ -377,8 +378,9 @@ unsigned char *ffrwd_name_srvc_qstnTCP(int sckt,
   unsigned int tried_reading, tobe_read;
   unsigned char *endof_buffbuff, *walker, *endof_buff;
 
-  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) && startof_question &&
-	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
+  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) &&
+	 startof_question && len_leftover && offsetof_start &&
+	 startbuff_buff && startbuff_walker))
     return 0;
   if ((*startof_question < buff) ||
       ((*startof_question + *len_leftover) > (buff + lenof_buff)) ||
@@ -856,8 +858,9 @@ struct name_srvc_resource *read_name_srvc_resrcTCP(int sckt,
   destroy_name_srvc_res(resource, 1, 1);	\
   return 0;
 
-  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) && startof_resource &&
-	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
+  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) &&
+	 startof_resource && len_leftover && offsetof_start &&
+	 startbuff_buff && startbuff_walker))
     return 0;
   if ((*startof_resource < buff) ||
       ((*startof_resource + *len_leftover) > (buff + lenof_buff)) ||
@@ -1016,8 +1019,9 @@ unsigned char *ffrwd_name_srvc_resrcTCP(int sckt,
   uint16_t rdata_len;
   unsigned char *endof_buffbuff, *walker, *endof_buff;
 
-  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) && startof_resource &&
-	 len_leftover && offsetof_start && startbuff_buff && startbuff_walker))
+  if (! ((sckt >= 0) && buff && (lenof_buff >= MAX_RDATALEN) &&
+	 startof_resource && len_leftover && offsetof_start &&
+	 startbuff_buff && startbuff_walker))
     return 0;
   if ((*startof_resource < buff) ||
       ((*startof_resource + *len_leftover) > (buff + lenof_buff)) ||

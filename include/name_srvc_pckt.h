@@ -87,6 +87,8 @@
 
 # define MAX_RDATALEN 0xffff
 # define ARBITRARY_MAXIMUM_LENOF_NAME 256
+# define TCP_READWRITEBUFF_LEN (MAX_RDATALEN + ARBITRARY_MAXIMUM_LENOF_NAME + \
+                                10)
 
 
 enum name_srvc_rdata_type {
