@@ -215,6 +215,7 @@ void name_srvc_daemon_newtidtcp(int sckt,
 
   read_name_srvc_pckt_header(&walker, (startbuff +SIZEOF_NAMEHDR_ONWIRE),
 			     &header);
+  walker = buff;
 
   /* ----------------------------------- */
   // NAME REGISTRATION REQUEST (UNIQUE)
