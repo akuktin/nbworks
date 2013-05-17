@@ -264,7 +264,7 @@ struct name_srvc_question *read_name_srvc_qstnTCP(int sckt,
   endof_buff = walker + *len_leftover;
   endof_buffbuff = buff + lenof_buff;
 
-  question = calloc(1, sizeof(struct name_srvc_question));
+  question = nbw_calloc(1, sizeof(struct name_srvc_question));
   if (! question) {
     return 0;
   }
@@ -872,7 +872,7 @@ struct name_srvc_resource *read_name_srvc_resrcTCP(int sckt,
   endof_buff = walker + *len_leftover;
   endof_buffbuff = buff + lenof_buff;
 
-  resource = calloc(1, sizeof(struct name_srvc_resource));
+  resource = nbw_calloc(1, sizeof(struct name_srvc_resource));
   if (! resource) {
     return 0;
   }
@@ -1357,7 +1357,7 @@ void *master_name_srvc_pckt_reader(void *packet,
   walker = startof_pckt;
   endof_pckt = startof_pckt + len;
 
-  result = calloc(1, sizeof(struct name_srvc_packet));
+  result = nbw_calloc(1, sizeof(struct name_srvc_packet));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -1533,7 +1533,7 @@ void *master_name_srvc_pckt_writer(void *packet_ptr,
   if (packet_field) {
     result = packet_field;
   } else {
-    result = calloc(1, *pckt_len);
+    result = nbw_calloc(1, *pckt_len);
     if (! result) {
       packet->stuck_in_transit = FALSE;
       return 0;
@@ -1618,7 +1618,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   struct name_srvc_question_lst *cur_qstn;
   struct name_srvc_resource_lst *cur_res;
 
-  result = calloc(1, sizeof(struct name_srvc_packet));
+  result = nbw_calloc(1, sizeof(struct name_srvc_packet));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -1630,7 +1630,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   result->header.numof_additional_recs = adit;
 
   if (qstn) {
-    cur_qstn = calloc(1, sizeof(struct name_srvc_question_lst));
+    cur_qstn = nbw_calloc(1, sizeof(struct name_srvc_question_lst));
     if (! cur_qstn) {
       /* TODO: errno signaling stuff */
       free(result);
@@ -1640,7 +1640,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
 
     qstn--;
     while (qstn) {
-      cur_qstn->next = calloc(1, sizeof(struct name_srvc_question_lst));
+      cur_qstn->next = nbw_calloc(1, sizeof(struct name_srvc_question_lst));
       if (! cur_qstn->next) {
 	/* TODO: errno signaling stuff */
 	destroy_name_srvc_pckt(result, 1, 1);
@@ -1652,7 +1652,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   }
 
   if (answ) {
-    cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
+    cur_res = nbw_calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
       /* TODO: errno signaling stuff */
       destroy_name_srvc_pckt(result, 1, 1);
@@ -1662,7 +1662,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
 
     answ--;
     while (answ) {
-      cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
+      cur_res->next = nbw_calloc(1, sizeof(struct name_srvc_resource_lst));
       if (! cur_res->next) {
 	/* TODO: errno signaling stuff */
 	destroy_name_srvc_pckt(result, 1, 1);
@@ -1674,7 +1674,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   }
 
   if (auth) {
-    cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
+    cur_res = nbw_calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
       /* TODO: errno signaling stuff */
       destroy_name_srvc_pckt(result, 1, 1);
@@ -1684,7 +1684,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
 
     auth--;
     while (auth) {
-      cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
+      cur_res->next = nbw_calloc(1, sizeof(struct name_srvc_resource_lst));
       if (! cur_res->next) {
 	/* TODO: errno signaling stuff */
 	destroy_name_srvc_pckt(result, 1, 1);
@@ -1696,7 +1696,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
   }
 
   if (adit) {
-    cur_res = calloc(1, sizeof(struct name_srvc_resource_lst));
+    cur_res = nbw_calloc(1, sizeof(struct name_srvc_resource_lst));
     if (! cur_res) {
       /* TODO: errno signaling stuff */
       destroy_name_srvc_pckt(result, 1, 1);
@@ -1706,7 +1706,7 @@ struct name_srvc_packet *alloc_name_srvc_pckt(unsigned int qstn,
 
     adit--;
     while (adit) {
-      cur_res->next = calloc(1, sizeof(struct name_srvc_resource_lst));
+      cur_res->next = nbw_calloc(1, sizeof(struct name_srvc_resource_lst));
       if (! cur_res->next) {
 	/* TODO: errno signaling stuff */
 	destroy_name_srvc_pckt(result, 1, 1);

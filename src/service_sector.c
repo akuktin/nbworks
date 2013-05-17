@@ -103,7 +103,7 @@ struct ss_queue *ss_register_tid(union trans_id *arg,
     free(result);
     return 0;
   }
-  my_trans->in = calloc(1, sizeof(struct ss_unif_pckt_list));
+  my_trans->in = nbw_calloc(1, sizeof(struct ss_unif_pckt_list));
   if (! my_trans->in) {
     /* TODO: errno signaling stuff */
     free(result);
@@ -111,7 +111,7 @@ struct ss_queue *ss_register_tid(union trans_id *arg,
     return 0;
   }
   my_trans->in->stream.sckt = -1;
-  my_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));
+  my_trans->out = nbw_calloc(1, sizeof(struct ss_unif_pckt_list));
   if (! my_trans->out) {
     /* TODO: errno signaling stuff */
     free(result);
@@ -888,7 +888,7 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
       *last_trans = 0;
       return 0;
     }
-    new_trans->in = calloc(1, sizeof(struct ss_unif_pckt_list));
+    new_trans->in = nbw_calloc(1, sizeof(struct ss_unif_pckt_list));
     if (! new_trans->in) {
       /* TODO: errno signaling stuff */
       *last_trans = 0;
@@ -896,7 +896,7 @@ int fill_all_nametrans(struct ss_priv_trans **where) {
       return 0;
     }
     new_trans->in->stream.sckt = -1;
-    new_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));
+    new_trans->out = nbw_calloc(1, sizeof(struct ss_unif_pckt_list));
     if (! new_trans->out) {
       /* TODO: errno signaling stuff */
       *last_trans = 0;
@@ -1333,7 +1333,7 @@ void *ss__cmb_recver(void *sckts_ptr) {
     free(newtid_queue);						\
     return 0;							\
   }								\
-  new_trans->in = calloc(1, sizeof(struct ss_unif_pckt_list));	\
+  new_trans->in = nbw_calloc(1, sizeof(struct ss_unif_pckt_list));	\
   if (! new_trans->in) {					\
     /* TODO: errno signaling stuff */				\
     free(newtid_queue);						\
@@ -1341,7 +1341,7 @@ void *ss__cmb_recver(void *sckts_ptr) {
     return 0;							\
   }								\
   new_trans->in->stream.sckt = -1;				\
-  new_trans->out = calloc(1, sizeof(struct ss_unif_pckt_list));	\
+  new_trans->out = nbw_calloc(1, sizeof(struct ss_unif_pckt_list));	\
   if (! new_trans->out) {					\
     /* TODO: errno signaling stuff */				\
     free(newtid_queue);						\

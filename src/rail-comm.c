@@ -677,7 +677,7 @@ struct cache_namenode *do_rail_regname(int rail_sckt,
       }
 
       cache_namecard->addrs.recrd[0].node_type = node_type;
-      cache_namecard->addrs.recrd[0].addr = calloc(1, sizeof(struct ipv4_addr_list));
+      cache_namecard->addrs.recrd[0].addr = nbw_calloc(1, sizeof(struct ipv4_addr_list));
       if (! cache_namecard->addrs.recrd[0].addr) {
 	/* TODO: error handling */
 	cache_namecard->timeof_death = 0;

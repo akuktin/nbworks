@@ -288,7 +288,7 @@ struct cache_namenode *add_nblabel(void *label,
   if (! label)
     return 0;
 
-  result = calloc(1, sizeof(struct cache_namenode));
+  result = nbw_calloc(1, sizeof(struct cache_namenode));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;
@@ -484,7 +484,7 @@ struct cache_namenode *alloc_namecard(void *label,
   if (! label)
     return 0;
 
-  result = calloc(1, sizeof(struct cache_namenode));
+  result = nbw_calloc(1, sizeof(struct cache_namenode));
   if (! result) {
     /* TODO: errno signaling stuff */
     return 0;

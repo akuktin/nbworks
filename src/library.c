@@ -707,7 +707,7 @@ ssize_t lib_senddtg_138(struct name_state *handle,
   }
   pckt->error_code = 0;
 
-  readypacket = calloc(1, max_wholefrag_len);
+  readypacket = nbw_calloc(1, max_wholefrag_len);
   if (! readypacket) {
     nbworks_errno = ENOBUFS;
     destroy_dtg_srvc_pckt(pckt, 1, 1);

@@ -580,7 +580,7 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
     return 0;
   }
 
-  stats = calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
+  stats = nbw_calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
   if (! stats) {
     /* TODO: errno signaling stuff */
     free(complete_name->name);

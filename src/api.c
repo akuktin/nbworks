@@ -133,7 +133,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     nbworks_errno = EINVAL;
   }
 
-  result = calloc(1, sizeof(struct name_state));
+  result = nbw_calloc(1, sizeof(struct name_state));
   if (! result) {
     nbworks_errno = ENOMEM;
     return 0;

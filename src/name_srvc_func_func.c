@@ -2082,7 +2082,7 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
 	 * be deleted by the name pruner, this is a match and this
 	 * resource has to be handled in a different manner. */
 
-	laters_pair = calloc(1, sizeof(struct laters_link));
+	laters_pair = nbw_calloc(1, sizeof(struct laters_link));
 	if (! laters_pair) {
 	  make_it_into_failed;
 	  empty_addrblck;
@@ -2774,7 +2774,7 @@ struct name_srvc_resource *name_srvc_func_nodestat(struct name_srvc_question *qs
     res->rrclass = qstn->qclass;
     res->ttl = 0;
 
-    stats = calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
+    stats = nbw_calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
     if (! stats) {
       nbworks_dstr_nbnodename(res->name);
       free(res);

@@ -22,6 +22,8 @@ Sometimes, VERY rarely, the daemon echoes a packet back to the sender.
   nulls. I have not yet replaced calloc()s with nbw_calloc()s because I want
   to see the bug manifest itself at least once more. Then I will replace
   calloc()s and again see if the bug manifests itself.
+  (update) The sed command has been applied. It now remains to be seen if the
+  echo will be removed or if it will remain.
 
 GCC-4.4.6 consistenly miscompiles the code into a unworkable mess whenever code
   optimization of any level is set. Infinite loops are inserted, most notably

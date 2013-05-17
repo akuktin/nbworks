@@ -501,7 +501,7 @@ void *master_dtg_srvc_pckt_writer(void *packet_ptr,
   if (packet_field) {
     result = packet_field;
   } else {
-    result = calloc(1, *pckt_len);
+    result = nbw_calloc(1, *pckt_len);
     if (! result) {
       /* TODO: errno signaling stuff */
       return 0;
@@ -545,7 +545,7 @@ void *sending_dtg_srvc_pckt_writer(void *packet_ptr,
   if (packet_field) {
     result = packet_field;
   } else {
-    result = calloc(1, *pckt_len);
+    result = nbw_calloc(1, *pckt_len);
     if (! result) {
       /* TODO: errno signaling stuff */
       return 0;
