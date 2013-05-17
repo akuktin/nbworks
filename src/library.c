@@ -1127,7 +1127,7 @@ int lib_open_session(struct name_state *handle,
   unsigned int max_retries;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char small_buff[SMALL_BUFF_LEN];
-  unsigned char *decoded_name, isgroup;
+  unsigned char *decoded_name, isgroup, call_node_types;
 
   if (! (handle && dst)) {
     nbworks_errno = EINVAL;
@@ -1137,6 +1137,12 @@ int lib_open_session(struct name_state *handle,
       (dst->len < NETBIOS_NAME_LEN)) {
     nbworks_errno = EINVAL;
     return -1;
+  }
+
+  if (handle->node_type & CACHE_ADDRBLCK_GRP_MASK) {
+    call_node_types = handle->node_type >> GROUP_SHIFT;
+  } else {
+    call_node_types = handle->node_type;
   }
 
   retry_count = 0;
@@ -1157,7 +1163,7 @@ int lib_open_session(struct name_state *handle,
   }
 
  try_to_resolve_name:
-  fill_32field(nbworks_whatisIP4addrX(her, ONES, isgroup,
+  fill_32field(nbworks_whatisIP4addrX(her, call_node_types, isgroup,
 				      (1+NETBIOS_NAME_LEN+handle->lenof_scope)),
                (unsigned char *)&(addr.sin_addr.s_addr));
   if (! addr.sin_addr.s_addr) {

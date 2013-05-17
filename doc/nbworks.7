@@ -7,18 +7,19 @@ Nbworks is an implementation of the NetBIOS-over-TCP protocol
 background and a library which gets linked into every process which
 wants to use NetBIOS.
 .PP
-The daemon binds to ports 137/UDP, 138/UDP and 139/TCP. When nbworks
-gets completed, the daemon will also bind port 137/TCP and a packet
+The daemon binds to ports 137/UDP, 137/TCP, 138/UDP and 139/TCP. When
+nbworks gets completed, the daemon will also bind a packet
 socket. Because the daemon binds these ports, it must be run as root
 or with appropriate priviliges.
 .PP
 The nbworks multiplexing daemon implements the NBT \fIname
-service\fP. Currently, only the UDP-based part of the service is
-implemented, the TCP-based part is scheduled for implementation
-soon. The daemon also implements part of the server side of the
-\fIdatagram service\fP and part of the server side of the \fIsession
-service\fP. The other parts of respecive services are implemented by
-the nbworks library.
+service\fP. Currently, only the UDP-based part of the service and
+the receive half of the TCP-based part of the service is
+implemented, the send half of the TCP-based part is scheduled for
+implementation soon. The daemon also implements part of the server
+side of the \fIdatagram service\fP and part of the server side of
+the \fIsession service\fP. The other parts of respecive services
+are implemented by the nbworks library.
 .PP
 The library is linked into every process that requires NetBIOS
 functionality. It implements the sending sides and part of the
@@ -41,9 +42,8 @@ and, as such, can not be internetworked in an Internet fashion. The
 newer one is \fBNetBIOS-over-TCP\fP (NBT). NBT runs over IP/UDP and
 IP/TCP.
 .PP
-Currently, nbworks implements only NBT, sans TCP name
-service. Implementation of TCP name service and NBF is scheduled
-soon.
+Currently, nbworks implements only NBT. Implementation of NBF is
+scheduled soon.
 .PP
 NetBIOS is designed to provide three services: the \fIname service\fP,
 which is used to register own names and find others, the \fIdatagram

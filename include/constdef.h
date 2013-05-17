@@ -18,6 +18,8 @@
 #ifndef NBWORKS_CONSTDEF_H
 # define NBWORKS_CONSTDEF_H 1
 
+# include "nbworks.h"
+
 /* Force inclusion of all system headers here. */
 # include <stdint.h>
 # include <netinet/in.h>
