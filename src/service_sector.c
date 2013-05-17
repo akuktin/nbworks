@@ -1278,6 +1278,7 @@ void *ss__cmb_recver(void *sckts_ptr) {
   struct newtid_params params;
   struct pollfd pollfds[2], *udp_pfd, *tcp_pfd;
   struct nbworks_nbnamelst *name_as_id;
+  nfds_t numof_pfds;
   int ret_val;
   ipv4_addr_t discard_add, discard_add_NETWRK;
   uint16_t tid;
@@ -1314,6 +1315,10 @@ void *ss__cmb_recver(void *sckts_ptr) {
   tcp_pfd->fd = sckts.tcp_sckt;
   tcp_pfd->events = (POLLIN | POLLPRI);
   params.isbusy = 0;
+  if (sckts.branch == DTG_SRVC)
+    numof_pfds = 1;
+  else
+    numof_pfds = 2;
 
 #define make_new_queue						\
   newtid_queue = malloc(sizeof(struct ss_queue));		\
@@ -1365,7 +1370,7 @@ void *ss__cmb_recver(void *sckts_ptr) {
 #endif
 
   while (! nbworks_all_port_cntl.all_stop) {
-    ret_val = poll(pollfds, 2, nbworks_all_port_cntl.poll_timeout);
+    ret_val = poll(pollfds, numof_pfds, nbworks_all_port_cntl.poll_timeout);
     if (ret_val == 0)
       continue;
     if (ret_val < 0) {
@@ -1385,10 +1390,12 @@ void *ss__cmb_recver(void *sckts_ptr) {
 
       new_pckt = ss__recv_udppckt(&sckts, udp_pfd, &tid,
 				  udp_pckt, discard_add_NETWRK, &name_as_id);
-      if ((! new_pckt) &&
-	  (sckts.branch != DTG_SRVC)) {
-	new_pckt = ss__recv_tcppckt(&sckts, tcp_pfd, &tid);
-	if (! new_pckt)
+      if (! new_pckt) {
+	if (sckts.branch != DTG_SRVC) {
+	  new_pckt = ss__recv_tcppckt(&sckts, tcp_pfd, &tid);
+	  if (! new_pckt)
+	    break;
+	} else
 	  break;
       }
 
