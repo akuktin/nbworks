@@ -1771,9 +1771,9 @@ void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
 struct name_srvc_resource *
   name_srvc_func_namregreq(struct name_srvc_resource *res,
 			   time_t cur_time) {
-  struct addrlst_bigblock addrblock, *addrblock_ptr;
   struct name_srvc_resource *answer;
   struct cache_namenode *cache_namecard;
+  struct nbaddress_list *nbaddr;
   ipv4_addr_t in_addr;
   uint32_t i;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
@@ -1781,15 +1781,24 @@ struct name_srvc_resource *
   /* This function fully shadows the difference
    * between B mode and P mode operation. */
 
-  addrblock_ptr = &addrblock;
   answer = 0;
 
   if (!((res) &&
 	(res->name) &&
 	(res->name->name) &&
 	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
-	(res->rdata_t == nb_address_list) &&
-	(sort_nbaddrs(res->rdata, &addrblock_ptr))))
+	(res->rdata_t == nb_address_list)))
+    return 0;
+
+  nbaddr = res->rdata;
+  while (nbaddr) {
+    if (((nbaddr->flags & NBADDRLST_NODET_MASK) != NBADDRLST_NODET_P) &&
+	(nbaddr->there_is_an_address))
+      break;
+    else
+      nbaddr = nbaddr->next_address;
+  }
+  if (! nbaddr)
     return 0;
 
   decode_nbnodename(res->name->name, decoded_name);
