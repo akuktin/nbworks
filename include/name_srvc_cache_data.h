@@ -66,7 +66,7 @@ struct addrlst_block {
 };
 
 struct addrlst_cardblock {
-  struct addrlst_block recrd[8];
+  struct addrlst_block recrd[NUMOF_ADDRSES];
 };
 
 struct addrlst_bigblock {

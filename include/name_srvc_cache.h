@@ -110,6 +110,8 @@ struct addrlst_bigblock *
                struct addrlst_bigblock **writeem_here);
 void
   destroy_bigblock(struct addrlst_bigblock *block);
+void
+  cleanout_bigblock(struct addrlst_bigblock *block);
 
 /* returns: >0 = success, 0 = failure, <0 = error */
 int

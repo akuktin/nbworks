@@ -3256,6 +3256,7 @@ struct name_srvc_resource *
     return 0;
 
   if (! (addrblock.node_types & (~(CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)))) {
+    cleanout_bigblock(addrblock_ptr);
     return 0;
   }
 
@@ -3292,8 +3293,10 @@ struct name_srvc_resource *
 
   if (!((cache_namecard) &&
 	(cache_namecard->timeof_death > cur_time) &&
-	(cache_namecard->endof_conflict_chance < cur_time)))
+	(cache_namecard->endof_conflict_chance < cur_time))) {
+    cleanout_bigblock(addrblock_ptr);
     return 0;
+  }
 
   /* NO conflict check. */
   if (addrblock.node_types & (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_P))) {
@@ -3421,6 +3424,7 @@ struct name_srvc_resource *
      looking for inconsistencies, like the
      NAME RELEASE REQUEST section does. */
 
+  cleanout_bigblock(addrblock_ptr);
   return answer;
 }
 

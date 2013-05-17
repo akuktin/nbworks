@@ -930,6 +930,19 @@ void destroy_bigblock(struct addrlst_bigblock *block) {
   return;
 }
 
+void cleanout_bigblock(struct addrlst_bigblock *block) {
+  int i;
+
+  if (! block)
+    return;
+
+  for (i = 0; i<NUMOF_ADDRSES; i++) {
+    if (block->addrs.recrd[i].addr)
+      destroy_addrlist(block->addrs.recrd[i].addr);
+    block->addrs.recrd[i].addr = 0;
+  }
+}
+
 
 #define REMOVED_OWN_PMODE    1
 #define THEREIS_OWN_NONPMODE 2
@@ -1025,7 +1038,11 @@ int remove_membrs_frmlst(struct nbaddress_list *nbaddr_list,
       free(cur_addr);
       cur_addr = *last_addr;
     }
+
+    addrblock.addrs.recrd[i].addr = 0;
   }
+
+  cleanout_bigblock(addrof_addrblock);
 
   if (ret_val & THEREIS_OWN_NONPMODE)
     return 0;
