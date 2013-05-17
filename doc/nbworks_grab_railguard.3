@@ -47,7 +47,8 @@ already existing sessions, wether they were initiated by you, or if
 they are passing through the daemon, will be unaffected.
 .br
 In this case, the easiest way to recover is to re-register the name
-using \fBnbworks_regname\fP().
+using \fBnbworks_regname\fP(), but don't forget to call
+\fBnbworks_delname\fP() on the lost name handle.
 .SH "RETURN VALUE"
 This function returns a positive number if the instalation was
 succesfull, zero if it failed and a negative number if an error
@@ -59,6 +60,12 @@ however, an old guard may still be present.
 .PP
 In case of error, you should check \fInbworks_errno\fP for more
 information.
+.SH NOTES
+As currently implemented, if \fBnbworks_grab_railguard\fP() detects
+that the name already has a rail guard, it first releases the existing
+rail guard and then grabs a new one. This way of implementing means
+that there is a period of time during which the name has no guard on
+it.
 .SH "SEE ALSO"
 .BR nbworks (7),
 .BR nbworks_regname (3),
