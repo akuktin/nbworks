@@ -3048,15 +3048,11 @@ struct name_srvc_resource_lst *
 			      unsigned long *numof_founds,
 			      unsigned long *numof_notfounds) {
   struct name_srvc_packet *pckt;
-  struct name_srvc_resource_lst *frst_res, *res, **answer_lst;
-  struct name_srvc_question_lst *qstn;
+  struct name_srvc_resource_lst *frst_res, *res, **answer_lst, **last_res;
+  struct name_srvc_question_lst *qstn, **last_qstn, *unknown, **last_unknown;
   struct name_srvc_resource *answer;
   unsigned int istruncated;
   unsigned long numof_answers, numof_failed;
-#ifdef COMPILING_NBNS
-  struct name_srvc_question_lst **last_qstn, *unknown, **last_unknown;
-  struct name_srvc_resource_lst **last_res;
-#endif
 
   if (! ((outpckt && addr && trans) || (state && *state)))
     return 0;
@@ -3066,7 +3062,6 @@ struct name_srvc_resource_lst *
   istruncated = FALSE;
   numof_answers = 0;
 
-#ifdef COMPILING_NBNS
   if (state && *state) {
     last_qstn = state;
   } else {
@@ -3074,12 +3069,6 @@ struct name_srvc_resource_lst *
   }
   qstn = *last_qstn;
   last_unknown = &unknown;
-#else
-  if (state && *state)
-    qstn = *state;
-  else
-    qstn = outpckt->questions;
-#endif
   while (qstn) {
     if (! qstn->qstn) {
       qstn = qstn->next;
@@ -3105,16 +3094,12 @@ struct name_srvc_resource_lst *
 
       numof_answers++;
 
-#ifdef COMPILING_NBNS
       last_qstn = &(qstn->next);
-#endif
     } else {
-#ifdef COMPILING_NBNS
       *last_unknown = qstn;
       last_unknown = &(qstn->next);
 
       *last_qstn = qstn->next;
-#endif
 
       numof_failed++;
     }
@@ -3122,9 +3107,7 @@ struct name_srvc_resource_lst *
     qstn = qstn->next;
   }
   *answer_lst = 0;
-#ifdef COMPILING_NBNS
   *last_unknown = 0;
-#endif
 
   if (numof_notfounds)
     *numof_notfounds = numof_failed;
@@ -3132,10 +3115,8 @@ struct name_srvc_resource_lst *
     *numof_founds = numof_answers;
 
   if (state && *state) {
-#ifdef COMPILING_NBNS
     destroy_name_srvc_qstn_lst(*state, 1);
     *state = unknown;
-#endif
 
     return frst_res;
   }
@@ -3164,10 +3145,11 @@ struct name_srvc_resource_lst *
       destroy_name_srvc_res_lst(frst_res, 1, 1);
     }
   }
-#ifdef COMPILING_NBNS
-  /* Since we (presumably) have recursion, I should actually
+
+  /* Since we (presumably) have recursion as NBNS, I should actually
    * recursivelly ask upstream servers for the names I did not find. */
-  if (unknown) {
+  if (unknown &&
+      (!(outpckt->header.nm_flags & FLG_B))) {
     numof_failed = 0;
 
     pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
@@ -3175,7 +3157,11 @@ struct name_srvc_resource_lst *
 
       pckt->header.transaction_id = tid;
       pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_QUERY);
+#ifdef COMPILING_NBNS
       pckt->header.nm_flags = FLG_AA | FLG_RA;
+#else
+      pckt->header.nm_flags = FLG_AA;
+#endif
       pckt->header.rcode = RCODE_NAM_ERR;
       pckt->for_del = TRUE;
 
@@ -3216,9 +3202,11 @@ struct name_srvc_resource_lst *
       ss_name_send_pckt(pckt, addr, trans);
     }
 
-    destroy_name_srvc_qstn_lst(unknown, TRUE);
+    destroy_name_srvc_qstn_lst(unknown, 1);
+  } else {
+    if (unknown)
+      destroy_name_srvc_qstn_lst(unknown, 1);
   }
-#endif
 
   return 0;
 }
