@@ -92,8 +92,7 @@ struct cache_namenode *
   name_srvc_find_name(unsigned char *name,
                       unsigned char name_type,
                       struct nbworks_nbnamelst *scope,
-                      node_type_t node_type, /* Only one node type! */
-                      unsigned char recursion);
+                      node_type_t node_type); /* Only one node type! */
 void
   name_srvc_release_name(unsigned char *name,
                          unsigned char name_type,
@@ -208,7 +207,8 @@ unsigned int
   name_srvc_func_updtreq(struct name_srvc_resource *res,
                          ipv4_addr_t in_addr,
                          uint32_t name_flags,
-                         time_t cur_time);
+                         time_t cur_time,
+                         struct cache_namenode **namecard);
 struct name_srvc_resource_lst *
   name_srvc_do_updtreq(struct name_srvc_packet *outpckt,
                        struct sockaddr_in *addr,
@@ -219,6 +219,7 @@ struct name_srvc_resource_lst *
                        unsigned long *numof_notOK,
 #endif
                        time_t cur_time,
-                       struct name_srvc_resource_lst **state);
+                       struct name_srvc_resource_lst **state,
+                       struct cache_namenode **namecard);
 
 #endif /* NBWORKS_NAMESRVCFUNCFUNC_H */

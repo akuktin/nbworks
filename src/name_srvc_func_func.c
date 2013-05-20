@@ -129,7 +129,7 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
 #ifdef COMPILING_NBNS
 			 params->trans, params->id.tid, 0, 0,
 #endif
-			 cur_time, 0);
+			 cur_time, 0, 0);
 
     return;
   }
@@ -663,7 +663,7 @@ void name_srvc_daemon_newtidtcp(int sckt,
 			   params->trans, params->id.tid,
 			   &numof_OK, &numof_notOK,
 #endif
-			   cur_time, &res2);
+			   cur_time, &res2, 0);
 
       destroy_name_srvc_res_lst(res, 1, 1);
     }
@@ -975,7 +975,7 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
 			   &(ss_alltrans[index].trans),
-			   index, 0, 0, cur_time, 0);
+			   index, 0, 0, cur_time, 0, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1256,23 +1256,15 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 struct cache_namenode *name_srvc_find_name(unsigned char *name,
 					   unsigned char name_type,
 					   struct nbworks_nbnamelst *scope,
-					   node_type_t node_type, /* Only one node type! */
-					   unsigned char recursion) {
-  struct name_srvc_resource_lst *res, *cur_res;
-  struct nbaddress_list *list;//, *cmpnd_lst;
-  struct ipv4_addr_list *addrlst, *frstaddrlst;
-  struct cache_namenode *new_name;
-  time_t cur_time;
-  uint32_t ttl;
+					   node_type_t node_type) {  /* Only one node type! */
+  struct sockaddr_in addr;
+  struct cache_namenode *result;
+  struct name_srvc_resource_lst *res, *res2;
   ipv4_addr_t nbns_addr;
   uint16_t target_flags;
-  unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   if (! name)
     return 0;
-
-  decoded_name[NETBIOS_NAME_LEN] = '\0';
-  nbns_addr = nbworks__default_nbns;
 
   switch (node_type) {
   case CACHE_NODEFLG_H:
@@ -1338,95 +1330,19 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 
   if (! res)
     return 0;
-  else {
-    frstaddrlst = addrlst = 0;
-    ttl = 0;
-    cur_res = res;
-    do {
-      if (cur_res->res->rdata_t == nb_address_list) {
-	list = cur_res->res->rdata;
-	while (list) {
-	  if (list->there_is_an_address &&
-	      (list->flags == target_flags)) {
-	    if (! frstaddrlst) {
-	      frstaddrlst = malloc(sizeof(struct ipv4_addr_list));
-	      if (! frstaddrlst) {
-		/* TODO: errno signaling stuff */
-		destroy_name_srvc_res_lst(res, TRUE, TRUE);
-		return 0;
-	      }
-	      addrlst = frstaddrlst;
-	    } else {
-	      addrlst->next = malloc(sizeof(struct ipv4_addr_list));
-	      if (! addrlst->next) {
-		/* TODO: errno signaling stuff */
-		while (frstaddrlst) {
-		  addrlst = frstaddrlst->next;
-		  free(frstaddrlst);
-		  frstaddrlst = addrlst;
-		}
-		destroy_name_srvc_res_lst(res, TRUE, TRUE);
-		return 0;
-	      }
-	      addrlst = addrlst->next;
-	    }
 
-	    addrlst->ip_addr = list->address;
-	  }
-	  list = list->next_address;
-	}
-	if (addrlst) {
-	  addrlst->next = 0;
-	  /* The below will lose quite a bit of information,
-	   * but I am in no mood to make YET ANOTHER LIST. */
-	  if (cur_res->res->ttl > ttl)
-	    ttl = cur_res->res->ttl;
-	}
-      }
-      cur_res = cur_res->next;
-    } while (cur_res);
-  }
+  memset(&addr, 0, sizeof(struct sockaddr_in));
+  result = 0;
+  res2 = res;
+  name_srvc_do_updtreq(0, &addr,
+#ifdef COMPILING_NBNS
+		       0, 0, 0, 0,
+#endif
+		       time(0), &res2, &result);
 
-  if (frstaddrlst &&
-      (res->res->name->len == NETBIOS_CODED_NAME_LEN)) {
-    new_name = alloc_namecard(decode_nbnodename(res->res->name->name,
-                                                decoded_name),
-			      NETBIOS_NAME_LEN,
-			      node_type, 0,
-			      res->res->rrtype, res->res->rrclass);
-    if (new_name) {
-      new_name->addrs.recrd[0].node_type = node_type;
-      new_name->addrs.recrd[0].addr =
-	merge_addrlists(0, frstaddrlst);
+  destroy_name_srvc_res_lst(res, 1, 1);
 
-      if (add_scope(scope, new_name, nbns_addr) ||
-	  add_name(new_name, scope)) {
-	cur_time = time(0);
-	new_name->endof_conflict_chance = cur_time +
-	  nbworks_namsrvc_cntrl.conflict_timer;
-        if (new_name->endof_conflict_chance < cur_time)
-          new_name->endof_conflict_chance = INFINITY;
-	new_name->timeof_death = cur_time + ttl;
-        if (new_name->timeof_death < cur_time)
-          new_name->timeof_death = INFINITY;
-	new_name->refresh_ttl = ttl;
-
-	destroy_name_srvc_res_lst(res, TRUE, TRUE);
-	return new_name;
-      } else {
-	destroy_namecard(new_name);
-      }
-    }
-  }
-
-  while (frstaddrlst) {
-    addrlst = frstaddrlst->next;
-    free(frstaddrlst);
-    frstaddrlst = addrlst;
-  }
-
-  destroy_name_srvc_res_lst(res, TRUE, TRUE);
-  return 0;
+  return result;
 }
 
 void name_srvc_release_name(unsigned char *name,
@@ -1777,7 +1693,7 @@ void *refresh_scopes(void *i_ignore_this) {
 #ifdef COMPILING_NBNS
 				 trans, tid.tid, 0, 0,
 #endif
-				 cur_time, 0);
+				 cur_time, 0, 0);
 
 	  } else {
 
@@ -3999,7 +3915,8 @@ struct name_srvc_resource_lst *
 unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 				    ipv4_addr_t in_addr,
 				    uint32_t name_flags,
-				    time_t cur_time) {
+				    time_t cur_time,
+				    struct cache_namenode **namecard) {
   struct cache_namenode *cache_namecard;
   struct addrlst_bigblock *addr_bigblock;
   ipv4_addr_t nbns_addr;
@@ -4072,6 +3989,8 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 	merge_addrlists(cache_namecard->addrs.recrd[j].addr,		\
 			addr_bigblock->addrs.recrd[i].addr);		\
 									\
+      if (namecard)							\
+	*namecard = cache_namecard;					\
       succedded = TRUE;							\
 									\
       break;								\
@@ -4085,6 +4004,8 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
       cache_namecard->node_types |=					\
 	addr_bigblock->addrs.recrd[i].node_type;			\
 									\
+      if (namecard)							\
+	*namecard = cache_namecard;					\
       succedded = TRUE;							\
 									\
       break;								\
@@ -4168,8 +4089,11 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 	       add_name(cache_namecard, res->name->next_name))) {
 	  destroy_namecard(cache_namecard);
 	  /* failed */
-	} else
+	} else {
+	  if (namecard)
+	    *namecard = cache_namecard;
 	  succedded = TRUE;
+	}
       }
 
     } else { /* It found a cache_namecard. */
@@ -4206,8 +4130,11 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 	       add_name(cache_namecard, res->name->next_name))) {
           destroy_namecard(cache_namecard);
 	  /* failed */
-        } else
+        } else {
+	  if (namecard)
+	    *namecard = cache_namecard;
 	  succedded = TRUE;
+	}
       }
 
     } else {
@@ -4236,7 +4163,8 @@ struct name_srvc_resource_lst *
 		       unsigned long *numof_notOK,
 #endif
 		       time_t cur_time,
-		       struct name_srvc_resource_lst **state) {
+		       struct name_srvc_resource_lst **state,
+		       struct cache_namenode **namecard) {
   struct name_srvc_resource_lst *res;
   uint32_t name_flags;
   ipv4_addr_t in_addr;
@@ -4277,7 +4205,7 @@ struct name_srvc_resource_lst *
   while (res) {
 #ifdef COMPILING_NBNS
     if (name_srvc_func_updtreq(res->res, in_addr, name_flags,
-			       cur_time)) {
+			       cur_time, namecard)) {
       *last_answr = res;
       last_answr = &(res->next);
 
@@ -4290,7 +4218,7 @@ struct name_srvc_resource_lst *
     }
 #else
     name_srvc_func_updtreq(res->res, in_addr, name_flags,
-			   cur_time);
+			   cur_time, namecard);
 #endif
 
     res = res->next;

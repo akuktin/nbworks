@@ -988,7 +988,7 @@ int rail_senddtg(int rail_sckt,
       namecard = name_srvc_find_name(decoded_name,
 				     decoded_name[NETBIOS_NAME_LEN-1],
 				     normal_pyld->dst_name->next_name,
-				     node_type, FALSE);
+				     node_type);
     if (namecard) {
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if ((namecard->addrs.recrd[i].node_type == node_type) &&
@@ -1688,14 +1688,10 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
     switch (command->node_type) {
     case RAIL_NODET_HGRP:
     case RAIL_NODET_HUNQ:
-      rail_flushrail(command->len, rail_sckt);
-      return 0;
       node_type = CACHE_NODEGRPFLG_H;
       break;
     case RAIL_NODET_MGRP:
     case RAIL_NODET_MUNQ:
-      rail_flushrail(command->len, rail_sckt);
-      return 0;
       node_type = CACHE_NODEGRPFLG_M;
       break;
     case RAIL_NODET_PGRP:
@@ -1712,14 +1708,10 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
     switch (command->node_type) {
     case RAIL_NODET_HGRP:
     case RAIL_NODET_HUNQ:
-      rail_flushrail(command->len, rail_sckt);
-      return 0;
       node_type = CACHE_NODEFLG_H;
       break;
     case RAIL_NODET_MGRP:
     case RAIL_NODET_MUNQ:
-      rail_flushrail(command->len, rail_sckt);
-      return 0;
       node_type = CACHE_NODEFLG_M;
       break;
     case RAIL_NODET_PGRP:
@@ -1761,9 +1753,7 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 
   if (! namecard) {
     namecard = name_srvc_find_name(name->name, (name->name)[name->len -1],
-				   name->next_name, node_type,
-				   ((node_type == CACHE_NODEFLG_P) ?
-				    TRUE : FALSE));
+				   name->next_name, node_type);
   }
 
   nbworks_dstr_nbnodename(name);
