@@ -794,10 +794,7 @@ int do_rail_delname(int rail_sckt,
 
     if (killitwithfire) {
       name_srvc_release_name(name_ptr, name_ptr[NETBIOS_NAME_LEN-1],
-			     scope, ipv4, orig_node_type,
-			     ((orig_node_type &
-			       (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?
-			      TRUE : FALSE));
+			     scope, ipv4, orig_node_type);
 
       ss__kill_allservrs(name_ptr, scope);
 

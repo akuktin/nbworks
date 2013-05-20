@@ -1393,19 +1393,74 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   return 0;
 }
 
-/* return: 0=success, >0=fail, <0=error */
-int name_srvc_release_name(unsigned char *name,
-			   unsigned char name_type,
-			   struct nbworks_nbnamelst *scope,
-			   ipv4_addr_t my_ip_address,
-			   node_type_t node_types,
-			   unsigned char recursion) {
+void name_srvc_release_name(unsigned char *name,
+			    unsigned char name_type,
+			    struct nbworks_nbnamelst *scope,
+			    ipv4_addr_t my_ip_address,
+			    node_type_t node_types) {
+  if (! name)
+    return;
+
+  switch (node_types) {
+  case CACHE_NODEFLG_B:
+  case CACHE_NODEGRPFLG_B:
+    name_srvc_do_release_name(name, name_type, scope, my_ip_address,
+			      node_types, FALSE);
+    return;
+
+  case CACHE_NODEFLG_P:
+  case CACHE_NODEGRPFLG_P:
+    name_srvc_do_release_name(name, name_type, scope, my_ip_address,
+			      node_types, TRUE);
+    return;
+
+    /* The below two introduce a bit of non-pedanticness where the
+     * transaction between the daemon and NBNS has a different transaction
+     * ID than the transaction between the daemon and other nodes. */
+  case CACHE_NODEFLG_M:
+  case CACHE_NODEGRPFLG_M:
+    /* This is not accoding to standard. Accoding to RFC 1002, if the NBNS
+     * returns a negative response to the name removal request, I am supposed
+     * to retain the name. But, the daemon goes forward and straight up deletes
+     * the name anyway. The local broadcast segment is not informed of anything,
+     * however and, since the daemon deletes the name, it also neither defends
+     * the name nor does it update neighbours (or the NBNS for that matter). */
+    /* This requirement of RFC1002 regarding M-mode is inconsistent with
+     * requirements regarding the P-mode name deletion protocol. */
+    if (0 < name_srvc_do_release_name(name, name_type, scope, my_ip_address,
+				      node_types, TRUE)) {
+      name_srvc_do_release_name(name, name_type, scope, my_ip_address,
+				node_types, FALSE);
+    }
+    return;
+
+  case CACHE_NODEFLG_H:
+  case CACHE_NODEGRPFLG_H:
+    name_srvc_do_release_name(name, name_type, scope, my_ip_address,
+			      node_types, FALSE);
+    name_srvc_do_release_name(name, name_type, scope, my_ip_address,
+			      node_types, TRUE);
+    return;
+
+  default:
+    return;
+  }
+}
+
+/* return: >0=success, 0=fail, <0=error */
+int name_srvc_do_release_name(unsigned char *name,
+			      unsigned char name_type,
+			      struct nbworks_nbnamelst *scope,
+			      ipv4_addr_t my_ip_address,
+			      node_type_t node_types,
+			      unsigned char recursion) {
   struct sockaddr_in addr;
   struct timespec *sleeptime;
   struct ss_queue *trans;
   struct name_srvc_packet *pckt, *outpckt;
   struct nbworks_nbnamelst *probe;
   ipv4_addr_t listento;
+  int ret_val;
   uint16_t type, class;
   unsigned int retry_count;
   unsigned char stop_yourself;
@@ -1415,6 +1470,7 @@ int name_srvc_release_name(unsigned char *name,
     return -1;
 
   stop_yourself = FALSE;
+  ret_val = 1;
 
   addr.sin_family = AF_INET;
   /* VAXism below. */
@@ -1506,6 +1562,7 @@ int name_srvc_release_name(unsigned char *name,
 	    // POSITIVE NAME RELEASE RESPONSE
 	  } else {
 	    // NEGATIVE NAME RELEASE RESPONSE
+	    ret_val = 0; /* Signal failure. */
 	  }
 	}
 
@@ -1521,7 +1578,7 @@ int name_srvc_release_name(unsigned char *name,
   }
   free(trans);
 
-  return 0;
+  return ret_val;
 }
 
 /* This function sends refresh packets for scopes. */
@@ -1618,10 +1675,9 @@ void *refresh_scopes(void *i_ignore_this) {
 	  outside_pckt = ss__recv_entry(trans);
 
 	  if (outside_pckt == last_outpckt) {
-	    if (wack) {
-	      /* DOS_BUG: a malevolent NBNS can use this point to hose
-	       *          the daemon by continually sending wacks and
-	       *          never anything else. */
+	    if (wack &&
+		(time(0) < (cur_time +
+			    nbworks_namsrvc_cntrl.max_wack_sleeptime))) {
 	      ss_set_normalstate_name_tid(&tid);
 
 	      if (wack > nbworks_namsrvc_cntrl.max_wack_sleeptime) {
@@ -1663,6 +1719,12 @@ void *refresh_scopes(void *i_ignore_this) {
 	if (pckt->header.opcode == (OPCODE_RESPONSE |
 				     OPCODE_WACK)) {
 
+	  /* BUG: This should actually cross-check to see if the sender
+	   *      of the WACK was:
+	   *      (a) an NBNS
+	   *      (b) for the scope that it sent a WACK for
+	   *      (c) whose opinion on the matter we asked for
+	   *      I am not doing anything of that because COME-ON!! */
           wack = name_srvc_find_biggestwack(pckt, 0, 0, 0, wack);
 
 	  destroy_name_srvc_pckt(pckt, 1, 1);

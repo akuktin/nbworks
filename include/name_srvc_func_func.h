@@ -94,14 +94,20 @@ struct cache_namenode *
                       struct nbworks_nbnamelst *scope,
                       node_type_t node_type, /* Only one node type! */
                       unsigned char recursion);
-/* return: 0=success, >0=fail, <0=error */
-int
+void
   name_srvc_release_name(unsigned char *name,
                          unsigned char name_type,
                          struct nbworks_nbnamelst *scope,
                          ipv4_addr_t my_ip_address,
-                         node_type_t node_types,
-                         unsigned char recursion);
+                         node_type_t node_types);
+/* return: >0=success, 0=fail, <0=error */
+int
+  name_srvc_do_release_name(unsigned char *name,
+                            unsigned char name_type,
+                            struct nbworks_nbnamelst *scope,
+                            ipv4_addr_t my_ip_address,
+                            node_type_t node_types,
+                            unsigned char recursion);
 void *
   refresh_scopes(void *i_ignore_this);
 
