@@ -1866,7 +1866,7 @@ struct name_srvc_resource_lst *
   unsigned long numof_responses;
 
   /* This function fully shadows the difference
-   * between B mode and P mode operation. */
+   * between B mode and P-type mode operation. */
 
   if (! ((outpckt && addr && trans) || state))
     return 0;
@@ -2753,6 +2753,8 @@ struct name_srvc_resource *name_srvc_func_nodestat(struct name_srvc_question *qs
   unsigned int i, numof_names;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
+  /* This function is identical in all modes of operation. */
+
   if (!(qstn &&
 	(qstn->qtype == QTYPE_NBSTAT) &&
 	qstn->name &&
@@ -2898,6 +2900,8 @@ struct name_srvc_resource *name_srvc_func_namqry(struct name_srvc_question *qstn
   uint32_t flags;
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
   time_t lowest_deathtime, overflow_test;
+
+  /* This function is identical in all modes of operation. */
 
   if (!(qstn &&
 	(qstn->qtype != QTYPE_NBSTAT) &&
@@ -3053,6 +3057,9 @@ struct name_srvc_resource_lst *
   struct name_srvc_resource *answer;
   unsigned int istruncated;
   unsigned long numof_answers, numof_failed;
+
+  /* This function fully shadows the difference
+   * between B mode and P-type mode of operation. */
 
   if (! ((outpckt && addr && trans) || (state && *state)))
     return 0;
@@ -3229,7 +3236,7 @@ struct name_srvc_resource *
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   /* This function fully shadows the difference
-   * between B mode and P mode operation. */
+   * between B mode and P-type mode of operation. */
 
   addrblock_ptr = &addrblock;
   answer = 0;
@@ -3243,7 +3250,8 @@ struct name_srvc_resource *
 	(sort_nbaddrs(res->rdata, &addrblock_ptr))))
     return 0;
 
-  if (! (addrblock.node_types & (~(CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)))) {
+  if (! (addrblock.node_types & (~(CACHE_NODEFLG_PTYPE |
+				   CACHE_NODEGRPFLG_PTYPE)))) {
     cleanout_bigblock(addrblock_ptr);
     return 0;
   }
@@ -3252,8 +3260,8 @@ struct name_srvc_resource *
 
   cache_namecard = find_nblabel(decoded_name,
 				NETBIOS_NAME_LEN,
-				(ANY_NODETYPE & (~(CACHE_NODEFLG_P |
-						   CACHE_NODEGRPFLG_P))),
+				(ANY_NODETYPE & (~(CACHE_NODEFLG_PTYPE |
+						   CACHE_NODEGRPFLG_PTYPE))),
 				res->rrtype,
 				res->rrclass,
 				res->name->next_name);
@@ -3287,12 +3295,12 @@ struct name_srvc_resource *
   }
 
   /* NO conflict check. */
-  if (addrblock.node_types & (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_P))) {
+  if (addrblock.node_types & (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_PTYPE))) {
     /* Verify the sender lists themselves as a member of the
        group being updated. */
     for (i=0; i<NUMOF_ADDRSES; i++) {
       if (addrblock.addrs.recrd[i].node_type &
-	  (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_P))) {
+	  (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_PTYPE))) {
 	ipv4_addr_list = addrblock.addrs.recrd[i].addr;
 	while (ipv4_addr_list) {
 	  if (ipv4_addr_list->ip_addr == in_addr)
@@ -3330,7 +3338,7 @@ struct name_srvc_resource *
 
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if (cache_namecard->addrs.recrd[i].node_type &
-	    (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_P))) {
+	    (CACHE_ADDRBLCK_GRP_MASK & (~CACHE_NODEGRPFLG_PTYPE))) {
 	  ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 	  while (ipv4_addr_list) {
 	    if (ipv4_addr_list->ip_addr == in_addr)
@@ -3355,11 +3363,11 @@ struct name_srvc_resource *
     }
   }
 
-  if (addrblock.node_types & (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P))) {
+  if (addrblock.node_types & (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_PTYPE))) {
     /* Verify the sender lists himself as the owner. */
     for (i=0; i<NUMOF_ADDRSES; i++) {
       if (addrblock.addrs.recrd[i].node_type &
-	  (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P))) {
+	  (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_PTYPE))) {
 	ipv4_addr_list = addrblock.addrs.recrd[i].addr;
 	while (ipv4_addr_list) {
 	  if (ipv4_addr_list->ip_addr == in_addr)
@@ -3382,7 +3390,7 @@ struct name_srvc_resource *
 
       for (i=0; i<NUMOF_ADDRSES; i++) {
 	if (cache_namecard->addrs.recrd[i].node_type &
-	    (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_P))) {
+	    (CACHE_ADDRBLCK_UNIQ_MASK & (~CACHE_NODEFLG_PTYPE))) {
 	  ipv4_addr_list = cache_namecard->addrs.recrd[i].addr;
 	  while (ipv4_addr_list) {
 	    if (ipv4_addr_list->ip_addr == in_addr)
@@ -3504,7 +3512,7 @@ void name_srvc_func_namcftdem(struct name_srvc_resource *res,
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   /* This function fully shadows the difference
-   * between B mode and P mode operation. */
+   * between B-type mode and P mode of operation. */
 
   if (!((res) &&
 	(res->name) &&
@@ -3624,7 +3632,7 @@ unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
 #endif
 
   /* This function fully shadows the difference
-   * between B mode and P mode operation. */
+   * between B mode and P-type mode of operation. */
 
   if (!(res &&
 	res->name &&
@@ -3901,7 +3909,7 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
   unsigned char decoded_name[NETBIOS_NAME_LEN+1];
 
   /* This function fully shadows the difference
-   * between B mode and P mode operation. */
+   * between B mode and P-type mode of operation. */
 
 #define update_ttls						\
   if (res->ttl) {						\
@@ -3936,12 +3944,12 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 
 #define remove_Pies							\
   /* This cachenode is not yet in the cache. It is maybe having its	\
-   * P mode records removed if a bunch of conditions is not right.	\
+   * P-type mode records removed if a bunch of conditions is not right.	\
    * After that, it will be inserted into the cache. */			\
   if ((in_addr != nbns_addr) || (name_flags & FLG_B)) {                 \
     for (i=0; i<NUMOF_ADDRSES; i++) {					\
       if (cache_namecard->addrs.recrd[i].node_type &			\
-	  (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) {			\
+	  (CACHE_NODEFLG_PTYPE | CACHE_NODEGRPFLG_PTYPE)) {		\
 									\
 	destroy_addrlist(cache_namecard->addrs.recrd[i].addr);		\
 	cache_namecard->addrs.recrd[i].addr = 0;			\
@@ -3995,10 +4003,10 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 #else
 # define insert_addrses_in_old_namecard					\
   for (i=0; i<NUMOF_ADDRSES; i++) {					\
-    /* In P mode, only insert if the data is coming from the NBNS. */	\
+    /* In P-type mode, only insert if the data is coming from the NBNS. */ \
     if (addr_bigblock->addrs.recrd[i].addr &&				\
 	((addr_bigblock->addrs.recrd[i].node_type &	                \
-	  (CACHE_NODEFLG_P | CACHE_NODEGRPFLG_P)) ?	                \
+	  (CACHE_NODEFLG_PTYPE | CACHE_NODEGRPFLG_PTYPE)) ?		\
 	 ((nbns_addr == in_addr) && (!(name_flags & FLG_B))) :	        \
 	 TRUE)) {					                \
 									\
@@ -4022,6 +4030,15 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 
 #ifndef COMPILING_NBNS
   nbns_addr = get_nbnsaddr(res->name->next_name);
+
+  /* If there are no non-P-type modes AND the request does not come from NBNS... */
+  if ((!(addr_bigblock->node_types & (~(CACHE_NODEFLG_PTYPE |
+					CACHE_NODEGRPFLG_PTYPE)))) &&
+      (in_addr != nbns_addr)) {
+    destroy_bigblock(addr_bigblock);
+
+    return FALSE;
+  }
 #endif
   succedded = FALSE;
   decode_nbnodename(res->name->name, decoded_name);
@@ -4036,18 +4053,20 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 
     if (! cache_namecard) {
       cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
-				      (addr_bigblock->node_types & CACHE_ADDRBLCK_GRP_MASK),
+				      (addr_bigblock->node_types &
+				       CACHE_ADDRBLCK_GRP_MASK),
 				      FALSE, res->rrtype, res->rrclass);
-      update_ttls;
-
-      remove_doubles;
-
 #ifndef COMPILING_NBNS
       remove_Pies;
 #endif
 
       if (cache_namecard) {
-	if (! (add_scope(res->name->next_name, cache_namecard, nbworks__default_nbns) ||
+
+	update_ttls;
+	remove_doubles;
+
+	if (! (add_scope(res->name->next_name, cache_namecard,
+			 nbworks__default_nbns) ||
 	       add_name(cache_namecard, res->name->next_name))) {
 	  destroy_namecard(cache_namecard);
 	  /* failed */
@@ -4072,18 +4091,20 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 
     if (! cache_namecard) {
       cache_namecard = alloc_namecard(decoded_name, NETBIOS_NAME_LEN,
-				      (addr_bigblock->node_types & CACHE_ADDRBLCK_UNIQ_MASK),
+				      (addr_bigblock->node_types &
+				       CACHE_ADDRBLCK_UNIQ_MASK),
 				      FALSE, res->rrtype, res->rrclass);
-      update_ttls;
-
-      remove_doubles;
-
 #ifndef COMPILING_NBNS
       remove_Pies;
 #endif
 
       if (cache_namecard) {
-        if (! (add_scope(res->name->next_name, cache_namecard, nbworks__default_nbns) ||
+
+	update_ttls;
+	remove_doubles;
+
+        if (! (add_scope(res->name->next_name, cache_namecard,
+			 nbworks__default_nbns) ||
 	       add_name(cache_namecard, res->name->next_name))) {
           destroy_namecard(cache_namecard);
 	  /* failed */
