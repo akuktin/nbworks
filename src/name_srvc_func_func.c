@@ -1592,7 +1592,7 @@ void *refresh_scopes(void *i_ignore_this) {
   struct name_srvc_packet *pckt;
   union trans_id tid;
   struct ss_queue *trans;
-  time_t cur_time;
+  time_t cur_time, start_time;
   uint32_t wack;
   unsigned int i;
   struct {
@@ -1666,7 +1666,7 @@ void *refresh_scopes(void *i_ignore_this) {
       nanosleep(&(nbworks_all_port_cntl.newtid_sleeptime), 0);
 
       ss_set_inputdrop_name_tid(&tid);
-      cur_time = time(0);
+      start_time = cur_time = time(0);
       last_outpckt = outside_pckt = 0;
       wack = 0;
 
@@ -1676,7 +1676,7 @@ void *refresh_scopes(void *i_ignore_this) {
 
 	  if (outside_pckt == last_outpckt) {
 	    if (wack &&
-		(time(0) < (cur_time +
+		(time(0) < (start_time +
 			    nbworks_namsrvc_cntrl.max_wack_sleeptime))) {
 	      ss_set_normalstate_name_tid(&tid);
 
@@ -1732,9 +1732,9 @@ void *refresh_scopes(void *i_ignore_this) {
         }
 
 	if ((pckt->header.opcode == (OPCODE_RESPONSE |
-				      OPCODE_REFRESH)) ||
+				     OPCODE_REFRESH)) ||
 	    (pckt->header.opcode == (OPCODE_RESPONSE |
-				      OPCODE_REFRESH2))) {
+				     OPCODE_REFRESH2))) {
 	  if (pckt->header.rcode == 0) {
 
 	    name_srvc_do_updtreq(pckt, &(outside_pckt->addr),
