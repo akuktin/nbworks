@@ -1039,14 +1039,11 @@ uint32_t name_srvc_add_name(node_type_t node_type,
     group_flg = ISGROUP_YES;
 
   M_mode_jumpover:
-    if (name_srvc_B_add_name(name, name_type, scope,
-			     my_ip_address, group_flg,
-			     ttl))
-      return name_srvc_P_add_name(name, name_type, scope,
-				  my_ip_address, group_flg,
-				  ttl);
-    else
-      return 0;
+    return name_srvc_P_add_name(name, name_type, scope,
+				my_ip_address, group_flg,
+				name_srvc_B_add_name(name, name_type, scope,
+						     my_ip_address, group_flg,
+						     ttl));
     /*******/
 
   case CACHE_NODEFLG_H:
