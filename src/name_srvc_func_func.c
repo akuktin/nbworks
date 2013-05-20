@@ -1126,7 +1126,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
       }
 
       if ((outside_pckt->header.opcode == (OPCODE_RESPONSE |
-					    OPCODE_QUERY)) &&
+					   OPCODE_QUERY)) &&
 	  (outside_pckt->header.nm_flags & FLG_AA) &&
 	  (outside_pckt->header.rcode == 0)) {
 	/* POSITIVE NAME QUERY RESPONSE */
@@ -1272,57 +1272,68 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     return 0;
 
   decoded_name[NETBIOS_NAME_LEN] = '\0';
+  nbns_addr = nbworks__default_nbns;
 
   switch (node_type) {
   case CACHE_NODEFLG_H:
     target_flags = NBADDRLST_GROUP_NO;
-    target_flags = target_flags | NBADDRLST_NODET_H;
-    break;
+    goto H_mode_jumpover;
   case CACHE_NODEGRPFLG_H:
     target_flags = NBADDRLST_GROUP_YES;
+  H_mode_jumpover:
     target_flags = target_flags | NBADDRLST_NODET_H;
+    nbns_addr = get_nbnsaddr(scope);
+    res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
+				 nbns_addr, FLG_RD, TRUE);
+    if (! res) {
+      res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
+				   0, FLG_B, FALSE);
+    }
     break;
 
   case CACHE_NODEFLG_M:
     target_flags = NBADDRLST_GROUP_NO;
-    target_flags = target_flags | NBADDRLST_NODET_M;
-    break;
+    goto M_mode_jumpover;
   case CACHE_NODEGRPFLG_M:
     target_flags = NBADDRLST_GROUP_YES;
+  M_mode_jumpover:
     target_flags = target_flags | NBADDRLST_NODET_M;
+    res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
+				 0, FLG_B, FALSE);
+    if (! res) {
+      nbns_addr = get_nbnsaddr(scope);
+      res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
+				   nbns_addr, FLG_RD, TRUE);
+    }
     break;
 
   case CACHE_NODEFLG_P:
     target_flags = NBADDRLST_GROUP_NO;
-    target_flags = target_flags | NBADDRLST_NODET_P;
-    break;
+    goto P_mode_jumpover;
   case CACHE_NODEGRPFLG_P:
     target_flags = NBADDRLST_GROUP_YES;
+  P_mode_jumpover:
     target_flags = target_flags | NBADDRLST_NODET_P;
+    nbns_addr = get_nbnsaddr(scope);
+    res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
+				 nbns_addr, FLG_RD, TRUE);
     break;
 
   case CACHE_NODEFLG_B:
     target_flags = NBADDRLST_GROUP_NO;
-    target_flags = target_flags | NBADDRLST_NODET_B;
-    break;
+    goto B_mode_jumpover;
   case CACHE_NODEGRPFLG_B:
     target_flags = NBADDRLST_GROUP_YES;
+  B_mode_jumpover:
     target_flags = target_flags | NBADDRLST_NODET_B;
+    res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
+				 0, FLG_B, FALSE);
     break;
 
   default:
     /* TODO: errno signaling stuff */
     return 0;
     break;
-  }
-
-  nbns_addr = get_nbnsaddr(scope);
-  if (recursion) {
-    res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
-				 nbns_addr, FLG_RD, recursion);
-  } else {
-    res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
-				 0, FLG_B, recursion);
   }
 
   if (! res)
@@ -1444,7 +1455,7 @@ void name_srvc_release_name(unsigned char *name,
      * ID than the transaction between the daemon and other nodes. */
   case CACHE_NODEFLG_M:
   case CACHE_NODEGRPFLG_M:
-    /* This is not accoding to standard. Accoding to RFC 1002, if the NBNS
+    /* This is not accoding to standard. Accoding to RFC1002, if the NBNS
      * returns a negative response to the name removal request, I am supposed
      * to retain the name. But, the daemon goes forward and straight up deletes
      * the name anyway. The local broadcast segment is not informed of anything,
