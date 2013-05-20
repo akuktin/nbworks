@@ -61,6 +61,7 @@ ipv4_addr_t
 # endif
 ipv4_addr_t
   init_my_ip4_address(void);
+/* return: 0 = success; !0 = !success */
 int
   set_sockoption(int socket,
                  unsigned int what);

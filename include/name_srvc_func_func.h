@@ -81,13 +81,17 @@ uint32_t
                      ipv4_addr_t my_ip_address,
                      uint32_t ttl);
 struct name_srvc_resource_lst *
+  name_srvc_TCPcallout_name(struct name_srvc_packet *pckt,
+                            struct sockaddr_in *address,
+                            unsigned int recursive);
+struct name_srvc_resource_lst *
   name_srvc_callout_name(unsigned char *name,
                          unsigned char name_type,
                          struct nbworks_nbnamelst *scope,
                          ipv4_addr_t ask_address,
                          ipv4_addr_t listen_address,
-                         unsigned char name_flags,
-                         unsigned char recursive,
+                         unsigned int name_flags,
+                         unsigned int recursive,
                          struct sockaddr_in *target_addr);
 struct cache_namenode *
   name_srvc_find_name(unsigned char *name,
