@@ -186,7 +186,8 @@ inline int
                    struct ss_queue *trans);
 inline void *
   ss__recv_pckt(struct ss_queue *trans,
-                ipv4_addr_t listen);
+                ipv4_addr_t listen,
+                struct sockaddr_in *target_addr);
 inline struct ss_unif_pckt_list *
   ss__recv_entry(struct ss_queue *trans);
 inline void

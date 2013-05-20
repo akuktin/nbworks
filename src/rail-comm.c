@@ -1215,7 +1215,7 @@ void *dtg_server(void *arg) {
 
   while (! nbworks_dtg_srv_cntrl.all_stop) {
     while (438) {
-      pckt = ss__recv_pckt(trans, 0);
+      pckt = ss__recv_pckt(trans, 0, 0);
       if (pckt) {
 	if (queue->last_active < INFINITY)
 	  queue->last_active = INFINITY;

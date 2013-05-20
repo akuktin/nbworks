@@ -1071,7 +1071,8 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      ipv4_addr_t ask_address,
 						      ipv4_addr_t listen_address,
 						      unsigned char name_flags,
-						      unsigned char recursive) {
+						      unsigned char recursive,
+						      struct sockaddr_in *target_addr) {
   struct sockaddr_in addr;
   struct name_srvc_resource_lst *res, **last_res;
   struct nbworks_nbnamelst *authority;
@@ -1120,7 +1121,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
     ss_set_inputdrop_name_tid(&tid);
 
     while (1) {
-      outside_pckt = ss__recv_pckt(trans, listen_address);
+      outside_pckt = ss__recv_pckt(trans, listen_address, target_addr);
       if (! outside_pckt) {
 	break;
       }
@@ -1169,6 +1170,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
        * this one for removing the duplicates. */
       if (result) {
 	walker->next = 0;
+	destroy_name_srvc_pckt(outside_pckt, 1, 1);
 	break;
       }
 
@@ -1276,10 +1278,10 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     target_flags = target_flags | NBADDRLST_NODET_H;
     nbns_addr = get_nbnsaddr(scope);
     res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
-				 nbns_addr, FLG_RD, TRUE);
+				 nbns_addr, FLG_RD, TRUE, &addr);
     if (! res) {
       res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
-				   0, FLG_B, FALSE);
+				   0, FLG_B, FALSE, &addr);
     }
     break;
 
@@ -1291,11 +1293,11 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   M_mode_jumpover:
     target_flags = target_flags | NBADDRLST_NODET_M;
     res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
-				 0, FLG_B, FALSE);
+				 0, FLG_B, FALSE, &addr);
     if (! res) {
       nbns_addr = get_nbnsaddr(scope);
       res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
-				   nbns_addr, FLG_RD, TRUE);
+				   nbns_addr, FLG_RD, TRUE, &addr);
     }
     break;
 
@@ -1308,7 +1310,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     target_flags = target_flags | NBADDRLST_NODET_P;
     nbns_addr = get_nbnsaddr(scope);
     res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
-				 nbns_addr, FLG_RD, TRUE);
+				 nbns_addr, FLG_RD, TRUE, &addr);
     break;
 
   case CACHE_NODEFLG_B:
@@ -1319,7 +1321,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   B_mode_jumpover:
     target_flags = target_flags | NBADDRLST_NODET_B;
     res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
-				 0, FLG_B, FALSE);
+				 0, FLG_B, FALSE, &addr);
     break;
 
   default:
@@ -1331,7 +1333,6 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   if (! res)
     return 0;
 
-  memset(&addr, 0, sizeof(struct sockaddr_in));
   result = 0;
   res2 = res;
   name_srvc_do_updtreq(0, &addr,
@@ -1494,7 +1495,7 @@ int name_srvc_do_release_name(unsigned char *name,
 	if (stop_yourself)
 	  break;
 
-	outpckt = ss__recv_pckt(trans, listento);
+	outpckt = ss__recv_pckt(trans, listento, 0);
 	if (! outpckt) {
 	  ss_set_normalstate_name_tid(&tid);
 	  break;

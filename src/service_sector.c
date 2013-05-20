@@ -558,7 +558,8 @@ inline int ss_dtg_send_pckt(struct dtg_srvc_recvpckt *pckt,
 }
 
 inline void *ss__recv_pckt(struct ss_queue *trans,
-			   ipv4_addr_t listen) {
+			   ipv4_addr_t listen,
+			   struct sockaddr_in *target_addr) {
   struct ss_unif_pckt_list *holdme;
   ipv4_addr_t real_listen;
   void *result;
@@ -582,6 +583,9 @@ inline void *ss__recv_pckt(struct ss_queue *trans,
 	  (trans->incoming->addr.sin_addr.s_addr != real_listen)) {
 	trans->incoming->dstry(result, 1, 1);
       } else {
+	if (target_addr)
+	  memcpy(target_addr, &(trans->incoming->addr),
+		 sizeof(struct sockaddr_in));
 	if (trans->incoming->next) {
 	  holdme = trans->incoming;
 	  trans->incoming = trans->incoming->next;

@@ -264,7 +264,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
 				       pckt->aditionals->res->name->next_name,
 				       nbaddr_list->address,
 				       nbaddr_list->address,
-				       0, FALSE);
+				       0, FALSE, 0);
 	  if (res) {
 	    while (nbaddr_alllst) {
 	      nbaddr_list = nbaddr_alllst->next_address;

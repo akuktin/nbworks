@@ -87,7 +87,8 @@ struct name_srvc_resource_lst *
                          ipv4_addr_t ask_address,
                          ipv4_addr_t listen_address,
                          unsigned char name_flags,
-                         unsigned char recursive);
+                         unsigned char recursive,
+                         struct sockaddr_in *target_addr);
 struct cache_namenode *
   name_srvc_find_name(unsigned char *name,
                       unsigned char name_type,

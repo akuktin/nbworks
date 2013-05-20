@@ -109,7 +109,7 @@ uint32_t name_srvc_B_add_name(unsigned char *name,
   ss_set_inputdrop_name_tid(&tid);
 
   while (1) {
-    outside_pckt = ss__recv_pckt(trans, 0);
+    outside_pckt = ss__recv_pckt(trans, 0, 0);
     if (! outside_pckt) {
       break;
     }
