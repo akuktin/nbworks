@@ -1018,7 +1018,7 @@ uint32_t name_srvc_add_name(node_type_t node_type,
     return name_srvc_B_add_name(name, name_type, scope,
 				my_ip_address, group_flg,
 				ttl);
-    break;
+    /*******/
 
   case CACHE_NODEFLG_P:
     group_flg = ISGROUP_NO;
@@ -1030,14 +1030,42 @@ uint32_t name_srvc_add_name(node_type_t node_type,
     return name_srvc_P_add_name(name, name_type, scope,
 				my_ip_address, group_flg,
 				ttl);
-    break;
+    /*******/
+
+  case CACHE_NODEFLG_M:
+    group_flg = ISGROUP_NO;
+    goto M_mode_jumpover;
+  case CACHE_NODEGRPFLG_M:
+    group_flg = ISGROUP_YES;
+
+  M_mode_jumpover:
+    if (name_srvc_B_add_name(name, name_type, scope,
+			     my_ip_address, group_flg,
+			     ttl))
+      return name_srvc_P_add_name(name, name_type, scope,
+				  my_ip_address, group_flg,
+				  ttl);
+    else
+      return 0;
+    /*******/
+
+  case CACHE_NODEFLG_H:
+    group_flg = ISGROUP_NO;
+    goto H_mode_jumpover;
+  case CACHE_NODEGRPFLG_H:
+    group_flg = ISGROUP_YES;
+
+  H_mode_jumpover:
+    return name_srvc_B_add_name(name, name_type, scope,
+				my_ip_address, group_flg,
+				name_srvc_P_add_name(name, name_type, scope,
+						     my_ip_address, group_flg,
+						     ttl));
+    /*******/
 
   default:
     return 0;
-    break;
   }
-
-  return 0;
 }
 
 struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,

@@ -64,7 +64,7 @@ uint32_t name_srvc_P_add_name(unsigned char *name,
   unsigned char rcode;
   union trans_id tid;
 
-  if ((! name) ||
+  if ((! name) || (ttl == 0) ||
       /* The explanation for the below test:
        * 1. at least one of bits ISGROUP_YES or ISGROUP_NO must be set.
        * 2. you can not set both bits at the same time. */
