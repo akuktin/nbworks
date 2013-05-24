@@ -1449,7 +1449,7 @@ struct name_srvc_resource_lst *
     close(sckt);
     return 0;
   }
-  
+
   /* -- done receiving and parsing -- */
   close(sckt);
   return result;
