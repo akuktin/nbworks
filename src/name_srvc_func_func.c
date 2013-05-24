@@ -236,6 +236,7 @@ struct name_srvc_resource_lst *
 
 
   /* -- receiving and parsing ------- */
+ process_new_packet:
   if (SIZEOF_NAMEHDR_ONWIRE > recv(sckt, startbuff, SIZEOF_NAMEHDR_ONWIRE,
 				   MSG_WAITALL)) {
     close(sckt);
@@ -248,85 +249,136 @@ struct name_srvc_resource_lst *
 
   if ((returnheader.opcode == (OPCODE_RESPONSE |
 			       OPCODE_QUERY)) &&
-      (returnheader.nm_flags & FLG_AA) &&
-      (returnheader.rcode == 0)) {
-    /* POSITIVE NAME QUERY RESPONSE */
-    do_qstn = returnheader.numof_questions;
-    while (do_qstn) {
-      if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,
-				    &walker, &len_leftover, &offsetof_start,
-				    startbuff, &startbuff_walker)) {
-	close(sckt);
-	return 0;
-      }
-
-      do_qstn--;
-    }
-
-    do_answ = returnheader.numof_answers;
-    while (do_answ && (! result)) {
-      if (do_answ >= BLOCK_SIZE)
-	block = BLOCK_SIZE;
-      else
-	block = do_answ;
-      do_answ = do_answ - block;
-
-      last_res = &res;
-      while (block) {
-	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
-	cur_res = *last_res;
-	if (! cur_res) {
+      (returnheader.nm_flags & FLG_AA)) {
+    if (returnheader.rcode == 0) {
+      /* POSITIVE NAME QUERY RESPONSE */
+      do_qstn = returnheader.numof_questions;
+      while (do_qstn) {
+	if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,
+				      &walker, &len_leftover, &offsetof_start,
+				      startbuff, &startbuff_walker)) {
 	  close(sckt);
-	  destroy_name_srvc_res_lst(res, 1, 1);
 	  return 0;
 	}
-	cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
-					       &walker, &len_leftover, &offsetof_start,
-					       startbuff, &startbuff_walker);
-	if (! cur_res->res) {
-	  close(sckt);
-	  cur_res->next = 0;
-	  destroy_name_srvc_res_lst(res, 1, 1);
-	  return 0;
-	}
-	last_res = &(cur_res->next);
 
-	block--;
+	do_qstn--;
       }
 
-      cur_res = res;
-      last_res = &(res);
+      do_answ = returnheader.numof_answers;
+      while (do_answ && (! result)) {
+	if (do_answ >= BLOCK_SIZE)
+	  block = BLOCK_SIZE;
+	else
+	  block = do_answ;
+	do_answ = do_answ - block;
 
-      while (cur_res) {
-	if (cur_res->res &&
-	    (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
-					 cur_res->res->name)) &&
-	    (pckt->questions->qstn->qtype ==
-	     cur_res->res->rrtype) &&
-	    (pckt->questions->qstn->qclass ==
-	     cur_res->res->rrclass) &&
-	    (cur_res->res->rdata_t == nb_address_list)) {
-	  /* This is what we are looking for. */
-
-	  result = cur_res;
-
-	  cur_res = *last_res = cur_res->next;
-	  break;
-
-	} else {
+	last_res = &res;
+	while (block) {
+	  *last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	  cur_res = *last_res;
+	  if (! cur_res) {
+	    close(sckt);
+	    destroy_name_srvc_res_lst(res, 1, 1);
+	    return 0;
+	  }
+	  cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+						 &walker, &len_leftover, &offsetof_start,
+						 startbuff, &startbuff_walker);
+	  if (! cur_res->res) {
+	    close(sckt);
+	    cur_res->next = 0;
+	    destroy_name_srvc_res_lst(res, 1, 1);
+	    return 0;
+	  }
 	  last_res = &(cur_res->next);
-	  cur_res = cur_res->next;
+
+	  block--;
 	}
+
+	cur_res = res;
+	last_res = &(res);
+
+	while (cur_res) {
+	  if (cur_res->res &&
+	      (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
+					   cur_res->res->name)) &&
+	      (pckt->questions->qstn->qtype ==
+	       cur_res->res->rrtype) &&
+	      (pckt->questions->qstn->qclass ==
+	       cur_res->res->rrclass) &&
+	      (cur_res->res->rdata_t == nb_address_list)) {
+	    /* This is what we are looking for. */
+
+	    result = cur_res;
+
+	    cur_res = *last_res = cur_res->next;
+	    break;
+
+	  } else {
+	    last_res = &(cur_res->next);
+	    cur_res = cur_res->next;
+	  }
+	}
+
+	destroy_name_srvc_res_lst(res, 1, 1);
       }
 
-      destroy_name_srvc_res_lst(res, 1, 1);
+      close(sckt);
+
+      return result;
+    } else {
+      /* NEGATIVE NAME QUERY RESPONSE */
+      /* Just fast-forward it. */
+      do_qstn = returnheader.numof_questions;
+      while (do_qstn) {
+	if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,
+				      &walker, &len_leftover, &offsetof_start,
+				      startbuff, &startbuff_walker)) {
+	  close(sckt);
+	  return 0;
+	}
+
+	do_qstn--;
+      }
+      do_answ = returnheader.numof_answers;
+      while (do_answ) {
+	if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+				       &walker, &len_leftover, &offsetof_start,
+				       startbuff, &startbuff_walker)) {
+	  close(sckt);
+	  return 0;
+	}
+
+	do_answ--;
+      }
+      do_auth = returnheader.numof_authorities;
+      while (do_auth) {
+	if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+				       &walker, &len_leftover, &offsetof_start,
+				       startbuff, &startbuff_walker)) {
+	  close(sckt);
+	  return 0;
+	}
+
+	do_auth--;
+      }
+      do_adit = returnheader.numof_additional_recs;
+      while (do_adit) {
+	if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+				       &walker, &len_leftover, &offsetof_start,
+				       startbuff, &startbuff_walker)) {
+	  close(sckt);
+	  return 0;
+	}
+
+	do_adit--;
+      }
     }
 
-    close(sckt);
-
-    return result;
+    goto process_new_packet;
   }
 
+  // FORRELEASE: WACK and REDIRECT
   
   /* -- done receiving and parsing -- */
   return result;
@@ -1284,6 +1336,7 @@ struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 
   if (! target_addr)
     target_addr = &taddr;
+  memset(target_addr, 0, sizeof(struct sockaddr_in));
 
   walker = result = 0;
   truncated = FALSE;
