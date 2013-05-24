@@ -120,7 +120,8 @@ uint32_t
                              struct nbworks_nbnamelst *refname,
                              uint16_t reftype,
                              uint16_t refclass,
-                             uint32_t prev_best_ttl);
+                             uint32_t prev_best_ttl,
+                             struct name_srvc_resource_lst *state);
 void
   name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
                     struct nbworks_nbnamelst *refname,

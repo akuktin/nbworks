@@ -1943,7 +1943,7 @@ void *refresh_scopes(void *i_ignore_this) {
 	   *      (b) for the scope that it sent a WACK for
 	   *      (c) whose opinion on the matter we asked for
 	   *      I am not doing anything of that because COME-ON!! */
-          wack = name_srvc_find_biggestwack(pckt, 0, 0, 0, wack);
+          wack = name_srvc_find_biggestwack(pckt, 0, 0, 0, wack, 0);
 
 	  destroy_name_srvc_pckt(pckt, 1, 1);
 	  continue;
@@ -1987,10 +1987,11 @@ uint32_t name_srvc_find_biggestwack(struct name_srvc_packet *outside_pckt,
 				    struct nbworks_nbnamelst *refname,
 				    uint16_t reftype,
 				    uint16_t refclass,
-				    uint32_t prev_best_ttl) {
+				    uint32_t prev_best_ttl,
+				    struct name_srvc_resource_lst *state) {
   struct name_srvc_resource_lst *res;
 
-  for (res = outside_pckt->answers;
+  for ((state ? res = state : res = outside_pckt->answers);
        res != 0;
        res = res->next) {
     if (res->res) {
