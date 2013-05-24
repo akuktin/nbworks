@@ -13,10 +13,8 @@ socket. Because the daemon binds these ports, it must be run as root
 or with appropriate priviliges.
 .PP
 The nbworks multiplexing daemon implements the NBT \fIname
-service\fP. Currently, only the UDP-based part of the service and
-the receive half of the TCP-based part of the service is
-implemented, the send half of the TCP-based part is scheduled for
-implementation soon. The daemon also implements part of the server
+service\fP. Nbworks implements both the UDP and TCP halves of the
+name service. The daemon also implements part of the server
 side of the \fIdatagram service\fP and part of the server side of
 the \fIsession service\fP. The other parts of respecive services
 are implemented by the nbworks library.
