@@ -141,396 +141,6 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
 }
 
 #define BLOCK_SIZE 16
-struct name_srvc_resource_lst *
-  name_srvc_TCPcallout_name(struct name_srvc_packet *pckt,
-			    struct sockaddr_in *address,
-			    unsigned int recursive) {
-  int sckt;
-  struct timespec sleeptime;
-  struct name_srvc_pckt_header returnheader;
-  struct nbworks_nbnamelst *auth;
-  struct name_srvc_question_lst *cur_qstn;
-  struct name_srvc_resource_lst *res, *cur_res, **last_res, *result;
-  struct nbaddress_list *nbaddr_list;
-  uint32_t offsetof_start, biggest_wack, max_wack;
-  unsigned int block, len_leftover, do_stuff;
-  unsigned char buff[MAX_RDATALEN], startbuff[SIZEOF_STARTBUFF],
-    writebuff[TCP_READWRITEBUFF_LEN], *walker, *startbuff_walker,
-    *writewalker;
-  time_t start_time;
-
-#define send_resources							\
-  while (cur_res) {							\
-    writewalker =							\
-      fill_name_srvc_resource(cur_res->res, writebuff,			\
-			      (writebuff + TCP_READWRITEBUFF_LEN),	\
-			      0, 0);					\
-    if (writewalker > writebuff) {					\
-      if ((writewalker - writebuff) >					\
-	  send(sckt, writebuff,						\
-	       (writewalker - writebuff),				\
-	       MSG_NOSIGNAL)) {						\
-	close(sckt);							\
-	return 0;							\
-      }									\
-    }									\
-    cur_res = cur_res->next;						\
-  }
-
-#define ffrwd_resource(a)						\
-  do_stuff = a;								\
-  while (do_stuff) {							\
-    if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,		\
-				   &walker, &len_leftover, &offsetof_start, \
-				   startbuff, &startbuff_walker)) {	\
-      close(sckt);							\
-      return 0;								\
-    }									\
-    do_stuff--;								\
-  }
-
-#define ffrwd_question(a)						\
-  do_stuff = a;								\
-  while (do_stuff) {							\
-    if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,		\
-				  &walker, &len_leftover, &offsetof_start, \
-				  startbuff, &startbuff_walker)) {	\
-      close(sckt);							\
-      return 0;								\
-    }									\
-    do_stuff--;								\
-  }
-
-#define read_block							\
-  if (do_stuff >= BLOCK_SIZE)						\
-    block = BLOCK_SIZE;							\
-  else									\
-    block = do_stuff;							\
-  do_stuff = do_stuff - block;						\
-									\
-  last_res = &res;							\
-  while (block) {							\
-    *last_res = malloc(sizeof(struct name_srvc_resource_lst));		\
-    cur_res = *last_res;						\
-    if (! cur_res) {							\
-      close(sckt);							\
-      destroy_name_srvc_res_lst(res, 1, 1);				\
-      return 0;								\
-    }									\
-    cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,	\
-					   &walker, &len_leftover, &offsetof_start, \
-					   startbuff, &startbuff_walker); \
-    if (! cur_res->res) {						\
-      close(sckt);							\
-      cur_res->next = 0;						\
-      destroy_name_srvc_res_lst(res, 1, 1);				\
-      return 0;								\
-    }									\
-    last_res = &(cur_res->next);					\
-									\
-    block--;								\
-  }
-
-
-  if (! (pckt && address))
-    return 0;
-
-  /* -- verify ---------------------- */
-  if ((pckt->header.numof_questions != 1) ||
-      (pckt->header.numof_answers != 0) ||
-      (pckt->header.numof_authorities != 0) ||
-      (pckt->header.numof_additional_recs != 0))
-    return 0;
-  /* -- end verify ------------------ */
-
- all_over_again:
-  result = 0;
-  walker = startbuff;
-  len_leftover = 0;
-  offsetof_start = 0;
-  biggest_wack = 0;
-  startbuff_walker = startbuff;
-  auth = 0;
-
-
-  sckt = socket(PF_INET, SOCK_STREAM, 0);
-  if (sckt < 0)
-    return 0;
-
-  if (0 != connect(sckt, (struct sockaddr *)address,
-		   sizeof(struct sockaddr_in))) {
-    close(sckt);
-    return 0;
-  }
-
-  if (0 != set_sockoption(sckt, NONBLOCKING)) {
-    close(sckt);
-    return 0;
-  }
-
-  /* -- sending --------------------- */
-  fill_name_srvc_pckt_header(&(pckt->header), writebuff,
-			     (writebuff + TCP_READWRITEBUFF_LEN));
-
-  if (SIZEOF_NAMEHDR_ONWIRE > send(sckt, writebuff, SIZEOF_NAMEHDR_ONWIRE,
-				   MSG_NOSIGNAL)) {
-    close (sckt);
-    return 0;
-  }
-
-  cur_qstn = pckt->questions;
-  while (cur_qstn) {
-    writewalker =
-      fill_name_srvc_pckt_question(cur_qstn->qstn, writebuff,
-				   (writebuff + TCP_READWRITEBUFF_LEN), 0);
-    if (writewalker > writebuff) {
-      if ((writewalker - writebuff) > send(sckt, writebuff,
-					   (writewalker - writebuff),
-					   MSG_NOSIGNAL)) {
-	close(sckt);
-	return 0;
-      }
-    }	
-    cur_qstn = cur_qstn->next;
-  }
-
-  cur_res = pckt->answers;
-  send_resources;
-
-  cur_res = pckt->authorities;
-  send_resources;
-
-  cur_res = pckt->aditionals;
-  send_resources;
-  /* -- done sending ---------------- */
-
-  start_time = time(0);
-
-  /* -- receiving and parsing ------- */
- process_new_packet:
-  if (SIZEOF_NAMEHDR_ONWIRE > recv(sckt, startbuff, SIZEOF_NAMEHDR_ONWIRE,
-				   MSG_WAITALL)) {
-    close(sckt);
-    return 0;
-  }
-
-  read_name_srvc_pckt_header(&walker, (startbuff +SIZEOF_NAMEHDR_ONWIRE),
-			     &returnheader);
-  walker = buff;
-
-  if ((returnheader.opcode == (OPCODE_RESPONSE |
-			       OPCODE_QUERY)) &&
-      (returnheader.nm_flags & FLG_AA)) {
-    if (returnheader.rcode == 0) {
-      /* POSITIVE NAME QUERY RESPONSE */
-      ffrwd_question(returnheader.numof_questions);
-
-      do_stuff = returnheader.numof_answers;
-      while (do_stuff && (! result)) {
-	read_block;
-
-	cur_res = res;
-	last_res = &(res);
-
-	while (cur_res) {
-	  if (cur_res->res &&
-	      (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
-					   cur_res->res->name)) &&
-	      (pckt->questions->qstn->qtype ==
-	       cur_res->res->rrtype) &&
-	      (pckt->questions->qstn->qclass ==
-	       cur_res->res->rrclass) &&
-	      (cur_res->res->rdata_t == nb_address_list)) {
-	    /* This is what we are looking for. */
-
-	    result = cur_res;
-	    cur_res = *last_res = cur_res->next;
-	    result->next = 0;
-
-	    break;
-	  } else {
-	    last_res = &(cur_res->next);
-	    cur_res = cur_res->next;
-	  }
-	}
-
-	destroy_name_srvc_res_lst(res, 1, 1);
-      }
-
-      close(sckt);
-      return result;
-    } else {
-      /* NEGATIVE NAME QUERY RESPONSE */
-      /* Just fast-forward it. */
-      ffrwd_question(returnheader.numof_questions);
-
-      do_stuff = returnheader.numof_answers;
-      while (do_stuff && (! result)) {
-	read_block;
-
-	cur_res = res;
-	last_res = &(res);
-
-	while (cur_res) {
-	  if (cur_res->res &&
-	      (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
-					   cur_res->res->name)) &&
-	      ((cur_res->res->rrtype == RRTYPE_NULL) ||
-	       (pckt->questions->qstn->qtype ==
-		cur_res->res->rrtype)) &&
-	      (pckt->questions->qstn->qclass ==
-	       cur_res->res->rrclass)) {
-	    /* This is what we are looking for. */
-
-	    result = cur_res;
-	    cur_res = *last_res = cur_res->next;
-	    result->next = 0;
-
-	    break;
-	  } else {
-	    last_res = &(cur_res->next);
-	    cur_res = cur_res->next;
-	  }
-	}
-
-	destroy_name_srvc_res_lst(res, 1, 1);
-      }
-
-      /* Early test and exit. */
-      if (result) {
-	destroy_name_srvc_res_lst(result, 1, 1);
-	close(sckt);
-	return 0;
-      }
-
-      ffrwd_resource(returnheader.numof_authorities);
-      ffrwd_resource(returnheader.numof_additional_recs);
-
-      goto process_new_packet;
-    }
-  }
-
-  if (returnheader.opcode == (OPCODE_RESPONSE |
-			      OPCODE_WACK)) {
-    // WACK
-
-    ffrwd_question(returnheader.numof_questions);
-
-    do_stuff = returnheader.numof_answers;
-    while (do_stuff) {
-      read_block;
-
-      biggest_wack = name_srvc_find_biggestwack(0, pckt->questions->qstn->name,
-						pckt->questions->qstn->qtype,
-						pckt->questions->qstn->qclass,
-						biggest_wack, res);
-
-      destroy_name_srvc_res_lst(res, 1, 1);
-    }
-
-    ffrwd_resource(returnheader.numof_authorities);
-    ffrwd_resource(returnheader.numof_additional_recs);
-
-    if (biggest_wack) {
-      max_wack = nbworks_namsrvc_cntrl.max_wack_sleeptime;
-      if ((start_time + max_wack) > time(0)) {
-	close(sckt);
-	return 0;
-      }
-      if (biggest_wack > max_wack)
-	biggest_wack = max_wack;
-
-      sleeptime.tv_sec = biggest_wack;
-      sleeptime.tv_nsec = 0;
-
-      nanosleep(&sleeptime, 0);
-    }
-    biggest_wack = 0;
-
-    goto process_new_packet;
-  }
-
-  if ((returnheader.opcode == (OPCODE_RESPONSE |
-			       OPCODE_QUERY)) &&
-      (returnheader.nm_flags & FLG_RD) &&
-      (returnheader.rcode == 0)) {
-    // REDIRECT NAME QUERY RESPONSE, probably
-
-    ffrwd_question(returnheader.numof_questions);
-    ffrwd_resource(returnheader.numof_answers);
-
-    do_stuff = returnheader.numof_authorities;
-    while (do_stuff) {
-      read_block;
-
-      cur_res = res;
-
-      while (cur_res) {
-	if (cur_res->res &&
-	    (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
-					 cur_res->res->name)) &&
-	    (pckt->questions->qstn->qtype ==
-	     cur_res->res->rrtype) &&
-	    (pckt->questions->qstn->qclass ==
-	     cur_res->res->rrclass) &&
-	    (cur_res->res->rdata_t == nb_nodename)) {
-	  /* This is what we are looking for. */
-
-	  if (auth)
-	    nbworks_dstr_nbnodename(auth);
-	  auth = cur_res->res->rdata;
-	  cur_res->res->rdata = 0;
-	  break;
-	} else {
-	  cur_res = cur_res->next;
-	}
-      }
-
-      destroy_name_srvc_res_lst(res, 1, 1);
-    }
-    do_stuff = returnheader.numof_additional_recs;
-    while (do_stuff) {
-      read_block;
-
-      cur_res = res;
-
-      while (cur_res) {
-	if (cur_res->res &&
-	    (0 == nbworks_cmp_nbnodename(auth, cur_res->res->name)) &&
-	    (cur_res->res->rrtype == RRTYPE_A) &&
-	    (cur_res->res->rrclass == RRCLASS_IN) &&
-	    (cur_res->res->rdata_t == nb_NBT_node_ip_address) &&
-	    (cur_res->res->rdata)) {
-	  /* This is what we are looking for. */
-	  nbaddr_list = cur_res->res->rdata;
-
-	  /* VAXism below. */
-	  fill_32field(nbaddr_list->address,
-		       (unsigned char *)&(address->sin_addr.s_addr));
-	  break;
-	} else {
-	  cur_res = cur_res->next;
-	}
-      }
-
-      destroy_name_srvc_res_lst(res, 1, 1);
-      if (cur_res) {
-	close(sckt);
-	goto all_over_again;
-      }
-    }
-
-    close(sckt);
-    return 0;
-  }
-  
-  /* -- done receiving and parsing -- */
-  close(sckt);
-  return result;
-}
-#undef BLOCK_SIZE
-
-#define BLOCK_SIZE 16
 void name_srvc_daemon_newtidtcp(int sckt,
 				struct sockaddr_in *addr,
 				struct newtid_params *params,
@@ -1456,7 +1066,395 @@ uint32_t name_srvc_add_name(node_type_t node_type,
   }
 }
 
-/* XXX */
+#define BLOCK_SIZE 16
+struct name_srvc_resource_lst *
+  name_srvc_TCPcallout_name(struct name_srvc_packet *pckt,
+			    struct sockaddr_in *address,
+			    unsigned int recursive) {
+  int sckt;
+  struct timespec sleeptime;
+  struct name_srvc_pckt_header returnheader;
+  struct nbworks_nbnamelst *auth;
+  struct name_srvc_question_lst *cur_qstn;
+  struct name_srvc_resource_lst *res, *cur_res, **last_res, *result;
+  struct nbaddress_list *nbaddr_list;
+  uint32_t offsetof_start, biggest_wack, max_wack;
+  unsigned int block, len_leftover, do_stuff;
+  unsigned char buff[MAX_RDATALEN], startbuff[SIZEOF_STARTBUFF],
+    writebuff[TCP_READWRITEBUFF_LEN], *walker, *startbuff_walker,
+    *writewalker;
+  time_t start_time;
+
+#define send_resources							\
+  while (cur_res) {							\
+    writewalker =							\
+      fill_name_srvc_resource(cur_res->res, writebuff,			\
+			      (writebuff + TCP_READWRITEBUFF_LEN),	\
+			      0, 0);					\
+    if (writewalker > writebuff) {					\
+      if ((writewalker - writebuff) >					\
+	  send(sckt, writebuff,						\
+	       (writewalker - writebuff),				\
+	       MSG_NOSIGNAL)) {						\
+	close(sckt);							\
+	return 0;							\
+      }									\
+    }									\
+    cur_res = cur_res->next;						\
+  }
+
+#define ffrwd_resource(a)						\
+  do_stuff = a;								\
+  while (do_stuff) {							\
+    if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,		\
+				   &walker, &len_leftover, &offsetof_start, \
+				   startbuff, &startbuff_walker)) {	\
+      close(sckt);							\
+      return 0;								\
+    }									\
+    do_stuff--;								\
+  }
+
+#define ffrwd_question(a)						\
+  do_stuff = a;								\
+  while (do_stuff) {							\
+    if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,		\
+				  &walker, &len_leftover, &offsetof_start, \
+				  startbuff, &startbuff_walker)) {	\
+      close(sckt);							\
+      return 0;								\
+    }									\
+    do_stuff--;								\
+  }
+
+#define read_block							\
+  if (do_stuff >= BLOCK_SIZE)						\
+    block = BLOCK_SIZE;							\
+  else									\
+    block = do_stuff;							\
+  do_stuff = do_stuff - block;						\
+									\
+  last_res = &res;							\
+  while (block) {							\
+    *last_res = malloc(sizeof(struct name_srvc_resource_lst));		\
+    cur_res = *last_res;						\
+    if (! cur_res) {							\
+      close(sckt);							\
+      destroy_name_srvc_res_lst(res, 1, 1);				\
+      return 0;								\
+    }									\
+    cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,	\
+					   &walker, &len_leftover, &offsetof_start, \
+					   startbuff, &startbuff_walker); \
+    if (! cur_res->res) {						\
+      close(sckt);							\
+      cur_res->next = 0;						\
+      destroy_name_srvc_res_lst(res, 1, 1);				\
+      return 0;								\
+    }									\
+    last_res = &(cur_res->next);					\
+									\
+    block--;								\
+  }
+
+
+  if (! (pckt && address))
+    return 0;
+
+  /* -- verify ---------------------- */
+  if ((pckt->header.numof_questions != 1) ||
+      (pckt->header.numof_answers != 0) ||
+      (pckt->header.numof_authorities != 0) ||
+      (pckt->header.numof_additional_recs != 0))
+    return 0;
+  /* -- end verify ------------------ */
+
+ all_over_again:
+  result = 0;
+  walker = startbuff;
+  len_leftover = 0;
+  offsetof_start = 0;
+  biggest_wack = 0;
+  startbuff_walker = startbuff;
+  auth = 0;
+
+
+  sckt = socket(PF_INET, SOCK_STREAM, 0);
+  if (sckt < 0)
+    return 0;
+
+  if (0 != connect(sckt, (struct sockaddr *)address,
+		   sizeof(struct sockaddr_in))) {
+    close(sckt);
+    return 0;
+  }
+
+  if (0 != set_sockoption(sckt, NONBLOCKING)) {
+    close(sckt);
+    return 0;
+  }
+
+  /* -- sending --------------------- */
+  fill_name_srvc_pckt_header(&(pckt->header), writebuff,
+			     (writebuff + TCP_READWRITEBUFF_LEN));
+
+  if (SIZEOF_NAMEHDR_ONWIRE > send(sckt, writebuff, SIZEOF_NAMEHDR_ONWIRE,
+				   MSG_NOSIGNAL)) {
+    close (sckt);
+    return 0;
+  }
+
+  cur_qstn = pckt->questions;
+  while (cur_qstn) {
+    writewalker =
+      fill_name_srvc_pckt_question(cur_qstn->qstn, writebuff,
+				   (writebuff + TCP_READWRITEBUFF_LEN), 0);
+    if (writewalker > writebuff) {
+      if ((writewalker - writebuff) > send(sckt, writebuff,
+					   (writewalker - writebuff),
+					   MSG_NOSIGNAL)) {
+	close(sckt);
+	return 0;
+      }
+    }	
+    cur_qstn = cur_qstn->next;
+  }
+
+  cur_res = pckt->answers;
+  send_resources;
+
+  cur_res = pckt->authorities;
+  send_resources;
+
+  cur_res = pckt->aditionals;
+  send_resources;
+  /* -- done sending ---------------- */
+
+  start_time = time(0);
+
+  /* -- receiving and parsing ------- */
+ process_new_packet:
+  if (SIZEOF_NAMEHDR_ONWIRE > recv(sckt, startbuff, SIZEOF_NAMEHDR_ONWIRE,
+				   MSG_WAITALL)) {
+    close(sckt);
+    return 0;
+  }
+
+  read_name_srvc_pckt_header(&walker, (startbuff +SIZEOF_NAMEHDR_ONWIRE),
+			     &returnheader);
+  walker = buff;
+
+  if ((returnheader.opcode == (OPCODE_RESPONSE |
+			       OPCODE_QUERY)) &&
+      (returnheader.nm_flags & FLG_AA)) {
+    if (returnheader.rcode == 0) {
+      /* POSITIVE NAME QUERY RESPONSE */
+      ffrwd_question(returnheader.numof_questions);
+
+      do_stuff = returnheader.numof_answers;
+      while (do_stuff && (! result)) {
+	read_block;
+
+	cur_res = res;
+	last_res = &(res);
+
+	while (cur_res) {
+	  if (cur_res->res &&
+	      (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
+					   cur_res->res->name)) &&
+	      (pckt->questions->qstn->qtype ==
+	       cur_res->res->rrtype) &&
+	      (pckt->questions->qstn->qclass ==
+	       cur_res->res->rrclass) &&
+	      (cur_res->res->rdata_t == nb_address_list)) {
+	    /* This is what we are looking for. */
+
+	    result = cur_res;
+	    cur_res = *last_res = cur_res->next;
+	    result->next = 0;
+
+	    break;
+	  } else {
+	    last_res = &(cur_res->next);
+	    cur_res = cur_res->next;
+	  }
+	}
+
+	destroy_name_srvc_res_lst(res, 1, 1);
+      }
+
+      close(sckt);
+      return result;
+    } else {
+      /* NEGATIVE NAME QUERY RESPONSE */
+      /* Just fast-forward it. */
+      ffrwd_question(returnheader.numof_questions);
+
+      do_stuff = returnheader.numof_answers;
+      while (do_stuff && (! result)) {
+	read_block;
+
+	cur_res = res;
+	last_res = &(res);
+
+	while (cur_res) {
+	  if (cur_res->res &&
+	      (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
+					   cur_res->res->name)) &&
+	      ((cur_res->res->rrtype == RRTYPE_NULL) ||
+	       (pckt->questions->qstn->qtype ==
+		cur_res->res->rrtype)) &&
+	      (pckt->questions->qstn->qclass ==
+	       cur_res->res->rrclass)) {
+	    /* This is what we are looking for. */
+
+	    result = cur_res;
+	    cur_res = *last_res = cur_res->next;
+	    result->next = 0;
+
+	    break;
+	  } else {
+	    last_res = &(cur_res->next);
+	    cur_res = cur_res->next;
+	  }
+	}
+
+	destroy_name_srvc_res_lst(res, 1, 1);
+      }
+
+      /* Early test and exit. */
+      if (result) {
+	destroy_name_srvc_res_lst(result, 1, 1);
+	close(sckt);
+	return 0;
+      }
+
+      ffrwd_resource(returnheader.numof_authorities);
+      ffrwd_resource(returnheader.numof_additional_recs);
+
+      goto process_new_packet;
+    }
+  }
+
+  if (returnheader.opcode == (OPCODE_RESPONSE |
+			      OPCODE_WACK)) {
+    // WACK
+
+    ffrwd_question(returnheader.numof_questions);
+
+    do_stuff = returnheader.numof_answers;
+    while (do_stuff) {
+      read_block;
+
+      biggest_wack = name_srvc_find_biggestwack(0, pckt->questions->qstn->name,
+						pckt->questions->qstn->qtype,
+						pckt->questions->qstn->qclass,
+						biggest_wack, res);
+
+      destroy_name_srvc_res_lst(res, 1, 1);
+    }
+
+    ffrwd_resource(returnheader.numof_authorities);
+    ffrwd_resource(returnheader.numof_additional_recs);
+
+    if (biggest_wack) {
+      max_wack = nbworks_namsrvc_cntrl.max_wack_sleeptime;
+      if ((start_time + max_wack) > time(0)) {
+	close(sckt);
+	return 0;
+      }
+      if (biggest_wack > max_wack)
+	biggest_wack = max_wack;
+
+      sleeptime.tv_sec = biggest_wack;
+      sleeptime.tv_nsec = 0;
+
+      nanosleep(&sleeptime, 0);
+    }
+    biggest_wack = 0;
+
+    goto process_new_packet;
+  }
+
+  if ((returnheader.opcode == (OPCODE_RESPONSE |
+			       OPCODE_QUERY)) &&
+      (returnheader.nm_flags & FLG_RD) &&
+      (returnheader.rcode == 0)) {
+    // REDIRECT NAME QUERY RESPONSE, probably
+
+    ffrwd_question(returnheader.numof_questions);
+    ffrwd_resource(returnheader.numof_answers);
+
+    do_stuff = returnheader.numof_authorities;
+    while (do_stuff) {
+      read_block;
+
+      cur_res = res;
+
+      while (cur_res) {
+	if (cur_res->res &&
+	    (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
+					 cur_res->res->name)) &&
+	    (pckt->questions->qstn->qtype ==
+	     cur_res->res->rrtype) &&
+	    (pckt->questions->qstn->qclass ==
+	     cur_res->res->rrclass) &&
+	    (cur_res->res->rdata_t == nb_nodename)) {
+	  /* This is what we are looking for. */
+
+	  if (auth)
+	    nbworks_dstr_nbnodename(auth);
+	  auth = cur_res->res->rdata;
+	  cur_res->res->rdata = 0;
+	  break;
+	} else {
+	  cur_res = cur_res->next;
+	}
+      }
+
+      destroy_name_srvc_res_lst(res, 1, 1);
+    }
+    do_stuff = returnheader.numof_additional_recs;
+    while (do_stuff) {
+      read_block;
+
+      cur_res = res;
+
+      while (cur_res) {
+	if (cur_res->res &&
+	    (0 == nbworks_cmp_nbnodename(auth, cur_res->res->name)) &&
+	    (cur_res->res->rrtype == RRTYPE_A) &&
+	    (cur_res->res->rrclass == RRCLASS_IN) &&
+	    (cur_res->res->rdata_t == nb_NBT_node_ip_address) &&
+	    (cur_res->res->rdata)) {
+	  /* This is what we are looking for. */
+	  nbaddr_list = cur_res->res->rdata;
+
+	  /* VAXism below. */
+	  fill_32field(nbaddr_list->address,
+		       (unsigned char *)&(address->sin_addr.s_addr));
+	  break;
+	} else {
+	  cur_res = cur_res->next;
+	}
+      }
+
+      destroy_name_srvc_res_lst(res, 1, 1);
+      if (cur_res) {
+	close(sckt);
+	goto all_over_again;
+      }
+    }
+
+    close(sckt);
+    return 0;
+  }
+  
+  /* -- done receiving and parsing -- */
+  close(sckt);
+  return result;
+}
+#undef BLOCK_SIZE
 
 struct name_srvc_resource_lst *name_srvc_callout_name(unsigned char *name,
 						      unsigned char name_type,
