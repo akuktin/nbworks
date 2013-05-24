@@ -146,14 +146,16 @@ struct name_srvc_resource_lst *
 			    struct sockaddr_in *address,
 			    unsigned int recursive) {
   int sckt;
+  struct timespec sleeptime;
   struct name_srvc_pckt_header returnheader;
   struct name_srvc_question_lst *cur_qstn;
   struct name_srvc_resource_lst *res, *cur_res, **last_res, *result;
-  uint32_t offsetof_start;
+  uint32_t offsetof_start, biggest_wack, max_wack;
   unsigned int do_qstn, do_answ, do_auth, do_adit, block, len_leftover;
   unsigned char buff[MAX_RDATALEN], startbuff[SIZEOF_STARTBUFF],
     writebuff[TCP_READWRITEBUFF_LEN], *walker, *startbuff_walker,
     *writewalker;
+  time_t start_time;
 
 #define send_resources							\
   while (cur_res) {							\
@@ -181,7 +183,15 @@ struct name_srvc_resource_lst *
   walker = startbuff;
   len_leftover = 0;
   offsetof_start = 0;
+  biggest_wack = 0;
   startbuff_walker = startbuff;
+
+  /* -- verify ---------------------- */
+  if (!((pckt->header.numof_questions == 1) &&
+	(pckt->header.numof_answers == pckt->header.numof_authorities ==
+	 pckt->header.numof_additional_recs == 0)))
+    return 0;
+  /* -- end verify ------------------ */
 
 
   sckt = socket(PF_INET, SOCK_STREAM, 0);
@@ -234,6 +244,7 @@ struct name_srvc_resource_lst *
   send_resources;
   /* -- done sending ---------------- */
 
+  start_time = time(0);
 
   /* -- receiving and parsing ------- */
  process_new_packet:
@@ -310,10 +321,10 @@ struct name_srvc_resource_lst *
 	    /* This is what we are looking for. */
 
 	    result = cur_res;
-
 	    cur_res = *last_res = cur_res->next;
-	    break;
+	    result->next = 0;
 
+	    break;
 	  } else {
 	    last_res = &(cur_res->next);
 	    cur_res = cur_res->next;
@@ -324,7 +335,6 @@ struct name_srvc_resource_lst *
       }
 
       close(sckt);
-
       return result;
     } else {
       /* NEGATIVE NAME QUERY RESPONSE */
@@ -341,16 +351,71 @@ struct name_srvc_resource_lst *
 	do_qstn--;
       }
       do_answ = returnheader.numof_answers;
-      while (do_answ) {
-	if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
-				       &walker, &len_leftover, &offsetof_start,
-				       startbuff, &startbuff_walker)) {
-	  close(sckt);
-	  return 0;
+      while (do_answ && (! result)) {
+	if (do_answ >= BLOCK_SIZE)
+	  block = BLOCK_SIZE;
+	else
+	  block = do_answ;
+	do_answ = do_answ - block;
+
+	last_res = &res;
+	while (block) {
+	  *last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	  cur_res = *last_res;
+	  if (! cur_res) {
+	    close(sckt);
+	    destroy_name_srvc_res_lst(res, 1, 1);
+	    return 0;
+	  }
+	  cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+						 &walker, &len_leftover, &offsetof_start,
+						 startbuff, &startbuff_walker);
+	  if (! cur_res->res) {
+	    close(sckt);
+	    cur_res->next = 0;
+	    destroy_name_srvc_res_lst(res, 1, 1);
+	    return 0;
+	  }
+	  last_res = &(cur_res->next);
+
+	  block--;
 	}
 
-	do_answ--;
+	cur_res = res;
+	last_res = &(res);
+
+	while (cur_res) {
+	  if (cur_res->res &&
+	      (0 == nbworks_cmp_nbnodename(pckt->questions->qstn->name,
+					   cur_res->res->name)) &&
+	      (pckt->questions->qstn->qtype ==
+	       cur_res->res->rrtype) &&
+	      (pckt->questions->qstn->qclass ==
+	       cur_res->res->rrclass) &&
+	      (cur_res->res->rdata_t == nb_address_list)) {
+	    /* This is what we are looking for. */
+
+	    result = cur_res;
+	    cur_res = *last_res = cur_res->next;
+	    result->next = 0;
+
+	    break;
+	  } else {
+	    last_res = &(cur_res->next);
+	    cur_res = cur_res->next;
+	  }
+	}
+
+	destroy_name_srvc_res_lst(res, 1, 1);
       }
+
+      /* Early test and exit. */
+      if (result) {
+	destroy_name_srvc_res_lst(result, 1, 1);
+	close(sckt);
+	return 0;
+      }
+
       do_auth = returnheader.numof_authorities;
       while (do_auth) {
 	if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
@@ -373,14 +438,108 @@ struct name_srvc_resource_lst *
 
 	do_adit--;
       }
+
+      goto process_new_packet;
+    }
+  }
+
+  if (returnheader.opcode == (OPCODE_RESPONSE |
+			      OPCODE_WACK)) {
+    do_qstn = returnheader.numof_questions;
+    while (do_qstn) {
+      if (! ffrwd_name_srvc_qstnTCP(sckt, buff, MAX_RDATALEN,
+				    &walker, &len_leftover, &offsetof_start,
+				    startbuff, &startbuff_walker)) {
+	close(sckt);
+	return 0;
+      }
+
+      do_qstn--;
+    }
+    do_answ = returnheader.numof_answers;
+    while (do_answ && (! result)) {
+      if (do_answ >= BLOCK_SIZE)
+	block = BLOCK_SIZE;
+      else
+	block = do_answ;
+      do_answ = do_answ - block;
+
+      last_res = &res;
+      while (block) {
+	*last_res = malloc(sizeof(struct name_srvc_resource_lst));
+	cur_res = *last_res;
+	if (! cur_res) {
+	  close(sckt);
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return 0;
+	}
+	cur_res->res = read_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+					       &walker, &len_leftover, &offsetof_start,
+					       startbuff, &startbuff_walker);
+	if (! cur_res->res) {
+	  close(sckt);
+	  cur_res->next = 0;
+	  destroy_name_srvc_res_lst(res, 1, 1);
+	  return 0;
+	}
+	last_res = &(cur_res->next);
+
+	block--;
+      }
+
+      biggest_wack = name_srvc_find_biggestwack(0, pckt->questions->qstn->name,
+						pckt->questions->qstn->qtype,
+						pckt->questions->qstn->qclass,
+						biggest_wack, res);
+
+      destroy_name_srvc_res_lst(res, 1, 1);
+    }
+
+    do_auth = returnheader.numof_authorities;
+    while (do_auth) {
+      if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+				     &walker, &len_leftover, &offsetof_start,
+				     startbuff, &startbuff_walker)) {
+	close(sckt);
+	return 0;
+      }
+
+      do_auth--;
+    }
+    do_adit = returnheader.numof_additional_recs;
+    while (do_adit) {
+      if (! ffrwd_name_srvc_resrcTCP(sckt, buff, MAX_RDATALEN,
+				     &walker, &len_leftover, &offsetof_start,
+				     startbuff, &startbuff_walker)) {
+	close(sckt);
+	return 0;
+      }
+
+      do_adit--;
+    }
+
+    if (biggest_wack) {
+      max_wack = nbworks_namsrvc_cntrl.max_wack_sleeptime;
+      if ((start_time + max_wack) > time(0)) {
+	close(sckt);
+	return 0;
+      }
+      if (biggest_wack > max_wack)
+	biggest_wack = max_wack;
+
+      sleeptime.tv_sec = biggest_wack;
+      sleeptime.tv_nsec = 0;
+
+      nanosleep(&sleeptime, 0);
     }
 
     goto process_new_packet;
   }
 
-  // FORRELEASE: WACK and REDIRECT
+  // FORRELEASE: REDIRECT
   
   /* -- done receiving and parsing -- */
+  close(sckt);
   return result;
 }
 #undef BLOCK_SIZE
