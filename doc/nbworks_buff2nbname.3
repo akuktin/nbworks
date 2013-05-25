@@ -16,6 +16,11 @@ The \fBnbworks_buff2nbname\fP() function translates a string
 signifying a single label into the \fBstruct nbworks_nbnamelst\fP
 structure.
 .PP
+\fBIMPORTANT:\fP If you wish to execute a single function call to
+generate a NetBIOS name that is guaranteed to be
+\fBNBWORKS_NBNAME_LEN\fP long - the length all nbworks function require you
+to - you are really looking for \fBnbworks_create_nbnodename\fP().
+.PP
 The argument \fIbuff\fP is a pointer to a string to be translated.
 .PP
 The argument \fIlenof_string\fP is a number describing the length of
@@ -32,11 +37,6 @@ information.
 .SH NOTES
 This is only really usefull for assembling the scope one label at a
 time.
-.PP
-\fBIMPORTANT:\fP If you wish to execute a single function call to
-generate a NetBIOS name that is guaranteed to be
-\fBNBWORKS_NBNAME_LEN\fP long - the length all nbworks function require you
-to - you are really looking for \fBnbworks_create_nbnodename\fP().
 .PP
 This function does not test for embedded NULLs in the string pointed
 to by \fIbuff\fP if lenof_string has a valid non-zero value.

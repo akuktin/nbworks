@@ -22,8 +22,12 @@
 /***********************/
 # include <sys/socket.h>
 
-# define MSG_BRDCAST MSG_PROXY     /* Trying hard to be portable... */
-# define MSG_GROUP   MSG_DONTROUTE /* by fitting everything into uint16_t. */
+# ifndef MSG_BRDCAST
+#  define MSG_BRDCAST MSG_PROXY     /* Trying hard to be portable by... */
+# endif
+# ifndef MSG_GROUP
+#  define MSG_GROUP   MSG_DONTROUTE /* ...fitting everything into int16_t. */
+# endif
 /***********************/
 
 # define NBWORKS_NBNAME_LEN 16
