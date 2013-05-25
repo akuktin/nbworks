@@ -113,7 +113,7 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
 #ifdef COMPILING_NBNS
 			   params->trans, params->id.tid, 0, 0,
 #endif
-			   0);
+			   outpckt->header.nm_flags, 0);
 
     return;
   }
@@ -609,7 +609,7 @@ void name_srvc_daemon_newtidtcp(int sckt,
 			     params->trans, params->id.tid,
 			     &numof_OK, &numof_notOK,
 #endif
-			     &res2);
+			     header.nm_flags, &res2);
 
       destroy_name_srvc_res_lst(res, 1, 1);
     }
@@ -960,7 +960,8 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
       name_srvc_do_namrelreq(outpckt, &(outside_pckt->addr),
 			     &(ss_alltrans[index].trans),
-			     index, 0, 0, 0);
+			     index, 0, 0,
+			     outpckt->header.nm_flags, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1689,7 +1690,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     break;
 
   case CACHE_NODEFLG_M:
-  case CACHE_NODEGRPFLG_M: 
+  case CACHE_NODEGRPFLG_M:
     res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
 				 0, FLG_B, FALSE, &addr);
     if (! res) {
@@ -2141,6 +2142,8 @@ void name_srvc_do_wack(struct name_srvc_packet *outside_pckt,
   struct name_srvc_resource_lst *res;
   uint32_t ttl;
 
+  if (! outside_pckt)
+    return;
   ttl = 0;
 
   for (res = outside_pckt->answers;
@@ -4181,10 +4184,10 @@ struct name_srvc_resource_lst *
 			 unsigned long *numof_OK,
 			 unsigned long *numof_notOK,
 #endif
+			 uint32_t name_flags,
 			 struct name_srvc_resource_lst **state) {
   struct name_srvc_resource_lst *res;
   ipv4_addr_t in_addr;
-  uint32_t name_flags;
 #ifdef COMPILING_NBNS
   struct name_srvc_packet *pckt;
   struct name_srvc_resource_lst **last_res, *answer, **last_answr;
@@ -4212,12 +4215,13 @@ struct name_srvc_resource_lst *
   numof_succedded = 0;
   numof_failed = 0;
 #endif
-  name_flags = outpckt->header.nm_flags;
 
   if (state && *state)
     res = *state;
-  else
+  else {
+    name_flags = outpckt->header.nm_flags;
     res = outpckt->aditionals;
+  }
   while (res) {
 #ifdef COMPILING_NBNS
     if (name_srvc_func_namrelreq(res->res, in_addr,
@@ -4571,7 +4575,8 @@ struct name_srvc_resource_lst *
     return 0;
 
 #ifdef COMPILING_NBNS
-  if ((outpckt->header.nm_flags & FLG_B) ||
+  if ((outpckt ? (outpckt->header.nm_flags & FLG_B) :
+                 (name_flags & FLG_B)) ||
       (! trans))
     return 0;
 

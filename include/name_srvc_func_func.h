@@ -207,6 +207,7 @@ struct name_srvc_resource_lst *
                          unsigned long *numof_OK,
                          unsigned long *numof_notOK,
 #endif
+                         uint32_t name_flags,
                          struct name_srvc_resource_lst **state);
 /* returns: !0 = success, 0 = failure */
 unsigned int
