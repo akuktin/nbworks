@@ -224,6 +224,7 @@ struct name_srvc_resource_lst *
                        unsigned long *numof_OK,
                        unsigned long *numof_notOK,
 #endif
+                       uint32_t name_flags,
                        time_t cur_time,
                        struct name_srvc_resource_lst **state,
                        struct cache_namenode **namecard);

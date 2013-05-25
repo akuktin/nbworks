@@ -130,7 +130,7 @@ void name_srvc_daemon_newtidwrk(struct name_srvc_packet *outpckt,
 #ifdef COMPILING_NBNS
 			 params->trans, params->id.tid, 0, 0,
 #endif
-			 cur_time, 0, 0);
+			 outpckt->header.nm_flags, cur_time, 0, 0);
 
     return;
   }
@@ -664,7 +664,7 @@ void name_srvc_daemon_newtidtcp(int sckt,
 			   params->trans, params->id.tid,
 			   &numof_OK, &numof_notOK,
 #endif
-			   cur_time, &res2, 0);
+			   header.nm_flags, cur_time, &res2, 0);
 
       destroy_name_srvc_res_lst(res, 1, 1);
     }
@@ -976,7 +976,8 @@ struct name_srvc_packet *name_srvc_NBNStid_hndlr(unsigned int master,
 
       name_srvc_do_updtreq(outpckt, &(outside_pckt->addr),
 			   &(ss_alltrans[index].trans),
-			   index, 0, 0, cur_time, 0, 0);
+			   index, 0, 0, outpckt->header.nm_flags,
+			   cur_time, 0, 0);
 
       destroy_name_srvc_pckt(outpckt, 1, 1);
       continue;
@@ -1671,19 +1672,13 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
   struct cache_namenode *result;
   struct name_srvc_resource_lst *res, *res2;
   ipv4_addr_t nbns_addr;
-  uint16_t target_flags;
 
   if (! name)
     return 0;
 
   switch (node_type) {
   case CACHE_NODEFLG_H:
-    target_flags = NBADDRLST_GROUP_NO;
-    goto H_mode_jumpover;
   case CACHE_NODEGRPFLG_H:
-    target_flags = NBADDRLST_GROUP_YES;
-  H_mode_jumpover:
-    target_flags = target_flags | NBADDRLST_NODET_H;
     nbns_addr = get_nbnsaddr(scope);
     res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
 				 nbns_addr, FLG_RD, TRUE, &addr);
@@ -1694,12 +1689,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     break;
 
   case CACHE_NODEFLG_M:
-    target_flags = NBADDRLST_GROUP_NO;
-    goto M_mode_jumpover;
-  case CACHE_NODEGRPFLG_M:
-    target_flags = NBADDRLST_GROUP_YES;
-  M_mode_jumpover:
-    target_flags = target_flags | NBADDRLST_NODET_M;
+  case CACHE_NODEGRPFLG_M: 
     res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
 				 0, FLG_B, FALSE, &addr);
     if (! res) {
@@ -1710,24 +1700,14 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
     break;
 
   case CACHE_NODEFLG_P:
-    target_flags = NBADDRLST_GROUP_NO;
-    goto P_mode_jumpover;
   case CACHE_NODEGRPFLG_P:
-    target_flags = NBADDRLST_GROUP_YES;
-  P_mode_jumpover:
-    target_flags = target_flags | NBADDRLST_NODET_P;
     nbns_addr = get_nbnsaddr(scope);
     res = name_srvc_callout_name(name, name_type, scope, nbns_addr,
 				 nbns_addr, FLG_RD, TRUE, &addr);
     break;
 
   case CACHE_NODEFLG_B:
-    target_flags = NBADDRLST_GROUP_NO;
-    goto B_mode_jumpover;
   case CACHE_NODEGRPFLG_B:
-    target_flags = NBADDRLST_GROUP_YES;
-  B_mode_jumpover:
-    target_flags = target_flags | NBADDRLST_NODET_B;
     res = name_srvc_callout_name(name, name_type, scope, brdcst_addr,
 				 0, FLG_B, FALSE, &addr);
     break;
@@ -1747,7 +1727,7 @@ struct cache_namenode *name_srvc_find_name(unsigned char *name,
 #ifdef COMPILING_NBNS
 		       0, 0, 0, 0,
 #endif
-		       time(0), &res2, &result);
+		       (FLG_AA | FLG_RA), time(0), &res2, &result);
 
   destroy_name_srvc_res_lst(res, 1, 1);
 
@@ -2102,7 +2082,7 @@ void *refresh_scopes(void *i_ignore_this) {
 #ifdef COMPILING_NBNS
 				 trans, tid.tid, 0, 0,
 #endif
-				 cur_time, 0, 0);
+				 pckt->header.nm_flags, cur_time, 0, 0);
 
 	  } else {
 
@@ -4572,11 +4552,11 @@ struct name_srvc_resource_lst *
 		       unsigned long *numof_OK,
 		       unsigned long *numof_notOK,
 #endif
+		       uint32_t name_flags,
 		       time_t cur_time,
 		       struct name_srvc_resource_lst **state,
 		       struct cache_namenode **namecard) {
   struct name_srvc_resource_lst *res;
-  uint32_t name_flags;
   ipv4_addr_t in_addr;
 #ifdef COMPILING_NBNS
   struct name_srvc_packet *pckt;
@@ -4603,15 +4583,16 @@ struct name_srvc_resource_lst *
   numof_succedded = 0;
   numof_failed = 0;
 #endif
-  name_flags = outpckt->header.nm_flags;
 
   /* Make sure only NBNS is listened to in P mode. */
   read_32field((unsigned char *)&(addr->sin_addr.s_addr), &in_addr);
 
-  if (state && *state)
+  if (state && *state) {
     res = *state;
-  else
+  } else {
+    name_flags = outpckt->header.nm_flags;
     res = outpckt->aditionals;
+  }
   while (res) {
 #ifdef COMPILING_NBNS
     if (name_srvc_func_updtreq(res->res, in_addr, name_flags,
