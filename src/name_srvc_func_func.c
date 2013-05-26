@@ -2306,22 +2306,24 @@ struct name_srvc_resource_lst *
   if (state)
     return answer;
 
-  pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
+  if (answer) {
+    pckt = alloc_name_srvc_pckt(0, 0, 0, 0);
 
-  if (pckt) {
-    pckt->for_del = TRUE;
+    if (pckt) {
+      pckt->for_del = TRUE;
 
-    pckt->header.transaction_id = tid;
-    pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
-    pckt->header.nm_flags = FLG_AA;
-    pckt->header.rcode = RCODE_CFT_ERR;
+      pckt->header.transaction_id = tid;
+      pckt->header.opcode = (OPCODE_RESPONSE | OPCODE_REGISTRATION);
+      pckt->header.nm_flags = FLG_AA;
+      pckt->header.rcode = RCODE_CFT_ERR;
 
-    pckt->header.numof_answers = numof_responses;
-    pckt->answers = answer;
+      pckt->header.numof_answers = numof_responses;
+      pckt->answers = answer;
 
-    ss_name_send_pckt(pckt, addr, trans);
-  } else {
-    destroy_name_srvc_res_lst(answer, 1, 1);
+      ss_name_send_pckt(pckt, addr, trans);
+    } else {
+      destroy_name_srvc_res_lst(answer, 1, 1);
+    }
   }
 
   return 0;

@@ -159,7 +159,9 @@ inline unsigned char *fill_48field(uint64_t content,
   int i;
   uint64_t flags;
 
-  flags = 0xff0000000000;
+//  flags = (uint64_t)0xff0000000000;
+  flags = 0xff00;
+  flags = flags << (8*4);
 
   for (i = 5; i >= 0; i--) {
     *field = (unsigned char)((content & flags) >> (8 * i));
@@ -182,7 +184,9 @@ inline unsigned char *fill_64field(uint64_t content,
   int i;
   uint64_t flags;
 
-  flags = 0xff00000000000000;
+//  flags = (uint64_t)0xff000000 00000000;
+  flags = 0xff000000;
+  flags = flags << (8*4);
 
   for (i = 7; i >= 0; i--) {
     *field = (unsigned char)((content & flags) >> (8 * i));

@@ -1760,7 +1760,8 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
 
   if (namecard) {
     for (i=0; i<NUMOF_ADDRSES; i++) {
-      if (namecard->addrs.recrd[i].node_type == node_type)
+      if ((namecard->addrs.recrd[i].node_type == node_type) &&
+	  (namecard->addrs.recrd[i].addr))
 	return namecard->addrs.recrd[i].addr->ip_addr;
     }
   }
