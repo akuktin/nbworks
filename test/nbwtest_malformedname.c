@@ -132,7 +132,7 @@ int main() {
   int sckt, i, ret_val;
 
   addr.sin_family = AF_INET;
-  fill_16field(137, (unsigned char *)$(addr.sin_port));
+  fill_16field(137, (unsigned char *)&(addr.sin_port));
   fill_32field(nbworks__myip4addr, (unsigned char *)&(addr.sin_addr.s_addr));
   ret_val = 0;
 

@@ -201,7 +201,7 @@ int main() {
   nbworks_libinit();
 
   addr.sin_family = AF_INET;
-  fill_16field(138, (unsigned char *)$(addr.sin_port));
+  fill_16field(138, (unsigned char *)&(addr.sin_port));
   fill_32field(nbworks__myip4addr, (unsigned char *)&(addr.sin_addr.s_addr));
   ret_val = 0;
 

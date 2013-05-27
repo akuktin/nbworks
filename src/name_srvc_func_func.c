@@ -3445,6 +3445,9 @@ struct name_srvc_resource *name_srvc_func_namqry(struct name_srvc_question *qstn
       /* *NEVER* send infinite answers. */
       res->ttl = 1;
     }
+    res->rdata_len = lenof_addresses;
+    res->rdata_t = nb_address_list;
+    res->rdata = nbaddr_list_frst;
 
     return res;
   } else
