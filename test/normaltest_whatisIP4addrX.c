@@ -8,7 +8,7 @@
 int main() {
   struct nbworks_nbnamelst name_lst;
   unsigned long address;
-  unsigned char target_label[] = "TEST1";
+  unsigned char target_label[] = "TARGETSES";
   unsigned char casted_target_label[NBWORKS_NBNAME_LEN];
 
   nbworks_libinit();

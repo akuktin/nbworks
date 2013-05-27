@@ -602,9 +602,6 @@ struct ipv4_addr_list *merge_addrlists(struct ipv4_addr_list *master,
    */
   struct ipv4_addr_list *iterator, **ptr;
 
-  if (! (master && mergee))
-    return 0;
-
   while (mergee) {
     iterator = master;
     ptr = &master;
