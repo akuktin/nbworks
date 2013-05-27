@@ -76,6 +76,35 @@ DNS domains and all the rules that apply to DNS also apply to scopes.
 Names may be group names or unique names. Group names may be shared
 between several applications, while there can be only one unique name
 in a scope.
+.PP
+Once a name is registered using \fBnbworks_regname\fP(), the nbworks
+daemon automatically defends the name and updates neighbours (where
+applicable) and the name server (ibid). Because the updates are sent
+out as a single name packet, there is a very real possibility of not
+all names fitting in said packet. In the event that happens, the
+"truncated" bit is set in the packet prior to sending it out on the
+wire. Currently, the limit on the number of names that a daemon can
+fit in a single such packet is 5 names in null scope (less if the
+scope is not null).
+.PP
+This limit only takes real effect if more then 5
+names need to be updated in a particular second. This means that,
+if you have more than 5 names registered that are to be refreshed
+\fIin the same second\fP, not all will fit into a packet and,
+therefore, your neighbours/name server will not be properly updated
+and may think that your name has quietly dissapeared. However, the
+daemon will still defend the name tooth and nail (this is not
+effective in P mode) as well as answer any queries about your
+name.
+.PP
+The most effective workaround for this problem is to schedule
+all your names (\fIAKA all names that use the same nbworks daemon\fP)
+to be refreshed on different seconds (you do this by registering all
+names with the same exact lifetime but in different seconds). It's
+ridiculous, I know. That or that they have to have a lifetime longer
+than the time the machine will be up. For example, 24 hours for a
+typical PC. Nevertheless, some sort of a solution consisting of
+sending multiple packets will eventually be hashed out.
 .SH "NetBIOS DATAGRAM SERVICE"
 This service sends and receives unreliable datagrams.
 .PP
@@ -91,6 +120,11 @@ using \fBnbworks_send\fP() and \fBnbworks_recv\fP(), all read/write
 operations are conducted with the default peer as the other side of
 the imaginary session. See the manpage for \fBnbworks_sendto\fP() and
 \fBnbworks_recvfrom\fP() for details.
+.PP
+Sending datagrams to groups is a crapshoot. If the name entry for the
+destination is present in the cache, no name resolution is
+performed. If the cache entry is incomplete (which can easily happen),
+then not all group members will receive the datagram.
 .SH "NetBIOS SESSION SERVICE"
 This service establishes, and disestablishes real sessions. They are
 tunneled over TCP and are reliable. The communication in this fashion
