@@ -2112,6 +2112,8 @@ struct name_srvc_packet *name_srvc_timer_mkpckt(struct cache_namenode *namecard,
   cur_time = time(0);
   while (namecard) {
     if ((! namecard->refresh_ttl) ||
+        (! (namecard->unq_token ||
+	    namecard->grp_tokens)) ||
 	(! (namecard->node_types & node_types))) {
       namecard = namecard->next;
       continue;
