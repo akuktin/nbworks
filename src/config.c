@@ -148,8 +148,8 @@ struct option *parse_config(char *path) {
 	  walker++;
 	} else {
 #ifdef SYSTEM_IS_WINDOWS
-	  /* This, too, can create weird effect on some systems under very specific
-	   * conditions. */
+	  /* This, too, can create weird effect on some
+           * systems under very specific conditions. */
 	  if (*walker == SYSTEMS_NEWLINE) {
 	    comwalker--;
 	    if (comwalker < command_buf) {
@@ -237,7 +237,7 @@ struct option *parse_config(char *path) {
 	free(cur_opt);
 	goto do_keep_walking;
       }
-      memcpy(cur_opt, command_buf, lenof_data);
+      memcpy(cur_opt->data, command_buf, lenof_data);
     } else {
       cur_opt->data = 0;
     }

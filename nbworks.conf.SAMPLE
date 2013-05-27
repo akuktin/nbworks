@@ -25,4 +25,4 @@
 #                resulting number is used for an address. For example, a host
 #                10.0.50.14 in network 10.0.0.0/8 will compute a default
 #                NBNS address of 10.0.0.1.
-# defauld_nbns = 192.168.1.1
+# default_nbns = 192.168.1.1
