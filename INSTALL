@@ -9,6 +9,18 @@ Once `make' finishes, decide on a installation prefix and install with:
 
 The default prefix is `/usr/local'.
 
+***************************
+
+Gitorious users may want to check out the script do_CHECK_INTEGRITY.sh.
+This script will verify the integrity of the sources. This is especially
+important for Gitorious because, unlike Github, Gitorious generates a new
+tarball everytime you download a release. Since these tarballs have different
+timestamps on files, they have different checksums. It is therefore not
+possible to just use a simple checksum verification.
+
+Well, do_CHECK_INTEGRITY.sh skirts around this issue by doing all the hard
+work itself and then finally just giving you two checksums for easy
+verification.
 
 ***************************
 
