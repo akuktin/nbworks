@@ -4,7 +4,7 @@ echo > SIZES.forcheck
 echo > MD5SUMS.forcheck
 echo > SHA1SUMS.forcheck
 
-for i in BUGS COPYING INSTALL Makefile Y2K38 doc/*[^~] include/*[^~] nbworks.conf.SAMPLE src/*[^~] test/*[^~] tools/*[^~]; do
+for i in do_CHECK_INTEGRITY.sh BUGS COPYING INSTALL Makefile Y2K38 doc/*[^~] include/*[^~] nbworks.conf.SAMPLE src/*[^~] test/*[^~] tools/*[^~]; do
   sha1sum $i >> SHA1SUMS.forcheck;
   md5sum $i >> MD5SUMS.forcheck;
   ls -l $i | sed 's/^[^[:space:]]\+[[:space:]]\+[^[:space:]]\+[[:space:]]\+[^[:space:]]\+[[:space:]]\+[^[:space:]]\+[[:space:]]\+\([^[:space:]]\+\)[[:space:]]\+[^[:space:]]\+[[:space:]]\+[^[:space:]]\+[[:space:]]\+[^[:space:]]\+[[:space:]]\+\([^[:space:]].*\)$/\1 \2/' >> SIZES.forcheck;
