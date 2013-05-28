@@ -1,0 +1,8 @@
+This is nbworks-0.7.0. This is a DEVELOPMENT release.
+
+While this is a development release, it is stable and should behave well in a
+sane environment. The primary purpose of releasing it then is to let the mob
+descend upon the code and find all the creative and unusual ways the code
+breaks when abused. It is in no way guarranteed that such breakes will happen.
+If any are found, these breakages will then be fixed and, when they are all
+addressed, the code will be released as a stable release.
