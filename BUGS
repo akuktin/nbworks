@@ -32,3 +32,10 @@ GCC-4.4.6 consistenly miscompiles the code into a unworkable mess whenever code
   passing structures on the stack and it is not.
  SOLUTION:
   Reimplement busywait locks? Probably.
+
+The daemon is not actually capable of handling the change in IPv4 address if
+  the address change happens while there is at least one name registered. The
+  registered names will not have their own address in the cache updated to the
+  new one.
+ SOLUTION:
+  Fix the implementation of the cache.
