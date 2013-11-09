@@ -237,6 +237,7 @@ void daemon_init_nonresetables(void) {
 
 void *pruners(void *arg_ignored) {
   time_t now, next_check, check_interval;
+  ipv4_addr_t old_myip4;
 
   next_check = time(0);
   check_interval = nbworks_pruners_cntrl.addrcheck_interval;
@@ -259,7 +260,10 @@ void *pruners(void *arg_ignored) {
     if (now == next_check) {
       init_default_nbns();
       init_brdcts_addr();
+      old_myip4 = nbworks__myip4addr;
       init_my_ip4_address();
+      if (nbworks__myip4addr != old_myip4)
+	update_myip4(old_myip4, nbworks__myip4addr);
 
       check_interval = nbworks_pruners_cntrl.addrcheck_interval;
       next_check = next_check + check_interval;

@@ -49,6 +49,9 @@ ipv4_addr_t
   get_nbnsaddr(struct nbworks_nbnamelst *scope);
 void
   prune_scopes(time_t when);
+void
+  update_myip4(ipv4_addr_t old_addr,
+               ipv4_addr_t new_addr);
 
 struct cache_namenode *
   add_name(struct cache_namenode *name,

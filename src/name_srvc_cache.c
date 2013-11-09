@@ -231,6 +231,38 @@ void prune_scopes(time_t when) {
   return;
 }
 
+void update_myip4(ipv4_addr_t old_addr,
+                  ipv4_addr_t new_addr) {
+  struct cache_scopenode *cur_scope;
+  struct cache_namenode *cur_name;
+  struct ipv4_addr_list *op_head;
+  long i;
+
+  cur_scope = nbworks_rootscope;
+
+  while (cur_scope) {
+    cur_name = cur_scope->names;
+
+    while (cur_name) {
+      for (i=0; i<NUMOF_ADDRSES; i++) {
+	op_head = cur_name->addrs.recrd[i].addr;
+	while (op_head) {
+	  if (op_head->ip_addr == old_addr)
+	    op_head->ip_addr = new_addr;
+
+	  op_head = op_head->next;
+	}
+      }
+
+      cur_name = cur_name->next;
+    }
+
+    cur_scope = cur_scope->next;
+  }
+
+  return;
+}
+
 
 /* MAYBE: make it discriminate between group and unique names. */
 /* returns: >0=succes, 0=fail (name exists), <0=error */
