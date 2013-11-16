@@ -3041,7 +3041,7 @@ int nbworks_setsignal(nbworks_namestate_p namehandle,
   }
 
   if ((command.command != rail_setsignal) ||
-      (command.command != handle->token)) {
+      (command.token != handle->token)) {
     nbworks_errno = EPROTO;
     return -1;
   }
@@ -3133,7 +3133,7 @@ int nbworks_rmsignal(nbworks_namestate_p namehandle) {
   }
 
   if ((command.command != rail_rmsignal) ||
-      (command.command != handle->token)) {
+      (command.token != handle->token)) {
     nbworks_errno = EPROTO;
     return -1;
   }
