@@ -1,6 +1,6 @@
 .TH NBWORKS_REGNAME 3  2013-05-01 "" "Nbworks Manual"
 .SH NAME
-nbworks_regname \- register NetBIOS name
+nbworks_regname \- register a NetBIOS name
 .SH SYNOPSIS
 .nf
 .B #include <nbworks.h>
@@ -27,9 +27,10 @@ interacts with the nbworks multiplexing daemon to accomplish this
 task.
 .PP
 The argument \fIname\fP is a pointer to a NULL-terminated string not
-longer than \fB(NBWORKS_NBNAME_LEN-1)\fP bytes. Argument
+longer than \fBNBWORKS_NBNAME_LEN\fP bytes. Argument
 \fIname_type\fP is the \fBNBWORKS_NBNAME_LEN'th\fP byte of the
-name. This byte is, in nbworks parlance, also called the \fI"service
+name (the one from \fIname\fP, if set, gets overwritten). This byte
+is, in nbworks parlance, also called the \fI"service
 type"\fP byte because it is normally used to signal other nodes on
 the network what is the kind of resource that can be accessed through
 the name thus registered.
@@ -43,7 +44,8 @@ this argument and means "root scope" also known as "null scope".
 .PP
 The argument \fIisgroup\fP is a boolean which determines if the new
 name can be shared with other nodes (AKA, if it is a \fI"group
-name"\fP) or if the name is unique to this application (node).
+name"\fP) or if the name is unique to this application (node). If it
+is non-zero, the name is a group name. Otherwise, the name is unique.
 .PP
 The argument \fInode_type\fP determines the node type AKA, in nbworks
 parlance, the \fImode of operation\fP. This field can have one of the

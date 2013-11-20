@@ -38,17 +38,21 @@ the one process whitch has up-to-date information on conflicts. All
 instances of nbworks' library have to query the daemon to get this
 information.
 .PP
-Because of this, it is safe to assume that the information the library
-has is stale.
+Because of this, the information the library (and, by extension, your
+application) has tends to be stale.
+To combat this problem, nbworks has the conflict signaller
+facility. By using \fBnbworks_setsignal\fP(), you can
+order the daemon to send a signal to your application whenever the
+name enters conflict, thereby having up-to-date information on your
+names. See the man page for \fBnbworks_setsignal\fP() for more
+information.
 .PP
 As an effect of the staleness of libraries information, datagram
 sending and session calling will be fully operational untill the
 library gets the memo that the name is in conflict.
-.PP
-The only way for the library to have up-to-date infomation is if it is
-running at least one server for the name in question. However, you
-still need to call this function to get that information yourself.
 .SH "SEE ALSO"
 .BR nbworks (7),
 .BR nbworks_regname (3),
-.BR nbworks_delname (3)
+.BR nbworks_delname (3),
+.BR nbworks_setsignal (3),
+.BR nbworks_rmsignal (3)
