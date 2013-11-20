@@ -467,7 +467,8 @@ struct nbworks_nbnamelst *nbworks_makescope(unsigned char *buff) {
     walker = point;
     if (*walker)
       walker++;
-    /* else: we are at the terminating NULL */
+    else
+      break;
   }
 
   *result = 0;
