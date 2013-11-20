@@ -431,6 +431,11 @@ struct nbworks_nbnamelst *nbworks_makescope(unsigned char *buff) {
     point = strchrnul(walker, '.');
     name_len = point - walker;
 
+    if (name_len == 0) {
+      walker++;
+      continue;
+    }
+
     if (name_len > MAX_DNS_LABEL_LEN) {
       *result = 0;
       nbworks_dstr_nbnodename(first);
@@ -460,6 +465,9 @@ struct nbworks_nbnamelst *nbworks_makescope(unsigned char *buff) {
     cur->name[name_len] = 0;
 
     walker = point;
+    if (*walker)
+      walker++;
+    /* else: we are at the terminating NULL */
   }
 
   *result = 0;
