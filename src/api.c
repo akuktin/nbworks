@@ -152,19 +152,11 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     return 0;
   }
 
-  result->name = malloc(sizeof(struct nbworks_nbnamelst));
+  result->name = malloc(sizeof(struct nbworks_nbnamelst) +
+			NETBIOS_NAME_LEN +1);
   if (! result->name) {
     pthread_mutex_destroy(&(result->dtg_srv_work_inprog));
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
-    free(result);
-    nbworks_errno = ENOMEM;
-    return 0;
-  }
-  result->name->name = malloc(NETBIOS_NAME_LEN +1);
-  if (! result->name->name) {
-    pthread_mutex_destroy(&(result->dtg_srv_work_inprog));
-    pthread_mutex_destroy(&(result->ses_srv_work_inprog));
-    free(result->name);
     free(result);
     nbworks_errno = ENOMEM;
     return 0;
@@ -187,7 +179,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
       scope) {
     pthread_mutex_destroy(&(result->dtg_srv_work_inprog));
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
-    free(result->name->name);
     free(result->name);
     free(result);
     nbworks_errno = ENOMEM;
@@ -200,7 +191,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   if (0 != pthread_mutex_init(&(result->guard_mutex), 0)) {
     pthread_mutex_destroy(&(result->dtg_srv_work_inprog));
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
-    free(result->name->name);
     free(result->name);
     free(result);
     nbworks_errno = ENOMEM;
@@ -210,7 +200,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->dtg_srv_work_inprog));
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
     pthread_mutex_destroy(&(result->guard_mutex));
-    free(result->name->name);
     free(result->name);
     free(result);
     nbworks_errno = ENOMEM;
@@ -264,7 +253,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
     pthread_mutex_destroy(&(result->guard_mutex));
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
-    free(result->name->name);
     free(result->name);
     free(result);
     return 0;
@@ -286,7 +274,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->guard_mutex));
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     nbworks_errno = ENOBUFS;
-    free(result->name->name);
     free(result->name);
     free(result);
     return 0;
@@ -302,7 +289,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->guard_mutex));
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name->name);
     free(result->name);
     free(result);
     free(namedtbuff);
@@ -318,7 +304,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     close(daemon);
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name->name);
     free(result->name);
     free(result);
     free(namedtbuff);
@@ -333,7 +318,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     close(daemon);
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name->name);
     free(result->name);
     free(result);
     free(namedtbuff);
@@ -351,7 +335,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     close(daemon);
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name->name);
     free(result->name);
     free(result);
     nbworks_errno = EPERM;
@@ -368,7 +351,6 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->guard_mutex));
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name->name);
     free(result->name);
     free(result);
     if (command.nbworks_errno)
@@ -756,14 +738,9 @@ nbworks_session_p nbworks_castdtgsession(nbworks_namestate_p namehandle,
 
   if (defaultpeer) {
     if (defaultpeer->len < NETBIOS_NAME_LEN) {
-      peer = malloc(sizeof(struct nbworks_nbnamelst));
+      peer = malloc(sizeof(struct nbworks_nbnamelst) +
+		    NETBIOS_NAME_LEN +1);
       if (! peer) {
-	nbworks_errno = ENOBUFS;
-	return 0;
-      }
-      peer->name = malloc(NETBIOS_NAME_LEN);
-      if (! peer->name) {
-	free(peer);
 	nbworks_errno = ENOBUFS;
 	return 0;
       }
@@ -1111,6 +1088,7 @@ int nbworks_update_listentos(unsigned char service,
       handle->dtg_takes = 0;
       break;
     default:
+      handle->dtg_listento = old;
       nbworks_dstr_nbnodename(new);
       nbworks_errno = EINVAL;
       return -1;
@@ -1293,14 +1271,9 @@ nbworks_session_p nbworks_dtgconnect(nbworks_session_p session,
 
   if (dst) {
     if (dst->len < NBWORKS_NBNAME_LEN) {
-      ses->peer = malloc(sizeof(struct nbworks_nbnamelst));
+      ses->peer = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NBWORKS_NBNAME_LEN +1);
       if (! ses->peer) {
-	return 0;
-      }
-      ses->peer->name = malloc(NBWORKS_NBNAME_LEN);
-      if (! ses->peer->name) {
-	free(ses->peer);
-	ses->peer = 0;
 	return 0;
       }
       memcpy(ses->peer->name, dst->name, dst->len);
@@ -1577,8 +1550,7 @@ ssize_t nbworks_sendto(unsigned char service,
     }
 
     if (dst) {
-      if ((dst->name) &&
-	  (dst->len == NETBIOS_NAME_LEN))
+      if (dst->len == NETBIOS_NAME_LEN)
 	peer = dst;
       else {
 	nbworks_errno = EINVAL;
