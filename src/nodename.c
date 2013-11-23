@@ -162,18 +162,19 @@ struct nbworks_nbnamelst *nbworks_create_nbnodename(unsigned char *string,
     return 0;
   }
 
-  result = malloc(sizeof(struct nbworks_nbnamelst));
+  result = malloc(sizeof(struct nbworks_nbnamelst) +
+		  NETBIOS_NAME_LEN+1);
   if (! result) {
     nbworks_errno = ENOMEM;
     return 0;
   }
 
-  result->name = nbworks_create_nbnamelabel(string, type_char, 0);
-  if (! result->name) {
+  if (! nbworks_create_nbnamelabel(string, type_char, result.name)) {
     free(result);
     /* nbworks_errno is already set */
     return 0;
   }
+  result->name[NETBIOS_NAME_LEN] = 0;
 
   result->len = NETBIOS_NAME_LEN;
   result->next_name = 0;
@@ -230,7 +231,6 @@ void nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename) {
 
   while (nbnodename) {
     next = nbnodename->next_name;
-    free(nbnodename->name);
     free(nbnodename);
     nbnodename = next;
   }
@@ -245,33 +245,24 @@ struct nbworks_nbnamelst *nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbn
   nbworks_errno = 0;
 
   if (original) {
-    clone = malloc(sizeof(struct nbworks_nbnamelst));
+    clone = malloc(sizeof(struct nbworks_nbnamelst) +
+		   original->len +1);
     if (! clone) {
       nbworks_errno = ENOMEM;
       return 0;
     }
     first_clone = clone;
-    clone->name = 0;
     clone->next_name = 0;
 
     while (1) {
       clone->len = original->len;
-      if (original->name) {
-        clone->name = malloc(clone->len +1);
-        if (! clone->name) {
-          clone->next_name = 0;
-	  nbworks_dstr_nbnodename(first_clone);
-          nbworks_errno = ENOMEM;
-	  return 0;
-        }
-        memcpy(clone->name, original->name, clone->len);
-	clone->name[clone->len] = 0;
-      } else {
-        clone->name = 0;
-      }
+      memcpy(clone->name, original->name, clone->len);
+      clone->name[clone->len] = 0;
+
       if (original->next_name) {
 	original = original->next_name;
-	clone->next_name = malloc(sizeof(struct nbworks_nbnamelst));
+	clone->next_name = malloc(sizeof(struct nbworks_nbnamelst) +
+				  original->len +1);
 	if (! clone->next_name) {
 	  nbworks_dstr_nbnodename(first_clone);
           nbworks_errno = ENOMEM;
@@ -339,29 +330,22 @@ struct nbworks_nbnamelst *nbworks_buff2nbname(unsigned char *buff,
   } else
     nbworks_errno = 0;
 
-  result = malloc(sizeof(struct nbworks_nbnamelst));
+  if (! lenof_string)
+    lenof_string = strlen((char *)buff);
+  if (lenof_string > MAX_DNS_LABEL_LEN) {
+    nbworks_errno = EINVAL;
+    return 0;
+  }
+
+  result = malloc(sizeof(struct nbworks_nbnamelst) +
+		  lenof_string +1);
   if (! result) {
     nbworks_errno = ENOMEM;
     return 0;
   }
 
   result->next_name = 0;
-
-  if (! lenof_string)
-    lenof_string = strlen((char *)buff);
-  if (lenof_string > MAX_DNS_LABEL_LEN) {
-    free(result);
-    nbworks_errno = EINVAL;
-    return 0;
-  }
   result->len = lenof_string;
-
-  result->name = malloc(lenof_string+1);
-  if (! result->name) {
-    free(result);
-    nbworks_errno = ENOMEM;
-    return 0;
-  }
 
   memcpy(result->name, buff, lenof_string);
   result->name[lenof_string] = 0;
@@ -443,7 +427,8 @@ struct nbworks_nbnamelst *nbworks_makescope(unsigned char *buff) {
       return 0;
     }
 
-    *result = malloc(sizeof(struct nbworks_nbnamelst));
+    *result = malloc(sizeof(struct nbworks_nbnamelst) +
+		     name_len +1);
     if (! *result) {
       nbworks_dstr_nbnodename(first);
       nbworks_errno = ENOMEM;
@@ -453,13 +438,6 @@ struct nbworks_nbnamelst *nbworks_makescope(unsigned char *buff) {
     result = &(cur->next_name);
 
     cur->len = name_len;
-    cur->name = malloc(name_len +1);
-    if (! cur->name) {
-      *result = 0;
-      nbworks_dstr_nbnodename(first);
-      nbworks_errno = ENOMEM;
-      return 0;
-    }
 
     memcpy(cur->name, walker, name_len);
     cur->name[name_len] = 0;
