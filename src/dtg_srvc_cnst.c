@@ -38,35 +38,19 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
   struct dtg_pckt_pyld_normal *result;
   struct nbworks_nbnamelst *complete_src, *complete_dst;
   long lenof_names;
-  unsigned char *label_src, *label_dst;
 
-  label_src = nbworks_make_nbnodename(src, src_type, 0);
-  if (! label_src) {
-    /* TODO: errno signaling stuff */
-    return 0;
-  }
-
-  label_dst = nbworks_make_nbnodename(dst, dst_type, 0);
-  if (! label_dst) {
-    /* TODO: errno signaling stuff */
-    free(label_src);
-    return 0;
-  }
-
-  complete_src = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_src = malloc(sizeof(struct nbworks_nbnamelst) +
+			NETBIOS_CODED_NAME_LEN +1);
   if (! complete_src) {
     /* TODO: errno signaling stuff */
-    free(label_dst);
-    free(label_src);
     return 0;
   }
 
-  complete_dst = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_dst = malloc(sizeof(struct nbworks_nbnamelst) +
+			NETBIOS_CODED_NAME_LEN +1);
   if (! complete_dst) {
     /* TODO: errno signaling stuff */
     free(complete_src);
-    free(label_dst);
-    free(label_src);
     return 0;
   }
 
@@ -75,16 +59,26 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
     /* TODO: errno signaling stuff */
     free(complete_dst);
     free(complete_src);
-    free(label_dst);
-    free(label_src);
     return 0;
   };
 
-  complete_src->name = label_src;
+  if (! nbworks_make_nbnodename(src, src_type, complete_src->name)) {
+    /* TODO: errno signaling stuff */
+    free(complete_src);
+    free(complete_dst);
+    free(result);
+    return 0;
+  }
   complete_src->len = NETBIOS_CODED_NAME_LEN;
   complete_src->next_name = nbworks_clone_nbnodename(scope);
 
-  complete_dst->name = label_dst;
+  if (! nbworks_make_nbnodename(dst, dst_type, complete_dst->name)) {
+    /* TODO: errno signaling stuff */
+    free(complete_src);
+    free(complete_dst);
+    free(result);
+    return 0;
+  }
   complete_dst->len = NETBIOS_CODED_NAME_LEN;
   complete_dst->next_name = nbworks_clone_nbnodename(scope);
 
