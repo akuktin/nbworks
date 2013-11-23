@@ -349,18 +349,14 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
 	handle_abort;
       }
 
-      *cur_label = malloc(sizeof(struct nbworks_nbnamelst));
+      *cur_label = malloc(sizeof(struct nbworks_nbnamelst) +
+			  name_len +1);
       label = *cur_label;
       if (! label) {
 	kill_yourself;
       }
       cur_label = &(label->next_name);
 
-      label->name = malloc(name_len +1);
-      if (! label->name) {
-	/* TODO: errno signaling stuff */
-	kill_yourself;
-      }
       walker++;
       for (weighted_companion_buf = label->name, end = walker + name_len;
 	   walker < end; weighted_companion_buf++, walker++) {
