@@ -831,11 +831,11 @@ void *lib_dtgserver(void *arg) {
   struct packet_cooked *toshow;
   struct dtg_srvc_packet *dtg;
   struct dtg_pckt_pyld_normal *nrml_pyld;
-  struct nbworks_nbnamelst decoded_nbnodename;
+  struct nbworks_nbnamelst *decoded_nbnodename;
   time_t last_pruned, killtime;
   unsigned long frag_keeptime;
   uint32_t len;
-  unsigned char lenbuf[4], decoded_name[NETBIOS_NAME_LEN+1];
+  unsigned char lenbuf[4], *decoded_name;
   unsigned char *new_pckt, take_dtg;
 
   if (arg)
@@ -853,9 +853,11 @@ void *lib_dtgserver(void *arg) {
 
   handle->in_server = handle->in_library = 0;
 
-  decoded_nbnodename.name = decoded_name;
-  decoded_nbnodename.len = NETBIOS_NAME_LEN;
-  decoded_nbnodename.next_name = 0;
+  decoded_nbnodename = alloca(sizeof(struct nbworks_nbnamelst) +
+			      NETBIOS_NAME_LEN +1);
+  decoded_name = decoded_nbnodename->name;
+  decoded_nbnodename->len = NETBIOS_NAME_LEN;
+  decoded_nbnodename->next_name = 0;
   toshow = 0;
   take_dtg = FALSE;
   last_pruned = time(0);
@@ -926,7 +928,7 @@ void *lib_dtgserver(void *arg) {
 	nrml_pyld->src_name &&
 	nrml_pyld->src_name->name &&
 	(nrml_pyld->src_name->len == NETBIOS_CODED_NAME_LEN)) {
-      decode_nbnodename(nrml_pyld->src_name->name, decoded_nbnodename.name);
+      decode_nbnodename(nrml_pyld->src_name->name, decoded_nbnodename->name);
     } else {
       /* Theoretically, I should send a SOURCE NAME BAD FORMAT
        * error message to the sender or something like that. */
@@ -941,7 +943,7 @@ void *lib_dtgserver(void *arg) {
 	if (handle->dtg_takes & HANDLE_TAKES_ALLBRDCST) {
 	  take_dtg = TRUE;
 	} else {
-	  take_dtg = lib_doeslistento(&decoded_nbnodename,
+	  take_dtg = lib_doeslistento(decoded_nbnodename,
 				      handle->dtg_listento);
 	}
 	break;
@@ -952,7 +954,7 @@ void *lib_dtgserver(void *arg) {
 	if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
 	  take_dtg = TRUE;
 	} else {
-	  take_dtg = lib_doeslistento(&decoded_nbnodename,
+	  take_dtg = lib_doeslistento(decoded_nbnodename,
 				      handle->dtg_listento);
 	}
 	break;
@@ -963,7 +965,7 @@ void *lib_dtgserver(void *arg) {
 	if (handle->dtg_takes & HANDLE_TAKES_ALLUNCST) {
 	  take_dtg = TRUE;
 	} else {
-	  take_dtg = lib_doeslistento(&decoded_nbnodename,
+	  take_dtg = lib_doeslistento(decoded_nbnodename,
 				      handle->dtg_listento);
 	}
 	break;
@@ -980,7 +982,7 @@ void *lib_dtgserver(void *arg) {
 
       if (! (dtg->flags & DTG_FIRST_FLAG)) {
       attempt_to_add_a_fragment:
-	if (lib_add_frag_tobone(dtg->id, &(decoded_nbnodename),
+	if (lib_add_frag_tobone(dtg->id, decoded_nbnodename,
 				nrml_pyld->offset, nrml_pyld->lenof_data,
 				nrml_pyld->payload, handle->dtg_frags)) {
 	  nrml_pyld->payload = 0;
@@ -989,12 +991,12 @@ void *lib_dtgserver(void *arg) {
 	   * this is the first fragment of the datagram that was received,
 	   * in the event of fragments coming in out of order. */
 	  /* Assume the latter is true and attempt to add a new fragbone. */
-	  if (lib_add_fragbckbone(dtg->id, &(decoded_nbnodename),
+	  if (lib_add_fragbckbone(dtg->id, decoded_nbnodename,
 				  nrml_pyld->offset, nrml_pyld->lenof_data,
 				  nrml_pyld->payload, &(handle->dtg_frags))) {
 	    nrml_pyld->payload = 0;
 	  } else {
-	    lib_del_fragbckbone(dtg->id, &(decoded_nbnodename),
+	    lib_del_fragbckbone(dtg->id, decoded_nbnodename,
 				&(handle->dtg_frags));
 	    destroy_dtg_srvc_pckt(dtg, 1, 1);
 	    continue;
@@ -1020,7 +1022,7 @@ void *lib_dtgserver(void *arg) {
 	    nrml_pyld->payload = 0;
 
 	    toshow->len = nrml_pyld->lenof_data;
-	    toshow->src = nbworks_clone_nbnodename(&(decoded_nbnodename));
+	    toshow->src = nbworks_clone_nbnodename(decoded_nbnodename);
 	    if (! toshow->src) {
 	      free(toshow->data);
 	      free(toshow);
@@ -1038,7 +1040,7 @@ void *lib_dtgserver(void *arg) {
 	    toshow = 0;
 	  }
 	} else {
-	  fragbone = lib_take_fragbckbone(dtg->id, &(decoded_nbnodename),
+	  fragbone = lib_take_fragbckbone(dtg->id, decoded_nbnodename,
 					  &(handle->dtg_frags));
 	  if (fragbone) {
 
@@ -1127,14 +1129,13 @@ int lib_open_session(struct name_state *handle,
   unsigned int max_retries;
   unsigned char *mypckt_buff, *herpckt_buff;
   unsigned char small_buff[SMALL_BUFF_LEN];
-  unsigned char *decoded_name, isgroup, call_node_types;
+  unsigned char isgroup, call_node_types;
 
   if (! (handle && dst)) {
     nbworks_errno = EINVAL;
     return -1;
   }
-  if ((! dst->name) ||
-      (dst->len < NETBIOS_NAME_LEN)) {
+  if (dst->len < NETBIOS_NAME_LEN) {
     nbworks_errno = EINVAL;
     return -1;
   }
@@ -1148,19 +1149,20 @@ int lib_open_session(struct name_state *handle,
   retry_count = 0;
   isgroup = FALSE;
 
-  her = nbworks_clone_nbnodename(dst);
+  her = malloc(sizeof(struct nbworks_nbnamelst) +
+	       NETBIOS_CODED_NAME_LEN +1);
   if (! her) {
     nbworks_errno = ENOBUFS;
     return -1;
   }
-  if (her->next_name)
-    nbworks_dstr_nbnodename(her->next_name);
   her->next_name = nbworks_clone_nbnodename(handle->scope);
   if ((! her->next_name) && handle->scope) {
     nbworks_errno = ENOBUFS;
     nbworks_dstr_nbnodename(her);
     return -1;
   }
+  her->len = NETBIOS_NAME_LEN;
+  memcpy(her->name, dst->name, NETBIOS_NAME_LEN);
 
  try_to_resolve_name:
   fill_32field(nbworks_whatisIP4addrX(her, call_node_types, isgroup,
@@ -1179,25 +1181,17 @@ int lib_open_session(struct name_state *handle,
   /* VAXism below */
   fill_16field(139, (unsigned char *)&(addr.sin_port));
 
-  decoded_name = her->name;
-  her->name = encode_nbnodename(decoded_name, 0);
-  free(decoded_name);
-  if (! her->name) {
-    nbworks_errno = ENOBUFS;
-    nbworks_dstr_nbnodename(her);
-    return -1;
-  }
-  her->len = NETBIOS_CODED_NAME_LEN;
+  her->len = NETBIOS_CODED_NAME_LEN
+  encode_nbnodename(dst->name, her->name);
 
 
-  name_id = nbworks_clone_nbnodename(handle->name);
+  name_id = malloc(sizeof(struct nbworks_nbnamelst) +
+		   NETBIOS_CODED_NAME_LEN +1);
   if (! name_id) {
     nbworks_errno = ENOBUFS;
     nbworks_dstr_nbnodename(her);
     return -1;
   }
-  if (name_id->next_name)
-    nbworks_dstr_nbnodename(name_id->next_name);
   name_id->next_name = nbworks_clone_nbnodename(handle->scope);
   if ((! name_id->next_name) && handle->scope) {
     nbworks_errno = ENOBUFS;
@@ -1205,16 +1199,8 @@ int lib_open_session(struct name_state *handle,
     nbworks_dstr_nbnodename(name_id);
     return -1;
   }
-  decoded_name = name_id->name;
-  name_id->name = encode_nbnodename(decoded_name, 0);
-  free(decoded_name);
-  if (! name_id->name) {
-    nbworks_errno = ENOBUFS;
-    nbworks_dstr_nbnodename(her);
-    nbworks_dstr_nbnodename(name_id);
-    return -1;
-  }
   name_id->len = NETBIOS_CODED_NAME_LEN;
+  encode_nbnodename(handle->name->name, name_id->name);
 
 
   memset(&pckt, 0, sizeof(struct ses_srvc_packet));
@@ -1380,13 +1366,13 @@ int lib_open_session(struct name_state *handle,
 void *lib_ses_srv(void *arg) {
   struct pollfd pfd;
   struct name_state *handle;
-  struct nbworks_nbnamelst *caller, decoded_nbnodename;
+  struct nbworks_nbnamelst *caller, *decoded_nbnodename;
   struct nbworks_session *new_ses;
   struct ses_srvc_packet pckt;
   struct com_comm command;
   int new_sckt;
   unsigned char ok[] = { POS_SESSION_RESPONSE, 0, 0, 0 };
-  unsigned char combuff[LEN_COMM_ONWIRE], decoded_name[NETBIOS_NAME_LEN+1];
+  unsigned char combuff[LEN_COMM_ONWIRE];
   unsigned char *buff, *walker;
 
   if (arg)
@@ -1404,9 +1390,10 @@ void *lib_ses_srv(void *arg) {
   pfd.fd = handle->ses_srv_sckt;
   pfd.events = POLLIN;
 
-  decoded_nbnodename.name = decoded_name;
-  decoded_nbnodename.len = NETBIOS_NAME_LEN;
-  decoded_nbnodename.next_name = handle->scope;
+  decoded_nbnodename = alloca(sizeof(struct nbworks_nbnamelst) +
+			      NETBIOS_NAME_LEN +1);
+  decoded_nbnodename->len = NETBIOS_NAME_LEN;
+  decoded_nbnodename->next_name = handle->scope;
 
   while ((! nbworks_libcntl.stop_allses_srv) &&
 	 (! handle->ses_srv_stop)) {
@@ -1514,12 +1501,12 @@ void *lib_ses_srv(void *arg) {
       close(new_sckt);
       continue;
     } else {
-      decode_nbnodename(caller->name, decoded_nbnodename.name);
+      decode_nbnodename(caller->name, decoded_nbnodename->name);
       nbworks_dstr_nbnodename(caller);
     }
 
     if (! (handle->ses_takes & HANDLE_TAKES_ALL)) {
-      if (! (lib_doeslistento(&decoded_nbnodename, handle->ses_listento))) {
+      if (! (lib_doeslistento(decoded_nbnodename, handle->ses_listento))) {
 	command.command = rail_stream_error;
 	command.node_type = SES_ERR_NOTLISCALLING;
 
@@ -1563,7 +1550,7 @@ void *lib_ses_srv(void *arg) {
       break;
     }
 
-    new_ses = lib_make_session(new_sckt, &decoded_nbnodename, handle, FALSE);
+    new_ses = lib_make_session(new_sckt, decoded_nbnodename, handle, FALSE);
     if (! new_ses) {
       close(new_sckt);
       break;
