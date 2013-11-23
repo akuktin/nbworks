@@ -1734,14 +1734,13 @@ struct name_srvc_question *name_srvc_make_qstn(unsigned char *label,
   if (! result) {
     return 0;
   }
-  result->name = malloc(sizeof(struct nbworks_nbnamelst));
+  result->name = malloc(sizeof(struct nbworks_nbnamelst) +
+			NETBIOS_CODED_NAME_LEN +1);
   if (! result->name) {
     free(result);
     return 0;
   }
-
-  result->name->name = encode_nbnodename(label, 0);
-  if (! result->name->name) {
+  if (! encode_nbnodename(label, result->name->name)) {
     free(result->name);
     free(result);
     return 0;
@@ -1749,7 +1748,6 @@ struct name_srvc_question *name_srvc_make_qstn(unsigned char *label,
   result->name->len = NETBIOS_CODED_NAME_LEN;
   result->name->next_name = nbworks_clone_nbnodename(scope);
   if ((! result->name->next_name) && scope) {
-    free(result->name->name);
     free(result->name);
     free(result);
     return 0;
@@ -1779,14 +1777,14 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
   if (! result) {
     return 0;
   }
-  result->name = malloc(sizeof(struct nbworks_nbnamelst));
+  result->name = malloc(sizeof(struct nbworks_nbnamelst) +
+			NETBIOS_CODED_NAME_LEN +1);
   if (! result->name) {
     free(result);
     return 0;
   }
 
-  result->name->name = encode_nbnodename(label, 0);
-  if (! result->name->name) {
+  if (! encode_nbnodename(label, result->name->name)) {
     free(result->name);
     free(result);
     return 0;
@@ -1794,7 +1792,6 @@ struct name_srvc_resource *name_srvc_make_res(unsigned char *label,
   result->name->len = NETBIOS_CODED_NAME_LEN;
   result->name->next_name = nbworks_clone_nbnodename(scope);
   if ((! result->name->next_name) && scope) {
-    free(result->name->name);
     free(result->name);
     free(result);
     return 0;
@@ -2039,7 +2036,6 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
 	  nbworks_dstr_nbnodename(nbnodename_bckbone->nbnodename);
 	} else {
 	  if (nbnodename_bckbone->nbnodename) {
-	    free(nbnodename_bckbone->nbnodename->name);
 	    free(nbnodename_bckbone->nbnodename);
 	  }
 	}
@@ -2057,7 +2053,6 @@ void destroy_name_srvc_res_data(struct name_srvc_resource *res,
       nbworks_dstr_nbnodename(nbnodename);
     } else {
       if (nbnodename) {
-	free(nbnodename->name);
 	free(nbnodename);
       }
     }
