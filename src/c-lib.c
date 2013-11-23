@@ -27,6 +27,9 @@ void *nbw_calloc(size_t members,
   size_t len;
   void *result;
 
+  size_t i;
+  char *target;
+
   if ((members < 1) ||
       (size < 1))
     return malloc(0);
@@ -41,7 +44,12 @@ void *nbw_calloc(size_t members,
   if (! result)
     return 0;
 
-  memset(result, 0, len);
+//  memset(result, 0, len);
+  target = result;
+  for (i=0; i<len; i++) {
+    *target = 0;
+    target++;
+  }
 
   return result;
 }

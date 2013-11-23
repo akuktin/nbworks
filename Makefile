@@ -34,6 +34,7 @@ INSTALL_DIRS = $(ETCDIR) $(PREFIX) $(EPREFIX) $(BINDIR) $(LIBDIR)       \
                $(MANDIR)/man7 $(MANDIR)/man8 $(DOCDIR)
 
 
+#CFLAGS ?= -g -Wall -flto -fuse-linker-plugin
 CFLAGS ?= -g -Wall
 CC ?= gcc
 MKDIR ?= mkdir -p
