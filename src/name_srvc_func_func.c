@@ -3228,8 +3228,9 @@ struct name_srvc_resource *name_srvc_func_nodestat(struct name_srvc_question *qs
       }
       numof_names++;
 
-      names_list->nbnodename = malloc(sizeof(struct nbworks_nbnamelst));
-      names_list->nbnodename->name = encode_nbnodename(cache_namecard->name, 0);
+      names_list->nbnodename = malloc(sizeof(struct nbworks_nbnamelst) +
+				      NETBIOS_CODED_NAME_LEN +1);
+      encode_nbnodename(cache_namecard->name, names_list->nbnodename->name);
       names_list->nbnodename->len = NETBIOS_CODED_NAME_LEN;
       names_list->nbnodename->next_name = 0;
 
