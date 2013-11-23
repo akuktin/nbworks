@@ -1245,7 +1245,6 @@ struct ss_unif_pckt_list *ss__recv_udppckt(struct ss_sckts *sckts,
 	(name_as_id)) {
       name_id = dtg_srvc_get_srcnam_recvpckt(new_pckt->packet);
       if ((! name_id) ||
-	  (! name_id->name) ||
 	  (name_id->len != NETBIOS_CODED_NAME_LEN)) {
 	sckts->pckt_dstr(new_pckt->packet, 1, 1);
 	free(new_pckt);
