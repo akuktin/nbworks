@@ -835,7 +835,7 @@ void *lib_dtgserver(void *arg) {
   time_t last_pruned, killtime;
   unsigned long frag_keeptime;
   uint32_t len;
-  unsigned char lenbuf[4], *decoded_name;
+  unsigned char lenbuf[4];
   unsigned char *new_pckt, take_dtg;
 
   if (arg)
@@ -855,7 +855,6 @@ void *lib_dtgserver(void *arg) {
 
   decoded_nbnodename = alloca(sizeof(struct nbworks_nbnamelst) +
 			      NETBIOS_NAME_LEN +1);
-  decoded_name = decoded_nbnodename->name;
   decoded_nbnodename->len = NETBIOS_NAME_LEN;
   decoded_nbnodename->next_name = 0;
   toshow = 0;
