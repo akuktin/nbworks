@@ -31,10 +31,10 @@
 
 # ifndef NBWORKS_NBWORKS_H
 struct nbworks_nbnamelst {
-  unsigned char *name;
+  struct nbworks_nbnamelst *next_name;
   unsigned char len; /* Not int because the field is
                         6 bits wide in the packet. */
-  struct nbworks_nbnamelst *next_name;
+  unsigned char name[];
 };
 # endif
 
