@@ -379,7 +379,7 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
     /* TODO: errno signaling stuff */
     return 0;
   }
-  if (! nbworks_make_nbnodename(name, name_type, complete_name.name)) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
