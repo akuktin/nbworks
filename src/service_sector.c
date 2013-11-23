@@ -741,22 +741,23 @@ void ss__del_sessrv(struct nbworks_nbnamelst *name) {
 
 void ss__kill_allservrs(unsigned char *name_ptr, /* len == NETBIOS_NAME_LEN */
 			struct nbworks_nbnamelst *scope) {
-  struct nbworks_nbnamelst target_name;
+  struct nbworks_nbnamelst *target_name;
   union trans_id id;
-  unsigned char target_label[NETBIOS_CODED_NAME_LEN];
 
   if (! name_ptr)
     return;
 
-  target_name.name = target_label;
-  encode_nbnodename(name_ptr, target_label);
-  target_name.len = NETBIOS_CODED_NAME_LEN;
-  target_name.next_name = scope;
+  target_name = alloca(sizeof(struct nbworks_nbnamelst) +
+		       NETBIOS_CODED_NAME_LEN +1);
 
-  id.name_scope = &target_name;
+  encode_nbnodename(name_ptr, target_name->name);
+  target_name->len = NETBIOS_CODED_NAME_LEN;
+  target_name->next_name = scope;
+
+  id.name_scope = target_name;
 
   ss_del_queuestorage(&id, DTG_SRVC);
-  ss__del_sessrv(&target_name);
+  ss__del_sessrv(target_name);
 
   return;
 }

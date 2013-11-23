@@ -169,7 +169,7 @@ struct nbworks_nbnamelst *nbworks_create_nbnodename(unsigned char *string,
     return 0;
   }
 
-  if (! nbworks_create_nbnamelabel(string, type_char, result.name)) {
+  if (! nbworks_create_nbnamelabel(string, type_char, result->name)) {
     free(result);
     /* nbworks_errno is already set */
     return 0;

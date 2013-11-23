@@ -1180,7 +1180,7 @@ int lib_open_session(struct name_state *handle,
   /* VAXism below */
   fill_16field(139, (unsigned char *)&(addr.sin_port));
 
-  her->len = NETBIOS_CODED_NAME_LEN
+  her->len = NETBIOS_CODED_NAME_LEN;
   encode_nbnodename(dst->name, her->name);
 
 
