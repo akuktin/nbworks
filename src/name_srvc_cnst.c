@@ -45,13 +45,13 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   if (! name)
     return 0;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
@@ -62,7 +62,6 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   addr = malloc(sizeof(struct nbaddress_list));
   if (! addr) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -112,7 +111,6 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   result = alloc_name_srvc_pckt(1, 0, 0, 1);
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     free(addr);
     return 0;
@@ -123,7 +121,6 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   if (! result->questions->qstn) {
     /* TODO: errno signaling stuff */
     free(addr);
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -134,7 +131,6 @@ struct name_srvc_packet *name_srvc_make_name_reg_big(unsigned char *name,
   if (! result->aditionals->res) {
     /* TODO: errno signaling stuff */
     free(addr);
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -197,13 +193,13 @@ struct name_srvc_resource *name_srvc_make_res_nbaddrlst(unsigned char *name,
   if (! name)
     return 0;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
@@ -214,7 +210,6 @@ struct name_srvc_resource *name_srvc_make_res_nbaddrlst(unsigned char *name,
   addr = malloc(sizeof(struct nbaddress_list));
   if (! addr) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -265,7 +260,6 @@ struct name_srvc_resource *name_srvc_make_res_nbaddrlst(unsigned char *name,
   if (! result) {
     /* TODO: errno signaling stuff */
     free(addr);
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -287,13 +281,13 @@ struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
   struct name_srvc_packet *result;
   struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
@@ -304,7 +298,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
   result = alloc_name_srvc_pckt(1, 0, 0, 0);
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -313,7 +306,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_req(unsigned char *name,
   result->questions->qstn = malloc(sizeof(struct name_srvc_question));
   if (! result->questions->qstn) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -335,13 +327,13 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
   struct name_srvc_packet *result;
   struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
@@ -352,7 +344,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -360,7 +351,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_pos(unsigned char *name,
   result->answers->res = malloc(sizeof(struct name_srvc_resource));
   if (! result->answers->res) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -383,13 +373,13 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
   struct name_srvc_packet *result;
   struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name.name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
@@ -400,7 +390,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -408,7 +397,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_neg(unsigned char *name,
   result->answers->res = malloc(sizeof(struct name_srvc_resource)); 
   if (! result->answers->res) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -433,13 +421,13 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
   struct name_srvc_packet *result;
   struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
@@ -450,7 +438,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
   result = alloc_name_srvc_pckt(0, 0, 1, 1);
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -458,7 +445,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
   result->authorities->res = malloc(sizeof(struct name_srvc_resource));
   if (! result->answers->res) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -466,7 +452,6 @@ struct name_srvc_packet *name_srvc_make_name_qry_red(unsigned char *name,
   result->aditionals->res = malloc(sizeof(struct name_srvc_resource));
   if (! result->aditionals->res) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -501,13 +486,13 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
   struct name_srvc_packet *result;
   struct nbworks_nbnamelst *complete_name;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
@@ -518,7 +503,6 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
   result = alloc_name_srvc_pckt(1, 0, 0, 0);
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -526,7 +510,6 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_qry(unsigned char *name,
   result->questions->qstn = malloc(sizeof(struct name_srvc_question)); 
   if (! result->questions->qstn) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -549,13 +532,13 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
   struct name_srvc_statistics_rfc1002 *stats;
   uint32_t numof_names, lenof_names;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(complete_name);
     return 0;
@@ -566,7 +549,6 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
   result = alloc_name_srvc_pckt(0, 1, 0, 0);
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
@@ -574,7 +556,6 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
   result->answers->res = malloc(sizeof(struct name_srvc_resource));
   if (! result->answers->res) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     destroy_name_srvc_pckt(result, 1, 1);
     return 0;
@@ -583,7 +564,6 @@ struct name_srvc_packet *name_srvc_make_stat_rfc1002_rsp(unsigned char *name,
   stats = nbw_calloc(1, sizeof(struct name_srvc_statistics_rfc1002));
   if (! stats) {
     /* TODO: errno signaling stuff */
-    free(complete_name->name);
     free(complete_name);
     free(result->answers->res);
     destroy_name_srvc_pckt(result, 1, 1);
@@ -640,14 +620,14 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
   rdata->next_address = 0;
   rdata->flags = nm_flags;
 
-  complete_name = malloc(sizeof(struct nbworks_nbnamelst));
+  complete_name = malloc(sizeof(struct nbworks_nbnamelst) +
+			 NETBIOS_CODED_NAME_LEN +1);
   if (! complete_name) {
     /* TODO: errno signaling stuff */
     free(rdata);
     return 0;
   }
-  complete_name->name = nbworks_make_nbnodename(name, name_type, 0);
-  if (! complete_name->name) {
+  if (! nbworks_make_nbnodename(name, name_type, complete_name->name)) {
     /* TODO: errno signaling stuff */
     free(rdata);
     free(complete_name);
@@ -660,7 +640,6 @@ struct name_srvc_packet *name_srvc_make_wack(unsigned char *name,
   if (! result) {
     /* TODO: errno signaling stuff */
     free(rdata);
-    free(complete_name->name);
     free(complete_name);
     return 0;
   }
