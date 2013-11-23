@@ -29,6 +29,7 @@
 #include <sys/poll.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <alloca.h>
 
 #include "constdef.h"
 #include "daemon_control.h"
@@ -1070,7 +1071,8 @@ int rail_add_dtg_server(int rail_sckt,
   new_rail->rail_sckt = rail_sckt;
   new_rail->next = 0;
 
-  nbname = malloc(sizeof(struct nbworks_nbnamelst));
+  nbname = malloc(sizeof(struct nbworks_nbnamelst) +
+		  NETBIOS_CODED_NAME_LEN +1);
   if (! nbname) {
     free(new_rail);
     return -1;
@@ -1102,7 +1104,7 @@ int rail_add_dtg_server(int rail_sckt,
     return 1;
   }
 
-  nbname->name = encode_nbnodename(namecard->name, 0);
+  encode_nbnodename(namecard->name, nbname->name);
   nbname->len = NETBIOS_CODED_NAME_LEN;
 
   if (command->len)
@@ -1300,7 +1302,7 @@ void *dtg_server(void *arg) {
 int rail_add_ses_server(int rail_sckt,
 			struct com_comm *command) {
   struct cache_namenode *namecard;
-  struct nbworks_nbnamelst nbname;
+  struct nbworks_nbnamelst *nbname;
   token_t token;
   time_t cur_time;
   unsigned char buff[LEN_COMM_ONWIRE];
@@ -1311,7 +1313,11 @@ int rail_add_ses_server(int rail_sckt,
   cur_time = time(0);
   token = command->token;
 
-  namecard = find_namebytok(token, &(nbname.next_name));
+  /* Portable? */
+  nbname = alloca(sizeof(struct nbworks_nbnamelst) +
+		  NETBIOS_CODED_NAME_LEN +1);
+
+  namecard = find_namebytok(token, &(nbname->next_name));
   if ((! namecard) ||
       (namecard->timeof_death <= cur_time) ||
       (((namecard->unq_token == token) && namecard->unq_isinconflict) ||
@@ -1332,18 +1338,16 @@ int rail_add_ses_server(int rail_sckt,
     return 1;
   }
 
-  nbname.name = encode_nbnodename(namecard->name, 0);
-  nbname.len = NETBIOS_CODED_NAME_LEN;
-  /* nbname.next_name is already set */
+  encode_nbnodename(namecard->name, nbname->name);
+  nbname->len = NETBIOS_CODED_NAME_LEN;
+  /* nbname->next_name is already set */
 
   if (command->len)
     rail_flushrail(command->len, rail_sckt);
 
-  if (ss__add_sessrv(&nbname, rail_sckt)) {
-    free(nbname.name);
+  if (ss__add_sessrv(nbname, rail_sckt)) {
     return 0;
   } else {
-    free(nbname.name);
     return 1;
   }
 }
@@ -1741,7 +1745,6 @@ ipv4_addr_t rail_whatisaddrX(int rail_sckt,
   name = read_all_DNS_labels(&walker, buff, buff + command->len, 0, 0, 0, 0);
   free(buff);
   if ((! name) ||
-      (! name->name) ||
       (name->len != NETBIOS_NAME_LEN)) {
     return 0;
   }
