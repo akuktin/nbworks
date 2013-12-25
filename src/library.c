@@ -925,7 +925,6 @@ void *lib_dtgserver(void *arg) {
     if ((dtg->payload_t == normal) &&
 	nrml_pyld &&
 	nrml_pyld->src_name &&
-	nrml_pyld->src_name->name &&
 	(nrml_pyld->src_name->len == NETBIOS_CODED_NAME_LEN)) {
       decode_nbnodename(nrml_pyld->src_name->name, decoded_nbnodename->name);
     } else {
