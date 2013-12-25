@@ -100,9 +100,6 @@ extern struct nbworks_libcntl_t {
 typedef unsigned int nbworks_errno_t;
 extern nbworks_errno_t nbworks_errno;
 
-typedef unsigned int nbworks_do_align_t;
-extern nbworks_do_align_t nbworks_do_align; /* Don't touch this. */
-
 typedef void* nbworks_session_p;
 typedef void* nbworks_namestate_p;
 
