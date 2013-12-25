@@ -44,6 +44,11 @@ INSTALL ?= install
 
 SYSTEM_IS_MACRO = -DSYSTEM_IS_LINUX
 
+# Library binary version numbers.
+SO_MAJOR = 1
+SO_MINOR = 0
+SO_VERSION = $(SO_MAJOR).$(SO_MINOR)
+
 FILES_FOR_DAEMON = config.c daemon.c daemon_externals.c dtg_srvc_func.c     \
                    dtg_srvc_pckt.c name_srvc_cache.c name_srvc_cnst.c       \
                    name_srvc_func_B.c name_srvc_func_P.c                    \
@@ -74,9 +79,9 @@ OBJS_FOR_LIBRARY = $(addprefix $(OBJDIR_LIBRARY)/,$(FILES_FOR_LIBRARY:.c=.o))
 
 .PHONY : all lib clean install
 
-all: nbworksd libnbworks.so.0.0 # nbworksnbnsd
+all: nbworksd libnbworks.so.$(SO_VERSION) # nbworksnbnsd
 
-lib: libnbworks.so.0.0
+lib: libnbworks.so.$(SO_VERSION)
 
 clean:
 	$(RM_RF) $(OBJDIR_NBNS) $(OBJDIR_DAEMON) $(OBJDIR_LIBRARY) \
@@ -84,11 +89,11 @@ clean:
 
 install: all | $(sort $(INSTALL_DIRS))
 	$(INSTALL) nbworksd $(BINDIR)
-	$(INSTALL) libnbworks.so.0.0 $(LIBDIR)
-	if [ -e $(LIBDIR)/libnbworks.so.0 ]; then $(RM_RF) $(LIBDIR)/libnbworks.so.0; fi
-	$(LN_SV) libnbworks.so.0.0 $(LIBDIR)/libnbworks.so.0
+	$(INSTALL) libnbworks.so.$(SO_VERSION) $(LIBDIR)
+	if [ -e $(LIBDIR)/libnbworks.so.$(SO_MAJOR) ]; then $(RM_RF) $(LIBDIR)/libnbworks.so.$(SO_MAJOR); fi
+	$(LN_SV) libnbworks.so.$(SO_VERSION) $(LIBDIR)/libnbworks.so.$(SO_MAJOR)
 	if [ -e $(LIBDIR)/libnbworks.so ]; then $(RM_RF) $(LIBDIR)/libnbworks.so; fi
-	$(LN_SV) libnbworks.so.0 $(LIBDIR)/libnbworks.so
+	$(LN_SV) libnbworks.so.$(SO_MAJOR) $(LIBDIR)/libnbworks.so
 	$(INSTALL) include/nbworks.h $(INCLUDEDIR)
 	$(INSTALL) nbworks.conf.SAMPLE $(ETCDIR)/nbworks.conf
 	$(INSTALL) doc/*.3 $(MANDIR)/man3
@@ -98,8 +103,8 @@ install: all | $(sort $(INSTALL_DIRS))
 nbworksd: $(OBJS_FOR_DAEMON)
 	$(CC) $(CFLAGS) -fpie -fPIE $+ -o $@ -lpthread
 
-libnbworks.so.0.0: $(OBJS_FOR_LIBRARY)
-	$(CC) $(CFLAGS) -fpic -fPIC $+ -shared -o $@ -lpthread
+libnbworks.so.$(SO_VERSION): $(OBJS_FOR_LIBRARY)
+	$(CC) $(CFLAGS) -fpic -fPIC $+ -shared -Wl,-soname=libnbworks.so.$(SO_MAJOR) -o $@ -lpthread
 
 nbworksnbnsd: $(OBJS_FOR_NBNS)
 	$(CC) $(CFLAGS) -fpie -fPIE $+ -o $@ -lpthread
