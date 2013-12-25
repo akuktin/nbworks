@@ -118,7 +118,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
 							unsigned char *start_of_packet,
 							unsigned char *end_of_packet) {
   struct name_srvc_question *question;
-  unsigned char *walker, *remember_walker;
+  unsigned char *walker;
 
   if (! master_packet_walker)
     return 0;
@@ -148,11 +148,6 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
     return 0;
   }
 
-  /* Part of the mechanism to respect the 32-bit boundaries.
-     It's done because read_all_DNS_labels() is guaranteed
-     to increment the *master_packet_walker by at least one. */
-  remember_walker = *master_packet_walker +1;
-
   question->name = read_all_DNS_labels(master_packet_walker,
 				       start_of_packet, end_of_packet,
 				       0, 0, 0, 0);
@@ -162,8 +157,7 @@ struct name_srvc_question *read_name_srvc_pckt_question(unsigned char **master_p
     return 0;
   }
 
-  /* Fields in the packet are aligned to 32-bit boundaries. */
-  walker = align(remember_walker, *master_packet_walker, 4);
+  walker = *master_packet_walker;
 
   if ((walker + 2 * 2) > end_of_packet) {
     OUT_OF_BOUNDS(4);
@@ -185,7 +179,7 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
 					    unsigned char *field,
 					    unsigned char *end_of_packet,
 					    unsigned char *overflow) {
-  unsigned char *walker, *save_walker;
+  unsigned char *walker;
 
   if (! (question && field))
     return field;
@@ -213,16 +207,12 @@ unsigned char *fill_name_srvc_pckt_question(struct name_srvc_question *question,
     return field;
   }
 
-  save_walker = walker;
-  /* Respect the 32-bit boundary. */
-  walker = align(field, walker, 4);
-
   if ((walker +4) > end_of_packet) {
     OUT_OF_BOUNDS(7);
     //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
-    memset(field, 0, (save_walker-field));
+    memset(field, 0, (walker-field));
     return field;
   }
 
@@ -310,7 +300,6 @@ struct name_srvc_question *read_name_srvc_qstnTCP(int sckt,
   } else {
     walker++;
   }
-  walker = align((*startof_question +1), walker, 4);
 
   if ((walker+4) > endof_buff) {
     if (walker > endof_buff) {
@@ -425,7 +414,6 @@ unsigned char *ffrwd_name_srvc_qstnTCP(int sckt,
       goto try_reading;
     return 0;
   }
-  walker = align((*startof_question +1), walker, 4);
 
   if ((walker+4) > endof_buff) {
     if (walker > endof_buff) {
@@ -483,7 +471,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
 						   unsigned char *start_of_packet,
 						   unsigned char *end_of_packet) {
   struct name_srvc_resource *resource;
-  unsigned char *walker, *remember_walker;
+  unsigned char *walker;
 
   if (! master_packet_walker) {
     return 0;
@@ -503,9 +491,6 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
     return 0;
   }
 
-  /* See read_name_srvc_pckt_question() for details. */
-  remember_walker = *master_packet_walker +1;
-
   resource->name = read_all_DNS_labels(master_packet_walker,
 				       start_of_packet, end_of_packet,
 				       0, 0, 0, 0);
@@ -516,8 +501,7 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
     return 0;
   }
 
-  /* Fields in the packet are aligned to 32-bit boundaries. */
-  walker = align(remember_walker, *master_packet_walker, 4);
+  walker = *master_packet_walker;
 
   if ((walker + ((2*2)+4+2)) > end_of_packet) {
     OUT_OF_BOUNDS(9);
@@ -536,7 +520,6 @@ struct name_srvc_resource *read_name_srvc_resource(unsigned char **master_packet
 						 start_of_packet, end_of_packet,
 						 0, 0, 0);
 
-  /* No 32-bit boundary alignment. */
   *master_packet_walker = walker;
 
   return resource;
@@ -567,16 +550,12 @@ unsigned char *fill_name_srvc_resource(struct name_srvc_resource *resource,
     return field;
   }
 
-  save_walker = walker;
-  /* Respect the 32-bit boundary. */
-  walker = align(field, walker, 4);
-
   if ((walker +3*2+4+ (stop_at_rdata ? 0 : resource->rdata_len)) > end_of_packet) {
     OUT_OF_BOUNDS(11);
     //    *do_kill_yourself = TRUE;
     if (overflow)
       *overflow = OVERFLOW_BUF;
-    memset(field, 0, (save_walker-field));
+    memset(field, 0, (walker-field));
     return field;
   }
 
@@ -759,7 +738,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
 	listof_names->nbnodename =
           read_all_DNS_labels(&walker, start_of_packet, end_of_packet,
                               offsetof_start, 0, startblock, lenof_startblock);
-	walker = align(weighted_companion_cube, walker, 4);
+
         /* walker + 2 octets for the flags field
          * SIZEOF_STATRFC1002_BLOCK - the numof_names field */
 	if ((walker +2 + (SIZEOF_STATRFC1002_BLOCK -1)) > endof_buff) {
@@ -788,7 +767,7 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
       listof_names = 0;
       nbstat->listof_names = 0;
     }
-    walker = align(weighted_companion_cube, walker, 4);
+
     /*                                                            */
     /* ********************************************************** */
 
@@ -918,7 +897,6 @@ struct name_srvc_resource *read_name_srvc_resrcTCP(int sckt,
   } else {
     walker++;
   }
-  walker = align((*startof_resource +1), walker, 4);
 
   if ((walker+10) > endof_buff) {
     if (walker > endof_buff) {
@@ -1066,7 +1044,6 @@ unsigned char *ffrwd_name_srvc_resrcTCP(int sckt,
       goto try_reading;
     return 0;
   }
-  walker = align((*startof_resource +1), walker, 4);
 
   if ((walker+10) > endof_buff) {
     if (walker > endof_buff) {
@@ -1154,7 +1131,7 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 					    unsigned char *end_of_packet) {
   struct nbnodename_list_backbone *names;
   struct name_srvc_statistics_rfc1002 *nbstat;
-  unsigned char *walker, *save_walker;
+  unsigned char *walker;
 
   if ((! (content && field)) ||
       (field > end_of_packet))
@@ -1209,10 +1186,9 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
       memset(field, 0, content->rdata_len);
       return (field + content->rdata_len);
     }
-    save_walker = walker;
-    walker = align(field, walker, 4);
+
     if (walker > end_of_packet) {
-      memset(save_walker, 0, (end_of_packet - save_walker));
+      memset(walker, 0, (end_of_packet - walker));
       return end_of_packet;
     } else {
       return_adjusted_pointer;
@@ -1247,17 +1223,14 @@ unsigned char *fill_name_srvc_resource_data(struct name_srvc_resource *content,
 	return (field + content->rdata_len);
       }
 
-      save_walker = walker;
-      walker = align(field, walker, 4);
       if ((walker + 2 + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {
 	OUT_OF_BOUNDS(21);
 	//	*do_kill_yourself = TRUE;
-	memset(field, 0, (((save_walker-field) > content->rdata_len) ?
-			  (save_walker-field) : content->rdata_len));
+	memset(field, 0, (((walker-field) > content->rdata_len) ?
+			  (walker-field) : content->rdata_len));
 	return (field + content->rdata_len);
       }
       walker = fill_16field(names->name_flags, walker);
-      //      walker = align(field, walker, 4);
       names = names->next_nbnodename;
     }
     if ((walker + (SIZEOF_STATRFC1002_BLOCK -1)) > end_of_packet) {

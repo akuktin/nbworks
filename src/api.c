@@ -83,13 +83,10 @@ unsigned long nbworks_maxdtglen(nbworks_namestate_p handle,
 
   name = handle;
   if (name)
-    result = result - (2 * align(0, (1 + NETBIOS_CODED_NAME_LEN +
-				     name->lenof_scope),
-				 4));
+    result = result - (2 * (1 + NETBIOS_CODED_NAME_LEN +
+			    name->lenof_scope));
   else
-    result = result - (2 * align(0, (1 + NETBIOS_CODED_NAME_LEN +
-				     1),
-				 4));
+    result = result - (2 * (1 + NETBIOS_CODED_NAME_LEN + 1));
 
   if (result > 0) {
     if (withfrag)

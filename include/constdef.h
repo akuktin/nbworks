@@ -121,25 +121,11 @@
 # define DEFAULT_REFRESH_TTL 3600 /* seconds */
 
 
-# ifdef align_incr
-#  undef align_incr
-# endif
-# ifdef align
-#  undef align
-# endif
-
 # ifndef NBWORKS_NBWORKS_H
 typedef unsigned int nbworks_errno_t;
 extern nbworks_errno_t nbworks_errno;
-
-typedef unsigned int nbworks_do_align_t;
-extern nbworks_do_align_t nbworks_do_align;
 # endif
 # define ADD_MEANINGFULL_ERRNO ONES
-
-# define align_incr(base, ptr, incr) (nbworks_do_align ? \
-                                      ((incr- ((ptr-base) %incr)) %incr) : 0)
-# define align(base, ptr, incr) (ptr + align_incr(base, ptr, incr))
 
 # define NAME_SRVC 1
 # define DTG_SRVC  0

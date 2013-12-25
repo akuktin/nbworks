@@ -101,7 +101,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
 				      unsigned char *end_of_packet) {
   struct ses_pckt_pyld_two_names *two_names_payload;
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
-  unsigned char *walker, *remember_walker;
+  unsigned char *walker;
   void *payload_ptr;
 
   if (! master_packet_walker)
@@ -137,9 +137,6 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
       return 0;
     }
 
-    /* read_all_DNS_labels() is guaranteed to
-       increase the pointer by at least one. */
-    remember_walker = walker +1;
     two_names_payload->called_name =
       read_all_DNS_labels(&walker, start_of_packet, end_of_packet,
                           0, 0, 0, 0);
@@ -148,8 +145,6 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
       free(two_names_payload);
       return 0;
     }
-
-    walker = align(remember_walker, walker, 4);
 
     if ((walker +1) > end_of_packet) {
       OUT_OF_BOUNDS(48);
@@ -233,7 +228,7 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
 					       unsigned char *endof_pckt) {
   struct ses_pckt_pyld_two_names *two_names_payload;
   struct ses_srvc_retarget_blob_rfc1002 *retarget_payload;
-  unsigned char *walker, *endof_buff, *save_walker, *remember_walker;
+  unsigned char *walker, *endof_buff;
 
   if (! (content && field))
     return field;
@@ -260,19 +255,14 @@ unsigned char *fill_ses_srvc_pckt_payload_data(struct ses_srvc_packet *content,
       return field;
     }
 
-    remember_walker = walker +1;
     walker = fill_all_DNS_labels(two_names_payload->called_name, walker,
 				 endof_pckt, 0);
 
-    save_walker = walker;
-    walker = align(remember_walker, walker, 4);
     if ((walker +1) > endof_buff) {
       OUT_OF_BOUNDS(53);
       memset(field, 0, content->len);
       return field;
     }
-    if (save_walker < walker)
-      memset(save_walker, 0, (walker - save_walker));
 
     walker = fill_all_DNS_labels(two_names_payload->calling_name, walker,
 				 endof_pckt, 0);
@@ -445,7 +435,6 @@ struct nbworks_nbnamelst *ses_srvc_get_callingname(void *packet_ptr,
 
   fastfrwd_all_DNS_labels(&walker, packet+len);
 
-  align(packet, walker, 4);
   if (walker >= (packet + len)) {
     OUT_OF_BOUNDS(57);
     return 0;

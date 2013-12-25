@@ -96,7 +96,7 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
                                       unsigned char *end_of_packet,
 				      unsigned char read_allpyld) {
   struct dtg_pckt_pyld_normal *normal_pckt;
-  unsigned char *walker, *remember_walker, *endof_buff;
+  unsigned char *walker, *endof_buff;
 
   if (! (packet && master_packet_walker))
     return 0;
@@ -147,8 +147,6 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
     /* Set the new bound. */
     endof_buff = walker + normal_pckt->len;
 
-    /* read_all_DNS_labels() increments the walker by at least one. */
-    remember_walker = walker +1;
     normal_pckt->src_name = read_all_DNS_labels(&walker, start_of_packet,
 						end_of_packet, 0, 0, 0, 0);
     if (! normal_pckt->src_name) {
@@ -157,7 +155,6 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       return 0;
     }
 
-    walker = align(remember_walker, walker, 4);
     if (walker >= endof_buff) {
       OUT_OF_BOUNDS(28);
       nbworks_dstr_nbnodename(normal_pckt->src_name);
@@ -165,7 +162,6 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       return 0;
     }
 
-    remember_walker = walker +1;
     normal_pckt->dst_name = read_all_DNS_labels(&walker, start_of_packet,
 						end_of_packet, 0, 0, 0, 0);
     if (! normal_pckt->dst_name) {
@@ -174,9 +170,6 @@ void *read_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *packet,
       free(normal_pckt);
       return 0;
     }
-
-    /* However, maybe I should ignore alignment things. */
-    walker = align(remember_walker, walker, 4);
 
     if (walker > endof_buff) {
       OUT_OF_BOUNDS(29);
@@ -240,7 +233,7 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
 					       unsigned char *field,
 					       unsigned char *endof_pckt) {
   struct dtg_pckt_pyld_normal *normal_pckt;
-  unsigned char *walker, *remember_walker, *save_walker;
+  unsigned char *walker;
 
   if ((! (content && field)) ||
       (field > endof_pckt))
@@ -269,33 +262,23 @@ unsigned char *fill_dtg_srvc_pckt_payload_data(struct dtg_srvc_packet *content,
     /* Set the new bound. */
     endof_pckt = walker + normal_pckt->len;
 
-    remember_walker = walker;
-
     walker = fill_all_DNS_labels(normal_pckt->src_name, walker,
 				 endof_pckt, 0);
 
-    save_walker = walker;
-    walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->lenof_data +1) > endof_pckt) {
       OUT_OF_BOUNDS(31);
-      memset(field, 0, (save_walker-field));
+      memset(field, 0, (walker-field));
       return field;
     }
-    if (save_walker < walker)
-      memset(save_walker, 0, (walker - save_walker));
 
     walker = fill_all_DNS_labels(normal_pckt->dst_name, walker,
 				 endof_pckt, 0);
 
-    save_walker = walker;
-    walker = align(remember_walker, walker, 4);
     if ((walker + normal_pckt->lenof_data) > endof_pckt) {
       OUT_OF_BOUNDS(32);
-      memset(field, 0, (save_walker-field));
+      memset(field, 0, (walker-field));
       return field;
     }
-    if (save_walker < walker)
-      memset(save_walker, 0, (walker - save_walker));
 
     return mempcpy(walker, normal_pckt->payload,
 		   normal_pckt->lenof_data);
@@ -448,8 +431,6 @@ void *recving_dtg_srvc_pckt_reader(void *packet,
     free(result);
     return 0;
   }
-
-  align(startof_pckt, readhead, 4);
 
   result->dst = read_all_DNS_labels(&readhead, packet, (startof_pckt + len),
 				    0, 0, 0, 0);

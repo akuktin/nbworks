@@ -588,8 +588,8 @@ ssize_t lib_senddtg_138(struct name_state *handle,
 
   /* Which FUCKING IDIOT came up with the idea to include
    * the length of the names in the datagram_length field??? */
-  names_len = align(0, (1 + NETBIOS_CODED_NAME_LEN +
-			handle->lenof_scope), 4)*2;
+  names_len = (1 + NETBIOS_CODED_NAME_LEN +
+	       handle->lenof_scope) *2;
   hdr_len = DTG_HDR_LEN + 2 + 2 + names_len;
 
   max_wholefrag_len = nbworks_libcntl.dtg_max_wholefrag_len;
@@ -1207,9 +1207,8 @@ int lib_open_session(struct name_state *handle,
   twins.called_name = her;
   twins.calling_name = name_id;
 
-  lenof_pckt = 2 * align(0, (1 + NETBIOS_CODED_NAME_LEN +
-			     handle->lenof_scope),
-			 4);
+  lenof_pckt = 2 * (1 + NETBIOS_CODED_NAME_LEN +
+		    handle->lenof_scope);
 
   pckt.len = lenof_pckt;
   pckt.type = SESSION_REQUEST;
