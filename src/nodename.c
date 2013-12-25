@@ -194,10 +194,8 @@ unsigned char *nbworks_create_nbnamelabel(const unsigned char *string,
   }
 
   len = strlen((char *)string);
-  if (len > NETBIOS_NAME_LEN) {
-    nbworks_errno = EINVAL;
-    return 0;
-  }
+  if (len > NETBIOS_NAME_LEN)
+    len = NETBIOS_NAME_LEN;
 
   if (! field) {
     result = malloc(NETBIOS_NAME_LEN);
