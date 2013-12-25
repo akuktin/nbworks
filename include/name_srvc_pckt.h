@@ -100,7 +100,7 @@ enum name_srvc_rdata_type {
                       IETF resources are not enlighning.
                       http://www.rfc-editor.org/errata_search.php?rfc=1002 */
   nb_type_null, /* Nothing. */
-  nb_nodename, /* NetBIOS name+scope, like in questions. */ /* Aligned! */
+  nb_nodename, /* NetBIOS name+scope, like in questions. */
   nb_NBT_node_ip_address, /* Array of (IPv4addr). */
   nb_statistics_rfc1002, /* Array of (nbnodename+name_flags), followed
 			    by the statistics blob. */
