@@ -712,7 +712,6 @@ void *read_name_srvc_resource_data(unsigned char **start_and_end_of_walk,
     }
     num_names = *walker;
     nbstat->numof_names = num_names;
-    weighted_companion_cube = walker +1;
     walker++;
     /* ********************************************************** */
     /*                                                            */
