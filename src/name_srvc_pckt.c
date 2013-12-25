@@ -1965,7 +1965,6 @@ void destroy_name_srvc_qstn_lst(struct name_srvc_question_lst *questions,
 	nbworks_dstr_nbnodename(questions->qstn->name);
       } else {
 	if (questions->qstn->name) {
-	  free(questions->qstn->name->name);
 	  free(questions->qstn->name);
 	}
       }
@@ -2003,7 +2002,6 @@ void destroy_name_srvc_res(struct name_srvc_resource *res,
     nbworks_dstr_nbnodename(res->name);
   } else {
     if (res->name) {
-      free(res->name->name);
       free(res->name);
     }
   }

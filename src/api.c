@@ -179,7 +179,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
       scope) {
     pthread_mutex_destroy(&(result->dtg_srv_work_inprog));
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     nbworks_errno = ENOMEM;
     return 0;
@@ -191,7 +191,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
   if (0 != pthread_mutex_init(&(result->guard_mutex), 0)) {
     pthread_mutex_destroy(&(result->dtg_srv_work_inprog));
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     nbworks_errno = ENOMEM;
     return 0;
@@ -200,7 +200,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->dtg_srv_work_inprog));
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
     pthread_mutex_destroy(&(result->guard_mutex));
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     nbworks_errno = ENOMEM;
     return 0;
@@ -253,7 +253,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->ses_srv_work_inprog));
     pthread_mutex_destroy(&(result->guard_mutex));
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     return 0;
   }
@@ -274,7 +274,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->guard_mutex));
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     nbworks_errno = ENOBUFS;
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     return 0;
   }
@@ -289,7 +289,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->guard_mutex));
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     free(namedtbuff);
     nbworks_errno = ECONNREFUSED;
@@ -304,7 +304,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     close(daemon);
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     free(namedtbuff);
     nbworks_errno = errno;
@@ -318,7 +318,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     close(daemon);
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     free(namedtbuff);
     nbworks_errno = errno;
@@ -335,7 +335,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     close(daemon);
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     nbworks_errno = EPERM;
     return 0;
@@ -351,7 +351,7 @@ nbworks_namestate_p nbworks_regname(unsigned char *name,
     pthread_mutex_destroy(&(result->guard_mutex));
     pthread_mutex_destroy(&(result->dtg_recv_mutex));
     nbworks_dstr_nbnodename(result->scope);
-    free(result->name);
+    nbworks_dstr_nbnodename(result->name);
     free(result);
     if (command.nbworks_errno)
       nbworks_errno = command.nbworks_errno;

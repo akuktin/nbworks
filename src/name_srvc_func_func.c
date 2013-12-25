@@ -2192,7 +2192,6 @@ struct name_srvc_resource *
 
   if (!((res) &&
 	(res->name) &&
-	(res->name->name) &&
 	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->rdata_t == nb_address_list)))
     return 0;
@@ -2379,7 +2378,6 @@ uint32_t name_srvc_do_NBNSnamreg(struct name_srvc_packet *outpckt,
   while (res != 0) {
     if (res->res) {
       if (!((res->res->name) &&
-	    (res->res->name->name) &&
 	    (res->res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	    (res->res->ttl > nbworks_namsrvc_cntrl.NBNS_threshold_ttl) &&
 	    (res->res->rdata_t == nb_address_list) &&
@@ -3167,7 +3165,6 @@ struct name_srvc_resource *name_srvc_func_nodestat(struct name_srvc_question *qs
   if (!(qstn &&
 	(qstn->qtype == QTYPE_NBSTAT) &&
 	qstn->name &&
-	qstn->name->name &&
 	(qstn->name->len == NETBIOS_CODED_NAME_LEN)))
     return 0;
 
@@ -3316,7 +3313,6 @@ struct name_srvc_resource *name_srvc_func_namqry(struct name_srvc_question *qstn
   if (!(qstn &&
 	(qstn->qtype != QTYPE_NBSTAT) &&
 	qstn->name &&
-	qstn->name->name &&
 	(qstn->name->len == NETBIOS_CODED_NAME_LEN)))
     return 0;
 
@@ -3656,7 +3652,6 @@ struct name_srvc_resource *
 
   if (!(res &&
 	(res->name) &&
-	(res->name->name) &&
 	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->rdata_t == nb_address_list) &&
 	(res->rdata) &&
@@ -3929,7 +3924,6 @@ void name_srvc_func_namcftdem(struct name_srvc_resource *res,
 
   if (!((res) &&
 	(res->name) &&
-	(res->name->name) &&
 	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->rdata_t == nb_address_list)))
     return;
@@ -4049,7 +4043,6 @@ unsigned int name_srvc_func_namrelreq(struct name_srvc_resource *res,
 
   if (!(res &&
 	res->name &&
-	res->name->name &&
 	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->rdata_t == nb_address_list)))
     return FALSE;
@@ -4438,7 +4431,6 @@ unsigned int name_srvc_func_updtreq(struct name_srvc_resource *res,
 
   if (!(res &&
 	res->name &&
-	res->name->name &&
 	(res->name->len == NETBIOS_CODED_NAME_LEN) &&
 	(res->rdata_t == nb_address_list)))
     return FALSE;
