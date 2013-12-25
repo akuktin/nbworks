@@ -29,6 +29,9 @@
 #  define MSG_GROUP   MSG_DONTROUTE /* ...fitting everything into int16_t. */
 # endif
 /***********************/
+/* FIXME: this needs to be done in a portable way. */
+# define NBWORKS_PUBLIC __attribute__ ((visibility ("default")))
+/***********************/
 
 # define NBWORKS_NBNAME_LEN 16
 # define NBWORKS_CODED_NBNAME_LEN 32
@@ -57,10 +60,10 @@
 
 # define NBWORKS_MAXLEN_LABEL 0x3f
 
-extern const char nbworks_jokername[];
-extern const char nbworks_jokernamecoded[];
+extern NBWORKS_PUBLIC const char nbworks_jokername[];
+extern NBWORKS_PUBLIC const char nbworks_jokernamecoded[];
 
-extern struct nbworks_libcntl_t {
+extern NBWORKS_PUBLIC struct nbworks_libcntl_t {
   /* Stop all datagram servers ASAP. */
   unsigned char stop_alldtg_srv;
   /* Stop all session listeners ASAP. */
@@ -98,7 +101,7 @@ extern struct nbworks_libcntl_t {
 } nbworks_libcntl;
 
 typedef unsigned int nbworks_errno_t;
-extern nbworks_errno_t nbworks_errno;
+extern NBWORKS_PUBLIC nbworks_errno_t nbworks_errno;
 
 typedef void* nbworks_session_p;
 typedef void* nbworks_namestate_p;
@@ -116,62 +119,62 @@ struct nbworks_pollfd {
   short int revents;
 };
 
-void
+NBWORKS_PUBLIC void
   nbworks_libinit(void);
-void
+NBWORKS_PUBLIC void
   nbworks_reinit_myIP4address(void);
 
 /* BEGIN auxiliary API */
-struct nbworks_nbnamelst *
+NBWORKS_PUBLIC struct nbworks_nbnamelst *
   nbworks_create_nbnodename(unsigned char *string,
                             unsigned char type_char);
-unsigned char *
+NBWORKS_PUBLIC unsigned char *
   nbworks_create_nbnamelabel(const unsigned char *string,
                              const unsigned char type_char,
                              unsigned char *field);
-void
+NBWORKS_PUBLIC void
   nbworks_dstr_nbnodename(struct nbworks_nbnamelst *nbnodename);
-struct nbworks_nbnamelst *
+NBWORKS_PUBLIC struct nbworks_nbnamelst *
   nbworks_clone_nbnodename(struct nbworks_nbnamelst *nbnodename);
 /* returns: 0 = equal, !0 = not equal */
-int
+NBWORKS_PUBLIC int
   nbworks_cmp_nbnodename(struct nbworks_nbnamelst *name_one,
                          struct nbworks_nbnamelst *name_two);
-unsigned int
+NBWORKS_PUBLIC unsigned int
   nbworks_nbnodenamelen(struct nbworks_nbnamelst *nbnodename);
 
-struct nbworks_nbnamelst *
+NBWORKS_PUBLIC struct nbworks_nbnamelst *
   nbworks_buff2nbname(unsigned char *buff,
                       unsigned long lenof_string);
-unsigned long
+NBWORKS_PUBLIC unsigned long
   nbworks_nbname2buff(unsigned char **destination,
                       struct nbworks_nbnamelst *name);
-struct nbworks_nbnamelst *
+NBWORKS_PUBLIC struct nbworks_nbnamelst *
   nbworks_makescope(unsigned char *buff);
 
-unsigned long
+NBWORKS_PUBLIC unsigned long
   nbworks_maxdtglen(nbworks_namestate_p handle,
                     unsigned int withfrag);
 
 /* returns: >0 = success; 0 = fail; <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_grab_railguard(nbworks_namestate_p namehandle);
 /* returns: >0 = success; 0 = fail; <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_release_railguard(nbworks_namestate_p namehandle);
 
 /* returns: >0 = success, 0 = fail, <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_setsignal(nbworks_namestate_p namehandle,
                     int signal);
 /* returns: >0 = success, 0 = fail, <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_rmsignal(nbworks_namestate_p namehandle);
 /* END auxiliatry API */
 
 /* BEGIN base API */
 /* BEGIN core API */
-nbworks_namestate_p
+NBWORKS_PUBLIC nbworks_namestate_p
   nbworks_regname(unsigned char *name,   /* len <= (NBWORKS_NBNAME_LEN-1) */
                   unsigned char name_type,    /* these are Microsofts idea */
                   struct nbworks_nbnamelst *scope, /* 0 is a valid value */
@@ -180,47 +183,47 @@ nbworks_namestate_p
                   unsigned long refresh_time, /* seconds */
                   unsigned int withguard);    /* insure yourself or not */
 /* returns: >0 = success, 0 = fail, <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_delname(nbworks_namestate_p handle);
 
-nbworks_session_p
+NBWORKS_PUBLIC nbworks_session_p
   nbworks_castdtgsession(nbworks_namestate_p handle,
                          struct nbworks_nbnamelst *defaultpeer);
 
 /* returns: >0 = success, 0 = fail, <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_listen_dtg(nbworks_namestate_p handle,
                      unsigned char takes_field,
                      struct nbworks_nbnamelst *listento);
 /* returns: >0 = success, 0 = fail, <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_listen_ses(nbworks_namestate_p handle,
                      unsigned char takes_field,
                      struct nbworks_nbnamelst *listento);
 /* returns: >0 = success; 0 = fail; <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_update_listentos(unsigned char service,
                            nbworks_namestate_p namehandle,
                            unsigned char newtakes_field,
                            struct nbworks_nbnamelst *newlistento);
-nbworks_session_p
+NBWORKS_PUBLIC nbworks_session_p
   nbworks_accept_ses(nbworks_namestate_p handle,
                      int timeout);
-nbworks_session_p
+NBWORKS_PUBLIC nbworks_session_p
   nbworks_sescall(nbworks_namestate_p handle,
                   struct nbworks_nbnamelst *dst,
                   unsigned char keepalive);
-nbworks_session_p
+NBWORKS_PUBLIC nbworks_session_p
   nbworks_dtgconnect(nbworks_session_p session,
                      struct nbworks_nbnamelst *dst);
 
-int
+NBWORKS_PUBLIC int
   nbworks_poll(unsigned char service,
                struct nbworks_pollfd *handles,
                int numof_sess,
                int timeout);
 
-ssize_t
+NBWORKS_PUBLIC ssize_t
   nbworks_sendto(unsigned char service,
                  nbworks_session_p ses,
                  void *buff,
@@ -228,7 +231,7 @@ ssize_t
                  int flags,
                  struct nbworks_nbnamelst *dst);
 # define nbworks_send(a, b, c, d, e) nbworks_sendto(a, b, c, d, e, 0)
-ssize_t
+NBWORKS_PUBLIC ssize_t
   nbworks_recvfrom(unsigned char service,
                    nbworks_session_p ses,
                    void **buff,
@@ -236,33 +239,33 @@ ssize_t
                    int callflags,
                    struct nbworks_nbnamelst **src);
 # define nbworks_recv(a, b, c, d, e) nbworks_recvfrom(a, b, c, d, e, 0)
-ssize_t
+NBWORKS_PUBLIC ssize_t
   nbworks_recvwait(nbworks_session_p session,
                    void **buff,
                    size_t len,
                    int callflags,
                    int timeout,
                    struct nbworks_nbnamelst **src);
-void
+NBWORKS_PUBLIC void
   nbworks_cancel(nbworks_session_p ses,
                  unsigned char what);
 
 /* returns: >0 = success, 0 = fail, <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_haltsrv(unsigned int service,
                   nbworks_namestate_p namehandle);
-void
+NBWORKS_PUBLIC void
   nbworks_hangup_ses(nbworks_session_p ses);
 # define nbworks_destroy_ses(a) nbworks_hangup_ses(a)
 /* END core API */
 
-unsigned long
+NBWORKS_PUBLIC unsigned long
   nbworks_whatisIP4addrX(struct nbworks_nbnamelst *X,
                          unsigned char node_types, /* can be more than one */
                          unsigned char isgroup,
                          unsigned long len);
 /* returns: >0 = yes; 0 = no; <0 = error */
-int
+NBWORKS_PUBLIC int
   nbworks_isinconflict(nbworks_namestate_p namehandle);
 /* END base API */
 
@@ -271,9 +274,11 @@ int
  * after publishing a stable version of the library. These placeholders
  * will enable me to change the API without changing the ABI.
  * It remains to be seen if this provision will ever make sense. */
-void *nbworks_emergencyfix_func1(void *arg);
-void *nbworks_emergencyfix_func2(void *arg);
-void *nbworks_emergencyfix_func3(void *arg);
-void *nbworks_emergencyfix_func4(void *arg);
+NBWORKS_PUBLIC void *nbworks_emergencyfix_func1(void *arg);
+NBWORKS_PUBLIC void *nbworks_emergencyfix_func2(void *arg);
+NBWORKS_PUBLIC void *nbworks_emergencyfix_func3(void *arg);
+NBWORKS_PUBLIC void *nbworks_emergencyfix_func4(void *arg);
+
+# undef NBWORKS_PUBLIC
 
 #endif /* NBWORKS_NBWORKS_H */

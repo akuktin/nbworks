@@ -112,7 +112,7 @@ $(OBJDIR_DAEMON)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -DCOMPILING_DAEMON $(SYSTEM_IS_MACRO) -fpie -fPIE -Iinclude -c -o $@ $<
 
 $(OBJDIR_LIBRARY)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) $(SYSTEM_IS_MACRO) -fpic -fPIC -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) $(SYSTEM_IS_MACRO) -fpic -fPIC -fvisibility=hidden -Iinclude -c -o $@ $<
 
 $(OBJS_FOR_NBNS): | $(OBJDIR_NBNS)
 
