@@ -22,11 +22,11 @@
 /***********************/
 # include <sys/socket.h>
 
-# ifndef MSG_BRDCAST
-#  define MSG_BRDCAST MSG_PROXY     /* Trying hard to be portable by... */
+# ifndef NBWORKS_MSG_BRDCAST
+#  define NBWORKS_MSG_BRDCAST MSG_PROXY     /* Trying hard to be portable by... */
 # endif
-# ifndef MSG_GROUP
-#  define MSG_GROUP   MSG_DONTROUTE /* ...fitting everything into int16_t. */
+# ifndef NBWORKS_MSG_GROUP
+#  define NBWORKS_MSG_GROUP   MSG_DONTROUTE /* ...fitting everything into int16_t. */
 # endif
 /***********************/
 /* FIXME: this needs to be done in a portable way. */

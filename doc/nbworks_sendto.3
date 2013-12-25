@@ -90,9 +90,9 @@ while (attempting to) send headers but becomes blocking once the data
 referenced by the sent header is being sent. Failure to send all the
 data header specifies would desync the stream and destroy the session.
 .PP
-When sending datagrams, a flag \fBMSG_BRDCAST\fP is defined through a
+When sending datagrams, a flag \fBNBWORKS_MSG_BRDCAST\fP is defined through a
 map-over of \fBMSG_PROXY\fP. The data for that datagram will be sent
-with a broadcast datagram. An additional flag \fBMSG_GROUP\fP is
+with a broadcast datagram. An additional flag \fBNBWORKS_MSG_GROUP\fP is
 defined through a map-over of \fBMSG_DONTROUTE\fP. When this flag is
 set, nbworks will attempt to send a datagram to a group name. When
 none of these two flags are set, the datagram is sent to a unique

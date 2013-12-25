@@ -62,7 +62,7 @@ int main() {
 
   fprintf(stderr, "About to try sending a datagram.\n");
   ret_val = nbworks_send(NBWORKS_DTG_SRVC, session,
-                         "Hello World!", 12, MSG_BRDCAST);
+                         "Hello World!", 12, NBWORKS_MSG_BRDCAST);
   if (ret_val != 12) {
     fprintf(stderr, "Warning! Something is wrong with ret_val. It is: %li\n"
 	    "nbworks_errno = %li\n", ret_val, nbworks_errno);

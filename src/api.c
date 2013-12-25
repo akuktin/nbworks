@@ -1552,10 +1552,10 @@ ssize_t nbworks_sendto(unsigned char service,
 	return -1;
       }
 
-    if (callflags & MSG_BRDCAST) {
+    if (callflags & NBWORKS_MSG_BRDCAST) {
       flags = DTGIS_BRDCST;
     } else {
-      if (callflags & MSG_GROUP)
+      if (callflags & NBWORKS_MSG_GROUP)
 	flags = DTGIS_GRPCST;
       else
 	flags = DTGIS_UNQCST;

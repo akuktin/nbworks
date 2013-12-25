@@ -132,8 +132,8 @@ extern nbworks_errno_t nbworks_errno;
 # define SES_SRVC  2
 
 # ifndef NBWORKS_NBWORKS_H
-#  define MSG_BRDCAST MSG_PROXY     /* Trying hard to be portable... */
-#  define MSG_GROUP   MSG_DONTROUTE /* by fitting everything into uint16_t. */
+#  define NBWORKS_MSG_BRDCAST MSG_PROXY     /* Trying hard to be portable... */
+#  define NBWORKS_MSG_GROUP   MSG_DONTROUTE /* by fitting everything into uint16_t. */
 # endif /* NBWORKS_NBWORKS_H */
 
 typedef uint64_t token_t;
