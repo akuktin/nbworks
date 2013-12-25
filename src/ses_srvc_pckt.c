@@ -154,7 +154,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
     if ((walker +1) > end_of_packet) {
       OUT_OF_BOUNDS(48);
       /* TODO: errno signaling stuff */
-      free(two_names_payload->called_name);
+      nbworks_dstr_nbnodename(two_names_payload->called_name);
       free(two_names_payload);
       return 0;
     }
@@ -165,7 +165,7 @@ void *read_ses_srvc_pckt_payload_data(struct ses_srvc_packet *packet,
     if (! two_names_payload->calling_name) {
       DIDNT_READ_NAME(6);
       /* TODO: errno signaling stuff */
-      free(two_names_payload->called_name);
+      nbworks_dstr_nbnodename(two_names_payload->called_name);
       free(two_names_payload);
       return 0;
     }
