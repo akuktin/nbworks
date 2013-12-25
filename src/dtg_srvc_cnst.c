@@ -57,15 +57,15 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
   result = malloc(sizeof(struct dtg_pckt_pyld_normal));
   if (! result) {
     /* TODO: errno signaling stuff */
-    free(complete_dst);
     free(complete_src);
+    free(complete_dst);
     return 0;
   };
 
   if (! nbworks_make_nbnodename(src, src_type, complete_src->name)) {
     /* TODO: errno signaling stuff */
-    free(complete_src);
     free(complete_dst);
+    free(complete_src);
     free(result);
     return 0;
   }
@@ -74,7 +74,7 @@ struct dtg_pckt_pyld_normal *dtg_srvc_make_pyld_normal(unsigned char *src,
 
   if (! nbworks_make_nbnodename(dst, dst_type, complete_dst->name)) {
     /* TODO: errno signaling stuff */
-    free(complete_src);
+    nbworks_dstr_nbnodename(complete_src);
     free(complete_dst);
     free(result);
     return 0;
