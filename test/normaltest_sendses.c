@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <alloca.h>
 #include <nbworks.h>
 
 #define FALSE 0
@@ -8,11 +9,10 @@
 int main() {
   nbworks_namestate_p name;
   nbworks_session_p session;
-  struct nbworks_nbnamelst name_lst;
+  struct nbworks_nbnamelst *name_lst;
   size_t ret_val;
   unsigned char name_label[] = "TEST7";
   unsigned char target_label[] = "TARGETSES";
-  unsigned char cast_label[NBWORKS_NBNAME_LEN];
 
   nbworks_libinit();
   //  sleep(10);
@@ -26,18 +26,20 @@ int main() {
 
   fprintf(stdout, "Name registered...\n");
 
-  if (! nbworks_create_nbnamelabel(target_label, 0, cast_label)) {
+
+  name_lst = alloca(sizeof(struct nbworks_nbnamelst) +
+		    NBWORKS_NBNAME_LEN);
+  name_lst->len = NBWORKS_NBNAME_LEN;
+  name_lst->next_name = 0;
+  if (! nbworks_create_nbnamelabel(target_label, 0, name_lst->name)) {
     fprintf(stderr, "Could not create target label.\nnbworks_errno = %i\n"
 	    "Deleting name...\n", nbworks_errno);
     nbworks_delname(name);
     return 1;
   }
 
-  name_lst.name = cast_label;
-  name_lst.len = NBWORKS_NBNAME_LEN;
-  name_lst.next_name = 0;
 
-  session = nbworks_sescall(name, &name_lst, FALSE);
+  session = nbworks_sescall(name, name_lst, FALSE);
   if (! session) {
     fprintf(stderr, "Could not connect session.\nnbworks_errno = %i\n"
 	    "Deleting name...\n", nbworks_errno);

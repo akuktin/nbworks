@@ -25,16 +25,17 @@ int main() {
   nbworks_session_p session;
   nbworks_namestate_p name;
   struct nbworks_pollfd nbw_pfd;
-  struct nbworks_nbnamelst *name_lst;
   size_t ret_val;
   ssize_t have_read;
   int pollret, result;
   unsigned char name_label[] = "TARGETSES";
-  unsigned char return_buff[0x1ffff], *walker, *buff_ptr, **buff_pptr;
+  unsigned char return_buff[0x1ffff], *walker, *buff_ptr;
+  void *buff_ptr_void, **buff_pptr;
 
   result = 0;
   buff_ptr = return_buff;
-  buff_pptr = &buff_ptr;
+  buff_ptr_void = buff_ptr;
+  buff_pptr = &buff_ptr_void;
   //  buff_pptr = &return_buff;
   sleeptime.tv_sec = 0;
   sleeptime.tv_nsec = (50 * 1000000);

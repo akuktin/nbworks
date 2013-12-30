@@ -41,7 +41,7 @@ int main() {
     return 1;
   }
 
-  name_lst = nbworks_buff2nbname(target_label, 0);
+  name_lst = nbworks_create_nbnodename(target_label, 0);
   if (! name_lst) {
     fprintf(stderr, "Could not create target label.\nnbworks_errno = %li\n"
 	    "Deleting name...\n", nbworks_errno);

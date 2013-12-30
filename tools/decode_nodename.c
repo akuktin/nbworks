@@ -17,6 +17,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <nbworks.h>
+#include <unistd.h>
+#include <stdint.h>
 
 #include "nodename.h"
 

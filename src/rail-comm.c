@@ -284,14 +284,15 @@ void *handle_rail(void *args) {
 	    close(params.rail_sckt);
 	    rail_isreusable = FALSE;
 	  } else {
+	    command.nbworks_errno = ret_val;
 	    goto failed_to_send_dtg;
 	  }
 	}
       } else {
 	if (command.len)
 	  rail_flushrail(command.len, params.rail_sckt);
-      failed_to_send_dtg:
 	command.nbworks_errno = ADD_MEANINGFULL_ERRNO;
+      failed_to_send_dtg:
 
 	command.len = 0;
 	fill_railcommand(&command, buff, (buff+LEN_COMM_ONWIRE));
@@ -881,7 +882,7 @@ int rail_senddtg(int rail_sckt,
   if (! pckt) {
     /* TODO: errno signaling stuff */
     free(buff);
-    return 1;
+    return 0x7fff;
   }
 
   if (pckt->type == DIR_GRP_DTG) {

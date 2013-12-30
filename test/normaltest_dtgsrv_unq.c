@@ -53,7 +53,7 @@ int main() {
 
   fprintf(stderr, "Name registered...\n");
 
-  if (0 >= nbworks_listen_dtg(name, ONES/*NBWORKS_TAKES_UNQCST*/, 0)) {
+  if (0 >= nbworks_listen_dtg(name, NBWORKS_TAKES_UNQCST, 0)) {
     fprintf(stderr, "Could not set up dtg server.\nnbworks_errno = %u\n",
             nbworks_errno);
     result = 1;

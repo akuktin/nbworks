@@ -6,19 +6,20 @@
 #define ONES (~0)
 
 int main() {
-  struct nbworks_nbnamelst name_lst;
+  struct nbworks_nbnamelst *name_lst;
   unsigned long address;
   unsigned char target_label[] = "TARGETSES";
-  unsigned char casted_target_label[NBWORKS_NBNAME_LEN];
 
   nbworks_libinit();
 
-  name_lst.name = nbworks_create_nbnamelabel(target_label, 0,
-					     casted_target_label);
-  name_lst.len = NBWORKS_NBNAME_LEN;
-  name_lst.next_name = 0;
+  name_lst = alloca(sizeof(struct nbworks_nbnamelst) +
+		    NBWORKS_NBNAME_LEN);
+  nbworks_create_nbnamelabel(target_label, 0,
+			     name_lst->name);
+  name_lst->len = NBWORKS_NBNAME_LEN;
+  name_lst->next_name = 0;
 
-  address = nbworks_whatisIP4addrX(&name_lst, ONES, FALSE, 0);
+  address = nbworks_whatisIP4addrX(name_lst, ONES, FALSE, 0);
 
   if (address) {
     fprintf(stdout, "Adress of node: %s<00>: %i.%i.%i.%i\n", target_label,
