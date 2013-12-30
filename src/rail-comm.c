@@ -1045,7 +1045,7 @@ int rail_senddtg(int rail_sckt,
   if (sent)
     return 0;
   else
-    return 1;
+    return 0x7fff;
 }
 
 /* returns: 0=success, >0=fail, <0=error */
