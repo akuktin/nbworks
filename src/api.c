@@ -1808,6 +1808,7 @@ ssize_t nbworks_recvfrom(unsigned char service,
   size_t *hndllen_left, len_left;
   int flags, kill_name;
   unsigned char hdrbuff[SES_HEADER_LEN], *walker, *buff;
+  void *ptr;
 
   ses = sesp;
   if ((! (ses && buff_pptr)) ||
@@ -2084,7 +2085,8 @@ ssize_t nbworks_recvfrom(unsigned char service,
 	    return -1;
 	  }
 
-	  memcpy(*buff_pptr, (ses->oob_tmpstor + ses->ooblen_offset), len_left);
+	  ptr = ses->oob_tmpstor + ses->ooblen_offset;
+	  memcpy(*buff_pptr, ptr, len_left);
 
 	  if (*hndllen_left) {
 	    ses->ooblen_offset = ses->ooblen_offset + len_left;

@@ -58,11 +58,13 @@ void init_rail(void) {
 int open_rail(void) {
   struct sockaddr_un address;
   int result;
+  void *ptr;
 
   memset(&address, 0, sizeof(struct sockaddr_un));
 
   address.sun_family = AF_UNIX;
-  memcpy(address.sun_path +1, NBWORKS_SCKT_NAME, NBWORKS_SCKT_NAMELEN);
+  ptr = address.sun_path +1;
+  memcpy(ptr, nbworks_sckt_name, NBWORKS_SCKT_NAMELEN);
 
   result = socket(PF_UNIX, SOCK_STREAM, 0);
   if (result == -1) {

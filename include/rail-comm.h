@@ -21,8 +21,11 @@
 # include "nodename.h"
 # include "service_sector.h"
 
-# define NBWORKS_SCKT_NAME "NBWORKS_MULTIPLEX_DAEMON"
+/* Below macro has been replaced with an extern string.
+   # define NBWORKS_SCKT_NAME "NBWORKS_MULTIPLEX_DAEMON" */
 # define NBWORKS_SCKT_NAMELEN (7+1+9+1+6)
+
+extern char nbworks_sckt_name[];
 
 enum rail_commands {
   rail_readcom,        /* daemon tells library it read the whole command */

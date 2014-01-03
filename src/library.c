@@ -45,11 +45,13 @@
 int lib_daemon_socket(void) {
   struct sockaddr_un address;
   int daemon;
+  void *ptr;
 
   memset(&address, 0, sizeof(struct sockaddr_un));
 
   address.sun_family = AF_UNIX;
-  memcpy(address.sun_path +1, NBWORKS_SCKT_NAME, NBWORKS_SCKT_NAMELEN);
+  ptr = address.sun_path +1;
+  memcpy(ptr, nbworks_sckt_name, NBWORKS_SCKT_NAMELEN);
 
   daemon = socket(PF_UNIX, SOCK_STREAM, 0);
   if (daemon < 0) {
@@ -496,7 +498,7 @@ void *lib_assemble_frags(struct dtg_frag *frags,
 			 uint32_t len) {
   struct dtg_frag *tmp;
   uint32_t done;
-  unsigned char *result;
+  unsigned char *result, *ptr;
 
   if (! frags)
     return 0;
@@ -522,7 +524,8 @@ void *lib_assemble_frags(struct dtg_frag *frags,
       lib_destroy_frags(tmp);
       return 0;
     }
-    memcpy((result + done), frags->data, frags->len);
+    ptr = result + done;
+    memcpy(ptr, frags->data, frags->len);
     done = done + frags->len;
     frags = frags->next;
   }

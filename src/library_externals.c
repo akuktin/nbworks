@@ -21,6 +21,8 @@
 #include "constdef.h"
 #include "nodename.h"
 
+char nbworks_sckt_name[] = "NBWORKS_MULTIPLEX_DAEMON";
+
 nbworks_errno_t nbworks_errno;
 
 ipv4_addr_t nbworks__myip4addr;

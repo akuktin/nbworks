@@ -28,6 +28,8 @@
 struct ss__NBNStrans ss_alltrans[MAXNUMOF_TIDS];
 #endif
 
+char nbworks_sckt_name[] = "NBWORKS_MULTIPLEX_DAEMON";
+
 struct cache_scopenode *nbworks_rootscope;
 
 ipv4_addr_t nbworks__default_nbns;
