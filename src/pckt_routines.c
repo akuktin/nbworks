@@ -368,7 +368,7 @@ struct nbworks_nbnamelst *read_all_DNS_labels(unsigned char **start_and_end_of_w
       label->len = name_len;
       /* walker is updated by the for loop. */
 
-    } else if ((*walker & 0xc0) = 0xc0) { /* Is this a pointer? */
+    } else if ((*walker & 0xc0) == 0xc0) { /* Is this a pointer? */
       if ((walker +1) >= end_of_packet) {
 	OUT_OF_BOUNDS(35);
 	handle_abort;
