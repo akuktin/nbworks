@@ -19,22 +19,27 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "nbworks.h"
+#include "constdef.h"
 #include "nodename.h"
 
 int main(int argc, unsigned char **argv) {
   int i;
-  unsigned char *coded_name;
+  unsigned char prepared_name[NBWORKS_NBNAME_LEN+1];
+  unsigned char coded_name[(NBWORKS_NBNAME_LEN*2)+1];
 
+  prepared_name[NBWORKS_NBNAME_LEN] = 0;
+  coded_name[NBWORKS_NBNAME_LEN*2] = 0;
   for (i=1; i < argc; i++) {
-    coded_name = make_nbnodename(argv[i], ' ');
-
-    if (! coded_name) {
+    if (! nbworks_create_nbnamelabel(argv[i], 0, prepared_name)) {
+     error:
       fprintf(stderr, "problem with argument #%i\n", i);
     } else {
-      fprintf(stdout, "%s\n", coded_name);
+      if (! encode_nbnodename(prepared_name, coded_name))
+        goto error;
+      else
+        fprintf(stdout, "%s\n", coded_name);
     }
-
-    free(coded_name);
   }
 
   return 0;
